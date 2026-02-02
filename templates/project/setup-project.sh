@@ -1,0 +1,245 @@
+#!/bin/bash
+# ============================================================
+# setup-project.sh
+# プロジェクト初期構築スクリプト
+#
+# 使い方:
+#   chmod +x setup-project.sh
+#   ./setup-project.sh [プロジェクト名]
+#
+# または Claude Code で:
+#   claude "setup-project.sh を実行して、
+#          プロジェクト名は my-saas-app で"
+# ============================================================
+
+set -e
+
+PROJECT_NAME=${1:-"my-project"}
+
+echo "🚀 プロジェクト「${PROJECT_NAME}」を初期構築します..."
+
+# ============================================================
+# 1. ディレクトリ構造の作成
+# ============================================================
+
+echo "📁 ディレクトリ構造を作成中..."
+
+# docs/
+mkdir -p "${PROJECT_NAME}/docs/idea"
+mkdir -p "${PROJECT_NAME}/docs/requirements"
+mkdir -p "${PROJECT_NAME}/docs/design/core"
+mkdir -p "${PROJECT_NAME}/docs/design/features/common"
+mkdir -p "${PROJECT_NAME}/docs/design/features/project"
+mkdir -p "${PROJECT_NAME}/docs/design/adr"
+mkdir -p "${PROJECT_NAME}/docs/standards"
+mkdir -p "${PROJECT_NAME}/docs/operations"
+mkdir -p "${PROJECT_NAME}/docs/marketing"
+mkdir -p "${PROJECT_NAME}/docs/growth"
+mkdir -p "${PROJECT_NAME}/docs/management"
+
+# src/（Next.js想定、後で上書き可能）
+mkdir -p "${PROJECT_NAME}/src/app"
+mkdir -p "${PROJECT_NAME}/src/components/ui"
+mkdir -p "${PROJECT_NAME}/src/components/features"
+mkdir -p "${PROJECT_NAME}/src/lib"
+mkdir -p "${PROJECT_NAME}/src/hooks"
+mkdir -p "${PROJECT_NAME}/src/types"
+mkdir -p "${PROJECT_NAME}/src/services"
+mkdir -p "${PROJECT_NAME}/src/__tests__"
+
+# その他
+mkdir -p "${PROJECT_NAME}/public"
+
+echo "✅ ディレクトリ構造を作成しました"
+
+# ============================================================
+# 2. README.md の作成
+# ============================================================
+
+cat > "${PROJECT_NAME}/README.md" << 'EOF'
+# {{PRODUCT_NAME}}
+
+> {{ELEVATOR_PITCH}}
+
+## セットアップ
+
+```bash
+npm install
+npm run dev
+```
+
+## ドキュメント
+
+すべての仕様書は `docs/` にあります。
+
+| ディレクトリ | 内容 |
+|-------------|------|
+| `docs/idea/` | アイデア・検証 |
+| `docs/requirements/` | 要件定義 |
+| `docs/design/` | 設計（コア定義・機能仕様） |
+| `docs/standards/` | 開発規約 |
+| `docs/operations/` | 運用 |
+| `docs/marketing/` | マーケティング |
+
+## 開発
+
+- **Claude Code**: 大きな機能実装、一括処理
+- **Cursor**: 日常のコーディング、デバッグ
+
+詳細: CLAUDE.md / .cursorrules を参照
+EOF
+
+echo "✅ README.md を作成しました"
+
+# ============================================================
+# 3. docs/ にプレースホルダーを配置
+# ============================================================
+
+echo "📄 ドキュメントのプレースホルダーを配置中..."
+
+# docs/idea/
+for file in IDEA_CANVAS USER_PERSONA COMPETITOR_ANALYSIS VALUE_PROPOSITION; do
+  touch "${PROJECT_NAME}/docs/idea/${file}.md"
+done
+
+# docs/requirements/
+for file in SSOT-0_PRD SSOT-1_FEATURE_CATALOG; do
+  touch "${PROJECT_NAME}/docs/requirements/${file}.md"
+done
+
+# docs/design/core/
+for file in SSOT-2_UI_STATE SSOT-3_API_CONTRACT SSOT-4_DATA_MODEL SSOT-5_CROSS_CUTTING; do
+  touch "${PROJECT_NAME}/docs/design/core/${file}.md"
+done
+
+# docs/design/adr/
+touch "${PROJECT_NAME}/docs/design/adr/000_TEMPLATE.md"
+
+# docs/standards/
+for file in TECH_STACK CODING_STANDARDS GIT_WORKFLOW TESTING_STANDARDS DEV_ENVIRONMENT; do
+  touch "${PROJECT_NAME}/docs/standards/${file}.md"
+done
+
+# docs/operations/
+for file in ENVIRONMENTS DEPLOYMENT MONITORING INCIDENT_RESPONSE; do
+  touch "${PROJECT_NAME}/docs/operations/${file}.md"
+done
+
+# docs/marketing/
+for file in LP_SPEC SNS_STRATEGY EMAIL_SEQUENCE LAUNCH_PLAN PRICING_STRATEGY; do
+  touch "${PROJECT_NAME}/docs/marketing/${file}.md"
+done
+
+# docs/growth/
+for file in GROWTH_STRATEGY METRICS_DEFINITION; do
+  touch "${PROJECT_NAME}/docs/growth/${file}.md"
+done
+
+# docs/management/
+for file in PROJECT_PLAN RISKS CHANGES; do
+  touch "${PROJECT_NAME}/docs/management/${file}.md"
+done
+
+echo "✅ ドキュメントのプレースホルダーを配置しました"
+
+# ============================================================
+# 4. docs/INDEX.md の作成
+# ============================================================
+
+cat > "${PROJECT_NAME}/docs/INDEX.md" << 'EOF'
+# ドキュメントインデックス
+
+## 仕様書一覧
+
+### アイデア・検証（docs/idea/）
+| ドキュメント | 状態 | 説明 |
+|-------------|------|------|
+| IDEA_CANVAS.md | ☐ 未作成 | アイデアキャンバス |
+| USER_PERSONA.md | ☐ 未作成 | ユーザーペルソナ |
+| COMPETITOR_ANALYSIS.md | ☐ 未作成 | 競合分析 |
+| VALUE_PROPOSITION.md | ☐ 未作成 | 価値提案キャンバス |
+
+### 要件定義（docs/requirements/）
+| ドキュメント | 状態 | 説明 |
+|-------------|------|------|
+| SSOT-0_PRD.md | ☐ 未作成 | プロダクト要件定義書 |
+| SSOT-1_FEATURE_CATALOG.md | ☐ 未作成 | 機能カタログ |
+
+### 設計（docs/design/）
+| ドキュメント | 状態 | 説明 |
+|-------------|------|------|
+| core/SSOT-2_UI_STATE.md | ☐ 未作成 | UI/状態遷移定義 |
+| core/SSOT-3_API_CONTRACT.md | ☐ 未作成 | API規約 |
+| core/SSOT-4_DATA_MODEL.md | ☐ 未作成 | データモデル |
+| core/SSOT-5_CROSS_CUTTING.md | ☐ 未作成 | 横断的関心事 |
+
+### 開発規約（docs/standards/）
+| ドキュメント | 状態 | 説明 |
+|-------------|------|------|
+| TECH_STACK.md | ☐ 未作成 | 技術スタック定義 |
+| CODING_STANDARDS.md | ☐ 未作成 | コーディング規約 |
+| GIT_WORKFLOW.md | ☐ 未作成 | Git運用規約 |
+| TESTING_STANDARDS.md | ☐ 未作成 | テスト規約 |
+
+### 運用（docs/operations/）
+| ドキュメント | 状態 | 説明 |
+|-------------|------|------|
+| ENVIRONMENTS.md | ☐ 未作成 | 環境構成定義 |
+| DEPLOYMENT.md | ☐ 未作成 | デプロイ手順 |
+| MONITORING.md | ☐ 未作成 | 監視・アラート定義 |
+| INCIDENT_RESPONSE.md | ☐ 未作成 | 障害対応手順 |
+
+### マーケティング（docs/marketing/）
+| ドキュメント | 状態 | 説明 |
+|-------------|------|------|
+| LP_SPEC.md | ☐ 未作成 | LP設計書 |
+| SNS_STRATEGY.md | ☐ 未作成 | SNS運用戦略 |
+| EMAIL_SEQUENCE.md | ☐ 未作成 | メールシーケンス |
+| LAUNCH_PLAN.md | ☐ 未作成 | ローンチ計画 |
+| PRICING_STRATEGY.md | ☐ 未作成 | 価格戦略 |
+
+### グロース（docs/growth/）
+| ドキュメント | 状態 | 説明 |
+|-------------|------|------|
+| GROWTH_STRATEGY.md | ☐ 未作成 | グロース戦略 |
+| METRICS_DEFINITION.md | ☐ 未作成 | KPI定義 |
+
+### プロジェクト管理（docs/management/）
+| ドキュメント | 状態 | 説明 |
+|-------------|------|------|
+| PROJECT_PLAN.md | ☐ 未作成 | プロジェクト計画 |
+| RISKS.md | ☐ 未作成 | リスク管理 |
+| CHANGES.md | ☐ 未作成 | 変更管理 |
+EOF
+
+echo "✅ docs/INDEX.md を作成しました"
+
+# ============================================================
+# 5. 完了メッセージ
+# ============================================================
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo " ✅ プロジェクト「${PROJECT_NAME}」の初期構築が完了しました"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo " 📁 構造:"
+echo "   ${PROJECT_NAME}/"
+echo "   ├── CLAUDE.md          ← Claude Code 用（要設定）"
+echo "   ├── .cursorrules       ← Cursor 用（要設定）"
+echo "   ├── docs/              ← 仕様書（プレースホルダー配置済み）"
+echo "   │   └── INDEX.md      ← 仕様書一覧"
+echo "   ├── src/               ← ソースコード"
+echo "   └── README.md"
+echo ""
+echo " 🎯 次のステップ:"
+echo "   1. CLAUDE.md と .cursorrules の {{}} 部分を埋める"
+echo "   2. docs/ のプレースホルダーにテンプレートの内容をコピー"
+echo "   3. Claude.ai でディスカバリーフローを実行"
+echo "   4. 結果を docs/idea/ に反映"
+echo ""
+echo " 💡 Claude Code で一括設定:"
+echo "   cd ${PROJECT_NAME}"
+echo "   claude \"CLAUDE.md と .cursorrules の {{}} を"
+echo "          以下の情報で埋めて: プロダクト名は○○、技術は...\" "
+echo ""
