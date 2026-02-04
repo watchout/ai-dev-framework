@@ -32,7 +32,7 @@
   アイデアを  →  誰に何を    →  何をどう    →  どう作るか →  開発開始
   引き出す      なぜ売るか      作るか        を決める
 
-  [Claude.ai]   [Claude.ai]    [Claude.ai     [Claude Code]  [Cursor]
+  [Claude.ai]   [Claude.ai]    [Claude.ai     [Claude Code]  [Claude Code]
                                + Claude Code]
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -42,7 +42,7 @@
   Step 0         Step 1           Step 2           Step 3        Step 4
   ────────      ────────        ────────         ────────     ────────
   (対話記録)     IDEA_CANVAS      PRD              API_CONTRACT  CLAUDE.md
-                USER_PERSONA     FEATURE_CATALOG   DATA_MODEL    .cursorrules
+                USER_PERSONA     FEATURE_CATALOG   DATA_MODEL
                 COMPETITOR       UI_STATE          CROSS_CUTTING プロジェクト
                 VALUE_PROP       (機能仕様書)      TECH_STACK    初期化
                                                    各種規約
@@ -548,7 +548,6 @@ PRD: [2-A]
 3-F. プロジェクト初期構築 ←── 3-A〜3-E 全て
        │
        ├── CLAUDE.md 生成
-       ├── .cursorrules 生成
        └── スキャフォールド実行
 ```
 
@@ -738,17 +737,14 @@ claude "以下を実行して:
        
        2. templates/project/CLAUDE.md をプロジェクトルートにコピーし、
           {{}} を実際の値で置換
-       
-       3. templates/project/.cursorrules をプロジェクトルートにコピーし、
-          {{}} を実際の値で置換
-       
-       4. docs/standards/DEV_ENVIRONMENT.md に基づいて
+
+       3. docs/standards/DEV_ENVIRONMENT.md に基づいて
           開発環境を設定（ESLint, Prettier, etc.）
        
-       5. docs/design/core/SSOT-4_DATA_MODEL.md に基づいて
+       4. docs/design/core/SSOT-4_DATA_MODEL.md に基づいて
           DBマイグレーションファイルを生成
        
-       6. 基本的なディレクトリ構造を作成"
+       5. 基本的なディレクトリ構造を作成"
 ```
 
 ### Step 3 全体の完了条件
@@ -762,7 +758,6 @@ claude "以下を実行して:
 │ □ CROSS_CUTTING: 認証・エラー・ログ定義済み    │
 │ □ 開発規約4点: 技術スタックに適合済み           │
 │ □ CLAUDE.md: {{}} が全て実際の値に置換済み     │
-│ □ .cursorrules: {{}} が全て実際の値に置換済み  │
 │ □ プロジェクトが npm run dev で起動する         │
 │                                                  │
 │ → Step 4（開発開始）へ進む 🚀                    │
@@ -791,19 +786,15 @@ claude "以下を実行して:
 ```
 各機能の実装サイクル:
 
-[Claude Code] 骨組み生成
+[Claude Code] 実装
   claude "AUTH-001の仕様書に基づいて実装して"
-    ↓
-[Cursor] 詳細実装・デバッグ
-  仕様書を見ながらコーディング
     ↓
 [Claude Code] テスト生成
   claude "AUTH-001のテストを生成して"
     ↓
-[Cursor] テスト修正・追加
-    ↓
-[Claude Code] レビュー
-  claude "AUTH-001の実装が仕様書と一致しているか確認して"
+[Claude Code] Adversarial Review（サブエージェント）
+  → 別コンテキストで批判的レビュー
+  → 合格まで反復（17_CODE_AUDIT.md 参照）
     ↓
 完了 → 次の機能へ
 ```
@@ -825,8 +816,168 @@ claude "以下を実行して:
 
 ---
 
+## Step R: Retrofit（既存プロジェクト導入）
+
+### 目的
+
+```
+既存プロジェクトをフレームワーク管理下に移行する。
+
+入力: 既存リポジトリ（コードはあるがSSOTがない状態）
+出力: docs/ 配下にSSOT一式 + CLAUDE.md
+
+  既存プロジェクト
+  ├── src/（コードあり）
+  ├── package.json
+  └── README.md（あるかも）
+
+      ↓  framework retrofit
+
+  既存プロジェクト
+  ├── CLAUDE.md              ← NEW
+  ├── docs/                  ← NEW
+  │   ├── requirements/
+  │   │   ├── SSOT-0_PRD.md
+  │   │   └── SSOT-1_FEATURE_CATALOG.md
+  │   ├── design/
+  │   │   ├── core/
+  │   │   └── features/
+  │   ├── standards/
+  │   └── notes/
+  ├── src/（既存コードそのまま）
+  └── package.json
+```
+
+### Retrofit フロー
+
+```
+Step R-1: 既存コードスキャン
+────────────────────────────
+  Claude Code がリポジトリ全体を読み取り:
+  - ディレクトリ構造の分析
+  - 使用技術の特定（言語、フレームワーク、DB等）
+  - 主要エンティティの抽出
+  - APIエンドポイントの一覧化
+  - 認証方式の特定
+  - テストの有無・カバレッジ
+
+  出力: コードスキャンレポート（内部用）
+
+      ↓
+
+Step R-2: 既存ドキュメント読み込み
+────────────────────────────
+  既存の README、Wiki、コメント、型定義から情報を抽出:
+  - プロダクトの目的
+  - 機能一覧
+  - 技術スタック
+  - 環境構成
+
+      ↓
+
+Step R-3: ギャップ分析
+────────────────────────────
+  フレームワーク要件と既存状態を比較:
+
+  | カテゴリ | フレームワーク要件 | 既存状態 | ギャップ |
+  |---------|------------------|---------|---------|
+  | PRD | SSOT-0 完成 | README のみ | 大 |
+  | 機能カタログ | SSOT-1 完成 | なし | 大 |
+  | API定義 | SSOT-3 完成 | コードから推定可能 | 中 |
+  | データモデル | SSOT-4 完成 | マイグレーションあり | 小 |
+  | テスト | カバレッジ80% | 50% | 中 |
+
+  出力: ギャップ分析レポート → ユーザーに提示
+
+      ↓
+
+Step R-4: SSOT逆生成
+────────────────────────────
+  既存コードからSSOTを逆引きで生成する:
+
+  コード → SSOT（逆方向）:
+    src/auth/     → AUTH-001_login.md
+    src/api/users → ACCT-001_signup.md
+    schema.prisma → SSOT-4_DATA_MODEL.md
+    routes/*      → SSOT-3_API_CONTRACT.md
+
+  手順:
+  1. コードを読み、各機能のSSOTドラフトを生成
+  2. ユーザーに確認（「この理解で合っていますか？」）
+  3. 修正を反映
+  4. SSOT監査（13_SSOT_AUDIT.md）で95点を目指す
+
+  注意:
+  - コードの実装がそのまま「正しい仕様」とは限らない
+  - バグや意図しない挙動が仕様として記録されないよう確認する
+  - ユーザーに「これは意図した動作ですか？」と確認する
+
+      ↓
+
+Step R-5: CLAUDE.md 生成
+────────────────────────────
+  templates/project/CLAUDE.md を基に、
+  プロジェクト固有の CLAUDE.md を生成:
+  - プロジェクト概要
+  - 技術スタック（R-1 で特定済み）
+  - ディレクトリ構造
+  - 参照すべきSSOT一覧
+  - 開発規約
+
+      ↓
+
+Step R-6: フレームワーク管理下に移行
+────────────────────────────
+  - docs/ 配下にSSOT一式を配置
+  - CLAUDE.md をプロジェクトルートに配置
+  - 既存テストとSSOTテストケースの紐付け
+  - CI/PRテンプレートの追加（任意）
+
+  完了条件:
+  □ 全機能にSSOTが存在する
+  □ CLAUDE.md が設定済み
+  □ 以降の開発は通常フロー（Step 4）で進められる
+```
+
+### AIへの指示（Retrofit開始）
+
+```bash
+claude "このプロジェクトをAI開発フレームワークの管理下に移行します。
+
+       以下の手順で進めてください:
+       1. リポジトリ全体をスキャンし、構造・技術・機能を把握
+       2. 既存ドキュメント（README等）を読み込み
+       3. フレームワーク要件とのギャップを分析し報告
+       4. 承認後、既存コードからSSOTを逆生成
+       5. CLAUDE.md を生成
+       6. docs/ 配下にSSOT一式を配置
+
+       各ステップで確認を求めてください。
+       推測で進めないでください。"
+```
+
+### Retrofit vs 新規の違い
+
+```
+新規プロジェクト（Step 0-3）:
+  仕様 → コード（順方向）
+  先に仕様を決めてからコードを書く
+
+Retrofit（Step R）:
+  コード → 仕様（逆方向）
+  既存コードから仕様を逆引きで生成する
+
+共通点:
+  - 最終的にSSOT一式が揃う
+  - 以降の開発は同じフロー（Step 4）
+  - 品質ゲートも同じ
+```
+
+---
+
 ## 変更履歴
 
 | 日付 | 変更内容 | 変更者 |
 |------|---------|-------|
 | | 初版作成 | |
+| | Cursor削除、Claude Code一本化。Step R: Retrofit（既存プロジェクト導入）追加 | |

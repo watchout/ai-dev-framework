@@ -152,6 +152,22 @@ Phase -1       Phase 0       Phase 0.5      Phase 1-5      Phase 6
 
 詳細: 09_TOOLCHAIN.md 参照
 
+### CLIコマンド（framework コマンド）
+
+```
+framework init          プロジェクト初期化
+framework discover      ヒアリング実行
+framework generate      SSOT生成（生成チェーン実行）
+framework plan          実装計画作成（タスク分解）
+framework audit         品質監査（SSOT/コード/テスト）
+framework run           タスク実行（1タスク or 連続自動実行）
+framework status        進捗表示
+framework retrofit      既存プロジェクト導入
+framework update        フレームワーク更新
+```
+
+詳細: 09_TOOLCHAIN.md §9 参照
+
 ---
 
 ## フレームワーク3層構造

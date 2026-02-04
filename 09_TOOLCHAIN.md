@@ -454,9 +454,226 @@ Claude Code の Task tool を活用し、
 
 ---
 
+## 9. CLIコマンド一覧（framework コマンド）
+
+### 概要
+
+```
+framework CLI は ai-dev-platform で開発する Node.js ツール。
+フレームワークの各プロセスをコマンドとして実行する。
+
+インストール:
+  npm install -g @watchout/framework
+  # or
+  npx @watchout/framework <command>
+
+基本構文:
+  framework <command> [options]
+```
+
+### コマンド一覧
+
+| コマンド | 対応Step | 説明 |
+|---------|---------|------|
+| `framework init` | Step 3 | プロジェクト初期化 |
+| `framework discover` | Step 0 | ディスカバリー（ヒアリング実行） |
+| `framework generate` | Step 1-3 | SSOT生成（生成チェーン実行） |
+| `framework plan` | Step 4準備 | 実装計画作成（タスク分解） |
+| `framework audit` | 品質ゲート | 品質監査（SSOT/コード/テスト） |
+| `framework run` | Step 4 | タスク実行（1タスク or 連続） |
+| `framework status` | 常時 | 進捗表示 |
+| `framework retrofit` | Step R | 既存プロジェクト導入 |
+| `framework update` | 保守 | フレームワーク更新 |
+
+### 各コマンドの詳細
+
+```
+framework init [project-name]
+────────────────────────────
+  プロジェクトを初期化する。
+
+  処理:
+  1. docs/ ディレクトリ構造を作成
+  2. テンプレートを docs/ にコピー
+  3. CLAUDE.md を生成
+  4. .gitignore 等の設定
+
+  オプション:
+  --template <name>   テンプレートを指定（default: standard）
+  --skip-git          git init をスキップ
+
+
+framework discover
+────────────────────────────
+  ディスカバリーフロー（08_DISCOVERY_FLOW.md）を実行する。
+
+  処理:
+  1. Claude.ai または Claude Code で Stage 1-5 を対話実行
+  2. 回答を記録
+  3. 全体サマリーを生成
+  4. 初期資料を docs/idea/ に配置
+
+  オプション:
+  --resume             中断したディスカバリーを再開
+
+
+framework generate <step>
+────────────────────────────
+  生成チェーン（10_GENERATION_CHAIN.md）を実行する。
+
+  処理:
+  step=business   → Step 1: IDEA_CANVAS → PERSONA → COMPETITOR → VALUE_PROP
+  step=product    → Step 2: PRD → FEATURE_CATALOG → UI_STATE → 機能仕様書
+  step=technical  → Step 3: TECH_STACK → API → DB → CROSS_CUTTING → 規約
+
+  各ドキュメント生成後にユーザー確認を挟む。
+
+  オプション:
+  --auto              ユーザー確認をスキップ（テスト用）
+
+
+framework plan
+────────────────────────────
+  実装計画を作成する（14_IMPLEMENTATION_ORDER.md に従う）。
+
+  処理:
+  1. 全SSOTの依存関係を分析
+  2. トポロジカルソートでWave分類
+  3. タスク分解（DB/API/UI/結合/テスト/レビュー）
+  4. 実装順序を出力
+
+  出力: docs/management/IMPLEMENTATION_PLAN.md
+
+
+framework audit [target]
+────────────────────────────
+  品質監査を実行する。
+
+  target:
+  ssot             → SSOT監査（13_SSOT_AUDIT.md）合格: 95点
+  prompt           → プロンプト監査（16_PROMPT_AUDIT.md）合格: 100点
+  code             → コード監査（17_CODE_AUDIT.md）合格: 100点
+  test             → テスト監査（18_TEST_FORMAT.md）合格: 100点
+  visual           → ビジュアル監査（20_VISUAL_TEST.md）合格: 100点
+  acceptance       → 機能検証（22_FEATURE_ACCEPTANCE.md）合格: 100点
+  all              → 上記全て実行
+
+  オプション:
+  --feature <id>      特定の機能のみ監査
+  --fix               問題を自動修正（コード監査のみ）
+
+
+framework run <task-id>
+────────────────────────────
+  タスクを実行する。
+
+  処理:
+  1. タスクIDに対応するSSOTを読み込み
+  2. プロンプトを生成（15_PROMPT_FORMAT.md）
+  3. 実装を実行
+  4. コード監査を自動実行
+  5. テストを生成・実行
+
+  オプション:
+  --auto              連続自動実行（全タスクを順番に）
+  --dry-run           実行せずプロンプトのみ生成
+
+
+framework status
+────────────────────────────
+  プロジェクトの進捗を表示する。
+
+  処理:
+  1. docs/ 配下のファイル存在チェック
+  2. 各Stepの完了判定
+  3. 進捗バーを表示（00_MASTER_GUIDE.md の形式）
+
+  オプション:
+  --json              JSON形式で出力（ダッシュボード連携用）
+  --detail            各ドキュメントの完成度も表示
+
+
+framework retrofit
+────────────────────────────
+  既存プロジェクトをフレームワーク管理下に移行する。
+  詳細: 10_GENERATION_CHAIN.md Step R
+
+  処理:
+  1. 既存コードスキャン
+  2. 既存ドキュメント読み込み
+  3. ギャップ分析 → レポート表示
+  4. SSOT逆生成（ユーザー確認あり）
+  5. CLAUDE.md 生成
+  6. docs/ 配下にSSOT配置
+
+  オプション:
+  --scan-only         スキャンとギャップ分析のみ（SSOT生成しない）
+
+
+framework update
+────────────────────────────
+  フレームワーク自体を最新版に更新する。
+
+  処理:
+  1. ai-dev-framework リポジトリの最新を取得
+  2. docs/standards/ と差分を比較
+  3. 変更点をレポート表示
+  4. ユーザー確認後に docs/standards/ を更新
+  5. CLAUDE.md への影響を確認・反映
+
+  更新対象:
+  - docs/standards/ 配下の全フレームワークドキュメント
+  - テンプレート
+  - チェックリスト
+
+  更新しない:
+  - プロジェクト固有のSSOT
+  - カスタマイズ済みの共通機能仕様
+  - ユーザーが変更したファイル
+
+  オプション:
+  --check             更新可能かチェックのみ（適用しない）
+  --force             ユーザー確認なしで更新
+```
+
+### コマンドのフロー図
+
+```
+新規プロジェクト:
+  framework init
+    → framework discover
+    → framework generate business
+    → framework generate product
+    → framework generate technical
+    → framework plan
+    → framework run --auto
+    → framework audit all
+    → framework status
+
+既存プロジェクト:
+  framework retrofit
+    → framework plan
+    → framework run --auto
+    → framework audit all
+    → framework status
+
+日常の開発:
+  framework status          ← 現在地を確認
+  framework run FEAT-001    ← 1タスク実行
+  framework audit code      ← コード監査
+  framework run --auto      ← 連続実行
+
+保守:
+  framework update          ← フレームワーク更新
+  framework audit all       ← 全体監査
+```
+
+---
+
 ## 変更履歴
 
 | 日付 | 変更内容 | 変更者 |
 |------|---------|-------|
 | | 初版作成 | |
 | | Cursor削除、Claude Code一本化。git worktree並列開発、サブエージェント活用を追加 | |
+| | CLIコマンド一覧（framework コマンド）を追加 | |
