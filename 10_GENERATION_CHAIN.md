@@ -198,12 +198,14 @@ Step 4: 開発開始
 |------|------|
 | ツール | Claude.ai |
 | 時間 | 30-60分 |
-| インプット | ユーザーの「こんなの作りたい」 |
+| インプット | ユーザーの「こんなの作りたい」+ 知識データ（存在する場合） |
 | アウトプット | Stage 1-5 の回答記録 + 全体サマリー |
+
+**事前確認**: docs/knowledge/ が存在する場合、関連する知識データを読み込んでからヒアリングを開始（08_DISCOVERY_FLOW.md Stage 0 参照）
 
 **完了条件**: 全体サマリーをユーザーが確認し「OK」と言った
 
-**次のStepへ渡すもの**: 全体サマリー（テキスト）
+**次のStepへ渡すもの**: 全体サマリー（テキスト）+ 知識データサマリー
 
 ---
 
@@ -215,13 +217,19 @@ Step 4: 開発開始
 ### 生成順序と依存関係
 
 ```
-1-A. IDEA_CANVAS ←── Discovery回答の全体
+1-A. IDEA_CANVAS ←── Discovery回答の全体 + knowledge/
        │
-       ├──→ 1-B. USER_PERSONA ←── Q2-1, Q2-2（ターゲット・課題）
+       ├──→ 1-B. USER_PERSONA ←── Q2-1, Q2-2 + knowledge/users/
        │
-       ├──→ 1-C. COMPETITOR_ANALYSIS ←── Q1-4, Q4-1（参考・競合）
+       ├──→ 1-C. COMPETITOR_ANALYSIS ←── Q1-4, Q4-1 + knowledge/market/
        │
-       └──→ 1-D. VALUE_PROPOSITION ←── 1-A + 1-B + 1-C の結果
+       └──→ 1-D. VALUE_PROPOSITION ←── 1-A + 1-B + 1-C + knowledge/domain/
+
+知識データ参照:
+  1-A: knowledge/ 全体を参照（背景知識として）
+  1-B: knowledge/users/personas.md, pain-points.md を参照
+  1-C: knowledge/market/competitors.md, trends.md を参照
+  1-D: knowledge/domain/best-practices.md, common-features.md を参照
 ```
 
 ### 1-A. IDEA_CANVAS の生成
@@ -1120,3 +1128,4 @@ Retrofit（Step R）:
 | | 初版作成 | |
 | | Cursor削除、Claude Code一本化。Step R: Retrofit（既存プロジェクト導入）追加 | |
 | | Freeze単位の進行（Freeze 1-4）を追加 | |
+| | 知識データ（docs/knowledge/）参照フローを Step 0, Step 1 に追加 | |
