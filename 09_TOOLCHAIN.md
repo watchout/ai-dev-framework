@@ -493,14 +493,25 @@ framework init [project-name]
   プロジェクトを初期化する。
 
   処理:
-  1. docs/ ディレクトリ構造を作成
-  2. テンプレートを docs/ にコピー
-  3. CLAUDE.md を生成
-  4. .gitignore 等の設定
+  1. プロファイル（--type）に基づきスコープを決定
+  2. docs/ ディレクトリ構造を作成（タイプに応じて不要なディレクトリはスキップ）
+  3. 有効なテンプレートのみ docs/ にコピー
+  4. CLAUDE.md を生成（プロファイル情報を含む）
+  5. .gitignore 等の設定
 
   オプション:
+  --type <type>       プロジェクトタイプを指定（app|lp|hp|api|cli, default: app）
   --template <name>   テンプレートを指定（default: standard）
   --skip-git          git init をスキップ
+
+  タイプ別の動作:
+  --type=app  全SSOT・全監査・全ディレクトリを生成（デフォルト）
+  --type=lp   PRD+UI_STATEのみ、マーケティング必須、API/DB設計スキップ
+  --type=hp   PRD+UI_STATEのみ、最小構成
+  --type=api  PRD+API+DATA+CROSS、UI関連スキップ
+  --type=cli  PRD+API(コマンド定義)、UI/DB関連スキップ
+
+  プロファイル定義: templates/profiles/<type>.json
 
 
 framework discover
@@ -508,10 +519,18 @@ framework discover
   ディスカバリーフロー（08_DISCOVERY_FLOW.md）を実行する。
 
   処理:
-  1. Claude.ai または Claude Code で Stage 1-5 を対話実行
-  2. 回答を記録
-  3. 全体サマリーを生成
-  4. 初期資料を docs/idea/ に配置
+  1. プロファイルから実行するStageを決定
+  2. Claude.ai または Claude Code で対話実行
+  3. 回答を記録
+  4. 全体サマリーを生成
+  5. 初期資料を docs/idea/ に配置
+
+  タイプ別Stage:
+  app  → Stage 1-5（全Stage）
+  lp   → Stage 1-3（課題・ターゲット・価値）
+  hp   → Stage 1-2（概要・構成）
+  api  → Stage 1-3（課題・ターゲット・機能）
+  cli  → Stage 1-3（課題・ターゲット・機能）
 
   オプション:
   --resume             中断したディスカバリーを再開
@@ -556,7 +575,14 @@ framework audit [target]
   test             → テスト監査（18_TEST_FORMAT.md）合格: 100点
   visual           → ビジュアル監査（20_VISUAL_TEST.md）合格: 100点
   acceptance       → 機能検証（22_FEATURE_ACCEPTANCE.md）合格: 100点
-  all              → 上記全て実行
+  all              → プロファイルで有効な監査を全て実行
+
+  タイプ別 all の動作:
+  app  → ssot, prompt, code, test, visual, acceptance
+  lp   → code, visual
+  hp   → code, visual
+  api  → code, test
+  cli  → code, test
 
   オプション:
   --feature <id>      特定の機能のみ監査
@@ -640,7 +666,7 @@ framework update
 
 ```
 新規プロジェクト:
-  framework init
+  framework init --type=app    # or lp, hp, api, cli
     → framework discover
     → framework generate business
     → framework generate product
@@ -911,3 +937,4 @@ _index.json:
 | | Cursor削除、Claude Code一本化。git worktree並列開発、サブエージェント活用を追加 | |
 | | CLIコマンド一覧（framework コマンド）を追加 | |
 | | Skill Creator（スキル自動生成）セクション追加 | |
+| | プロジェクトタイプ別プロファイル（--type オプション）対応 | |

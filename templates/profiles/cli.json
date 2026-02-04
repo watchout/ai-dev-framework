@@ -1,0 +1,62 @@
+{
+  "id": "cli",
+  "name": "CLI Tool",
+  "description": "コマンドラインツール（開発者向けCLI、自動化ツール）",
+  "enabledSsot": [
+    "SSOT-0_PRD",
+    "SSOT-3_API_CONTRACT"
+  ],
+  "enabledAudit": [
+    "code",
+    "test"
+  ],
+  "discoveryStages": [1, 2, 3],
+  "freezeRequired": [1, 2, 3],
+  "marketing": "none",
+  "requiredTemplates": [
+    "docs/idea/IDEA_CANVAS.md",
+    "docs/idea/USER_PERSONA.md",
+    "docs/requirements/SSOT-0_PRD.md",
+    "docs/design/core/SSOT-3_API_CONTRACT.md",
+    "docs/standards/TECH_STACK.md",
+    "docs/standards/CODING_STANDARDS.md",
+    "docs/standards/TESTING_STANDARDS.md",
+    "docs/ssot/DECISION_BACKLOG.md"
+  ],
+  "skipTemplates": [
+    "SSOT-1_FEATURE_CATALOG",
+    "SSOT-2_UI_STATE",
+    "SSOT-4_DATA_MODEL",
+    "docs/design/features/common/",
+    "docs/marketing/",
+    "docs/growth/",
+    "docs/operations/",
+    "public/"
+  ],
+  "directories": [
+    "docs/idea",
+    "docs/requirements",
+    "docs/design/core",
+    "docs/design/features/project",
+    "docs/design/adr",
+    "docs/standards",
+    "docs/notes",
+    "docs/management",
+    "docs/ssot",
+    "src",
+    "tests"
+  ],
+  "defaultTechStack": {
+    "frontend": null,
+    "backend": "Node.js (TypeScript)",
+    "database": null,
+    "auth": null,
+    "hosting": "npm registry",
+    "testing": "Vitest",
+    "cli_framework": "Commander.js or oclif"
+  },
+  "cliSpecific": {
+    "apiContract_maps_to": "CLI commands and flags (not HTTP endpoints)",
+    "ui_replacement": "Terminal output format and interactive prompts"
+  }
+}

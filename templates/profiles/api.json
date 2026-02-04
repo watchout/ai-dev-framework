@@ -1,0 +1,59 @@
+{
+  "id": "api",
+  "name": "API / Backend Service",
+  "description": "API・バックエンド専用サービス（REST API、GraphQL、マイクロサービス）",
+  "enabledSsot": [
+    "SSOT-0_PRD",
+    "SSOT-3_API_CONTRACT",
+    "SSOT-4_DATA_MODEL"
+  ],
+  "enabledAudit": [
+    "code",
+    "test"
+  ],
+  "discoveryStages": [1, 2, 3],
+  "freezeRequired": [1, 2, 3],
+  "marketing": "none",
+  "requiredTemplates": [
+    "docs/idea/IDEA_CANVAS.md",
+    "docs/idea/USER_PERSONA.md",
+    "docs/requirements/SSOT-0_PRD.md",
+    "docs/requirements/SSOT-1_FEATURE_CATALOG.md",
+    "docs/design/core/SSOT-3_API_CONTRACT.md",
+    "docs/design/core/SSOT-4_DATA_MODEL.md",
+    "docs/design/core/SSOT-5_CROSS_CUTTING.md",
+    "docs/standards/TECH_STACK.md",
+    "docs/standards/CODING_STANDARDS.md",
+    "docs/standards/TESTING_STANDARDS.md",
+    "docs/ssot/DECISION_BACKLOG.md"
+  ],
+  "skipTemplates": [
+    "SSOT-2_UI_STATE",
+    "docs/design/features/common/",
+    "docs/marketing/",
+    "docs/growth/",
+    "public/"
+  ],
+  "directories": [
+    "docs/idea",
+    "docs/requirements",
+    "docs/design/core",
+    "docs/design/features/project",
+    "docs/design/adr",
+    "docs/standards",
+    "docs/notes",
+    "docs/operations",
+    "docs/management",
+    "docs/ssot",
+    "src",
+    "tests"
+  ],
+  "defaultTechStack": {
+    "frontend": null,
+    "backend": "Express or Hono",
+    "database": "PostgreSQL (Supabase or raw)",
+    "auth": "JWT",
+    "hosting": "Fly.io or Railway",
+    "testing": "Vitest"
+  }
+}

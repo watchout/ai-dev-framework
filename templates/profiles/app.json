@@ -1,0 +1,73 @@
+{
+  "id": "app",
+  "name": "Full-stack Application",
+  "description": "フルスタックWebアプリケーション（SaaS、業務システム等）",
+  "enabledSsot": [
+    "SSOT-0_PRD",
+    "SSOT-1_FEATURE_CATALOG",
+    "SSOT-2_UI_STATE",
+    "SSOT-3_API_CONTRACT",
+    "SSOT-4_DATA_MODEL",
+    "SSOT-5_CROSS_CUTTING"
+  ],
+  "enabledAudit": [
+    "ssot",
+    "prompt",
+    "code",
+    "test",
+    "visual",
+    "acceptance"
+  ],
+  "discoveryStages": [1, 2, 3, 4, 5],
+  "freezeRequired": [1, 2, 3, 4],
+  "marketing": "optional",
+  "requiredTemplates": [
+    "docs/idea/IDEA_CANVAS.md",
+    "docs/idea/USER_PERSONA.md",
+    "docs/idea/COMPETITOR_ANALYSIS.md",
+    "docs/idea/VALUE_PROPOSITION.md",
+    "docs/requirements/SSOT-0_PRD.md",
+    "docs/requirements/SSOT-1_FEATURE_CATALOG.md",
+    "docs/design/core/SSOT-2_UI_STATE.md",
+    "docs/design/core/SSOT-3_API_CONTRACT.md",
+    "docs/design/core/SSOT-4_DATA_MODEL.md",
+    "docs/design/core/SSOT-5_CROSS_CUTTING.md",
+    "docs/design/features/common/",
+    "docs/design/features/project/",
+    "docs/standards/TECH_STACK.md",
+    "docs/standards/CODING_STANDARDS.md",
+    "docs/standards/GIT_WORKFLOW.md",
+    "docs/standards/TESTING_STANDARDS.md",
+    "docs/management/PROJECT_PLAN.md",
+    "docs/ssot/DECISION_BACKLOG.md"
+  ],
+  "skipTemplates": [],
+  "directories": [
+    "docs/idea",
+    "docs/requirements",
+    "docs/design/core",
+    "docs/design/features/common",
+    "docs/design/features/project",
+    "docs/design/adr",
+    "docs/standards",
+    "docs/notes",
+    "docs/operations",
+    "docs/marketing",
+    "docs/growth",
+    "docs/management",
+    "docs/checklists",
+    "docs/traceability",
+    "docs/ssot",
+    "src",
+    "tests",
+    "public"
+  ],
+  "defaultTechStack": {
+    "frontend": "Next.js + Tailwind CSS",
+    "backend": "Next.js API Routes or Express",
+    "database": "Supabase (PostgreSQL)",
+    "auth": "Supabase Auth",
+    "hosting": "Vercel",
+    "testing": "Vitest + Playwright"
+  }
+}

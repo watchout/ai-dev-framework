@@ -1,0 +1,51 @@
+{
+  "id": "hp",
+  "name": "Homepage / Corporate Site",
+  "description": "ホームページ・コーポレートサイト（会社紹介、サービス紹介）",
+  "enabledSsot": [
+    "SSOT-0_PRD",
+    "SSOT-2_UI_STATE"
+  ],
+  "enabledAudit": [
+    "code",
+    "visual"
+  ],
+  "discoveryStages": [1, 2],
+  "freezeRequired": [1, 2],
+  "marketing": "optional",
+  "requiredTemplates": [
+    "docs/idea/IDEA_CANVAS.md",
+    "docs/requirements/SSOT-0_PRD.md",
+    "docs/design/core/SSOT-2_UI_STATE.md",
+    "docs/standards/TECH_STACK.md"
+  ],
+  "skipTemplates": [
+    "SSOT-1_FEATURE_CATALOG",
+    "SSOT-3_API_CONTRACT",
+    "SSOT-4_DATA_MODEL",
+    "SSOT-5_CROSS_CUTTING",
+    "docs/design/features/",
+    "docs/operations/",
+    "docs/growth/",
+    "USER_PERSONA",
+    "COMPETITOR_ANALYSIS",
+    "VALUE_PROPOSITION"
+  ],
+  "directories": [
+    "docs/idea",
+    "docs/requirements",
+    "docs/design/core",
+    "docs/standards",
+    "docs/notes",
+    "src",
+    "public"
+  ],
+  "defaultTechStack": {
+    "frontend": "Next.js + Tailwind CSS (or Astro)",
+    "backend": null,
+    "database": null,
+    "auth": null,
+    "hosting": "Vercel",
+    "testing": "Playwright (visual only)"
+  }
+}

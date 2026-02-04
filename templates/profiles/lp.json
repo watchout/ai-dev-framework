@@ -1,0 +1,59 @@
+{
+  "id": "lp",
+  "name": "Landing Page",
+  "description": "ランディングページ（リード獲得、β募集、プロダクトLP）",
+  "enabledSsot": [
+    "SSOT-0_PRD",
+    "SSOT-2_UI_STATE"
+  ],
+  "enabledAudit": [
+    "code",
+    "visual"
+  ],
+  "discoveryStages": [1, 2, 3],
+  "freezeRequired": [1, 2],
+  "marketing": "required",
+  "requiredTemplates": [
+    "docs/idea/IDEA_CANVAS.md",
+    "docs/idea/USER_PERSONA.md",
+    "docs/idea/VALUE_PROPOSITION.md",
+    "docs/requirements/SSOT-0_PRD.md",
+    "docs/design/core/SSOT-2_UI_STATE.md",
+    "docs/marketing/LP_SPEC.md",
+    "docs/marketing/SNS_STRATEGY.md",
+    "docs/standards/TECH_STACK.md"
+  ],
+  "skipTemplates": [
+    "SSOT-1_FEATURE_CATALOG",
+    "SSOT-3_API_CONTRACT",
+    "SSOT-4_DATA_MODEL",
+    "SSOT-5_CROSS_CUTTING",
+    "docs/design/features/",
+    "docs/operations/",
+    "docs/growth/"
+  ],
+  "directories": [
+    "docs/idea",
+    "docs/requirements",
+    "docs/design/core",
+    "docs/standards",
+    "docs/marketing",
+    "docs/notes",
+    "src",
+    "public"
+  ],
+  "defaultTechStack": {
+    "frontend": "Next.js + Tailwind CSS",
+    "backend": null,
+    "database": null,
+    "auth": null,
+    "hosting": "Vercel",
+    "testing": "Playwright (visual only)"
+  },
+  "marketingRequired": {
+    "LP_SPEC": true,
+    "SNS_STRATEGY": true,
+    "EMAIL_SEQUENCE": false,
+    "LAUNCH_PLAN": false
+  }
+}
