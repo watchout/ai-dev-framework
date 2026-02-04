@@ -670,6 +670,239 @@ framework update
 
 ---
 
+## 10. Skill Creator（スキル自動生成）
+
+### 基本概念
+
+```
+開発中に繰り返されるパターンを検出し、
+再利用可能な「スキル」として定型化する。
+
+スキル = 再利用可能なパターン定義
+  - いつ使うか（trigger）
+  - 何をするか（steps）
+  - 完了条件（done_when）
+  - テンプレートコード（template）
+
+保存先: .claude/skills/
+形式: SKILL.md
+```
+
+### スキルの定義フォーマット（SKILL.md）
+
+```markdown
+# SKILL: {スキル名}
+
+## メタデータ
+- ID: SKILL-{NNN}
+- カテゴリ: {implementation | testing | refactoring | debugging}
+- 確信度: {N}/100
+- 使用回数: {N}
+- 作成日: YYYY-MM-DD
+- 出典: {どの実装から抽出したか}
+
+## トリガー（いつ使うか）
+{このスキルが適用される条件}
+
+## 手順（何をするか）
+1. {ステップ1}
+2. {ステップ2}
+3. {ステップ3}
+
+## テンプレート
+\`\`\`typescript
+{テンプレートコード}
+\`\`\`
+
+## チェックリスト
+- [ ] {確認項目1}
+- [ ] {確認項目2}
+
+## 使用履歴
+| 日付 | 対象 | 結果 |
+|------|------|------|
+| YYYY-MM-DD | {機能ID} | 成功/失敗 |
+```
+
+### スキルの例
+
+```markdown
+# SKILL: CRUD API エンドポイント作成
+
+## メタデータ
+- ID: SKILL-001
+- カテゴリ: implementation
+- 確信度: 90/100
+- 使用回数: 5
+- 作成日: 2025-01-15
+- 出典: AUTH-001, ACCT-001, BOOK-001 の実装パターン
+
+## トリガー
+新しいリソースのCRUD APIを作成するとき
+
+## 手順
+1. SSOT-3 からエンドポイント定義を確認
+2. Router ファイルを作成（src/api/{resource}.ts）
+3. バリデーションスキーマを定義（Zod）
+4. Handler関数を実装（create, read, update, delete）
+5. ミドルウェアを適用（auth, rateLimit, validation）
+6. テストを生成（正常系 + エラー系）
+7. SSOT-3 との整合性を /verify で確認
+
+## テンプレート
+// src/api/{resource}.ts
+import { Router } from 'express';
+import { z } from 'zod';
+import { authenticate } from '@/middleware/auth';
+import { rateLimit } from '@/middleware/rateLimit';
+import { validate } from '@/middleware/validate';
+
+const router = Router();
+
+const createSchema = z.object({
+  // SSOT-4 のスキーマから生成
+});
+
+router.post('/', authenticate, rateLimit, validate(createSchema), async (req, res) => {
+  // 実装
+});
+
+// ... read, update, delete
+
+## チェックリスト
+- [ ] SSOT-3 のエンドポイント定義と一致
+- [ ] バリデーションが SSOT-4 のスキーマと一致
+- [ ] 認証ミドルウェアが適用されている
+- [ ] レート制限が適用されている
+- [ ] エラーハンドリングが SSOT-5 に準拠
+- [ ] テストが全エンドポイントをカバー
+```
+
+### /skill-create コマンド
+
+```
+/skill-create [options]
+
+処理フロー:
+  1. git履歴から直近のN件のコミットを分析
+  2. 繰り返されるコードパターンを抽出
+  3. パターンをスキル定義に変換
+  4. ユーザーに確認
+  5. .claude/skills/SKILL-{NNN}.md に保存
+
+オプション:
+  --from <commit>     分析開始のコミット
+  --category <cat>    カテゴリでフィルタ
+  --pattern <desc>    特定のパターンを指定してスキル化
+
+例:
+  /skill-create
+  → 直近20コミットから自動抽出
+
+  /skill-create --pattern "API エンドポイント作成"
+  → 指定パターンに関連するコミットを分析してスキル化
+```
+
+### スキル抽出のアルゴリズム
+
+```
+Step 1: コミット履歴をスキャン
+────────────────────────────────
+  git log --oneline -20
+  各コミットの変更ファイルと差分を取得
+
+Step 2: パターンを検出
+────────────────────────────────
+  以下の類似性を判定:
+  - ファイル構造の類似性（同じディレクトリに同じ構造）
+  - コード構造の類似性（同じ関数パターン）
+  - 変更パターンの類似性（同じ種類の変更を繰り返し）
+
+Step 3: パターンをクラスタリング
+────────────────────────────────
+  類似度が閾値（70%）以上のパターンをグループ化
+  グループ内で共通部分と可変部分を分離
+
+Step 4: スキル定義を生成
+────────────────────────────────
+  共通部分 → テンプレート
+  可変部分 → パラメータ
+  実行順序 → 手順
+  品質基準 → チェックリスト
+
+Step 5: 確信度を算出
+────────────────────────────────
+  出現回数 × 成功率 で確信度を計算
+  Continuous Learning v2 の Instinct と連動
+```
+
+### Instinct との連動
+
+```
+Instinct-based Learning（21_AI_ESCALATION.md）との連携:
+
+Instinct → Skill:
+  Instinct の confidence が 80+ に到達
+  → /skill-create --pattern で詳細なスキルに昇格
+  → テンプレートコードと手順書を生成
+
+Skill → Instinct:
+  スキルを使用するたびに関連 Instinct の confidence を更新
+  → 使用結果（成功/失敗）をフィードバック
+```
+
+### スキルの活用
+
+```
+スキルの適用タイミング:
+
+1. 新しいタスクを開始する時
+   → .claude/skills/ からマッチするスキルを検索
+   → 「SKILL-001 が適用可能です。使用しますか？」
+
+2. /skill-create で新しいスキルを生成した時
+   → 既存の実装に適用可能か確認
+   → 「SKILL-005 を以下のファイルにも適用しますか？
+       - src/api/users.ts
+       - src/api/products.ts」
+
+3. framework run で自動実行する時
+   → マッチするスキルのテンプレートを自動適用
+   → チェックリストで品質を確認
+```
+
+### ファイル構造
+
+```
+.claude/skills/
+├── SKILL-001_crud-api.md
+├── SKILL-002_form-validation.md
+├── SKILL-003_error-handling.md
+├── SKILL-004_test-pattern.md
+└── _index.json               ← スキル一覧
+
+_index.json:
+{
+  "skills": [
+    {
+      "id": "SKILL-001",
+      "name": "CRUD API エンドポイント作成",
+      "category": "implementation",
+      "confidence": 90,
+      "use_count": 5,
+      "last_used": "2025-01-15"
+    }
+  ],
+  "stats": {
+    "total": 4,
+    "avg_confidence": 78,
+    "most_used": "SKILL-001"
+  }
+}
+```
+
+---
+
 ## 変更履歴
 
 | 日付 | 変更内容 | 変更者 |
@@ -677,3 +910,4 @@ framework update
 | | 初版作成 | |
 | | Cursor削除、Claude Code一本化。git worktree並列開発、サブエージェント活用を追加 | |
 | | CLIコマンド一覧（framework コマンド）を追加 | |
+| | Skill Creator（スキル自動生成）セクション追加 | |
