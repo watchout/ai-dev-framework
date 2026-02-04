@@ -28,17 +28,36 @@ npm install
 npm link
 ```
 
+### 利用可能なコマンド
+```bash
+framework --help
+```
+
 ### 新規プロジェクト
 ```bash
-framework init my-project
+framework init my-project --type=app
 cd my-project
 framework discover
+framework generate business
+framework generate product
+framework generate technical
+framework plan
+framework run --auto
+framework audit all
 ```
 
 ### 既存プロジェクト
 ```bash
 cd /path/to/existing-project
 framework retrofit
+framework plan
+framework run --auto
+framework audit all
+```
+
+### 進捗確認
+```bash
+framework status
 ```
 
 詳細は [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) を参照。
@@ -85,6 +104,28 @@ framework update            フレームワーク更新
 | [GUIDE_NEW_PROJECT.md](docs/GUIDE_NEW_PROJECT.md) | 新規プロジェクト |
 | [GUIDE_EXISTING_PROJECT.md](docs/GUIDE_EXISTING_PROJECT.md) | 既存プロジェクト導入 |
 | [FRAMEWORK_SUMMARY.md](docs/FRAMEWORK_SUMMARY.md) | 全体サマリー・引き継ぎ |
+
+---
+
+## プロジェクトタイプ
+
+| タイプ | 用途 | コマンド |
+|--------|------|---------|
+| `app` | フルスタックWebアプリ（デフォルト） | `framework init my-app` |
+| `lp` | ランディングページ | `framework init my-lp --type=lp` |
+| `hp` | ホームページ | `framework init my-hp --type=hp` |
+| `api` | API/バックエンド | `framework init my-api --type=api` |
+| `cli` | CLIツール | `framework init my-cli --type=cli` |
+
+タイプによって生成されるSSOT・実行される監査・Discoveryの範囲が変わります。
+
+---
+
+## 関連リポジトリ
+
+| リポジトリ | 説明 |
+|-----------|------|
+| [ai-dev-platform](https://github.com/watchout/ai-dev-platform) | CLIツール本体（`framework` コマンド） |
 
 ---
 
