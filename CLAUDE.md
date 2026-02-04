@@ -128,14 +128,12 @@ Phase -1       Phase 0       Phase 0.5      Phase 1-5      Phase 6
    → templates/ からテンプレートを docs/ にコピー
    → {{}} をプロジェクト固有の値で置換
 
-3. CLAUDE.md と .cursorrules を設定
+3. CLAUDE.md を設定
    → templates/project/CLAUDE.md をプロジェクトルートに配置
-   → templates/project/.cursorrules をプロジェクトルートに配置
    → {{}} をプロジェクト固有の値で置換
 
 4. 開発開始
-   → Claude Code: 大きな機能実装、一括処理
-   → Cursor: 日常のコーディング、デバッグ
+   → Claude Code: 実装全般（機能実装、デバッグ、テスト、リファクタ）
    → Claude.ai: 壁打ち、戦略相談
 ```
 
@@ -146,10 +144,10 @@ Phase -1       Phase 0       Phase 0.5      Phase 1-5      Phase 6
 | アイデア壁打ち・ディスカバリー | Claude.ai |
 | 仕様書ファイル一括生成 | Claude Code |
 | プロジェクト初期構築 | Claude Code |
-| 日常のコーディング・デバッグ | Cursor |
+| 日常のコーディング・デバッグ | Claude Code |
 | 機能の丸ごと実装 | Claude Code |
 | リファクタリング・テスト一括生成 | Claude Code |
-| LP実装 | Cursor |
+| LP実装 | Claude Code |
 | 設計の相談・レビュー | Claude.ai |
 
 詳細: 09_TOOLCHAIN.md 参照
