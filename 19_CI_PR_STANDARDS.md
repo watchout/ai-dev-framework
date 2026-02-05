@@ -4,6 +4,94 @@
 
 ---
 
+## CI/CD テンプレートライブラリ
+
+プロジェクトタイプ別のGitHub Actionsワークフローは `templates/ci/` を参照。
+
+### テンプレート一覧
+
+```
+templates/ci/
+├── app.yml       # フルスタックアプリ（PostgreSQL, Redis, 全テスト）
+├── api.yml       # API/バックエンド（DB統合テスト重視）
+├── lp.yml        # ランディングページ（Lighthouse重視）
+├── hp.yml        # ホームページ（Lighthouse + アクセシビリティ）
+├── cli.yml       # CLIツール（マルチプラットフォーム）
+├── common.yml    # 共通ジョブ定義（再利用可能）
+└── deploy/
+    ├── dokku.yml   # Dokku デプロイ
+    ├── vercel.yml  # Vercel デプロイ
+    ├── vps.yml     # VPS (SSH) デプロイ
+    └── docker.yml  # Docker イメージ ビルド＆プッシュ
+```
+
+### プロジェクトタイプ別 CI 構成
+
+| タイプ | 主要ジョブ | サービス | Critical Gate |
+|--------|-----------|----------|---------------|
+| **app** | lint, typecheck, unit, api, build, security | PostgreSQL 16, Redis 7 | 全通過 + セキュリティ + ビルド |
+| **api** | lint, typecheck, unit, api, integration, security, openapi | PostgreSQL 16, Redis 7 | 全通過 + セキュリティ |
+| **lp** | lint, build, lighthouse | なし | ビルド + Lighthouse スコア |
+| **hp** | lint, build, lighthouse, accessibility | なし | ビルド + Lighthouse スコア |
+| **cli** | lint, typecheck, unit, smoke, build, security | なし | 全通過 + マルチOS |
+
+### 使い方
+
+```bash
+# 1. プロジェクト初期化時に自動配置
+framework init my-project --type=app
+
+# 2. 手動配置の場合
+cp templates/ci/app.yml .github/workflows/ci.yml
+sed -i 's/{{PROJECT_NAME}}/my-project/g' .github/workflows/ci.yml
+
+# 3. デプロイワークフロー追加
+cp templates/ci/deploy/vercel.yml .github/workflows/deploy.yml
+```
+
+### GitHub Secrets 設定手順
+
+#### 共通（全プロジェクトタイプ）
+
+| Secret | 用途 |
+|--------|------|
+| `CODECOV_TOKEN` | カバレッジレポート（任意） |
+
+#### Vercel デプロイ
+
+| Secret | 取得方法 |
+|--------|---------|
+| `VERCEL_TOKEN` | Vercel Dashboard > Account Settings > Tokens |
+| `VERCEL_ORG_ID` | `vercel link` 後の .vercel/project.json |
+| `VERCEL_PROJECT_ID` | 同上 |
+
+#### Dokku デプロイ
+
+| Secret | 取得方法 |
+|--------|---------|
+| `DOKKU_HOST` | Dokku サーバーのホスト名 |
+| `DOKKU_SSH_KEY` | SSH 秘密鍵 |
+| `DOKKU_APP_NAME` | `dokku apps:create` で作成したアプリ名 |
+
+#### VPS デプロイ
+
+| Secret | 取得方法 |
+|--------|---------|
+| `VPS_HOST` | VPS サーバーの IP/ホスト名 |
+| `VPS_USER` | SSH ユーザー名 |
+| `VPS_SSH_KEY` | SSH 秘密鍵 |
+| `VPS_DEPLOY_PATH` | デプロイ先ディレクトリ |
+| `VPS_PORT` | SSH ポート（デフォルト: 22） |
+
+#### Docker デプロイ
+
+| Secret | 取得方法 |
+|--------|---------|
+| `DOCKERHUB_USERNAME` | Docker Hub ユーザー名 |
+| `DOCKERHUB_TOKEN` | Docker Hub > Account Settings > Security |
+
+---
+
 ## CI パイプライン構成
 
 ```
@@ -245,4 +333,5 @@ jobs:
 
 | 日付 | 変更内容 | 変更者 |
 |------|---------|-------|
+| | CI/CDテンプレートライブラリ追加（templates/ci/） | |
 | | 初版作成 | |

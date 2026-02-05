@@ -498,11 +498,14 @@ framework init [project-name]
   3. 有効なテンプレートのみ docs/ にコピー
   4. CLAUDE.md を生成（プロファイル情報を含む）
   5. .gitignore 等の設定
+  6. .github/workflows/ci.yml を配置（タイプに応じたワークフロー）
 
   オプション:
   --type <type>       プロジェクトタイプを指定（app|lp|hp|api|cli, default: app）
   --template <name>   テンプレートを指定（default: standard）
   --skip-git          git init をスキップ
+  --skip-ci           CI/CD ワークフローをスキップ
+  --deploy <target>   デプロイワークフローも追加（vercel|dokku|vps|docker）
 
   タイプ別の動作:
   --type=app  全SSOT・全監査・全ディレクトリを生成（デフォルト）
@@ -511,7 +514,15 @@ framework init [project-name]
   --type=api  PRD+API+DATA+CROSS、UI関連スキップ
   --type=cli  PRD+API(コマンド定義)、UI/DB関連スキップ
 
+  CI/CDワークフロー選択ロジック:
+  --type=app  → templates/ci/app.yml（PostgreSQL, Redis, 全テスト）
+  --type=api  → templates/ci/api.yml（DB統合テスト重視）
+  --type=lp   → templates/ci/lp.yml（Lighthouse重視）
+  --type=hp   → templates/ci/hp.yml（Lighthouse + アクセシビリティ）
+  --type=cli  → templates/ci/cli.yml（マルチプラットフォーム）
+
   プロファイル定義: templates/profiles/<type>.json
+  CI/CDテンプレート: templates/ci/<type>.yml, templates/ci/deploy/
 
 
 framework discover
@@ -938,3 +949,4 @@ _index.json:
 | | CLIコマンド一覧（framework コマンド）を追加 | |
 | | Skill Creator（スキル自動生成）セクション追加 | |
 | | プロジェクトタイプ別プロファイル（--type オプション）対応 | |
+| | CI/CD自動配置オプション追加（--deploy, --skip-ci）、タイプ別ワークフロー選択 | |

@@ -1,0 +1,95 @@
+# dokku.yml - Dokku デプロイワークフロー
+#
+# 必要なシークレット:
+#   DOKKU_HOST        - Dokku サーバーのホスト名 (例: dokku.example.com)
+#   DOKKU_SSH_KEY     - Dokku サーバーへのSSH秘密鍵
+#   DOKKU_APP_NAME    - Dokku アプリ名
+#
+# 設定手順:
+#   1. GitHub リポジトリ Settings > Secrets and variables > Actions
+#   2. 上記のシークレットを追加
+#   3. Dokku サーバーで `dokku apps:create <app-name>` を実行済みであること
+
+name: Deploy to Dokku
+
+on:
+  push:
+    branches:
+      - main  # production
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  DOKKU_HOST: ${{ secrets.DOKKU_HOST }}
+  DOKKU_APP_NAME: ${{ secrets.DOKKU_APP_NAME }}
+
+jobs:
+  # ============================================================
+  # Deploy
+  # ============================================================
+  deploy:
+    name: Deploy to Dokku
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+      url: https://${{ env.DOKKU_APP_NAME }}.${{ env.DOKKU_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DOKKU_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ env.DOKKU_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Add Dokku remote
+        run: |
+          git remote add dokku dokku@${{ env.DOKKU_HOST }}:${{ env.DOKKU_APP_NAME }}
+
+      - name: Deploy to Dokku
+        run: |
+          git push dokku HEAD:main --force
+
+      - name: Run migrations (if needed)
+        run: |
+          ssh dokku@${{ env.DOKKU_HOST }} run ${{ env.DOKKU_APP_NAME }} npm run db:migrate || true
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://${{ env.DOKKU_APP_NAME }}.${{ env.DOKKU_HOST }}/health || exit 1
+
+  # ============================================================
+  # Notify
+  # ============================================================
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: always()
+    steps:
+      - name: Notify on success
+        if: needs.deploy.result == 'success'
+        run: |
+          echo "Deployment successful!"
+          # Slack通知など
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"Deployed to Dokku successfully"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Notify on failure
+        if: needs.deploy.result == 'failure'
+        run: |
+          echo "Deployment failed!"
+          # Slack通知など

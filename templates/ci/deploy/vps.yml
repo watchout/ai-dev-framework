@@ -1,0 +1,232 @@
+# vps.yml - VPS (SSH) デプロイワークフロー
+#
+# 必要なシークレット:
+#   VPS_HOST          - VPS サーバーのホスト名/IP
+#   VPS_USER          - SSH ユーザー名
+#   VPS_SSH_KEY       - SSH 秘密鍵
+#   VPS_DEPLOY_PATH   - デプロイ先パス (例: /var/www/app)
+#   VPS_PORT          - SSH ポート (デフォルト: 22)
+#
+# 設定手順:
+#   1. VPS で deploy ユーザー作成、SSH 鍵認証設定
+#   2. デプロイ先ディレクトリの権限設定
+#   3. GitHub Secrets に上記を追加
+#   4. PM2 または systemd でアプリ管理設定
+
+name: Deploy to VPS
+
+on:
+  push:
+    branches:
+      - main  # production
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deploy environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ============================================================
+  # Build
+  # ============================================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Create deployment package
+        run: |
+          mkdir -p deploy
+          cp -r dist deploy/
+          cp package.json deploy/
+          cp package-lock.json deploy/
+          # 必要なファイルを追加
+          # cp -r prisma deploy/
+          # cp .env.example deploy/.env
+          tar -czvf deploy.tar.gz deploy/
+
+      - name: Upload deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-package
+          path: deploy.tar.gz
+          retention-days: 1
+
+  # ============================================================
+  # Deploy Staging
+  # ============================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event.inputs.environment == 'staging' || github.ref != 'refs/heads/main'
+    environment:
+      name: staging
+      url: https://staging.example.com
+    steps:
+      - name: Download deployment package
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-package
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to staging
+        run: |
+          # Upload package
+          scp -P ${{ secrets.VPS_PORT || 22 }} deploy.tar.gz \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/
+
+          # Deploy on server
+          ssh -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            cd ${{ secrets.VPS_DEPLOY_PATH }}
+
+            # Backup current version
+            if [ -d "current" ]; then
+              mv current previous
+            fi
+
+            # Extract new version
+            mkdir -p current
+            tar -xzf /tmp/deploy.tar.gz -C current --strip-components=1
+            rm /tmp/deploy.tar.gz
+
+            # Install production dependencies
+            cd current
+            npm ci --production
+
+            # Run migrations
+            # npm run db:migrate
+
+            # Restart application
+            pm2 restart ecosystem.config.js --env staging || pm2 start ecosystem.config.js --env staging
+
+            echo "Deployment complete!"
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://staging.example.com/health || exit 1
+
+  # ============================================================
+  # Deploy Production
+  # ============================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && (github.event.inputs.environment == 'production' || github.event.inputs.environment == '')
+    environment:
+      name: production
+      url: https://example.com
+    steps:
+      - name: Download deployment package
+        uses: actions/download-artifact@v4
+        with:
+          name: deploy-package
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to production
+        run: |
+          # Upload package
+          scp -P ${{ secrets.VPS_PORT || 22 }} deploy.tar.gz \
+            ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }}:/tmp/
+
+          # Deploy on server
+          ssh -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            cd ${{ secrets.VPS_DEPLOY_PATH }}
+
+            # Backup current version
+            if [ -d "current" ]; then
+              mv current previous
+            fi
+
+            # Extract new version
+            mkdir -p current
+            tar -xzf /tmp/deploy.tar.gz -C current --strip-components=1
+            rm /tmp/deploy.tar.gz
+
+            # Install production dependencies
+            cd current
+            npm ci --production
+
+            # Run migrations
+            # npm run db:migrate
+
+            # Restart application
+            pm2 restart ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+
+            echo "Deployment complete!"
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 10
+          curl -f https://example.com/health || exit 1
+
+  # ============================================================
+  # Rollback (manual trigger)
+  # ============================================================
+  rollback:
+    name: Rollback
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && failure()
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.VPS_PORT || 22 }} -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Rollback to previous version
+        run: |
+          ssh -p ${{ secrets.VPS_PORT || 22 }} ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+            set -e
+            cd ${{ secrets.VPS_DEPLOY_PATH }}
+
+            if [ -d "previous" ]; then
+              rm -rf current
+              mv previous current
+              pm2 restart ecosystem.config.js
+              echo "Rollback complete!"
+            else
+              echo "No previous version found!"
+              exit 1
+            fi
+          EOF

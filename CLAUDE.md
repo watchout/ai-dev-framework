@@ -297,6 +297,30 @@ Freeze 3-4 は実装と並行して進められる。
   必要に応じて参照。
 ```
 
+### 6. CI/CD構成
+
+```
+新規プロジェクト作成時:
+  framework init my-project --type=app
+  → .github/workflows/ci.yml が自動配置される
+
+タイプ別CI構成:
+  app  → PostgreSQL + Redis + 全テスト + Security
+  api  → PostgreSQL + Redis + DB統合テスト + OpenAPI検証
+  lp   → Lint + Build + Lighthouse
+  hp   → Lint + Build + Lighthouse + Accessibility
+  cli  → マルチOS/Node + Smoke test
+
+デプロイワークフロー追加:
+  framework init my-project --type=app --deploy=vercel
+  → .github/workflows/deploy.yml が追加される
+
+  選択肢: vercel | dokku | vps | docker
+
+テンプレート参照: templates/ci/
+詳細: 19_CI_PR_STANDARDS.md
+```
+
 ---
 
 ## ディレクトリ構造
