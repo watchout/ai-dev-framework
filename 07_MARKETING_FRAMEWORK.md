@@ -4,6 +4,78 @@
 
 ---
 
+## 拡張コンテンツライブラリ
+
+本フレームワークの詳細な実装ガイドは `docs/marketing/` を参照。
+
+### ディレクトリ構造
+
+```
+docs/marketing/
+├── content-matrix.md              ← 手法×チャネルのマトリクス
+├── strategies/
+│   ├── drm/                       ← DRM（ダイレクトレスポンス）
+│   │   ├── STRATEGY.md
+│   │   └── templates/
+│   ├── pasona/                    ← PASONA法則
+│   │   ├── STRATEGY.md
+│   │   └── templates/
+│   ├── neuro/                     ← ニューロマーケティング
+│   │   ├── STRATEGY.md
+│   │   └── templates/
+│   ├── plf/                       ← PLF（プロダクトローンチ）
+│   │   ├── STRATEGY.md
+│   │   └── templates/
+│   ├── build-in-public/           ← Build in Public
+│   │   ├── STRATEGY.md
+│   │   └── templates/
+│   └── two-step/                  ← 2ステップマーケティング
+│       ├── STRATEGY.md
+│       └── templates/
+└── channels/                      ← チャネル別ガイド
+    ├── x.md
+    ├── instagram.md
+    ├── youtube.md
+    ├── note.md
+    └── email.md
+```
+
+### content-matrix.md の使い方
+
+```
+1. プロジェクトタイプを確認（.framework/profile.json）
+2. 推奨される手法を選択
+3. ターゲットのいるチャネルを特定
+4. マトリクスから有効な組み合わせを選択
+5. strategies/{手法}/templates/ のテンプレートを使用
+6. channels/{チャネル}.md の制約を確認
+```
+
+### プロジェクトタイプ別マーケ戦略
+
+| タイプ | 推奨手法 | 推奨チャネル |
+|--------|---------|-------------|
+| **app** | 全手法対象 | X, note, YouTube, Instagram, メール |
+| **lp** | DRM + PASONA + 2ステップ | X, note, メール |
+| **hp** | BIP + SEO記事 | note, YouTube |
+| **api** | BIP + 技術記事 | X, note, Zenn/Qiita |
+| **cli** | BIP + 技術記事 | X, note, Zenn/Qiita |
+
+### フレームワーク連携
+
+各テンプレートは以下を参照して生成:
+
+| 参照元 | 用途 |
+|--------|------|
+| SSOT-0_PRD.md §3-5 | 価値提案、ターゲット、機能 |
+| VALUE_PROPOSITION.md | メッセージの核 |
+| knowledge/market/competitors.md | 差別化訴求 |
+| knowledge/users/personas.md | ターゲティング |
+| knowledge/users/pain-points.md | 問題提起 |
+| knowledge/domain/terminology.md | 専門性担保 |
+
+---
+
 ## このフレームワークの基盤
 
 以下の実証済みマーケティング理論を統合:
@@ -427,4 +499,5 @@ Pre-Pre Launch → Pre Launch → Launch → Post Launch
 
 | 日付 | 変更内容 | 変更者 |
 |------|---------|-------|
+| | docs/marketing/ 拡張コンテンツライブラリ追加 | |
 | | 初版作成 | |
