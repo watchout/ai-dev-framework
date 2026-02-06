@@ -191,6 +191,21 @@ Phase -1       Phase 0       Phase 0.5      Phase 1-5      Phase 6
 ※ 用語定義: 09_TOOLCHAIN.md §0 参照
 ※ 使い分け詳細: 09_TOOLCHAIN.md §3, §5 参照
 
+### Agent Teams（CLI パターン）
+
+```
+Claude Code CLI では .claude/agents/ にエージェント定義を配置し、
+専門タスクを Agent Teams に委譲できる。
+
+.claude/agents/
+├── visual-tester.md    ← ビジュアルテスト（20_VISUAL_TEST.md §4）
+├── code-reviewer.md    ← Adversarial Review Role B（17_CODE_AUDIT.md）
+└── ssot-explorer.md    ← SSOT検索・要約
+
+framework init 実行時に自動配置される。
+詳細: 09_TOOLCHAIN.md §8 参照
+```
+
 ### CLIコマンド（framework コマンド）
 
 ```
