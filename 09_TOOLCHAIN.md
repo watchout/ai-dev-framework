@@ -1152,7 +1152,7 @@ _index.json:
 | 日付 | 変更内容 | 変更者 |
 |------|---------|-------|
 | | 初版作成 | |
-| | Cursor削除、Claude Code一本化。git worktree並列開発、サブエージェント活用を追加 | |
+| | Cursor削除、Claude Code一本化。git worktree並列開発、Agent Teams活用を追加 | |
 | | CLIコマンド一覧（framework コマンド）を追加 | |
 | | Skill Creator（スキル自動生成）セクション追加 | |
 | | プロジェクトタイプ別プロファイル（--type オプション）対応 | |

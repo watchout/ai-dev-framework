@@ -70,7 +70,7 @@ OUTPUT: ・事業設計資料（アイデア検証、ペルソナ、競合、価
   │  タスクごとに以下を繰り返す:                            │
   │                                                         │
   │  ■ TDD強制（api/cli タイプ、CORE/CONTRACT層）          │
-  │  タスク開始（Linear: In Progress）                      │
+  │  タスク開始（GitHub Projects: In Progress）              │
   │    ↓                                                    │
   │  テスト作成 → テスト監査100点   📄 18                  │
   │    ↓                                                    │
@@ -81,7 +81,7 @@ OUTPUT: ・事業設計資料（アイデア検証、ペルソナ、競合、価
   │  マージ → Done                                          │
   │                                                         │
   │  ■ TDD任意（app/lp/hp タイプ、DETAIL層、UI）          │
-  │  タスク開始（Linear: In Progress）                      │
+  │  タスク開始（GitHub Projects: In Progress）              │
   │    ↓                                                    │
   │  AI実装 → コード監査100点       📄 17                  │
   │    ↓                                                    │

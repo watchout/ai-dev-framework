@@ -195,7 +195,7 @@ Phase 5                                                   ████
 |------|-------|
 | チャット | Slack |
 | ビデオ会議 | Google Meet / Zoom |
-| タスク管理 | Linear / Jira |
+| タスク管理 | GitHub Projects |
 | ドキュメント | Notion / Confluence |
 | コード管理 | GitHub |
 
@@ -291,8 +291,8 @@ Phase 5                                                   ████
 
 | 指標 | 計測方法 |
 |------|---------|
-| 完了ストーリーポイント | Linear/Jira |
-| バーンダウン | Linear/Jira |
+| 完了ストーリーポイント | GitHub Projects |
+| バーンダウン | GitHub Projects |
 | ベロシティ | スプリント平均 |
 
 ---
