@@ -85,6 +85,12 @@
 ## ディレクトリ構造
 
 ```
+.claude/
+└── agents/                   ← Agent Teams（CLI パターン）
+    ├── visual-tester.md      ← ビジュアルテスト専門
+    ├── code-reviewer.md      ← Adversarial Review Role B
+    └── ssot-explorer.md      ← SSOT検索・要約
+
 docs/                         ← 全仕様書（SSOT）
 ├── idea/                     ← アイデア・検証
 ├── requirements/             ← 要件定義
@@ -186,6 +192,44 @@ scope: 機能ID or モジュール名
 - ビジネスロジック: 80%+
 - API: 70%+
 - 全体: 60%+
+
+---
+
+## Agent Teams（CLI パターン）
+
+> Claude Code CLI でサブエージェントを活用し、コンテキストを節約する。
+> 詳細: ai-dev-framework/09_TOOLCHAIN.md §8
+
+### エージェント一覧
+
+```
+.claude/agents/
+├── visual-tester.md     ← ビジュアルテスト専門（20_VISUAL_TEST.md §4）
+├── code-reviewer.md     ← Adversarial Review Role B（17_CODE_AUDIT.md）
+└── ssot-explorer.md     ← SSOT検索・要約
+```
+
+### 使い方
+
+```bash
+# ビジュアルテストをサブエージェントに委譲
+"visual-tester エージェントで AUTH-001 のビジュアルテストを実行して"
+
+# コードレビューをサブエージェントに委譲
+"code-reviewer エージェントで実装したコードをレビューして"
+
+# SSOT検索をサブエージェントに委譲
+"ssot-explorer エージェントで AUTH-001 のAPI仕様を調べて"
+```
+
+### ルール
+
+以下のタスクはサブエージェントに委譲してコンテキストを節約すること:
+
+1. **ビジュアルテスト**: 実装完了後、visual-tester エージェントで画面テスト
+2. **Adversarial Review**: 実装完了後、code-reviewer エージェントでコード監査
+3. **SSOT検索**: 大量のドキュメントから必要な情報を抽出する時
+4. **影響分析**: コード変更の影響範囲を調査する時
 
 ---
 

@@ -168,7 +168,8 @@ Phase -1       Phase 0       Phase 0.5      Phase 1-5      Phase 6
    → {{}} をプロジェクト固有の値で置換
 
 4. 開発開始
-   → Claude Code: 実装全般（機能実装、デバッグ、テスト、リファクタ）
+   → Claude Code CLI: 対話型の実装（デバッグ、設計判断を含む作業）
+   → Claude Code Web: 仕様確定済みタスクの非同期実行（並列・自律実行）
    → Claude.ai: 壁打ち、戦略相談
 ```
 
@@ -177,15 +178,18 @@ Phase -1       Phase 0       Phase 0.5      Phase 1-5      Phase 6
 | 場面 | ツール |
 |------|-------|
 | アイデア壁打ち・ディスカバリー | Claude.ai |
-| 仕様書ファイル一括生成 | Claude Code |
-| プロジェクト初期構築 | Claude Code |
-| 日常のコーディング・デバッグ | Claude Code |
-| 機能の丸ごと実装 | Claude Code |
-| リファクタリング・テスト一括生成 | Claude Code |
-| LP実装 | Claude Code |
-| 設計の相談・レビュー | Claude.ai |
+| 仕様書ファイル一括生成 | Claude Code CLI |
+| プロジェクト初期構築 | Claude Code CLI |
+| 対話型のコーディング・デバッグ | Claude Code CLI |
+| 機能実装（仕様確定済み） | Claude Code Web |
+| 複数タスクの並列実行 | Claude Code Web |
+| リファクタリング・テスト一括生成 | Claude Code Web |
+| LP実装 | Claude Code Web |
+| コードレビュー | Claude Code Web |
+| 設計の相談 | Claude.ai |
 
-詳細: 09_TOOLCHAIN.md 参照
+※ 用語定義: 09_TOOLCHAIN.md §0 参照
+※ 使い分け詳細: 09_TOOLCHAIN.md §3, §5 参照
 
 ### CLIコマンド（framework コマンド）
 

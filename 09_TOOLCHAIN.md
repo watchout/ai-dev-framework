@@ -1,6 +1,51 @@
 # 09_TOOLCHAIN.md - 開発ツールチェーン定義
 
-> Claude.ai と Claude Code の2ツール体制で、仕様書を活用し最短で開発に入るための定義
+> Claude.ai と Claude Code（CLI / Web）の3ツール体制で、仕様書を活用し最短で開発に入るための定義
+
+---
+
+## 0. 用語定義
+
+```
+本フレームワークでは「Claude Code」を以下の通り区別する。
+曖昧な「Claude Code」単独表記は禁止し、必ず修飾子をつける。
+
+┌────────────────────────────────────────────────────────────────────┐
+│ Claude.ai                                                          │
+│   ブラウザの対話UI。思考・設計・壁打ち専用。                           │
+│   コード実行・ファイル操作はできない。                                 │
+│   URL: claude.ai                                                   │
+├────────────────────────────────────────────────────────────────────┤
+│ Claude Code CLI                                                    │
+│   ターミナルで `claude` コマンドとして起動する対話型エージェント。       │
+│   ローカルPCで実行。ファイル読み書き・bash・git 全操作可能。            │
+│   制約: ターミナルを閉じる / PCスリープで停止する。                     │
+├────────────────────────────────────────────────────────────────────┤
+│ Claude Code Web                                                    │
+│   claude.ai/code から起動、またはCLIから `&` プレフィックスで送信。     │
+│   Anthropic管理のクラウドVM上で実行。                                 │
+│   ✅ 非同期実行（PCを閉じてもタスクが継続）                            │
+│   ✅ 複数タスクの並列実行                                             │
+│   ✅ 完了時に自動PR作成                                               │
+│   ✅ iOSアプリ / ブラウザから進捗監視・指示可能                        │
+│   制約: GitHubリポジトリのみ対応。レート制限は全ツール共有。            │
+├────────────────────────────────────────────────────────────────────┤
+│ Claude Code GitHub Actions                                         │
+│   GitHub Actionsワークフローから起動。                                │
+│   イベントトリガー（PR, issue, schedule）で自動実行。                  │
+│   用途: 自動コードレビュー、定期監査、CI統合。                         │
+├────────────────────────────────────────────────────────────────────┤
+│ Claude Code SDK                                                    │
+│   @anthropic-ai/claude-agent-sdk。TypeScript/Python。               │
+│   プログラムからエージェントを制御する。                               │
+│   サブエージェント定義・フック・構造化出力。                           │
+│   用途: カスタムツール構築。現フレームワークでは使用しない。            │
+└────────────────────────────────────────────────────────────────────┘
+
+セッション移動:
+  CLI → Web: `& タスク内容` または `claude --remote "タスク内容"`
+  Web → CLI: `/teleport` または `claude --teleport`
+```
 
 ---
 
@@ -10,25 +55,29 @@
 docs/（仕様書群） = Single Source of Truth
          ↑
       CLAUDE.md
-     (Claude Code)
+     (Claude Code CLI / Web が自動読込)
 
 原則:
 ・仕様書は docs/ に1箇所で管理
-・Claude Code が CLAUDE.md を通じて仕様書を参照する
-・コーディングも Claude Code で完結する（エディタ不要）
+・Claude Code CLI / Web が CLAUDE.md を通じて仕様書を参照する
+・コーディングは Claude Code CLI（対話型）または Claude Code Web（非同期）で完結する
 ```
 
-### ツール体制: Claude.ai + Claude Code の2本柱
+### ツール体制: Claude.ai + Claude Code CLI + Claude Code Web の3本柱
 
 ```
-Before（3ツール体制）:
-  Claude.ai / Claude Code / Cursor
-  → ツール間のコンテキスト分断が課題
+Claude.ai（思考・設計）
+  → アイデア壁打ち、仕様の対話的作成、戦略相談
 
-After（2ツール体制）:
-  Claude.ai（思考・設計）/ Claude Code（実装・実行）
-  → Claude Code がコーディングからCI/CDまで一貫して担当
-  → Cursor は不要（Claude Code で代替可能）
+Claude Code CLI（対話型の実装・実行）
+  → リアルタイムの対話が必要な作業
+  → デバッグ、設計判断を含む実装、環境構築
+
+Claude Code Web（非同期の実装・実行）
+  → 明確に定義されたタスクの自動実行
+  → 複数タスクの並列実行（PCを閉じても継続）
+  → バグ修正、テスト生成、リファクタリング等の定型作業
+  → 完了後に自動PR作成 → レビュー
 ```
 
 ---
@@ -101,21 +150,34 @@ my-project/
 
 ## 3. ツール別の役割
 
-| 場面 | Claude.ai | Claude Code |
-|------|-----------|-------------|
-| アイデア壁打ち | **メイン** | |
-| ディスカバリーフロー | **メイン** | |
-| 仕様書の対話的作成 | **メイン** | |
-| 仕様書のファイル生成 | | **メイン** |
-| プロジェクト初期構築 | | **メイン** |
-| 日常のコーディング | | **メイン** |
-| デバッグ | | **メイン** |
-| 一括リファクタリング | | **メイン** |
-| テスト生成 | | **メイン** |
-| CI/CD設定 | | **メイン** |
-| 設計の相談 | **メイン** | サブ |
-| コードレビュー | | **メイン**（Adversarial Review） |
-| LP実装 | | **メイン** |
+| 場面 | Claude.ai | Claude Code CLI | Claude Code Web |
+|------|-----------|----------------|----------------|
+| アイデア壁打ち | **メイン** | | |
+| ディスカバリーフロー | **メイン** | | |
+| 仕様書の対話的作成 | **メイン** | | |
+| 仕様書のファイル生成 | | **メイン** | |
+| プロジェクト初期構築 | | **メイン** | |
+| 対話型のコーディング | | **メイン** | |
+| デバッグ（原因調査） | | **メイン** | |
+| 一括リファクタリング | | | **メイン** |
+| テスト生成 | | | **メイン** |
+| CI/CD設定 | | **メイン** | |
+| 設計の相談 | **メイン** | | |
+| コードレビュー | | | **メイン** |
+| バグ修正（原因明確） | | | **メイン** |
+| 機能実装（仕様確定済） | | サブ | **メイン** |
+| LP実装 | | | **メイン** |
+| 複数タスク並列実行 | | | **メイン** |
+
+```
+使い分けの原則:
+  ・設計判断やリアルタイム対話が必要 → Claude Code CLI
+  ・仕様が確定しており自律実行できる → Claude Code Web
+  ・思考・壁打ち・戦略 → Claude.ai
+
+  Claude Code Web は CLAUDE.md を読み込むため、
+  プロジェクトの規約・仕様に従って自律的に動作する。
+```
 
 ---
 
@@ -128,20 +190,23 @@ Step 1: アイデア整理         [Claude.ai]
   「○○を作りたい」→ ディスカバリーフロー
         │
         ▼
-Step 2: 仕様書一式を生成     [Claude Code]
+Step 2: 仕様書一式を生成     [Claude Code CLI]
   claude "docs/idea/ の資料をもとに
          docs/requirements/ と docs/design/ を生成して"
         │
         ▼
-Step 3: プロジェクト初期構築  [Claude Code]
+Step 3: プロジェクト初期構築  [Claude Code CLI]
   claude "docs/standards/TECH_STACK.md に基づいて
          プロジェクトをスキャフォールドして"
         │
         ▼
-Step 4: 開発                 [Claude Code]
-  claude "AUTH-001の仕様書に基づいてログイン機能を実装して"
-  → CLAUDE.md が自動的に読み込まれる
-  → 仕様書に基づいてコーディング
+Step 4: 開発                 [Claude Code Web]
+  仕様確定済みのタスクを並列送信:
+  & "AUTH-001の仕様書に基づいてログイン機能を実装して"
+  & "ACCT-001の仕様書に基づいてサインアップ機能を実装して"
+  → 各タスクがクラウドで非同期実行
+  → CLAUDE.md が自動読込 → 仕様に従い自律実行
+  → 完了後にPR作成 → レビュー
 ```
 
 ### 4.2 Step 1: アイデア整理（Claude.ai）
@@ -159,14 +224,14 @@ Step 4: 開発                 [Claude Code]
 → 全体サマリーが完成
 → Claude.ai がMarkdown形式で初期資料を出力
 
-### 4.3 Step 2: 仕様書をプロジェクトに配置（Claude Code）
+### 4.3 Step 2: 仕様書をプロジェクトに配置（Claude Code CLI）
 
-**方法A: Claude.ai の出力をClaude Codeで配置**
+**方法A: Claude.ai の出力を Claude Code CLI で配置**
 ```bash
 # プロジェクトディレクトリを作成
 mkdir -p my-project/docs/{idea,requirements,design,standards,marketing,notes}
 
-# Claude Code で仕様書を生成・配置
+# Claude Code CLI で仕様書を生成・配置
 cd my-project
 claude "以下のアイデアキャンバスの内容をもとに、
        docs/ 配下に仕様書一式を生成してください。
@@ -179,15 +244,15 @@ claude "以下のアイデアキャンバスの内容をもとに、
 # テンプレートをコピー
 cp -r ai-dev-framework/templates/* docs/
 
-# Claude Code で内容を埋める
+# Claude Code CLI で内容を埋める
 claude "docs/idea/IDEA_CANVAS.md に以下の内容を反映して:
        [アイデアの内容]"
 ```
 
-### 4.4 Step 3: プロジェクト初期構築（Claude Code）
+### 4.4 Step 3: プロジェクト初期構築（Claude Code CLI）
 
 ```bash
-# CLAUDE.md を配置しプロジェクトを初期化
+# Claude Code CLI で CLAUDE.md を配置しプロジェクトを初期化
 claude "docs/standards/TECH_STACK.md を読んで、
        以下を実行して:
        1. Next.js + Supabase のプロジェクトを初期化
@@ -195,21 +260,27 @@ claude "docs/standards/TECH_STACK.md を読んで、
        3. 基本的なディレクトリ構造を作成"
 ```
 
-### 4.5 Step 4: 開発（Claude Code）
+### 4.5 Step 4: 開発（Claude Code Web）
 
 ```bash
-# 機能丸ごと実装
-claude "docs/design/features/common/AUTH-001_login.md を読んで
-       ログイン機能をフル実装して。
-       API、UI、テスト全部。"
+# Claude Code Web に複数タスクを並列送信
+# CLIから & プレフィックスで Web セッションを作成
+& "docs/design/features/common/AUTH-001_login.md を読んで
+   ログイン機能をフル実装して。API、UI、テスト全部。"
 
-# 一括リファクタリング
-claude "全ファイルのエラーハンドリングを
-       docs/core/SSOT-5_CROSS_CUTTING.md に準拠させて"
+& "docs/design/features/common/ACCT-001_signup.md を読んで
+   サインアップ機能をフル実装して。API、UI、テスト全部。"
 
-# テスト一括生成
-claude "docs/standards/TESTING_STANDARDS.md に基づいて
-       src/ 以下の全コンポーネントのテストを生成して"
+& "全ファイルのエラーハンドリングを
+   docs/core/SSOT-5_CROSS_CUTTING.md に準拠させて"
+
+# → 3タスクがクラウドで同時実行
+# → PCを閉じてもOK
+# → /tasks で進捗確認
+# → 完了後に各タスクからPRが作成される
+
+# 対話が必要な作業は Claude Code CLI で実行
+claude "認証基盤の設計について相談しながら実装したい"
 ```
 
 ---
@@ -225,16 +296,20 @@ claude "docs/standards/TESTING_STANDARDS.md に基づいて
 ├─ 仕様書の内容を考えたい / 壁打ちしたい
 │   → Claude.ai
 │
-├─ コードを書きたい / デバッグしたい
-│   → Claude Code
-│   例: 機能実装、バグ修正、テスト、リファクタ
+├─ 対話しながら実装したい / デバッグしたい
+│   → Claude Code CLI
+│   例: 設計判断を含む実装、原因不明のバグ調査、環境構築
 │
-├─ ファイルを一括で作りたい / 大きな変更をしたい
-│   → Claude Code
-│   例: プロジェクト初期構築、機能丸ごと実装
+├─ 仕様が確定したタスクを自動実行したい
+│   → Claude Code Web
+│   例: 機能実装、テスト生成、リファクタリング、バグ修正
+│
+├─ 複数タスクを並列で回したい / PCを閉じても進めたい
+│   → Claude Code Web
+│   例: 複数機能の同時実装、一括テスト生成
 │
 ├─ 仕様書をファイルに反映したい
-│   → Claude Code
+│   → Claude Code CLI（対話確認が必要なため）
 │
 └─ 詰まった / 方針に迷った
     → Claude.ai（壁打ち）
@@ -252,8 +327,8 @@ claude "docs/standards/TESTING_STANDARDS.md に基づいて
   ↓ 仕様の壁打ち・詳細化
   ↓ Markdown出力
 
-[Claude Code]
-  ↓ mkdir -p / ファイル配置
+[Claude Code CLI]
+  ↓ プロジェクト初期化 / ファイル配置
   ↓ 仕様書一式の生成
   ↓ CLAUDE.md の生成
 ```
@@ -265,7 +340,7 @@ claude "docs/standards/TESTING_STANDARDS.md に基づいて
   ↓ LP構成・コピーの策定
   ↓ SNS戦略の策定
 
-[Claude Code]
+[Claude Code Web]
   ↓ LP実装（Next.js + Tailwind）
   ↓ フォーム実装
   ↓ メール配信設定（任意）
@@ -275,15 +350,19 @@ claude "docs/standards/TESTING_STANDARDS.md に基づいて
 ### Phase 1〜4: 設計・実装
 
 ```
-[Claude Code]
+[Claude Code CLI] 対話が必要な作業
   ↓ スキャフォールド
-  ↓ DB マイグレーション
-  ↓ 認証基盤の実装
-  ↓ 機能実装
+  ↓ DB マイグレーション（初回設計）
+  ↓ 認証基盤の設計・実装
+  ↓ デバッグ（原因調査）
+
+[Claude Code Web] 仕様確定済みのタスクを並列実行
+  ↓ 機能実装（仕様書ベースで自律実行）
   ↓ UI構築
   ↓ テスト一括生成
   ↓ リファクタリング
-  ↓ デバッグ
+  ↓ コードレビュー
+  → 各タスクから自動PR → レビュー → マージ
 
 [Claude.ai] 必要に応じて
   ↓ 設計の相談
@@ -293,11 +372,13 @@ claude "docs/standards/TESTING_STANDARDS.md に基づいて
 ### Phase 5: リリース
 
 ```
-[Claude Code]
+[Claude Code CLI]
   ↓ CI/CD構築
   ↓ 環境変数設定
   ↓ デプロイスクリプト
-  ↓ 最終修正
+
+[Claude Code Web]
+  ↓ 最終修正（並列実行）
   ↓ パフォーマンス調整
 
 [Claude.ai]
@@ -307,149 +388,275 @@ claude "docs/standards/TESTING_STANDARDS.md に基づいて
 
 ---
 
-## 7. git worktree による並列開発
+## 7. Claude Code Web による並列開発
 
 ### 基本概念
 
 ```
-1つのリポジトリで複数のworking treeを持つ。
-各worktreeで独立したClaude Codeインスタンスを実行できる。
+Claude Code Web の非同期実行を活用し、
+複数のタスクをクラウド上で同時に実行する。
 
-通常:
-  my-project/（mainブランチ）
-  └── Claude Code インスタンス1つ
+従来（git worktree + Claude Code CLI）:
+  ローカルPCで複数ターミナルを開いて並列実行
+  → PCの前にいる間しか動かない
+  → リソース（CPU/メモリ）を消費する
 
-worktree:
-  my-project/                      ← mainブランチ
-  my-project-wt/feature-auth/      ← feature/auth ブランチ
-  my-project-wt/feature-dashboard/ ← feature/dashboard ブランチ
-
-  各ディレクトリで独立した Claude Code を起動
-  → 並列で別機能を開発できる
+現在（Claude Code Web）:
+  Claude Code CLI から & プレフィックスでタスクを送信
+  → Anthropicのクラウドで独立したVMが起動
+  → 各タスクが非同期で並列実行
+  → PCを閉じても継続、完了時にPR作成
 ```
 
-### セットアップ
+### 使い方
 
 ```bash
-# worktree用ディレクトリを作成
-mkdir -p ~/worktrees/my-project
+# Claude Code CLI から複数タスクを並列送信
+& "AUTH-001の仕様に基づいてログイン機能を実装して"
+& "ACCT-001の仕様に基づいてサインアップ機能を実装して"
+& "AUTH-005の仕様に基づいてログアウト機能を実装して"
 
-# worktreeを追加
-cd my-project
-git worktree add ~/worktrees/my-project/auth feature/auth
-git worktree add ~/worktrees/my-project/dashboard feature/dashboard
+# または claude --remote で直接送信
+claude --remote "AUTH-001の仕様に基づいてログイン機能を実装して"
 
-# 各worktreeでClaude Codeを起動
-cd ~/worktrees/my-project/auth && claude
-cd ~/worktrees/my-project/dashboard && claude
+# 進捗確認
+/tasks
+
+# 完了したセッションをローカルに取り込む
+/teleport
+# または
+claude --teleport <session-id>
 ```
 
-### シェルエイリアス
+### Web での計画→実行パターン
 
 ```bash
-# ~/.bashrc or ~/.zshrc に追加
+# 1. Claude Code CLI で計画を立てる（plan mode）
+claude --permission-mode plan
 
-# プロジェクト固有のworktreeエイリアス
-# プロジェクトセットアップ時に生成する
+# 2. 計画が固まったら Web に送信して自律実行
+& "先ほど議論した認証基盤の実装計画を実行して"
 
-# worktree作成
-alias gwta='git worktree add'
-
-# worktree一覧
-alias gwtl='git worktree list'
-
-# worktree削除
-alias gwtr='git worktree remove'
-
-# 短縮エイリアス（プロジェクトごとに設定）
-# alias za='cd ~/worktrees/my-project/auth && claude'
-# alias zb='cd ~/worktrees/my-project/dashboard && claude'
+# → CLI では対話的に計画策定
+# → Web では計画に基づき自律実行
+# → PCを閉じてもOK
 ```
 
 ### 並列開発のルール
 
 ```
-並列開発可能な条件:
+並列実行可能な条件:
   ✅ 異なる機能（異なるSSOT）を実装する場合
   ✅ 異なるファイルを変更する場合
   ✅ 依存関係がない機能同士
 
-並列開発してはいけない条件:
+並列実行してはいけない条件:
   ❌ 同じファイルを変更する可能性がある場合
   ❌ 同じDBテーブルのマイグレーションを含む場合
   ❌ 依存関係がある機能同士（Wave が異なる場合）
 
 マージ戦略:
-  1. 各worktreeでブランチをPR
+  1. 各タスクが完了時にPRを自動作成
   2. CI通過を確認
   3. コンフリクトがあれば先にマージした方が優先
   4. 後からマージする方がコンフリクト解消
 ```
 
+### git worktree（補足）
+
+```
+git worktree は Claude Code CLI でローカル並列開発する場合に
+引き続き使用可能。ただし Claude Code Web が推奨。
+
+git worktree を使うケース:
+  - ネットワークがない環境での開発
+  - プライベートリポジトリでGitHub連携が制限される場合
+  - リアルタイム対話が必要な作業を複数同時に行う場合
+```
+
 ---
 
-## 8. サブエージェント活用
+## 8. Agent Teams（CLI パターン専用）
 
-### 基本概念
+### 8.1 概要
 
 ```
-Claude Code の Task tool を活用し、
-メインエージェントからサブエージェントにタスクを委譲する。
+Claude Code CLI の Agent Teams 機能を使い、
+専門エージェントをファイルシステムベースで定義・起動する。
 
-メインエージェント（オーケストレーター）
+.claude/agents/ にMarkdownファイルを配置すると、
+Claude Code CLI が自動的にサブエージェントとして認識する。
+メインエージェントから委譲されたタスクを、
+コンテキスト分離された状態で実行する。
+
+※ Agent Teams は Claude Code CLI 専用の機能。
+  Claude Code Web ではタスク単位の並列実行（§7）を使用する。
+```
+
+### 8.2 アーキテクチャ
+
+```
+メインエージェント（実装担当）
   │
-  ├── サブエージェント A: テスト生成
-  ├── サブエージェント B: コードレビュー（Adversarial Review）
-  ├── サブエージェント C: ドキュメント検索
-  └── サブエージェント D: 並列ファイル編集
+  ├── visual-tester エージェント
+  │     ビジュアルテスト専門。Playwright MCP でブラウザ操作。
+  │     → 20_VISUAL_TEST.md §4 参照
+  │
+  ├── code-reviewer エージェント
+  │     Adversarial Review の Role B。批判的コードレビュー。
+  │     → 17_CODE_AUDIT.md 参照
+  │
+  └── ssot-explorer エージェント
+        SSOT検索・要約。メインのコンテキスト節約。
+        → 12_SSOT_FORMAT.md 参照
 
 メリット:
-  - メインエージェントのコンテキストを節約
-  - 専門的なロールを持つエージェントに委譲
-  - 並列実行で速度向上
+  - メインエージェントのコンテキストを消費しない
+  - 専門的な指示を事前に定義できる（Markdown）
+  - リアルタイムで対話・デバッグ可能
+  - 同一セッション内で並列実行
+  - 読み取り専用の制約をエージェント単位で設定可能
 ```
 
-### 活用パターン
+### 8.3 セットアップ
+
+#### ディレクトリ構造
 
 ```
-パターン1: Adversarial Review（17_CODE_AUDIT.md 参照）
-────────────────────────────────
-  メイン（Role A）が実装
-  → サブエージェント（Role B）が批判的レビュー
-  → メインが修正
-  → 合格まで反復
+.claude/
+└── agents/
+    ├── visual-tester.md     ← ビジュアルテスト専門
+    ├── code-reviewer.md     ← Adversarial Review Role B
+    └── ssot-explorer.md     ← SSOT検索・要約
 
-パターン2: 並列テスト生成
-────────────────────────────────
-  メインが機能を実装完了
-  → サブエージェントにテスト生成を委譲
-  → メインは次の機能の実装に着手
-  → サブエージェントの結果を後で確認
-
-パターン3: ドキュメント検索
-────────────────────────────────
-  メインが実装中にSSOTの参照が必要
-  → サブエージェントにSSOTの検索・要約を委譲
-  → メインは結果を受け取って実装に反映
-
-パターン4: 影響分析
-────────────────────────────────
-  コード変更の影響範囲を調べたい
-  → サブエージェントにコードベース全体をスキャンさせる
-  → 影響を受けるファイル・関数のリストを取得
+テンプレートは templates/project/agents/ に用意。
+framework init 実行時に .claude/agents/ にコピーされる。
 ```
 
-### CLAUDE.md での設定
+#### テンプレート配置
+
+```bash
+# framework init 実行時に自動配置
+framework init my-project --type=app
+
+# 手動配置の場合
+mkdir -p .claude/agents
+cp templates/project/agents/*.md .claude/agents/
+# {{PROJECT_NAME}} 等のプレースホルダーを置換
+```
+
+### 8.4 エージェント定義ファイルの書き方
 
 ```markdown
-## サブエージェント活用
+<!-- .claude/agents/[agent-name].md -->
+
+# [Agent Name]
+
+エージェントの説明（1行目がCLIの表示名になる）。
+
+## 実行手順
+
+1. 手順1
+2. 手順2
+3. ...
+
+## 確認観点
+
+- 確認ポイントA
+- 確認ポイントB
+
+## 報告形式
+
+結果のフォーマットを定義
+
+## 制約
+
+- 制約1（例: ファイルの変更は行わない）
+- 制約2
+```
+
+### 8.5 活用パターン
+
+```
+パターン1: 実装 → ビジュアルテスト（同時進行）
+────────────────────────────────
+  メインが AUTH-001 を実装完了
+  → visual-tester に AUTH-001 のテストを委譲
+  → メインは ACCT-001 の実装に着手
+  → visual-tester の結果を受け取り、問題があれば修正
+
+  指示例:
+  "visual-tester エージェントでAUTH-001のビジュアルテストを実行して"
+
+パターン2: 実装 → Adversarial Review（反復）
+────────────────────────────────
+  メイン（Role A）が実装
+  → code-reviewer（Role B）が批判的レビュー
+  → メインが修正
+  → code-reviewer が再レビュー
+  → スコア100点になるまで反復
+
+  指示例:
+  "code-reviewer エージェントで実装したコードをレビューして"
+
+パターン3: SSOT参照（コンテキスト節約）
+────────────────────────────────
+  メインが実装中にSSOTの詳細仕様を確認したい
+  → ssot-explorer にSSOTの検索・要約を委譲
+  → メインは要約結果のみを受け取る（コンテキスト節約）
+
+  指示例:
+  "ssot-explorer エージェントで AUTH-001 のAPI仕様を調べて"
+
+パターン4: 変更影響分析
+────────────────────────────────
+  コード変更の影響範囲を調べたい
+  → ssot-explorer にコードベース全体の影響分析を委譲
+  → 影響を受けるファイル・関数のリストを取得
+
+  指示例:
+  "ssot-explorer エージェントで User モデルの変更影響を調査して"
+```
+
+### 8.6 §7（Claude Code Web）との使い分け
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│            Claude Code CLI                Claude Code Web           │
+│            Agent Teams（§8）              タスク並列実行（§7）       │
+├──────────────────────────────────────────────────────────────────────┤
+│ 実行場所    ローカルPC                    クラウドVM                 │
+│ 並列単位    サブエージェント              タスク（独立セッション）    │
+│ 対話性      リアルタイムで対話可能        非同期（結果をPRで受領）    │
+│ 継続性      PCを閉じると停止             PCを閉じても継続           │
+│ ブランチ    同一ブランチ                  タスクごとに別ブランチ      │
+│ コンテキスト メインから分離だが同一環境    完全に独立                 │
+│ 最適用途    実装中のサポートタスク        独立した実装・テストタスク   │
+│ エージェント .claude/agents/ で定義       プロンプトで都度指示        │
+│ 定義                                                                │
+└──────────────────────────────────────────────────────────────────────┘
+
+判断フロー:
+  Q: タスクは実装中のサポート（レビュー、検索、テスト）か？
+    YES → Agent Teams（§8）: サブエージェントに委譲
+    NO  → 独立した実装タスクか？
+      YES → Claude Code Web（§7）: 非同期タスクとして送信
+      NO  → メインエージェントで直接実行
+```
+
+### 8.7 CLAUDE.md での設定
+
+```markdown
+## Agent Teams 活用（CLI パターン）
 
 以下のタスクはサブエージェントに委譲してコンテキストを節約すること:
 
-1. Adversarial Review: 実装完了後、別エージェントでコード監査
-2. テスト生成: 実装と並行してテストを生成
-3. SSOT検索: 大量のドキュメントから必要な情報を抽出
-4. 影響分析: コード変更の影響範囲を調査
+1. ビジュアルテスト: visual-tester エージェントで画面テスト
+2. Adversarial Review: code-reviewer エージェントでコード監査
+3. SSOT検索: ssot-explorer エージェントで仕様参照
+4. 影響分析: ssot-explorer エージェントで変更影響調査
+
+エージェント定義: .claude/agents/ 配下のMarkdownファイル
 ```
 
 ---
@@ -950,3 +1157,4 @@ _index.json:
 | | Skill Creator（スキル自動生成）セクション追加 | |
 | | プロジェクトタイプ別プロファイル（--type オプション）対応 | |
 | | CI/CD自動配置オプション追加（--deploy, --skip-ci）、タイプ別ワークフロー選択 | |
+| | §8をAgent Teams（CLI専用）に全面改訂。.claude/agents/によるファイルシステムベースのエージェント定義を追加 | |

@@ -50,6 +50,9 @@ mkdir -p "${PROJECT_NAME}/src/__tests__"
 # その他
 mkdir -p "${PROJECT_NAME}/public"
 
+# Claude Code Agent Teams（CLI パターン）
+mkdir -p "${PROJECT_NAME}/.claude/agents"
+
 echo "✅ ディレクトリ構造を作成しました"
 
 # ============================================================
@@ -143,7 +146,57 @@ done
 echo "✅ ドキュメントのプレースホルダーを配置しました"
 
 # ============================================================
-# 4. docs/INDEX.md の作成
+# 4. Agent Teams テンプレートの配置
+# ============================================================
+
+echo "🤖 Agent Teams テンプレートを配置中..."
+
+# フレームワークのテンプレートディレクトリを探す
+FRAMEWORK_DIR=""
+if [ -d "../ai-dev-framework/templates/project/agents" ]; then
+  FRAMEWORK_DIR="../ai-dev-framework"
+elif [ -n "$AI_DEV_FRAMEWORK_DIR" ] && [ -d "$AI_DEV_FRAMEWORK_DIR/templates/project/agents" ]; then
+  FRAMEWORK_DIR="$AI_DEV_FRAMEWORK_DIR"
+fi
+
+if [ -n "$FRAMEWORK_DIR" ]; then
+  for agent_file in "$FRAMEWORK_DIR/templates/project/agents/"*.md; do
+    if [ -f "$agent_file" ]; then
+      filename=$(basename "$agent_file")
+      cp "$agent_file" "${PROJECT_NAME}/.claude/agents/${filename}"
+      # プレースホルダーを置換
+      if command -v sed &> /dev/null; then
+        sed -i.bak "s/{{PROJECT_NAME}}/${PROJECT_NAME}/g" "${PROJECT_NAME}/.claude/agents/${filename}"
+        sed -i.bak "s|{{DEV_SERVER_URL}}|http://localhost:3000|g" "${PROJECT_NAME}/.claude/agents/${filename}"
+        rm -f "${PROJECT_NAME}/.claude/agents/${filename}.bak"
+      fi
+    fi
+  done
+  echo "✅ Agent Teams テンプレートを配置しました（$(ls "${PROJECT_NAME}/.claude/agents/"*.md 2>/dev/null | wc -l | tr -d ' ') エージェント）"
+else
+  # フレームワークが見つからない場合はプレースホルダーを作成
+  cat > "${PROJECT_NAME}/.claude/agents/README.md" << 'AGENT_EOF'
+# Agent Teams
+
+このディレクトリに `.md` ファイルを配置すると、
+Claude Code CLI が自動的にサブエージェントとして認識します。
+
+## 推奨エージェント
+
+| ファイル | 役割 |
+|---------|------|
+| visual-tester.md | ビジュアルテスト専門 |
+| code-reviewer.md | Adversarial Review Role B |
+| ssot-explorer.md | SSOT検索・要約 |
+
+テンプレート: ai-dev-framework/templates/project/agents/
+参照: ai-dev-framework/09_TOOLCHAIN.md §8, 20_VISUAL_TEST.md §4
+AGENT_EOF
+  echo "⚠️  Agent Teams テンプレートが見つかりません。README.md を配置しました"
+fi
+
+# ============================================================
+# 5. docs/INDEX.md の作成
 # ============================================================
 
 cat > "${PROJECT_NAME}/docs/INDEX.md" << 'EOF'
@@ -215,7 +268,7 @@ EOF
 echo "✅ docs/INDEX.md を作成しました"
 
 # ============================================================
-# 5. 完了メッセージ
+# 6. 完了メッセージ
 # ============================================================
 
 echo ""
@@ -227,6 +280,7 @@ echo " 📁 構造:"
 echo "   ${PROJECT_NAME}/"
 echo "   ├── CLAUDE.md          ← Claude Code 用（要設定）"
 echo "   ├── .cursorrules       ← Cursor 用（要設定）"
+echo "   ├── .claude/agents/    ← Agent Teams（CLIパターン）"
 echo "   ├── docs/              ← 仕様書（プレースホルダー配置済み）"
 echo "   │   └── INDEX.md      ← 仕様書一覧"
 echo "   ├── src/               ← ソースコード"

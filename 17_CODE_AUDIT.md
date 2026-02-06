@@ -325,16 +325,42 @@ SSOT:
 ### 実行方法
 
 ```
-方法A: Claude Code サブエージェント
+方法A: Agent Teams（CLI パターン・推奨）
 
+  .claude/agents/code-reviewer.md に Role B が事前定義済み。
   メインエージェント（Role A）が実装完了後:
+  → "code-reviewer エージェントでレビューして" と指示
+  → code-reviewer が自動起動し、SSOTと照合して指摘を返す
+  → メインエージェントが修正 → 再度 code-reviewer に委譲
+  → code-reviewer が100点を出すまで反復
+
+  メリット:
+  - エージェント定義がファイルで管理され、指示がブレない
+  - メインのコンテキストを消費しない
+  - 同一セッション内でリアルタイムに反復可能
+
+  セットアップ:
+  - .claude/agents/code-reviewer.md を配置（setup-project.sh で自動配置）
+  - 参照: 09_TOOLCHAIN.md §8
+
+方法B: Task tool（汎用サブエージェント）
+
+  Agent Teams を使わない場合:
   → Task tool で新しいエージェント（Role B）を起動
   → Role B に「批判的レビュアー」のロールを与える
   → Role B はSSOTと実装コードを照合して指摘を返す
   → メインエージェントが修正 → 再度 Role B に送る
   → Role B が合格を出すまで反復
 
-方法B: 別セッション
+方法C: Claude Code Web（非同期レビュー）
+
+  実装をコミット後:
+  → & "17_CODE_AUDIT.md に基づいて [ファイル] をレビューして" と送信
+  → クラウドVM上で非同期にレビュー実行
+  → 結果をPRのコメントまたはレポートファイルで受領
+  → PCを閉じても継続
+
+方法D: 別セッション
 
   セッション1（Role A）で実装
   → 完成コードをコミット
@@ -390,3 +416,4 @@ SSOT:
 |------|---------|-------|
 | | 初版作成 | |
 | | Adversarial Review（敵対的レビュー）セクション追加 | |
+| | 実行方法を4パターンに拡張（Agent Teams / Task tool / Web / 別セッション）。CLI Agent Teams を推奨に変更 | |
