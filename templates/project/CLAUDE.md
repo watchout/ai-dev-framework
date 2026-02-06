@@ -197,7 +197,7 @@ scope: 機能ID or モジュール名
 
 ## Agent Teams（CLI パターン）
 
-> Claude Code CLI でサブエージェントを活用し、コンテキストを節約する。
+> Claude Code CLI の Agent Teams でエージェントを活用し、コンテキストを節約する。
 > 詳細: ai-dev-framework/09_TOOLCHAIN.md §8
 
 ### エージェント一覧
@@ -212,19 +212,19 @@ scope: 機能ID or モジュール名
 ### 使い方
 
 ```bash
-# ビジュアルテストをサブエージェントに委譲
+# ビジュアルテストを Agent Teams に委譲
 "visual-tester エージェントで AUTH-001 のビジュアルテストを実行して"
 
-# コードレビューをサブエージェントに委譲
+# コードレビューを Agent Teams に委譲
 "code-reviewer エージェントで実装したコードをレビューして"
 
-# SSOT検索をサブエージェントに委譲
+# SSOT検索を Agent Teams に委譲
 "ssot-explorer エージェントで AUTH-001 のAPI仕様を調べて"
 ```
 
 ### ルール
 
-以下のタスクはサブエージェントに委譲してコンテキストを節約すること:
+以下のタスクは Agent Teams に委譲してコンテキストを節約すること:
 
 1. **ビジュアルテスト**: 実装完了後、visual-tester エージェントで画面テスト
 2. **Adversarial Review**: 実装完了後、code-reviewer エージェントでコード監査

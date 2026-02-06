@@ -745,7 +745,7 @@ b) ある程度書ける
 
 c) 少しだけ触ったことがある
    → Next.js + Supabase + Vercel を推奨
-   → AI（Claude/Cursor）活用前提の設計
+   → AI（Claude Code）活用前提の設計
 
 d) まったくない
    → ノーコード（Bubble, Glide等）を推奨

@@ -425,7 +425,7 @@ T4（矛盾）とT6（影響範囲不明）は常に停止すること。
 
 ---
 
-## Claude Code / Cursor への組み込み
+## Claude Code への組み込み
 
 ### CLAUDE.md に追加するルール
 

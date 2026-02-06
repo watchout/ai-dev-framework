@@ -179,7 +179,7 @@ else
 # Agent Teams
 
 このディレクトリに `.md` ファイルを配置すると、
-Claude Code CLI が自動的にサブエージェントとして認識します。
+Claude Code CLI の Agent Teams が自動的にエージェントとして認識します。
 
 ## 推奨エージェント
 

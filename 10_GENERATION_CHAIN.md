@@ -938,7 +938,7 @@ claude "以下を実行して:
 [Claude Code] テスト生成
   claude "AUTH-001のテストを生成して"
     ↓
-[Claude Code] Adversarial Review（サブエージェント）
+[Claude Code] Adversarial Review（Agent Teams）
   → 別コンテキストで批判的レビュー
   → 合格まで反復（17_CODE_AUDIT.md 参照）
     ↓

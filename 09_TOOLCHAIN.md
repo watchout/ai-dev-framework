@@ -38,7 +38,7 @@
 │ Claude Code SDK                                                    │
 │   @anthropic-ai/claude-agent-sdk。TypeScript/Python。               │
 │   プログラムからエージェントを制御する。                               │
-│   サブエージェント定義・フック・構造化出力。                           │
+│   エージェント定義・フック・構造化出力。                               │
 │   用途: カスタムツール構築。現フレームワークでは使用しない。            │
 └────────────────────────────────────────────────────────────────────┘
 
@@ -485,7 +485,7 @@ Claude Code CLI の Agent Teams 機能を使い、
 専門エージェントをファイルシステムベースで定義・起動する。
 
 .claude/agents/ にMarkdownファイルを配置すると、
-Claude Code CLI が自動的にサブエージェントとして認識する。
+Claude Code CLI の Agent Teams が自動的にエージェントとして認識する。
 メインエージェントから委譲されたタスクを、
 コンテキスト分離された状態で実行する。
 
@@ -626,7 +626,7 @@ cp templates/project/agents/*.md .claude/agents/
 │            Agent Teams（§8）              タスク並列実行（§7）       │
 ├──────────────────────────────────────────────────────────────────────┤
 │ 実行場所    ローカルPC                    クラウドVM                 │
-│ 並列単位    サブエージェント              タスク（独立セッション）    │
+│ 並列単位    エージェント委譲              タスク（独立セッション）    │
 │ 対話性      リアルタイムで対話可能        非同期（結果をPRで受領）    │
 │ 継続性      PCを閉じると停止             PCを閉じても継続           │
 │ ブランチ    同一ブランチ                  タスクごとに別ブランチ      │
@@ -638,7 +638,7 @@ cp templates/project/agents/*.md .claude/agents/
 
 判断フロー:
   Q: タスクは実装中のサポート（レビュー、検索、テスト）か？
-    YES → Agent Teams（§8）: サブエージェントに委譲
+    YES → Agent Teams（§8）: エージェントに委譲
     NO  → 独立した実装タスクか？
       YES → Claude Code Web（§7）: 非同期タスクとして送信
       NO  → メインエージェントで直接実行
@@ -649,7 +649,7 @@ cp templates/project/agents/*.md .claude/agents/
 ```markdown
 ## Agent Teams 活用（CLI パターン）
 
-以下のタスクはサブエージェントに委譲してコンテキストを節約すること:
+以下のタスクは Agent Teams に委譲してコンテキストを節約すること:
 
 1. ビジュアルテスト: visual-tester エージェントで画面テスト
 2. Adversarial Review: code-reviewer エージェントでコード監査

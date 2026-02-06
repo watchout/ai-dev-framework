@@ -192,7 +192,7 @@
 | コードレビュー | | |
 
 **選択肢の例**:
-- Claude Code / GitHub Copilot / Cursor
+- Claude Code / GitHub Copilot
 
 ---
 

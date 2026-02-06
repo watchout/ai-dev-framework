@@ -343,7 +343,7 @@ SSOT:
   - .claude/agents/code-reviewer.md を配置（setup-project.sh で自動配置）
   - 参照: 09_TOOLCHAIN.md §8
 
-方法B: Task tool（汎用サブエージェント）
+方法B: Task tool（汎用エージェント委譲）
 
   Agent Teams を使わない場合:
   → Task tool で新しいエージェント（Role B）を起動

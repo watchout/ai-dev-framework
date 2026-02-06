@@ -290,7 +290,7 @@
         │
         ▼
   ③ プロンプトをAIに投入（実装）
-     - Claude Code or Cursor に投入
+     - Claude Code に投入
      - 出力されたコードを確認
         │
         ▼
