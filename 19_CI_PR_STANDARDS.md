@@ -235,7 +235,7 @@ PRを作成する前のチェックリスト:
   ✅ Staging でのスモークテスト
       │
       ▼
-  Linear / Plane:
+  GitHub Projects:
   ─────────────────────────
   タスクステータス → Done
   親Issue の全Sub-issue が Done か確認

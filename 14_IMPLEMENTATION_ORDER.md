@@ -1,6 +1,6 @@
 # 14_IMPLEMENTATION_ORDER.md - 実装順序・タスク分解・開発環境
 
-> SSOTから開発タスクを分解し、Linear/Plane + GitHub で管理・実装する
+> SSOTから開発タスクを分解し、GitHub Projects + GitHub Issues で管理・実装する
 
 ---
 
@@ -534,45 +534,49 @@ Step 4: Wave との対応付け
 ### 構成
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│ Linear       │     │ GitHub      │     │ Claude Code  │
-│ or Plane    │────→│ Issues +    │────→│              │
-│              │     │ PR          │     │              │
-│ タスク管理   │     │ コード管理   │     │ 実装         │
-└─────────────┘     └─────────────┘     └─────────────┘
-       │                   │                    │
-       └───────────────────┴────────────────────┘
-                           │
-                    docs/（SSOT）= 真実の源泉
+┌─────────────────────────────────┐     ┌─────────────┐
+│ GitHub                          │     │ Claude Code  │
+│  ├── Projects（タスク管理）     │────→│              │
+│  ├── Issues（タスク詳細）       │     │ 実装         │
+│  └── PR（コードレビュー）       │     │              │
+└─────────────────────────────────┘     └─────────────┘
+                 │                             │
+                 └─────────────────────────────┘
+                               │
+                        docs/（SSOT）= 真実の源泉
 ```
 
-### Linear / Plane の構成
+### GitHub Projects の構成
 
 ```
-Workspace（プロジェクト全体）
+GitHub Project（プロジェクトボード）
   │
-  ├── Project: 共通機能
-  │   ├── Cycle: Layer 0 - 環境構築
-  │   ├── Cycle: Layer 1 - 認証基盤
-  │   ├── Cycle: Layer 2 - 共通UI
-  │   └── Cycle: Layer 3 - その他共通
+  ├── View: Board（カンバン）
+  │   └── カラム: Backlog → Todo → In Progress → In Review → Done
   │
-  └── Project: 個別機能
-      ├── Cycle: Wave 1 - [機能群]
-      ├── Cycle: Wave 2 - [機能群]
-      └── Cycle: Wave 3 - [機能群]
+  ├── View: Table（一覧）
+  │   └── フィールド: Phase, Wave, Priority, Size, Feature ID
+  │
+  ├── Iteration: Layer 0 - 環境構築
+  ├── Iteration: Layer 1 - 認証基盤
+  ├── Iteration: Wave 1 - [機能群]
+  ├── Iteration: Wave 2 - [機能群]
+  └── Iteration: Wave 3 - [機能群]
 
-各Cycle内:
+各Iteration内（GitHub Issues）:
   ├── 親Issue: [FEAT-XXX] [機能名]
-  │   ├── Sub-issue: [FEAT-XXX-DB] DB実装
-  │   ├── Sub-issue: [FEAT-XXX-API] API実装
-  │   ├── Sub-issue: [FEAT-XXX-UI] UI実装
-  │   ├── Sub-issue: [FEAT-XXX-INT] 結合
-  │   ├── Sub-issue: [FEAT-XXX-TEST] テスト
-  │   └── Sub-issue: [FEAT-XXX-REVIEW] レビュー
+  │   ├── Tasklist: [FEAT-XXX-DB] DB実装
+  │   ├── Tasklist: [FEAT-XXX-API] API実装
+  │   ├── Tasklist: [FEAT-XXX-UI] UI実装
+  │   ├── Tasklist: [FEAT-XXX-INT] 結合
+  │   ├── Tasklist: [FEAT-XXX-TEST] テスト
+  │   └── Tasklist: [FEAT-XXX-REVIEW] レビュー
   │
   └── 親Issue: [FEAT-YYY] [機能名]
       └── ...
+
+Claude Code Web の非同期タスク:
+  → PR 自動作成 → Project に自動追加（Workflow設定）
 ```
 
 ### Issue テンプレート
@@ -613,21 +617,24 @@ Workspace（プロジェクト全体）
 ### ステータスフロー
 
 ```
-Linear / Plane のステータス:
+GitHub Projects ステータス:
 
   Backlog → Todo → In Progress → In Review → Done
-                                      │
-                                      ├── PR作成 → GitHubへ
-                                      └── レビュー依頼
+                       │              │
+                       │              ├── PR作成 → 自動でProject更新
+                       │              └── レビュー依頼
+                       │
+                       └── Claude Code Web: & で非同期実行
+                                            → PR自動作成 → In Review へ
 
-対応するGitHubフロー:
-  ブランチ作成 → コミット → PR作成 → レビュー → マージ
+対応するGitフロー:
+  ブランチ作成 → コミット → PR作成 → レビュー → マージ → Issue自動クローズ
 ```
 
 ### AIへの指示（タスク管理ツール設定）
 
 ```
-以下のSSOT一覧から、Linear（またはPlane）の
+以下のSSOT一覧から、GitHub Issues の
 Issue構成を生成してください。
 
 SSOTリスト:
@@ -789,14 +796,14 @@ mainマージ時:
   ① タスク分解 [Claude Code]
      claude "FEAT-XXX のSSOTを読んで、
             開発タスクを分解して。
-            Linear/Plane用のIssue本文も生成して"
+            GitHub Issues用のIssue本文も生成して"
         │
         ▼
-  ② Issue作成 [Linear or Plane]
-     - 親Issue: FEAT-XXX
-     - Sub-issues: DB / API / UI / 結合 / テスト / レビュー
-     - 依存関係を設定
-     - Cycleに割り当て
+  ② Issue作成 [GitHub Projects]
+     - 親Issue: FEAT-XXX（Tasklist付き）
+     - Tasklist: DB / API / UI / 結合 / テスト / レビュー
+     - Labels で依存関係を表現
+     - Iteration に割り当て
         │
         ▼
   ③ DB実装 [Claude Code → GitHub]
@@ -804,7 +811,7 @@ mainマージ時:
      - claude "SSOTの§4に基づいてマイグレーション作成"
      - コミット + PR作成
      - CI通過 → レビュー → マージ
-     - Linear: FEAT-XXX-DB → Done
+     - GitHub Projects: FEAT-XXX-DB → Done
         │
         ▼
   ④ API実装 [Claude Code → GitHub]
@@ -812,7 +819,7 @@ mainマージ時:
      - Claude Code で §5 + §7 を参照しながら実装
      - コミット + PR作成
      - CI通過 → レビュー → マージ
-     - Linear: FEAT-XXX-API → Done
+     - GitHub Projects: FEAT-XXX-API → Done
         │
         ▼
   ⑤ UI実装 [Claude Code → GitHub]
@@ -820,7 +827,7 @@ mainマージ時:
      - Claude Code で §6 を参照しながら実装
      - コミット + PR作成
      - CI通過 → レビュー → マージ
-     - Linear: FEAT-XXX-UI → Done
+     - GitHub Projects: FEAT-XXX-UI → Done
         │
         ▼
   ⑥ 結合 [Claude Code → GitHub]
@@ -828,19 +835,19 @@ mainマージ時:
      - フロント ↔ バックを接続
      - E2Eフロー確認
      - CI通過 → レビュー → マージ
-     - Linear: FEAT-XXX-INT → Done
+     - GitHub Projects: FEAT-XXX-INT → Done
         │
         ▼
   ⑦ テスト [Claude Code → GitHub]
      - ブランチ: feature/FEAT-XXX-test
      - claude "SSOTの§10に基づいてテスト作成"
      - CI通過 → レビュー → マージ
-     - Linear: FEAT-XXX-TEST → Done
+     - GitHub Projects: FEAT-XXX-TEST → Done
         │
         ▼
   ⑧ 最終レビュー
      - SSOT §3 の全MUST要件が実装されているか確認
-     - Linear: 親Issue FEAT-XXX → Done
+     - GitHub Projects: 親Issue FEAT-XXX → Done
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -854,7 +861,7 @@ mainマージ時:
 claude "docs/design/features/project/FEAT-001_image_analysis.md を読んで:
        1. 開発タスクを DB/API/UI/結合/テスト/レビュー に分解
        2. 各タスクの完了条件をSSOT参照セクション付きで生成
-       3. Linear用のIssue本文をMarkdownで出力"
+       3. GitHub Issues用のIssue本文をMarkdownで出力"
 
 # DB実装（Claude Code）
 claude "docs/design/features/project/FEAT-001_image_analysis.md の §4 に基づいて
