@@ -86,10 +86,10 @@ npm run dev
 
 ## 開発
 
-- **Claude Code**: 大きな機能実装、一括処理
-- **Cursor**: 日常のコーディング、デバッグ
+- **Claude Code CLI**: 対話型の実装・デバッグ
+- **Claude Code Web**: 仕様確定済みタスクの非同期・並列実行
 
-詳細: CLAUDE.md / .cursorrules を参照
+詳細: CLAUDE.md を参照
 EOF
 
 echo "✅ README.md を作成しました"
@@ -278,8 +278,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo " 📁 構造:"
 echo "   ${PROJECT_NAME}/"
-echo "   ├── CLAUDE.md          ← Claude Code 用（要設定）"
-echo "   ├── .cursorrules       ← Cursor 用（要設定）"
+echo "   ├── CLAUDE.md          ← Claude Code 指示書（要設定）"
 echo "   ├── .claude/agents/    ← Agent Teams（CLIパターン）"
 echo "   ├── docs/              ← 仕様書（プレースホルダー配置済み）"
 echo "   │   └── INDEX.md      ← 仕様書一覧"
@@ -287,13 +286,13 @@ echo "   ├── src/               ← ソースコード"
 echo "   └── README.md"
 echo ""
 echo " 🎯 次のステップ:"
-echo "   1. CLAUDE.md と .cursorrules の {{}} 部分を埋める"
+echo "   1. CLAUDE.md の {{}} 部分を埋める"
 echo "   2. docs/ のプレースホルダーにテンプレートの内容をコピー"
 echo "   3. Claude.ai でディスカバリーフローを実行"
 echo "   4. 結果を docs/idea/ に反映"
 echo ""
 echo " 💡 Claude Code で一括設定:"
 echo "   cd ${PROJECT_NAME}"
-echo "   claude \"CLAUDE.md と .cursorrules の {{}} を"
+echo "   claude \"CLAUDE.md の {{}} を"
 echo "          以下の情報で埋めて: プロダクト名は○○、技術は...\" "
 echo ""
