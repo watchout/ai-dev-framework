@@ -41,10 +41,15 @@ framework --version
 ```
 あなたのプロジェクトは？
 │
-├─ ゼロから作る（コードがまだない）
+├─ ゼロから作る（コードも資料もない）
 │   → 新規プロジェクト
 │   → framework init → discover → generate → plan → run
 │   → 詳細: GUIDE_NEW_PROJECT.md
+│
+├─ 資料はあるがコードはない（README、ペルソナ等）
+│   → Cursor ベース導入
+│   → 既存資料 → SSOT 変換 → 開発開始
+│   → 詳細: GUIDE_CURSOR_INTRODUCTION.md
 │
 └─ 既にコードがある
     → 既存プロジェクト
@@ -220,6 +225,7 @@ framework discover --resume
 ## 次のステップ
 
 - 新規プロジェクトの詳細手順 → [GUIDE_NEW_PROJECT.md](GUIDE_NEW_PROJECT.md)
+- 資料ありの導入（Cursor ベース） → [GUIDE_CURSOR_INTRODUCTION.md](GUIDE_CURSOR_INTRODUCTION.md)
 - 既存プロジェクトの詳細手順 → [GUIDE_EXISTING_PROJECT.md](GUIDE_EXISTING_PROJECT.md)
 - フレームワーク全体の概要 → [FRAMEWORK_SUMMARY.md](FRAMEWORK_SUMMARY.md)
 - フレームワークの設計思想 → 00_MASTER_GUIDE.md
