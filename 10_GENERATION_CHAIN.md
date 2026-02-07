@@ -52,6 +52,87 @@
 
 ---
 
+## ゲート条件（各 Step の完了条件）
+
+```
+■ LLM がステップを飛ばす問題への対策
+
+  LLM は「効率化」のつもりで以下をやりがち:
+  - 複数ドキュメントを一括生成
+  - ヒアリングを省略して推測で埋める
+  - 確認を取らずに次の Step に進む
+
+  これを防ぐため、各 Step にゲート条件を設定する。
+  ゲート条件を満たさない限り、次の Step に進んではならない。
+```
+
+### Gate 0→1: Discovery 完了ゲート
+
+```
+完了条件:
+  □ Stage 1-5（タイプによりスキップあり）が全て実施済み
+  □ 各Stage の回答がテキストとして記録されている
+  □ ユーザーが「Discovery 完了」と承認している
+
+代替条件（既存資料がある場合）:
+  □ 既存資料が読み込まれ、カテゴリ分類表が作成済み
+  □ 不足情報が特定され、ヒアリングで補完済み
+  □ ユーザーが「資料確認完了」と承認している
+```
+
+### Gate 1→2: Business 完了ゲート
+
+```
+完了条件（全て必須）:
+  □ docs/idea/IDEA_CANVAS.md が存在し、[要確認] がゼロ
+  □ docs/idea/USER_PERSONA.md が存在し、[要確認] がゼロ
+  □ docs/idea/COMPETITOR_ANALYSIS.md が存在し、[要確認] がゼロ
+  □ docs/idea/VALUE_PROPOSITION.md が存在し、[要確認] がゼロ
+  □ 各ドキュメントがユーザー承認済み
+
+生成ルール:
+  - 1ドキュメントずつ生成 → 表示 → 確認 → 次へ
+  - 前のドキュメントをインプットにして次を生成
+  - 4ドキュメント同時生成は禁止
+```
+
+### Gate 2→3: Product 完了ゲート
+
+```
+完了条件（全て必須）:
+  □ docs/requirements/SSOT-0_PRD.md が存在し、ユーザー承認済み
+  □ docs/requirements/SSOT-1_FEATURE_CATALOG.md が存在し、P0リスト承認済み
+  □ P0 機能の全 SSOT が docs/design/features/ に存在
+  □ 各 SSOT が Freeze 2（CONTRACT層）まで確定
+  □ 各 SSOT がユーザー承認済み
+
+生成ルール:
+  - PRD → FEATURE_CATALOG → 各機能SSOT の順で生成
+  - 各機能 SSOT は 11_FEATURE_SPEC_FLOW.md に従いヒアリングを実施
+  - ヒアリングは1問ずつ。5問まとめて聞くのは禁止
+  - 1機能のSSOT完成 → ユーザー承認 → 次の機能へ
+
+最重要:
+  P0機能の詳細ヒアリング（11_FEATURE_SPEC_FLOW.md）を
+  スキップして一括生成することは絶対に禁止。
+  ヒアリングなしの機能仕様書は手戻りの最大原因。
+```
+
+### Gate 3→4: Technical 完了ゲート
+
+```
+完了条件（全て必須）:
+  □ docs/standards/TECH_STACK.md が存在し、ユーザー承認済み
+  □ docs/design/core/SSOT-3_API_CONTRACT.md が存在し、ユーザー承認済み
+  □ docs/design/core/SSOT-4_DATA_MODEL.md が存在し、ユーザー承認済み
+  □ docs/design/core/SSOT-5_CROSS_CUTTING.md が存在し、ユーザー承認済み
+  □ CLAUDE.md の {{}} が全て確定値で埋まっている
+
+生成ルール:
+  - 1ドキュメントずつ生成 → 表示 → 確認 → 次へ
+  - TECH_STACK は選択肢を提示してユーザーが選ぶ
+```
+
 ## Freeze 単位の進行
 
 ### 基本概念

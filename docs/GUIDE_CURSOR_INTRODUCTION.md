@@ -17,27 +17,50 @@
 
 ---
 
-## 導入フロー
+## 重要: 導入の原則
 
 ```
-Phase 1: フレームワーク構造を構築（プロンプト①）
-  → docs/ ディレクトリ、CLAUDE.md、Agent Teams を配置
-  → 既存資料を読み取り、フレームワーク構造にマッピング
+■ 1プロンプト = 1ステップ（絶対ルール）
 
-Phase 2: 既存資料 → SSOT 変換（プロンプト②）
-  → 既存の README、ペルソナ等からSSOT仕様書を生成
-  → 不足情報のみヒアリング
+  複数ステップを1つのプロンプトに含めない。
+  LLM は「効率化」のつもりでステップを飛ばす傾向がある。
+  これを防ぐため、物理的に1ステップずつ進める。
 
-Phase 3: 技術設計 → 開発開始（プロンプト③）
-  → 技術スタック確定、API/DB/横断設計
-  → 実装計画作成 → 開発開始
+■ 確認 → 承認 → 次へ（ゲート方式）
+
+  各ステップ完了後:
+  1. AI が成果物を表示する
+  2. ユーザーが内容を確認する
+  3. ユーザーが「次へ」と言うまで進まない
+
+■ スキップ禁止
+
+  「まとめて生成」「一括作成」は品質低下の最大原因。
+  1ドキュメントずつ、確認を挟んで進める。
 ```
 
 ---
 
-## Phase 1: フレームワーク構造を構築
+## 導入フロー全体像
 
-Cursor Agent に以下を貼ってください:
+```
+Prompt 1: フレームワーク構造構築          ← 5分
+Prompt 2: 既存資料の棚卸し・分類          ← 10分
+Prompt 3: IDEA_CANVAS 生成               ← 10分
+Prompt 4: USER_PERSONA 生成              ← 10分
+Prompt 5: COMPETITOR_ANALYSIS 生成       ← 10分
+Prompt 6: VALUE_PROPOSITION 生成         ← 10分
+Prompt 7: PRD 生成                       ← 15分
+Prompt 8: FEATURE_CATALOG 生成           ← 15分
+Prompt 9: P0機能の詳細ヒアリング開始      ← 機能ごとに15-30分
+   ※ P0機能の数だけ Prompt 9 を繰り返す
+Prompt 10: 技術設計                      ← 20分
+Prompt 11: 開発開始                      ← 開発フェーズへ
+```
+
+---
+
+## Prompt 1: フレームワーク構造構築
 
 ```
 このプロジェクトに AI 開発フレームワークを導入します。
@@ -45,25 +68,9 @@ Cursor Agent に以下を貼ってください:
 ■ フレームワーク参照元
 https://github.com/watchout/ai-dev-framework
 
-■ 現状
-このリポジトリには既に README.md やペルソナストーリーなどの資料があります。
-まずそれらを全て読み込んでから作業を始めてください。
+■ このステップでやること（これだけ。他は何もしない）
 
-■ やること
-
-1. 既存資料の棚卸し
-   - リポジトリ内の全 .md ファイルを読み込む
-   - 各資料の内容を以下に分類:
-     ・アイデア/概要 → docs/idea/ に対応
-     ・ユーザー/ペルソナ → docs/idea/USER_PERSONA.md に対応
-     ・競合/市場 → docs/idea/COMPETITOR_ANALYSIS.md に対応
-     ・機能/要件 → docs/requirements/ に対応
-     ・技術/設計 → docs/design/ に対応
-     ・その他
-   - 分類結果を表示して確認を取る
-
-2. フレームワークのディレクトリ構造を作成
-   （既存ファイルは移動せず、新しい構造を追加する）
+1. 以下のディレクトリ構造を作成:
    - docs/idea/
    - docs/requirements/
    - docs/design/core/
@@ -77,178 +84,438 @@ https://github.com/watchout/ai-dev-framework
    - docs/management/
    - .claude/agents/
 
-3. CLAUDE.md を作成
-   - ai-dev-framework/templates/project/CLAUDE.md をベースに作成
-   - 既存資料から読み取れる情報で {{}} を埋める
-   - 不明な項目は TBD のままで OK
+2. CLAUDE.md を作成
+   ai-dev-framework/templates/project/CLAUDE.md をベースに作成。
+   プロジェクト名と概要だけ埋めて、他の {{}} は TBD のまま。
 
-4. Agent Teams テンプレートを配置
-   - ai-dev-framework/templates/project/agents/ から以下をコピー:
-     ・visual-tester.md
-     ・code-reviewer.md
-     ・ssot-explorer.md
-   - {{PROJECT_NAME}} をプロジェクト名で置換
+3. Agent Teams テンプレートを .claude/agents/ に配置
+   ai-dev-framework/templates/project/agents/ から:
+   - visual-tester.md
+   - code-reviewer.md
+   - ssot-explorer.md
 
-5. docs/INDEX.md を作成
-   - 既存資料の配置先マッピングを含める
+4. .gitignore を作成
 
-6. .gitignore がなければ作成
+5. 作成したファイル一覧を表示
 
-7. 完了報告
-   - 作成したファイル一覧
-   - 既存資料 → フレームワーク構造のマッピング表
-   - 次の Phase で必要な作業の概要
+■ 禁止事項
+- 既存ファイルを移動・変更しない
+- 仕様書やドキュメントの中身を生成しない
+- 次のステップに進まない
 ```
 
 ---
 
-## Phase 2: 既存資料 → SSOT 変換
-
-Phase 1 完了後に貼ってください:
+## Prompt 2: 既存資料の棚卸し
 
 ```
-既存の資料をベースに SSOT 仕様書を生成します。
+フレームワーク導入の Step 2 です。
+
+■ やること（これだけ）
+
+1. このリポジトリ内の全 .md ファイルと資料を読み込む
+
+2. 各資料を以下のカテゴリに分類して表を作成:
+
+   | ファイル | 内容要約 | 対応するSSOT | 活用度 |
+   |---------|---------|-------------|--------|
+   | README.md | ... | IDEA_CANVAS, PRD | 高 |
+   | persona.md | ... | USER_PERSONA | 高 |
+   | ... | ... | ... | ... |
+
+   活用度:
+   - 高: そのまま SSOT に変換可能
+   - 中: 一部情報が使える
+   - 低: 参考程度
+
+3. 不足している情報を一覧で表示:
+   「以下の情報が既存資料にありません:
+    - 競合分析
+    - 収益モデルの詳細
+    - ...」
+
+4. 表示して確認を待つ
+
+■ 禁止事項
+- ドキュメントを生成しない（分類と分析だけ）
+- 次のステップに進まない
+```
+
+---
+
+## Prompt 3: IDEA_CANVAS 生成
+
+```
+フレームワーク導入の Step 3 です。
 
 ■ 参照
-- フレームワーク: https://github.com/watchout/ai-dev-framework
-- SSOT 形式: 12_SSOT_FORMAT.md
-- 生成チェーン: 10_GENERATION_CHAIN.md
-- ディスカバリーフロー: 08_DISCOVERY_FLOW.md
-
-■ ルール
-- 既存資料に書いてある情報はそのまま活用する（再質問しない）
-- 既存資料にない情報だけヒアリングする
-- ヒアリングは一度に1つだけ質問する
-- SSOT 3層構造（CORE/CONTRACT/DETAIL）に従う
+- テンプレート: ai-dev-framework/templates/idea/IDEA_CANVAS.md
+- 既存資料: [Step 2 で特定した関連ファイルを列挙]
 
 ■ やること
 
-Step 1: 事業設計ドキュメント
-  既存資料から以下を生成（既に資料がある場合はSSOT形式に変換）:
-  - docs/idea/IDEA_CANVAS.md
-  - docs/idea/USER_PERSONA.md
-  - docs/idea/COMPETITOR_ANALYSIS.md
-  - docs/idea/VALUE_PROPOSITION.md
-  各ドキュメント完了後に確認を取ってから次へ。
+1. 既存資料の関連情報を読み込む
+2. IDEA_CANVAS.md のテンプレートに沿って docs/idea/IDEA_CANVAS.md を生成
+3. 既存資料にない項目は「[要確認]」マーカーを付ける
+4. 生成結果を表示する
+5. [要確認] 項目があれば、1つずつ質問する（一度に複数質問しない）
 
-Step 2: プロダクト設計ドキュメント
-  - docs/requirements/SSOT-0_PRD.md（プロダクト要件定義）
-  - docs/requirements/SSOT-1_FEATURE_CATALOG.md（機能カタログ）
-  - docs/design/core/SSOT-2_UI_STATE.md（画面・状態遷移）
-  各機能の SSOT:
-  - 共通機能（認証、ログイン等）→ ai-dev-framework/common-features/ から取得
-  - 固有機能 → 11_FEATURE_SPEC_FLOW.md に従いヒアリング
-  各ドキュメント完了後に確認を取ってから次へ。
+■ 禁止事項
+- 他のドキュメントを生成しない
+- [要確認] を勝手に埋めない（必ず質問する）
+- 次のステップに進まない
 
-Step 1 から開始してください。
-既存の [ここに既存資料のファイル名を列挙] を最初に読み込んでから始めてください。
+■ 完了条件
+- IDEA_CANVAS.md が docs/idea/ に保存されている
+- [要確認] が全て解消されている
+- ユーザーが内容を承認している
 ```
 
 ---
 
-## Phase 3: 技術設計 → 開発開始
-
-Phase 2 完了後に貼ってください:
+## Prompt 4: USER_PERSONA 生成
 
 ```
-技術設計を行い、開発を開始します。
+フレームワーク導入の Step 4 です。
 
 ■ 参照
-- フレームワーク: https://github.com/watchout/ai-dev-framework
-- 実装順序: 14_IMPLEMENTATION_ORDER.md
-- テスト規約: 18_TEST_FORMAT.md
-- CI/PR基準: 19_CI_PR_STANDARDS.md
+- テンプレート: ai-dev-framework/templates/idea/USER_PERSONA.md
+- インプット: docs/idea/IDEA_CANVAS.md（Step 3 で作成済み）
+- 既存資料: [ペルソナ関連の既存ファイルを列挙]
 
 ■ やること
 
-Step 1: 技術設計
-  以下を順番に生成（各完了後に確認を取る）:
-  - docs/standards/TECH_STACK.md（技術スタック選定）
-  - docs/design/core/SSOT-3_API_CONTRACT.md（API共通ルール）
-  - docs/design/core/SSOT-4_DATA_MODEL.md（データモデル）
-  - docs/design/core/SSOT-5_CROSS_CUTTING.md（認証・エラー・ログ）
-  - docs/standards/CODING_STANDARDS.md
-  - docs/standards/GIT_WORKFLOW.md
-  - docs/standards/TESTING_STANDARDS.md
+1. IDEA_CANVAS.md と既存ペルソナ資料を読み込む
+2. USER_PERSONA.md を生成（docs/idea/USER_PERSONA.md）
+3. 既存資料にない項目は「[要確認]」マーカーを付ける
+4. 生成結果を表示する
+5. [要確認] 項目があれば、1つずつ質問する
 
-Step 2: プロジェクト初期化
-  - package.json / tsconfig.json 等のプロジェクト設定
-  - src/ ディレクトリのスキャフォールド
-  - .github/workflows/ci.yml（CI/CD）
-  - CLAUDE.md の {{}} をすべて確定値で更新
+■ 禁止事項
+- 他のドキュメントを生成しない
+- [要確認] を勝手に埋めない
+- 次のステップに進まない
 
-Step 3: 実装計画
-  - 14_IMPLEMENTATION_ORDER.md に基づいてタスク分解
-  - 縦スライス × Wave で実装順序を決定
-  - docs/management/IMPLEMENTATION_PLAN.md を作成
-  - GitHub Projects で Issue を作成（gh CLI）
-
-Step 4: 開発開始
-  - 最初のタスク（Wave 1 の最初の機能）を実装
-  - Adversarial Review（code-reviewer エージェント）でレビュー
-  - PR 作成
-
-Step 1 から開始してください。
+■ 完了条件
+- USER_PERSONA.md が保存されている
+- [要確認] が全て解消されている
+- ユーザーが承認している
 ```
 
 ---
 
-## Cursor での Tips
-
-### CLAUDE.md が自動で効く
-
-Cursor は `CLAUDE.md` を自動で読み込むため、Phase 1 で作成した
-CLAUDE.md のルールが以降の全操作に適用されます。
-
-### Agent Teams の使い方（Cursor）
-
-Cursor では `.claude/agents/` の Agent Teams は直接使えませんが、
-同等のことを Task tool で実現できます:
+## Prompt 5: COMPETITOR_ANALYSIS 生成
 
 ```
-# コードレビュー
-"新しいエージェントを起動して、17_CODE_AUDIT.md に基づいて
- src/features/auth/ のコードをレビューして。
- あなたは厳格なコードレビュアー（Role B）です。"
+フレームワーク導入の Step 5 です。
 
-# SSOT 検索
-"新しいエージェントを起動して、docs/ から AUTH-001 に関連する
- 全ての仕様を検索・要約して。"
+■ 参照
+- テンプレート: ai-dev-framework/templates/idea/COMPETITOR_ANALYSIS.md
+- インプット: docs/idea/IDEA_CANVAS.md, docs/idea/USER_PERSONA.md
+- 既存資料: [競合関連の既存ファイルがあれば列挙]
+
+■ やること
+
+1. 前ステップの成果物と既存資料を読み込む
+2. COMPETITOR_ANALYSIS.md を生成（docs/idea/）
+3. 既存資料にない項目は「[要確認]」マーカー
+4. 生成結果を表示 → [要確認] を1つずつ質問
+
+■ 禁止事項・完了条件: 前ステップと同じ
 ```
 
-### セッションが長くなったら
+---
+
+## Prompt 6: VALUE_PROPOSITION 生成
 
 ```
-"ここまでの作業内容を要約して、
- 次のセッションで使える引き継ぎプロンプトを作成して。"
+フレームワーク導入の Step 6 です。
+
+■ 参照
+- テンプレート: ai-dev-framework/templates/idea/VALUE_PROPOSITION.md
+- インプット: docs/idea/ の全ドキュメント（IDEA_CANVAS, PERSONA, COMPETITOR）
+
+■ やること
+
+1. docs/idea/ の3ドキュメントを全て読み込む
+2. VALUE_PROPOSITION.md を生成（docs/idea/）
+3. [要確認] マーカー → 1つずつ質問
+4. 生成結果を表示して確認を待つ
+
+■ 禁止事項・完了条件: 前ステップと同じ
+
+■ ゲートチェック（Step 6 完了時）
+以下の4ファイルが全て存在し、[要確認] がゼロであること:
+- docs/idea/IDEA_CANVAS.md
+- docs/idea/USER_PERSONA.md
+- docs/idea/COMPETITOR_ANALYSIS.md
+- docs/idea/VALUE_PROPOSITION.md
+→ 全て確認できたら「事業設計フェーズ完了」と表示
+```
+
+---
+
+## Prompt 7: PRD 生成
+
+```
+フレームワーク導入の Step 7 です。
+
+■ 参照
+- フォーマット: ai-dev-framework/12_SSOT_FORMAT.md
+- インプット: docs/idea/ の全ドキュメント
+- 既存資料: [要件に関する既存ファイルがあれば列挙]
+
+■ やること
+
+1. docs/idea/ の4ドキュメントを全て読み込む
+2. SSOT-0_PRD.md を生成（docs/requirements/）
+3. SSOT 3層構造（CORE/CONTRACT/DETAIL）に従う
+4. CORE層とCONTRACT層を重点的に確定する
+5. [要確認] マーカー → 1つずつ質問
+6. 生成結果を表示して確認を待つ
+
+■ 禁止事項
+- FEATURE_CATALOG は生成しない（次のステップ）
+- [要確認] を勝手に埋めない
+- 次のステップに進まない
+```
+
+---
+
+## Prompt 8: FEATURE_CATALOG 生成
+
+```
+フレームワーク導入の Step 8 です。
+
+■ 参照
+- フォーマット: ai-dev-framework/12_SSOT_FORMAT.md
+- インプット: docs/requirements/SSOT-0_PRD.md
+
+■ やること
+
+1. PRD を読み込む
+2. SSOT-1_FEATURE_CATALOG.md を生成（docs/requirements/）
+3. 各機能に ID を付与（例: EVT-001, USR-001）
+4. 優先度を P0/P1/P2 で分類
+5. P0 機能を明確にリストする
+6. 生成結果を表示して確認を待つ
+
+■ 確認事項（ユーザーに必ず聞く）
+- P0 機能のリストは正しいか？
+- 不足している機能はないか？
+- 優先度の変更はあるか？
+
+■ 禁止事項
+- 機能の詳細仕様（SSOT）を生成しない（次のステップ）
+- 次のステップに進まない
+
+■ ゲートチェック（Step 8 完了時）
+以下が確認できたら「プロダクト概要フェーズ完了」と表示:
+- docs/requirements/SSOT-0_PRD.md が存在
+- docs/requirements/SSOT-1_FEATURE_CATALOG.md が存在
+- P0 機能リストがユーザー承認済み
+→ 「次は P0 機能ごとの詳細ヒアリングです。1機能ずつ進めます。」
+```
+
+---
+
+## Prompt 9: P0 機能の詳細ヒアリング（機能ごとに繰り返す）
+
+```
+フレームワーク導入の Step 9 です。
+P0 機能を1つずつ詳細化して SSOT を作成します。
+
+■ 対象機能
+[機能ID]: [機能名]
+（例: EVT-001: ゴールベースイベント作成）
+
+■ 参照
+- ヒアリングプロセス: ai-dev-framework/11_FEATURE_SPEC_FLOW.md
+- SSOT フォーマット: ai-dev-framework/12_SSOT_FORMAT.md
+- 共通機能テンプレート: ai-dev-framework/common-features/
+
+■ やること（11_FEATURE_SPEC_FLOW.md に従う）
+
+Phase A: 機能の分類
+  - この機能は共通機能か固有機能か判定
+  - 共通機能なら ai-dev-framework/common-features/ からテンプレート取得
+  - 固有機能なら以下の Phase B へ
+
+Phase B: ヒアリング（1問ずつ。まとめて聞かない）
+  1. この機能の主要なユーザーフローを確認
+     「[機能名] の典型的な操作フローを教えてください。
+      例: ○○画面を開く → △△を入力 → □□ボタンを押す → 結果が表示される」
+
+  2. ビジネスルールを確認
+     「この機能で守るべきビジネスルールはありますか？
+      例: 1ユーザーあたり最大10件まで、○○の場合は△△が必要」
+
+  3. 画面構成を確認
+     「この機能の画面イメージを教えてください。
+      どんな入力項目があり、どんな表示がありますか？」
+
+  4. エラーケースを確認
+     「想定されるエラーや異常系はありますか？
+      例: 入力値不正、権限なし、タイムアウト」
+
+  5. 他機能との関連を確認
+     「この機能は他のどの機能と連携しますか？」
+
+Phase C: SSOT 生成
+  - ヒアリング結果を SSOT 形式で生成
+  - docs/design/features/project/[機能ID]_[名前].md に保存
+  - Freeze 2（CONTRACT層）まで確定
+  - DETAIL層は [後決定] マーカーで OK
+
+Phase D: 確認
+  - 生成した SSOT を表示
+  - ユーザーが承認するまで修正
+
+■ 禁止事項
+- 複数の質問を同時にしない（1問ずつ）
+- ヒアリングをスキップして仕様を推測しない
+- 他の機能の SSOT を生成しない（1機能ずつ）
+- 次の機能に進まない（ユーザーが「次へ」と言うまで）
+
+■ 完了条件
+- [機能ID] の SSOT ファイルが保存されている
+- Freeze 2 まで確定している
+- ユーザーが承認している
+→ 「[機能ID] 完了。次の P0 機能に進みますか？」
+```
+
+**この Prompt 9 を P0 機能の数だけ繰り返します。**
+
+---
+
+## Prompt 10: 技術設計
+
+```
+フレームワーク導入の Step 10 です。
+
+■ ゲートチェック（開始前に確認）
+以下が全て存在することを確認してから開始:
+- docs/idea/ に 4ドキュメント
+- docs/requirements/ に PRD + FEATURE_CATALOG
+- docs/design/features/ に P0 機能の SSOT 全て
+→ 不足があれば報告して停止
+
+■ 参照
+- ai-dev-framework/10_GENERATION_CHAIN.md（Step 3: Technical）
+
+■ やること（1ドキュメントずつ、確認を挟む）
+
+1. docs/standards/TECH_STACK.md を生成
+   → ユーザー確認を待つ
+
+2. docs/design/core/SSOT-3_API_CONTRACT.md を生成
+   → ユーザー確認を待つ
+
+3. docs/design/core/SSOT-4_DATA_MODEL.md を生成
+   → ユーザー確認を待つ
+
+4. docs/design/core/SSOT-5_CROSS_CUTTING.md を生成
+   → ユーザー確認を待つ
+
+5. docs/standards/CODING_STANDARDS.md を生成
+   → ユーザー確認を待つ
+
+6. CLAUDE.md の {{}} を全て確定値で更新
+
+■ 禁止事項
+- 全ドキュメントを一括生成しない（1つずつ）
+- 確認を取らずに次のドキュメントに進まない
+```
+
+---
+
+## Prompt 11: 開発開始
+
+```
+フレームワーク導入の最終ステップです。
+
+■ やること
+
+1. docs/management/IMPLEMENTATION_PLAN.md を作成
+   - 14_IMPLEMENTATION_ORDER.md に基づいてタスク分解
+   - 縦スライス × Wave で実装順序を決定
+
+2. .github/workflows/ci.yml を作成
+   - 19_CI_PR_STANDARDS.md に基づく
+
+3. プロジェクトのスキャフォールド
+   - package.json, tsconfig.json 等
+   - src/ ディレクトリ構造
+
+4. 実装計画を表示して確認
+
+5. 「Wave 1 の最初の機能から実装を開始しますか？」と聞く
+
+■ 禁止事項
+- 確認なしで実装を開始しない
+```
+
+---
+
+## トラブルシューティング
+
+### LLM がステップを飛ばそうとする場合
+
+以下を追加で貼ってください:
+
+```
+重要: あなたは今 Step [N] だけを実行しています。
+Step [N+1] 以降は絶対に実行しないでください。
+このステップの完了条件を満たしたら、
+結果を表示して私の確認を待ってください。
+```
+
+### LLM が一括生成しようとする場合
+
+```
+停止してください。1ドキュメントずつ生成し、
+各ドキュメントの生成後に私の確認を取ってから
+次のドキュメントに進んでください。
+まず [ドキュメント名] だけを生成してください。
+```
+
+### セッションが長くなった場合
+
+```
+ここまでの作業内容を要約して、
+次のセッションで使える引き継ぎプロンプトを作成して。
+現在のステップ番号と、完了済み/未完了のドキュメント一覧を含めて。
 ```
 
 ---
 
 ## チェックリスト
 
-### Phase 1 完了時
+### Phase 1（構造構築）完了時 - Prompt 1-2
 
 - [ ] docs/ ディレクトリ構造が作成されている
 - [ ] CLAUDE.md が配置されている
 - [ ] .claude/agents/ に 3 エージェントが配置されている
-- [ ] 既存資料 → フレームワーク構造のマッピングが確認済み
-- [ ] docs/INDEX.md が作成されている
+- [ ] 既存資料の分類表が作成・確認済み
 
-### Phase 2 完了時
+### Phase 2（事業設計）完了時 - Prompt 3-6
 
-- [ ] docs/idea/ に 4 ドキュメントが生成されている
-- [ ] docs/requirements/ に PRD と FEATURE_CATALOG がある
-- [ ] docs/design/core/SSOT-2_UI_STATE.md がある
-- [ ] 全機能の SSOT が docs/design/features/ にある
-- [ ] Freeze 2（Contract）まで確定している
+- [ ] docs/idea/IDEA_CANVAS.md — [要確認] ゼロ、承認済み
+- [ ] docs/idea/USER_PERSONA.md — [要確認] ゼロ、承認済み
+- [ ] docs/idea/COMPETITOR_ANALYSIS.md — [要確認] ゼロ、承認済み
+- [ ] docs/idea/VALUE_PROPOSITION.md — [要確認] ゼロ、承認済み
 
-### Phase 3 完了時
+### Phase 3（プロダクト設計）完了時 - Prompt 7-9
 
-- [ ] docs/standards/ に技術規約がある
-- [ ] docs/design/core/ に SSOT-3, 4, 5 がある
-- [ ] プロジェクトのスキャフォールドが完成
+- [ ] docs/requirements/SSOT-0_PRD.md — 承認済み
+- [ ] docs/requirements/SSOT-1_FEATURE_CATALOG.md — P0 リスト承認済み
+- [ ] P0 機能の SSOT が全て docs/design/features/ に存在
+- [ ] 各 SSOT が Freeze 2 まで確定
+
+### Phase 4（技術設計・開発開始）完了時 - Prompt 10-11
+
+- [ ] docs/standards/TECH_STACK.md — 承認済み
+- [ ] docs/design/core/ に SSOT-3, 4, 5 — 各承認済み
+- [ ] CLAUDE.md の {{}} が全て確定値
 - [ ] CI/CD が設定されている
-- [ ] CLAUDE.md の {{}} がすべて確定値で埋まっている
 - [ ] 実装計画が作成されている
-- [ ] 最初の機能の実装が開始されている
