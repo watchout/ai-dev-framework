@@ -12,6 +12,13 @@
 ```
 .claude/skills/
 ├── _INDEX.md              ← このファイル
+├── agent-teams/           ← Agent Teams運用パターン（実証済み）
+│   ├── SKILL.md
+│   ├── agents/
+│   │   ├── analysis-team.md      ← 分析チーム
+│   │   └── investigation-team.md ← 調査チーム
+│   └── references/
+│       └── INTERFACE_CONTRACT_TEMPLATE.md
 ├── deliberation/          ← 合議制意思決定
 │   ├── SKILL.md
 │   └── agents/
@@ -44,6 +51,7 @@
 
 | フェーズ | スキル | 説明 | コマンド |
 |---------|--------|------|----------|
+| Agent Teams | agent-teams | 複数エージェント協調パターン | `チーム編成して` |
 | 合議 | deliberation | 多専門家合議制意思決定 | `合議して` |
 | Discovery | discovery | アイデア発見・検証 | `ディスカバリー` |
 | Business | business | 事業設計 | `ビジネス設計` |
@@ -51,6 +59,21 @@
 | Technical | technical | 技術設計 | `技術設計` |
 | Implementation | implementation | 実装 | `実装` |
 | Review | review-council | 最終レビュー | `レビュー評議会` |
+
+## Agent Teams パターン（実証済み）
+
+国内外の事例に基づく実証済みパターン:
+
+| パターン | エージェント数 | 適用場面 | 事例 |
+|---------|---------------|----------|------|
+| 分析チーム | 3体 | サイト診断、品質評価 | クラスメソッド清水氏 |
+| 開発チーム | 3-5体 | 機能開発、アプリ構築 | Cole Medin, 和田氏 |
+| 調査チーム | 5体 | バグ調査、原因究明 | Joe Njenga氏 |
+| 企画チーム | 3体 | 企画書作成、戦略立案 | 森本洋平氏 |
+| 大規模チーム | 16体 | 大規模開発 | Nicholas Carlini氏 |
+
+**重要**: インターフェース契約を事前定義することで不整合を防止
+→ `agent-teams/references/INTERFACE_CONTRACT_TEMPLATE.md`
 
 ## 専門家一覧
 
