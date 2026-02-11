@@ -14,6 +14,7 @@ NC='\033[0m' # No Color
 # フレームワークのルートディレクトリ
 FRAMEWORK_ROOT="${FRAMEWORK_ROOT:-$(dirname "$(dirname "$(readlink -f "$0")")")}"
 SKILLS_SOURCE="$FRAMEWORK_ROOT/.claude/skills"
+FRAMEWORK_GUIDE="$FRAMEWORK_ROOT/templates/project/FRAMEWORK_GUIDE.md"
 
 # 使い方
 usage() {
@@ -79,6 +80,62 @@ update_index() {
 
     cp "$SKILLS_SOURCE/_INDEX.md" "$index_file"
     log_success "INDEX更新完了"
+}
+
+# フレームワークガイドのインストール
+install_framework_guide() {
+    local target_dir=$1
+    local dest_dir="$target_dir/docs"
+    local dest_file="$dest_dir/FRAMEWORK_GUIDE.md"
+
+    if [ ! -f "$FRAMEWORK_GUIDE" ]; then
+        log_warn "FRAMEWORK_GUIDE.md が見つかりません"
+        return 0
+    fi
+
+    if [ "$DRY_RUN" = true ]; then
+        log_info "[DRY-RUN] コピー: $FRAMEWORK_GUIDE → $dest_file"
+        return 0
+    fi
+
+    mkdir -p "$dest_dir"
+    cp "$FRAMEWORK_GUIDE" "$dest_file"
+    log_success "FRAMEWORK_GUIDE.md インストール完了"
+}
+
+# CLAUDE.mdにフレームワーク参照を追加
+update_claude_md() {
+    local target_dir=$1
+    local claude_md="$target_dir/CLAUDE.md"
+
+    if [ ! -f "$claude_md" ]; then
+        log_warn "CLAUDE.md が見つかりません: $claude_md"
+        return 0
+    fi
+
+    # 既にフレームワーク参照がある場合はスキップ
+    if grep -q "FRAMEWORK_GUIDE.md" "$claude_md" 2>/dev/null; then
+        log_info "CLAUDE.md は既にフレームワーク参照を含んでいます"
+        return 0
+    fi
+
+    if [ "$DRY_RUN" = true ]; then
+        log_info "[DRY-RUN] CLAUDE.md にフレームワーク参照を追加"
+        return 0
+    fi
+
+    # CLAUDE.mdの先頭にフレームワーク参照を追加
+    local temp_file=$(mktemp)
+    cat > "$temp_file" << 'FRAMEWORK_REF'
+> **重要**: このプロジェクトはAI開発フレームワークを使用しています。
+> 開発フロー、スキルシステム、合議制については `docs/FRAMEWORK_GUIDE.md` を参照してください。
+
+---
+
+FRAMEWORK_REF
+    cat "$claude_md" >> "$temp_file"
+    mv "$temp_file" "$claude_md"
+    log_success "CLAUDE.md にフレームワーク参照を追加"
 }
 
 # メイン処理
@@ -198,13 +255,20 @@ main() {
     # INDEX更新
     update_index "$TARGET_DIR"
 
+    # フレームワークガイドのインストール
+    install_framework_guide "$TARGET_DIR"
+
+    # CLAUDE.mdの更新
+    update_claude_md "$TARGET_DIR"
+
     echo ""
     log_success "====== インストール完了 ======"
     echo ""
     log_info "次のステップ:"
     echo "  1. cd $TARGET_DIR"
-    echo "  2. cat .claude/skills/_INDEX.md でスキル一覧を確認"
-    echo "  3. 「ディスカバリーを開始して」などでスキルを実行"
+    echo "  2. cat docs/FRAMEWORK_GUIDE.md でフレームワーク概念を確認"
+    echo "  3. cat .claude/skills/_INDEX.md でスキル一覧を確認"
+    echo "  4. 「ディスカバリーを開始して」などでスキルを実行"
     echo ""
 }
 
