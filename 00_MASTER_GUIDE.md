@@ -1,4 +1,4 @@
-# AI開発フレームワーク v3.0 - マスターガイド
+# AI開発フレームワーク v3.4 - マスターガイド
 
 > 「こんなの作りたい」の一言から、AI開発可能な仕様書一式を生成し、
 > 開発を開始するためのフレームワーク
@@ -237,6 +237,19 @@ ai-dev-framework-v3/
 │   ├── idea/                          ← アイデア検証テンプレート (4)
 │   ├── marketing/                     ← マーケティングテンプレート (5)
 │   ├── growth/                        ← グロースハックテンプレート (2)
+│   ├── skills/                        ← ★ Agent Skills（擬似マルチエージェント）
+│   │   ├── SKILLS_INDEX.md            ← Skills 一覧
+│   │   ├── _deliberation/             ← Deliberation Protocol（多視点対話）
+│   │   ├── orchestrator/              ← 全体ナビゲーター
+│   │   ├── review-council/            ← 多視点レビュー会議
+│   │   ├── discovery/                 ← ディスカバリー専門家
+│   │   ├── business-design/           ← 事業設計専門家
+│   │   ├── product-design/            ← PRD・機能カタログ
+│   │   ├── feature-spec/              ← 機能仕様設計専門家
+│   │   ├── technical-design/          ← テクニカルアーキテクト
+│   │   ├── implementation/            ← 実装者
+│   │   ├── code-audit/                ← Adversarial Review
+│   │   └── ssot-audit/                ← SSOT 品質監査
 │   ├── (開発規約テンプレート)            (12)
 │   └── project/                       ← ★ プロジェクト初期構築キット
 │       ├── CLAUDE.md                  ← Claude Code 用指示書テンプレート
@@ -253,16 +266,17 @@ ai-dev-framework-v3/
 └── customization/                     ← カスタマイズログ
 ```
 
-### 重要ドキュメント TOP 6
+### 重要ドキュメント TOP 7
 
 | 順位 | ドキュメント | いつ読むか |
 |------|------------|-----------|
-| 1 | **08_DISCOVERY_FLOW.md** | 最初に。プロダクト全体のヒアリング |
-| 2 | **10_GENERATION_CHAIN.md** | ディスカバリー後。仕様書の生成順序 |
-| 3 | **11_FEATURE_SPEC_FLOW.md** | 各機能の詳細設計。ジャンル分け→親タスク→ヒアリング→SSOT |
-| 4 | **12_SSOT_FORMAT.md** | SSOT作成時。IEEE/ISO準拠フォーマット |
-| 5 | **13_SSOT_AUDIT.md** | SSOT完成時。品質監査（95点以上で合格） |
-| 6 | **18_TEST_FORMAT.md** | テスト実装時。TDD条件・テスト監査 |
+| 1 | **templates/skills/SKILLS_INDEX.md** | 最初に。Agent Skills の全体像と使い方 |
+| 2 | **08_DISCOVERY_FLOW.md** | プロダクト全体のヒアリング |
+| 3 | **10_GENERATION_CHAIN.md** | ディスカバリー後。仕様書の生成順序 |
+| 4 | **11_FEATURE_SPEC_FLOW.md** | 各機能の詳細設計。ジャンル分け→親タスク→ヒアリング→SSOT |
+| 5 | **12_SSOT_FORMAT.md** | SSOT作成時。IEEE/ISO準拠フォーマット |
+| 6 | **13_SSOT_AUDIT.md** | SSOT完成時。品質監査（95点以上で合格） |
+| 7 | **18_TEST_FORMAT.md** | テスト実装時。TDD条件・テスト監査 |
 
 ---
 
@@ -315,8 +329,12 @@ PRD（90%）
     │     ジャンル分け → 親タスク → 小タスク
     │     → AIヒアリング（推奨パターン提示）
     │     → 12_SSOT_FORMAT.md（IEEE/ISO準拠）で作成
+    │     → 🔒 §3-E/F/G/H 必須セクション生成（⑧.5 Gate）
+    │        §3-E 入出力例 / §3-F 境界値 / §3-G 例外応答 / §3-H Gherkin
+    │        → 4セクション全て生成するまで次に進めない
     │     → 既存ドキュメント矛盾チェック
     │     → 13_SSOT_AUDIT.md で監査（95点合格）
+    │     → Pre-Implementation Readiness Check（§3-E/F/G/H 事前監査）
     └─→ LP_SPEC等（60%）※マーケ意向ありの場合
 ```
 
@@ -346,6 +364,16 @@ TECH_STACK（95%）
 ```
 my-project/
 ├── CLAUDE.md                     ← Claude Code 指示書（設定済み）
+│
+├── .claude/
+│   ├── skills/                   ← Agent Skills（擬似マルチエージェント）
+│   │   ├── SKILLS_INDEX.md
+│   │   ├── _deliberation/        ← 多視点対話プロトコル
+│   │   ├── orchestrator/         ← 全体ナビゲーター
+│   │   ├── discovery/            ← ディスカバリー専門家
+│   │   ├── feature-spec/         ← 機能仕様専門家
+│   │   └── ...                   ← その他 Skills
+│   └── agents/                   ← Agent Teams
 │
 ├── docs/                         ← 仕様書一式（内容が入った状態）
 │   ├── idea/                     ← アイデア検証（Step 1 で生成）
@@ -505,6 +533,78 @@ Step完了時:
   1. 進捗表示を更新して出力
   2. 次のStepの概要を説明
   3. ユーザーに進行の確認を求める
+```
+
+---
+
+## Agent Skills（擬似マルチエージェント + 多視点対話）
+
+### 概要
+
+```
+各フェーズの仕事を「専門家1人分のマニュアル」として Skills に分離。
+1つの LLM が Skills を切り替えることで、
+複数の専門家チームが対話しながら開発を進める効果が得られる。
+
+3層の品質保証:
+  Layer 1: 専門 Skill（生成）    → 各フェーズに特化した専門家
+  Layer 2: 内部 Deliberation     → Skill 内で3人の専門家が議論
+  Layer 3: Review Council       → フェーズ節目で独立レビュー会議
+```
+
+### Skills 一覧と対応フェーズ
+
+```
+  Step 0   Step 1      Step 2         Step 3       Step 4
+  ──────  ──────     ──────        ──────      ──────
+  discovery business   product        technical    implement
+  (💬)               feature-spec   (💬)         code-audit
+                     (💬)                         ssot-audit
+
+  💬 = Deliberation（多視点対話）内蔵
+
+  統括: orchestrator       → 全体ナビゲーター
+  品質: review-council     → フェーズ間の多視点レビュー
+```
+
+### 利用方法
+
+```
+Claude.ai:
+  各 Skill フォルダを ZIP 化 → 設定 > 機能 > スキル > アップロード
+  → チャットで「ディスカバリーを始めたい」と言えば自動起動
+
+Claude Code:
+  .claude/skills/ に配置（setup-project.sh が自動デプロイ）
+  → Claude Code が自動的に検出して使用
+
+Cursor:
+  .cursor/rules/ にルールとして配置
+  → または、チャットにプロンプトとして貼り付けて使用
+```
+
+### Deliberation Protocol（多視点対話）
+
+```
+重要な判断ポイントで、3人の専門家が以下のプロトコルで議論:
+
+Phase 1: ドラフト確認    → 各自が独立にレビュー
+Phase 2: チャレンジ      → 互いの見落とし・矛盾を指摘
+Phase 3: 統合           → 合意した指摘を重要度付きでリスト化
+Phase 4: ユーザー報告    → Critical/Major をユーザーに報告
+
+参加する専門家パネル（フェーズ別に異なる）:
+  Discovery:    起業家 × ユーザーリサーチャー × テクニカルアドバイザー
+  Feature Spec: セキュリティ × QA × エンジニア
+  Tech Design:  SRE × セキュリティアーキテクト × DBA
+```
+
+### 詳細
+
+```
+Skills 一覧・詳細:   templates/skills/SKILLS_INDEX.md
+対話プロトコル:      templates/skills/_deliberation/DELIBERATION_PROTOCOL.md
+ツールチェーン統合:   09_TOOLCHAIN.md §11
 ```
 
 ---
@@ -686,6 +786,7 @@ Q5: 上記に該当しない
 
 | 日付 | バージョン | 変更内容 |
 |------|-----------|---------|
+| | v3.4 | Agent Skills + Deliberation Protocol 統合。擬似マルチエージェント + 多視点対話 |
 | | v3.3 | プロンプト監査を参考資料化、条件付きTDD導入 |
 | | v3.2 | プロジェクトタイプ別プロファイル追加 |
 | | v3.1 | 進捗表示、Cursor削除によるツール一覧更新 |

@@ -26,12 +26,24 @@
   LLM は「効率化」のつもりでステップを飛ばす傾向がある。
   これを防ぐため、物理的に1ステップずつ進める。
 
+■ Agent Skills 推奨
+
+  各ステップに対応する Agent Skill が用意されている。
+  Skills を使うと、LLM が専門家として振る舞い、
+  ステップ飛ばし・一括生成を構造的に防止できる。
+  → 詳細: templates/skills/SKILLS_INDEX.md
+
 ■ 確認 → 承認 → 次へ（ゲート方式）
 
   各ステップ完了後:
   1. AI が成果物を表示する
   2. ユーザーが内容を確認する
   3. ユーザーが「次へ」と言うまで進まない
+
+■ Deliberation（多視点対話）
+
+  重要な判断ポイントで、複数の専門家が議論して検証する。
+  Skills 内蔵型と、Review Council による外部検証型がある。
 
 ■ スキップ禁止
 
@@ -46,16 +58,23 @@
 ```
 Prompt 1: フレームワーク構造構築          ← 5分
 Prompt 2: 既存資料の棚卸し・分類          ← 10分
+    ※ Agent Skill: framework-orchestrator で自動判定可能
 Prompt 3: IDEA_CANVAS 生成               ← 10分
 Prompt 4: USER_PERSONA 生成              ← 10分
 Prompt 5: COMPETITOR_ANALYSIS 生成       ← 10分
 Prompt 6: VALUE_PROPOSITION 生成         ← 10分
+    ※ Agent Skill: framework-business で一貫実行可能
+    ※ 完了時に Review Council で多視点レビュー推奨
 Prompt 7: PRD 生成                       ← 15分
 Prompt 8: FEATURE_CATALOG 生成           ← 15分
+    ※ Agent Skill: framework-product で一貫実行可能
 Prompt 9: P0機能の詳細ヒアリング開始      ← 機能ごとに15-30分
    ※ P0機能の数だけ Prompt 9 を繰り返す
+   ※ Agent Skill: framework-feature-spec（💬 Deliberation 内蔵）
 Prompt 10: 技術設計                      ← 20分
+    ※ Agent Skill: framework-technical（💬 Deliberation 内蔵）
 Prompt 11: 開発開始                      ← 開発フェーズへ
+    ※ Agent Skill: framework-implement + framework-code-audit
 ```
 
 ---
@@ -83,6 +102,7 @@ https://github.com/watchout/ai-dev-framework
    - docs/growth/
    - docs/management/
    - .claude/agents/
+   - .claude/skills/
 
 2. CLAUDE.md を作成
    ai-dev-framework/templates/project/CLAUDE.md をベースに作成。
@@ -94,9 +114,24 @@ https://github.com/watchout/ai-dev-framework
    - code-reviewer.md
    - ssot-explorer.md
 
-4. .gitignore を作成
+4. Agent Skills テンプレートを .claude/skills/ に配置
+   ai-dev-framework/templates/skills/ から全 Skill フォルダをコピー:
+   - orchestrator/
+   - discovery/
+   - business-design/
+   - product-design/
+   - feature-spec/
+   - technical-design/
+   - implementation/
+   - code-audit/
+   - ssot-audit/
+   - review-council/
+   - _deliberation/
+   - SKILLS_INDEX.md
 
-5. 作成したファイル一覧を表示
+5. .gitignore を作成
+
+6. 作成したファイル一覧を表示
 
 ■ 禁止事項
 - 既存ファイルを移動・変更しない
@@ -361,14 +396,37 @@ Phase B: ヒアリング（1問ずつ。まとめて聞かない）
   5. 他機能との関連を確認
      「この機能は他のどの機能と連携しますか？」
 
-Phase C: SSOT 生成
-  - ヒアリング結果を SSOT 形式で生成
+Phase C: 💬 Deliberation（多視点レビュー）
+  - Agent Skill 使用時は自動実行される
+  - 手動の場合: ヒアリング結果を以下の3視点で検証
+    🔒 セキュリティ: 認証漏れ、データ漏洩リスク
+    🧪 QA: テストケース網羅性、境界値
+    ⚙️ エンジニア: 実装可能性、パフォーマンス
+  - Critical/Major な指摘はユーザーに報告して対応
+
+Phase D: SSOT 生成
+  - ヒアリング + Deliberation の結果を SSOT 形式で生成
   - docs/design/features/project/[機能ID]_[名前].md に保存
   - Freeze 2（CONTRACT層）まで確定
   - DETAIL層は [後決定] マーカーで OK
 
-Phase D: 確認
-  - 生成した SSOT を表示
+Phase D.5: 🔒 Example-driven 必須セクション生成（Gate）
+  ※ このステップを完了しないと Phase E に進めない
+  ※ 参照: 11_FEATURE_SPEC_FLOW.md ⑧.5
+
+  以下の4セクションをこの順番で生成:
+  1. §3-G 例外応答 → §9 の全エラーケースに対応
+  2. §3-F 境界値   → §4.1 の全データ項目の境界パターン
+  3. §3-E 入出力例 → 5ケース以上（正常2+異常3）
+  4. §3-H Gherkin  → 全MUST要件のシナリオ
+
+  Gate チェック:
+  □ §3-E: 5ケース以上    □ §3-F: 全項目カバー
+  □ §3-G: 全エラー対応   □ §3-H: 全MUST対応
+  → 全て ✅ にならないと Phase E に進めない
+
+Phase E: 確認
+  - 生成した SSOT を表示（§3-E/F/G/H のケース数を報告）
   - ユーザーが承認するまで修正
 
 ■ 禁止事項
@@ -376,10 +434,13 @@ Phase D: 確認
 - ヒアリングをスキップして仕様を推測しない
 - 他の機能の SSOT を生成しない（1機能ずつ）
 - 次の機能に進まない（ユーザーが「次へ」と言うまで）
+- §3-E/F/G/H を生成せずに完了としない（🔒 最重要）
 
 ■ 完了条件
 - [機能ID] の SSOT ファイルが保存されている
 - Freeze 2 まで確定している
+- §3-E/F/G/H が全て生成済み（🔒 必須）
+- SSOT冒頭の完全性チェックリストが全項目 ✅
 - ユーザーが承認している
 → 「[機能ID] 完了。次の P0 機能に進みますか？」
 ```
@@ -496,6 +557,7 @@ Step [N+1] 以降は絶対に実行しないでください。
 - [ ] docs/ ディレクトリ構造が作成されている
 - [ ] CLAUDE.md が配置されている
 - [ ] .claude/agents/ に 3 エージェントが配置されている
+- [ ] .claude/skills/ に 10 Skills + _deliberation が配置されている
 - [ ] 既存資料の分類表が作成・確認済み
 
 ### Phase 2（事業設計）完了時 - Prompt 3-6

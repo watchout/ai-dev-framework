@@ -52,18 +52,49 @@
 
 ---
 
+## Agent Skills による実行（推奨）
+
+```
+各 Step を専門化した Agent Skills で実行することを推奨する。
+Skills を使うと、LLM が「複数の専門家チーム」として振る舞い、
+ステップ飛ばし・一括生成・ヒアリング省略を構造的に防止できる。
+
+Step 0: framework-discovery      ← ヒアリング専門（💬 Deliberation 内蔵）
+Step 1: framework-business       ← 事業設計専門
+Step 2: framework-product        ← PRD・カタログ
+        framework-feature-spec   ← 1機能ずつヒアリング（💬 Deliberation 内蔵）
+Step 3: framework-technical      ← 技術設計（💬 Deliberation 内蔵）
+Step 4: framework-implement      ← 実装
+        framework-code-audit     ← Adversarial Review
+
+各フェーズ完了時:
+        framework-review-council ← 3人の専門家パネルが多視点レビュー
+
+全体統括:
+        framework-orchestrator   ← 進捗管理・次の Skill への案内
+
+詳細: templates/skills/SKILLS_INDEX.md
+配置: .claude/skills/ または Claude.ai 設定 > 機能 > スキル
+```
+
+---
+
 ## ゲート条件（各 Step の完了条件）
 
 ```
 ■ LLM がステップを飛ばす問題への対策
 
-  LLM は「効率化」のつもりで以下をやりがち:
-  - 複数ドキュメントを一括生成
-  - ヒアリングを省略して推測で埋める
-  - 確認を取らずに次の Step に進む
+  対策 1: Agent Skills（構造的制約）
+    各 Skill は1フェーズしか知らないため、
+    ステップ飛ばしが構造的に不可能。
 
-  これを防ぐため、各 Step にゲート条件を設定する。
-  ゲート条件を満たさない限り、次の Step に進んではならない。
+  対策 2: Deliberation Protocol（多視点対話）
+    重要な判断で3人の専門家が議論し、
+    1人の視点に偏ることを防止。
+
+  対策 3: ゲート条件（以下に定義）
+    Skills を使わない場合の防衛ライン。
+    ゲート条件を満たさない限り、次の Step に進んではならない。
 ```
 
 ### Gate 0→1: Discovery 完了ゲート
@@ -105,6 +136,8 @@
   □ P0 機能の全 SSOT が docs/design/features/ に存在
   □ 各 SSOT が Freeze 2（CONTRACT層）まで確定
   □ 各 SSOT がユーザー承認済み
+  □ 🔒 各 SSOT の §3-E/F/G/H が全て記入済み（空セクションゼロ）
+  □ 🔒 各 SSOT の完全性チェックリストが全項目 ✅
 
 生成ルール:
   - PRD → FEATURE_CATALOG → 各機能SSOT の順で生成
@@ -187,10 +220,16 @@ Freeze 2: UI / API / Event（画面・入出力の契約）
   □ 画面遷移が定義済み
   □ 全MUST要件にテストケースが存在
   □ 受け入れテストがGherkin形式で記述済み
+  □ §3-H: 全MUST要件に対応するGherkin Scenarioが存在 ← 🔒 GATE
 
   次に進める条件:
   → Freeze 2 完了で DB/API/UI の実装を開始可能
   → DETAIL層（エラー文言等）は未確定でも可
+
+  🔒 §3-H Gate:
+  → §3-H が空または未記入の場合、Freeze 2 は未完了とみなす
+  → §3-H なしでの実装開始は禁止
+  → 11_FEATURE_SPEC_FLOW.md ⑧.5 で生成を強制
 
 
 Freeze 3: Error / Permission / Log（例外・権限・監査）
@@ -208,9 +247,17 @@ Freeze 3: Error / Permission / Log（例外・権限・監査）
   □ 各例外にエラーコード・メッセージが定義
   □ 境界値が全項目で定義
   □ バリデーションルールが具体的
+  □ §3-E: 入出力例が5ケース以上（正常2+異常3） ← 🔒 GATE
+  □ §3-F: §4.1の全データ項目に境界値定義あり   ← 🔒 GATE
+  □ §3-G: §9の全エラーケースに例外応答定義あり  ← 🔒 GATE
 
   次に進める条件:
   → Freeze 3 完了でテスト・監査を実行可能
+
+  🔒 §3-E/F/G Gate:
+  → §3-E/F/G のいずれかが空の場合、Freeze 3 は未完了とみなす
+  → テスト生成・SSOT監査に進めない
+  → 11_FEATURE_SPEC_FLOW.md ⑧.5 で生成を強制
 
 
 Freeze 4: Non-functional（性能・運用・セキュリティ）
@@ -274,10 +321,11 @@ Step 4: 開発開始
 ## Step 0: ディスカバリー
 
 > 詳細: 08_DISCOVERY_FLOW.md
+> Agent Skill: `framework-discovery`（💬 完了時に3人の専門家が Deliberation）
 
 | 項目 | 内容 |
 |------|------|
-| ツール | Claude.ai |
+| ツール | Claude.ai（Skill推奨）|
 | 時間 | 30-60分 |
 | インプット | ユーザーの「こんなの作りたい」+ 知識データ（存在する場合） |
 | アウトプット | Stage 1-5 の回答記録 + 全体サマリー |
@@ -291,6 +339,9 @@ Step 4: 開発開始
 ---
 
 ## Step 1: Business（事業設計）
+
+> Agent Skill: `framework-business`
+> 完了時: `framework-review-council` で多視点レビュー推奨
 
 ### 目的
 「誰に、何を、なぜ売るのか」を確定させる
@@ -492,6 +543,10 @@ COMPETITOR_ANALYSIS: [1-C]
 ---
 
 ## Step 2: Product（プロダクト設計）
+
+> Agent Skill: `framework-product`（PRD・カタログ）→ `framework-feature-spec`（各機能SSOT）
+> Feature Spec は💬 Deliberation 内蔵（セキュリティ×QA×エンジニアの3人が対話）
+> 完了時: `framework-review-council` で多視点レビュー推奨
 
 ### 目的
 「何を、どう作るか」を確定させる
@@ -751,6 +806,9 @@ PRD: [2-A]
 
 ## Step 3: Technical（技術設計）
 
+> Agent Skill: `framework-technical`（💬 TECH_STACK/API 確定時に Deliberation）
+> 完了時: `framework-review-council` で多視点レビュー推奨
+
 ### 目的
 「どう作るか」を確定させ、開発を開始できる状態にする
 
@@ -987,43 +1045,147 @@ claude "以下を実行して:
 │ □ CLAUDE.md: {{}} が全て実際の値に置換済み     │
 │ □ プロジェクトが npm run dev で起動する         │
 │                                                  │
-│ → Step 4（開発開始）へ進む 🚀                    │
+│ → Step 3.5（タスク分解・計画）へ進む              │
 └──────────────────────────────────────────────────┘
+```
+
+---
+
+## Step 3.5: 🔒 タスク分解・開発計画（14_IMPLEMENTATION_ORDER.md）
+
+> **Step 3 完了後、Step 4 の前に必ず実行する。このステップをスキップして実装を開始してはならない。**
+
+### 3.5-A: 開発環境の検証（Layer 0）
+
+```
+根拠: DEV_ENVIRONMENT.md, 14_IMPLEMENTATION_ORDER.md Part 1.3 Layer 0
+
+  □ docker-compose.yml が存在し、DB/Redis コンテナが起動する
+  □ .env.example が存在し、必要な環境変数が定義されている
+  □ pnpm install → pnpm db:migrate → pnpm dev が成功する
+  □ .github/workflows/ci.yml が配置されている
+  □ CI がグリーン（lint + type-check + test が通る）
+
+→ 未完了の場合: Layer 0 インフラ構築を先に実施
+```
+
+### 3.5-B: 実装順序の決定
+
+```
+根拠: 14_IMPLEMENTATION_ORDER.md Part 1
+
+1. 全 SSOT の §1（優先度・規模）と §11（依存関係）を分析
+2. 依存グラフを構築（循環依存があれば検出・解決）
+3. トポロジカルソートで Wave 分類:
+   Wave 1: 依存なし（共通機能のみに依存）
+   Wave 2: Wave 1 に依存
+   Wave 3: Wave 2 に依存
+4. 同一 Wave 内のタイブレーク: Priority → 被依存数 → Size → ID
+5. Vertical Slice 単位のリリース計画を策定
+```
+
+### 3.5-C: タスク分解（SSOT → GitHub Issues）
+
+```
+根拠: 14_IMPLEMENTATION_ORDER.md Part 2-3
+
+各機能に対して標準タスク分解パターンを適用:
+  Task 1: DB（マイグレーション、シード、インデックス）← §4
+  Task 2: API（エンドポイント、バリデーション、エラー）← §5, §7, §9
+  Task 3: UI（画面、状態管理、フロー）← §6
+  Task 4: 結合（API + UI 接続、E2E）← §5 + §6
+  Task 5: テスト ← §10
+  Task 6: レビュー + ドキュメント更新
+
+GitHub Projects にボードを作成:
+  Backlog → Todo → In Progress → In Review → Done
+
+各機能の親 Issue を作成（Tasklist 付き）:
+  - [Feature/機能ID] 機能名
+    - [ ] DB: マイグレーション + シード
+    - [ ] API: エンドポイント実装
+    - [ ] UI: 画面実装
+    - [ ] 結合: E2E 接続
+    - [ ] テスト: ユニット + 統合
+    - [ ] レビュー: コードレビュー + SSOT 整合性確認
+```
+
+### 3.5-D: ブランチ戦略の確認
+
+```
+根拠: 14_IMPLEMENTATION_ORDER.md Part 4
+
+  main:                    常にデプロイ可能（直接コミット禁止）
+  feature/[機能ID]-[レイヤー]: 機能実装（例: feature/AUTH-001-api）
+  fix/[機能ID]-[説明]:    バグ修正
+  hotfix/[説明]:           緊急修正
+
+  コミット規約: Conventional Commits
+    feat(AUTH-001): ログイン API 実装
+    fix(AUTH-001): バリデーションエラー修正
+    refactor(AUTH-001): 認証ミドルウェア整理
+```
+
+### Step 3.5 完了条件（🔒 Gate）
+
+```
+┌─ Step 3.5 完了判定 ─────────────────────────────┐
+│                                                   │
+│ □ 開発環境が起動し CI がグリーン（Gate A）        │
+│ □ Wave 分類が完了（全機能に Wave 番号）           │
+│ □ GitHub Projects ボードが存在する                │
+│ □ P0 機能の親 Issue が全て作成済み                │
+│ □ ブランチ戦略がユーザーに確認済み                │
+│                                                   │
+│ 1つでも ☐ → Step 4 に進んではならない             │
+│ 全て ✅ → Step 4（開発開始）へ進む 🚀              │
+└───────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## Step 4: 開発開始
 
+> Agent Skill: `framework-implement`（実装）→ `framework-code-audit`（Adversarial Review）
+> SSOT 品質チェック: `framework-ssot-audit`
+>
+> **前提: Step 3.5 の全条件が ✅ であること。**
+
 ### 4.1 最初に実装する機能の決定
 
 ```
-機能カタログの依存関係グラフから、
-依存がない（または最も少ない）P0機能を最初に実装する。
+Step 3.5 で決定した Wave 分類に従い:
 
-一般的な順序:
-1. 認証（AUTH）← ほぼ全機能が依存
-2. ユーザー管理（ACCT）
-3. メイン機能（プロダクト固有のP0機能）
-4. ダッシュボード / 管理画面
+Phase 1: 共通機能（Layer 順）
+  Layer 1: 認証（AUTH）← ほぼ全機能が依存
+  Layer 2: 共通UI（レイアウト、コンポーネント）
+  Layer 3: その他の共通機能
+
+Phase 2: 固有機能（Wave 順）
+  Wave 1 → Wave 2 → Wave 3 → ...
+
+各機能は GitHub Projects の Issue を「In Progress」に移動してから開始する。
 ```
 
-### 4.2 開発サイクル
+### 4.2 開発サイクル（1機能あたり）
 
 ```
-各機能の実装サイクル:
+各機能の実装サイクル（14_IMPLEMENTATION_ORDER.md Part 5 準拠）:
 
-[Claude Code] 実装
-  claude "AUTH-001の仕様書に基づいて実装して"
-    ↓
-[Claude Code] テスト生成
-  claude "AUTH-001のテストを生成して"
-    ↓
-[Claude Code] Adversarial Review（Agent Teams）
-  → 別コンテキストで批判的レビュー
-  → 合格まで反復（17_CODE_AUDIT.md 参照）
-    ↓
-完了 → 次の機能へ
+0. feature/[機能ID]-[レイヤー] ブランチを作成
+1. [Claude Code] DB 実装 → コミット → PR
+2. [Claude Code] API 実装 → コミット → PR
+3. [Claude Code] UI 実装 → コミット → PR
+4. [Claude Code] 結合 → コミット → PR
+5. [Claude Code] テスト生成
+6. [Claude Code] Adversarial Review（Agent Teams）
+   → 合格まで反復（17_CODE_AUDIT.md 参照）
+7. PR レビュー → main マージ
+8. GitHub Projects Issue を「Done」に移動
+
+❌ main に直接コミットは禁止
+❌ PR なしでのマージは禁止
+❌ テストなしでのマージは禁止
 ```
 
 ---
@@ -1210,3 +1372,4 @@ Retrofit（Step R）:
 | | Cursor削除、Claude Code一本化。Step R: Retrofit（既存プロジェクト導入）追加 | |
 | | Freeze単位の進行（Freeze 1-4）を追加 | |
 | | 知識データ（docs/knowledge/）参照フローを Step 0, Step 1 に追加 | |
+|| | Agent Skills + Deliberation Protocol 統合。各 Step に Skill 参照と多視点対話を追加 | || | Freeze 2/3 ゲート条件に §3-E/F/G/H 完全性チェック追加。Gate 2→3 に完全性チェックリスト条件追加 | |

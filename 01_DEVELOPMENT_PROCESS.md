@@ -162,6 +162,27 @@
 ### 目的
 仕様通りにコードを書く
 
+### 🔒 Phase 3 開始前の必須チェック（Pre-Code Gate）
+
+> **以下が全て ✅ でない場合、Phase 3 を開始してはならない。**
+> 根拠: 14_IMPLEMENTATION_ORDER.md, DEV_ENVIRONMENT.md, CLAUDE.md Pre-Code Gate
+
+| # | チェック項目 | 根拠 | 確認 |
+|---|------------|------|------|
+| A-1 | 開発環境が起動する（docker-compose up + pnpm dev） | DEV_ENVIRONMENT.md | ☐ |
+| A-2 | CI がグリーン（lint + type-check + test） | 19_CI_PR_STANDARDS.md | ☐ |
+| B-1 | 全SSOTの §1 + §11 を分析し、Wave 分類が完了 | 14_IMPLEMENTATION_ORDER.md Part 1 | ☐ |
+| B-2 | GitHub Projects ボードが作成されている | 14_IMPLEMENTATION_ORDER.md Part 3 | ☐ |
+| B-3 | 各機能の親 Issue + Tasklist が作成されている | 14_IMPLEMENTATION_ORDER.md Part 3 | ☐ |
+| B-4 | ブランチ戦略が確認済み（main 直接コミット禁止） | 14_IMPLEMENTATION_ORDER.md Part 4 | ☐ |
+| C-1 | 対象機能の §3-E/F/G/H が全て記入済み | 12_SSOT_FORMAT.md | ☐ |
+| C-2 | 対象機能の完全性チェックリストが全項目 ✅ | SSOT テンプレート | ☐ |
+
+未完了の場合:
+- A 系: DEV_ENVIRONMENT.md に従い環境構築を先に実施
+- B 系: `framework plan` を実行し、タスク分解・Issue 作成を先に実施
+- C 系: 11_FEATURE_SPEC_FLOW.md ⑧.5 に戻り、§3-E/F/G/H を生成
+
 ### 成果物
 
 | 成果物 | 場所 | 担当 |

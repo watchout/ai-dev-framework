@@ -53,6 +53,9 @@ mkdir -p "${PROJECT_NAME}/public"
 # Claude Code Agent Teams（CLI パターン）
 mkdir -p "${PROJECT_NAME}/.claude/agents"
 
+# Agent Skills（擬似マルチエージェント）
+mkdir -p "${PROJECT_NAME}/.claude/skills"
+
 echo "✅ ディレクトリ構造を作成しました"
 
 # ============================================================
@@ -196,7 +199,67 @@ AGENT_EOF
 fi
 
 # ============================================================
-# 5. docs/INDEX.md の作成
+# 5. Agent Skills テンプレートの配置
+# ============================================================
+
+echo "🧠 Agent Skills テンプレートを配置中..."
+
+SKILLS_DIR=""
+if [ -d "../ai-dev-framework/templates/skills" ]; then
+  SKILLS_DIR="../ai-dev-framework/templates/skills"
+elif [ -n "$AI_DEV_FRAMEWORK_DIR" ] && [ -d "$AI_DEV_FRAMEWORK_DIR/templates/skills" ]; then
+  SKILLS_DIR="$AI_DEV_FRAMEWORK_DIR/templates/skills"
+fi
+
+if [ -n "$SKILLS_DIR" ]; then
+  # 各 Skill フォルダをコピー
+  for skill_dir in "$SKILLS_DIR"/*/; do
+    if [ -d "$skill_dir" ]; then
+      skill_name=$(basename "$skill_dir")
+      mkdir -p "${PROJECT_NAME}/.claude/skills/${skill_name}"
+      cp -r "$skill_dir"* "${PROJECT_NAME}/.claude/skills/${skill_name}/"
+    fi
+  done
+  # Deliberation Protocol もコピー
+  if [ -d "$SKILLS_DIR/_deliberation" ]; then
+    mkdir -p "${PROJECT_NAME}/.claude/skills/_deliberation"
+    cp -r "$SKILLS_DIR/_deliberation/"* "${PROJECT_NAME}/.claude/skills/_deliberation/"
+  fi
+  # INDEX もコピー
+  if [ -f "$SKILLS_DIR/SKILLS_INDEX.md" ]; then
+    cp "$SKILLS_DIR/SKILLS_INDEX.md" "${PROJECT_NAME}/.claude/skills/"
+  fi
+  skill_count=$(find "${PROJECT_NAME}/.claude/skills" -name "SKILL.md" | wc -l | tr -d ' ')
+  echo "✅ Agent Skills テンプレートを配置しました（${skill_count} Skills）"
+else
+  cat > "${PROJECT_NAME}/.claude/skills/README.md" << 'SKILLS_EOF'
+# Agent Skills
+
+このディレクトリに Skill フォルダ（SKILL.md を含む）を配置すると、
+Claude Code が自動的に検出して使用します。
+
+## 推奨 Skills
+
+| Skill | 役割 |
+|-------|------|
+| framework-orchestrator | 全体ナビゲーター |
+| framework-discovery | ディスカバリー専門家 |
+| framework-business | 事業設計専門家 |
+| framework-product | PRD・機能カタログ |
+| framework-feature-spec | 機能仕様設計専門家 |
+| framework-technical | テクニカルアーキテクト |
+| framework-implement | 実装者（Role A） |
+| framework-code-audit | Adversarial Review（Role B） |
+| framework-ssot-audit | SSOT 品質監査 |
+| framework-review-council | 多視点レビュー会議 |
+
+テンプレート: ai-dev-framework/templates/skills/
+SKILLS_EOF
+  echo "⚠️  Agent Skills テンプレートが見つかりません。README.md を配置しました"
+fi
+
+# ============================================================
+# 6. docs/INDEX.md の作成
 # ============================================================
 
 cat > "${PROJECT_NAME}/docs/INDEX.md" << 'EOF'
@@ -279,6 +342,7 @@ echo ""
 echo " 📁 構造:"
 echo "   ${PROJECT_NAME}/"
 echo "   ├── CLAUDE.md          ← Claude Code 指示書（要設定）"
+echo "   ├── .claude/skills/    ← Agent Skills（擬似マルチエージェント）"
 echo "   ├── .claude/agents/    ← Agent Teams（CLIパターン）"
 echo "   ├── docs/              ← 仕様書（プレースホルダー配置済み）"
 echo "   │   └── INDEX.md      ← 仕様書一覧"

@@ -1,22 +1,42 @@
 # Knowledge Database Index - 知識データベース
 
-> Discovery/Businessフェーズで参照する外部知識・トレンド情報
+> プロジェクトの知識を3層で管理する。
+> Discovery やSSOT生成時に参照し、仕様の品質を高める。
 
 ## 概要
 
-このディレクトリには、プロダクト開発の意思決定に役立つ外部情報を格納します。
+このディレクトリには、プロダクト開発の意思決定に役立つ知識を格納します。
 ディスカバリーフェーズや合議において、根拠として参照されます。
 
-## ディレクトリ構造
+## 3層ナレッジ構造
 
 ```
 docs/knowledge/
-├── _INDEX.md           ← このファイル
-├── trends/             ← 業界トレンド・技術動向
+├── _INDEX.md              ← このファイル
+├── _company/              ← Layer 1: 会社知識（会社固有・プロジェクト横断）
+│   ├── README.md          ← 仕組みの説明（framework update で配布）
+│   └── KNOWLEDGE_DIGEST.md← 会社ナレッジダイジェスト（sync-knowledge で生成）
+│
+├── trends/                ← 業界トレンド・技術動向
 │   └── CES_2026_ANALYSIS.md
-├── competitors/        ← 競合分析データ（プロジェクト固有）
-├── market/             ← 市場調査データ
-└── domain/             ← ドメイン固有知識
+├── competitors/           ← 競合分析データ（プロジェクト固有）
+├── market/                ← 市場調査データ
+├── domain/                ← ドメイン固有知識
+└── users/                 ← ユーザー調査データ
+```
+
+- **Layer 0**（フレームワーク知識）: `docs/standards/` 配下に存在。`framework update` で配布
+- **Layer 1**（会社知識）: `_company/KNOWLEDGE_DIGEST.md`。会社の知識DBから生成
+- **Layer 2**（プロジェクト知識）: `domain/`, `market/`, `users/`, `trends/`, `competitors/`。プロジェクト固有
+
+## 使い方
+
+```
+1. Discovery 開始前に docs/knowledge/ を確認する
+2. _company/KNOWLEDGE_DIGEST.md があれば、会社の方針・原則を先に読む
+3. 関連する知識があれば読み込んでからヒアリングを開始
+4. Discovery / SSOT生成中に知識データを根拠として引用
+5. 新しい知識を得たら該当ファイルに追記
 ```
 
 ## 格納ファイル一覧
@@ -31,12 +51,13 @@ docs/knowledge/
 
 ### Discovery開始時
 
-```markdown
+```
 1. docs/knowledge/ を確認
-2. 関連する知識データを読み込む
-3. 既知の情報は確認形式で質問
+2. _company/KNOWLEDGE_DIGEST.md があれば、会社の方針・原則を先に読む
+3. 関連する知識データを読み込む
+4. 既知の情報は確認形式で質問
    「○○と理解していますが合っていますか？」
-4. 提案時は根拠を示す
+5. 提案時は根拠を示す
    「知識データ（CES_2026_ANALYSIS.md）によると…」
 ```
 

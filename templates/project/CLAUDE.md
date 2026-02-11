@@ -86,6 +86,29 @@
 
 ---
 
+## 会社ナレッジ参照ルール
+
+> `.framework/project.json` に `knowledgeSource` が設定されている場合、
+> `framework sync-knowledge` で会社の知識データベースからダイジェストを生成できる。
+
+```
+参照ファイル: docs/knowledge/_company/KNOWLEDGE_DIGEST.md
+
+このファイルが存在する場合、以下のルールを適用する:
+
+1. 設計判断・機能提案の前に KNOWLEDGE_DIGEST.md を読み、記載された原則に従う
+2. マーケティング関連の判断はダイジェストの原則を根拠にする
+3. ダイジェストの原則と矛盾する実装を検出した場合は警告する
+4. ダイジェストに記載のない領域の判断が必要な場合は報告する
+
+ファイルが存在しない場合は、このセクションを無視してよい。
+
+設定: .framework/project.json の knowledgeSource
+更新: framework sync-knowledge（または手動で配置）
+```
+
+---
+
 ## 仕様書の参照方法
 
 ### 実装前に必ず確認するドキュメント（優先順）
@@ -236,6 +259,43 @@ scope: 機能ID or モジュール名
 - ビジネスロジック: 80%+
 - API: 70%+
 - 全体: 60%+
+
+---
+
+## Agent Skills（擬似マルチエージェント）
+
+> 各フェーズを専門化した Agent Skills で、LLM が「複数の専門家チーム」として振る舞う。
+> 詳細: ai-dev-framework/templates/skills/SKILLS_INDEX.md
+
+### Skills 一覧（実行順）
+
+```
+① framework-discovery     — ディスカバリー（対話ヒアリング）
+② framework-business      — 事業設計（IDEA_CANVAS 等）
+③ framework-product       — PRD・機能カタログ
+④ framework-feature-spec  — 機能仕様書（1機能ずつ対話）
+⑤ framework-technical     — 技術設計（Stack/API/DB）
+⑥ framework-implement     — 実装（TDD 判定付き）
+⑦ framework-code-audit    — Adversarial Code Review
+⑧ framework-ssot-audit    — SSOT 品質監査
+```
+
+### 配置方法
+
+```
+Claude.ai  → 設定 > 機能 > スキル > ZIP アップロード
+Claude Code → .claude/skills/ に配置（自動検出）
+Cursor     → .cursor/rules/ にルールとして配置
+```
+
+### 効果
+
+```
+- ステップ飛ばし防止: Skill が1ステップしか知らない（構造的に不可能）
+- 品質向上: 各 Skill が専門家として振る舞う
+- ヒアリング省略防止: Discovery Skill が対話を担当
+- 監査の厳格化: Audit Skill が甘い採点を禁止
+```
 
 ---
 

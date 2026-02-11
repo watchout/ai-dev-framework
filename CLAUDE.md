@@ -98,6 +98,20 @@ Discovery開始前に docs/knowledge/ を確認する:
 詳細: 08_DISCOVERY_FLOW.md Stage 0, docs/knowledge/_INDEX.md
 ```
 
+### 会社ナレッジダイジェスト参照ルール
+
+```
+docs/knowledge/_company/KNOWLEDGE_DIGEST.md が存在する場合:
+
+1. 設計判断・機能提案の前に必ず確認する
+2. マーケティング関連の判断はダイジェストの原則を根拠にする
+3. ダイジェストの原則と矛盾する実装を検出した場合は警告する
+4. ダイジェストに記載のない領域の判断が必要な場合は報告する
+
+設定: .framework/project.json の knowledgeSource でソースパスを指定
+詳細: docs/knowledge/_company/README.md
+```
+
 ### ディスカバリーフローの実行ルール
 
 1. **一度に1つだけ質問する**（複数質問を同時にしない）
@@ -562,9 +576,137 @@ SYS_xxx  - システムエラー（500, 503）
 
 ---
 
+## Agent Skills（擬似マルチエージェント + 多視点対話）
+
+```
+各フェーズを専門化した Agent Skills + Deliberation Protocol により、
+1つのLLMが「複数の専門家チームが議論する」構造で動く。
+
+3層の品質保証:
+  Layer 1: 専門 Skill → ドキュメント/コード生成
+  Layer 2: 内部 Deliberation → 3人の専門家が対話して検証
+  Layer 3: Review Council → フェーズ間で多視点レビュー会議
+
+Skills 一覧:
+  🎯 framework-orchestrator  — 全体ナビゲーター
+  🔍 framework-review-council — 多視点レビュー会議
+
+  ① framework-discovery      — ディスカバリー（💬 Deliberation 内蔵）
+  ② framework-business       — 事業設計
+  ③ framework-product        — PRD・機能カタログ
+  ④ framework-feature-spec   — 機能仕様書（💬 Deliberation 内蔵）
+  ⑤ framework-technical      — 技術設計（💬 Deliberation 内蔵）
+  ⑥ framework-implement      — 実装
+  ⑦ framework-code-audit     — Adversarial Code Review
+  ⑧ framework-ssot-audit     — SSOT 品質監査
+
+配置場所: templates/skills/
+詳細: templates/skills/SKILLS_INDEX.md
+対話プロトコル: templates/skills/_deliberation/DELIBERATION_PROTOCOL.md
+
+利用方法:
+  Claude.ai  → 設定 > 機能 > スキル > ZIP アップロード
+  Claude Code → .claude/skills/ に配置（自動検出）
+  Cursor     → .cursor/rules/ にルールとして配置
+```
+
+---
+
+## 🔒 実装開始前の Pre-Code Gate（3段階チェック）
+
+```
+コードを1行でも書く前に、以下の3段階を順番に確認する。
+1つでも ☐ がある段階では、実装を開始してはならない。
+```
+
+### Gate A: 開発環境・インフラの準備（14_IMPLEMENTATION_ORDER.md Layer 0）
+
+```
+根拠: DEV_ENVIRONMENT.md, 14_IMPLEMENTATION_ORDER.md Part 1.3 Layer 0
+
+以下が全て完了しているか:
+  □ docker-compose.yml が存在し、DB/Redis コンテナが起動できる
+  □ .env.example が存在し、必要な環境変数が定義されている
+  □ pnpm install が成功する
+  □ pnpm db:migrate が成功する
+  □ pnpm dev でローカル開発サーバーが起動する
+  □ .github/workflows/ci.yml が配置されている
+  □ CI がグリーン（lint + type-check + test が通る）
+
+未完了の場合の行動:
+  → 「開発環境が未セットアップです。14_IMPLEMENTATION_ORDER.md Layer 0
+     に従い、インフラを先に構築しますか？」とユーザーに報告。
+  → Layer 0 を完了させてから Gate B に進む。
+```
+
+### Gate B: タスク分解・計画の完了（14_IMPLEMENTATION_ORDER.md Part 1-3）
+
+```
+根拠: 14_IMPLEMENTATION_ORDER.md Part 1（実装順序）, Part 2（タスク分解）, Part 3（GitHub Projects）
+
+以下が全て完了しているか:
+  □ 全SSOTの §1（優先度・規模）と §11（依存関係）を分析済み
+  □ 依存グラフを構築し、Wave 分類が完了している
+  □ GitHub Projects ボードが作成されている
+    （Backlog → Todo → In Progress → In Review → Done）
+  □ 各機能の親 Issue が作成されている
+    （DB / API / UI / 結合 / テスト / レビュー の Tasklist 付き）
+  □ ブランチ戦略が確認されている:
+    - main: 常にデプロイ可能（直接コミット禁止）
+    - feature/[機能ID]-[レイヤー]: 機能実装用
+    - fix/[機能ID]-[説明]: バグ修正用
+
+未完了の場合の行動:
+  → 「タスク分解が未実施です。14_IMPLEMENTATION_ORDER.md に従い、
+     実装順序の決定 → GitHub Issues 作成を先に行いますか？」と報告。
+  → タスク分解・Issue 作成を完了させてから Gate C に進む。
+  → `framework plan` コマンドでタスク分解を実行可能。
+```
+
+### Gate C: SSOT 完全性チェック（12_SSOT_FORMAT.md §3-E/F/G/H）
+
+```
+根拠: 12_SSOT_FORMAT.md, 11_FEATURE_SPEC_FLOW.md ⑧.5
+
+対象機能の SSOT で以下を確認する:
+  □ §3-E 入出力例:  5ケース以上（正常2+異常3）が記入されているか
+  □ §3-F 境界値:    全データ項目の境界パターンが定義されているか
+  □ §3-G 例外応答:  全エラーケースの応答が定義されているか
+  □ §3-H Gherkin:   全MUST要件のシナリオが存在するか
+  □ 完全性チェックリスト: SSOT冒頭のチェックリストが全項目 ✅ か
+
+不足を発見した場合の行動:
+  → 「§3-E/F/G/H が未記入です。実装前に補完が必要です。
+     補完してから実装を開始しますか？」とユーザーに報告する。
+  → 補完せずに実装を開始することは絶対に禁止。
+```
+
+### Gate 通過後の実装フロー
+
+```
+Gate A/B/C 全て ✅ の場合のみ:
+
+1. feature/[機能ID]-[レイヤー] ブランチを作成
+2. 14_IMPLEMENTATION_ORDER.md の標準タスク分解に従い実装:
+   Task 1: DB（マイグレーション、シード、インデックス）
+   Task 2: API（エンドポイント、バリデーション、エラーハンドリング）
+   Task 3: UI（画面、状態管理、フロー）
+   Task 4: 結合（API + UI 接続、E2E）
+   Task 5: テスト
+   Task 6: レビュー + ドキュメント更新
+3. PR を作成し、レビューを経て main にマージ
+4. GitHub Projects の Issue ステータスを更新
+```
+
+---
+
 ## 禁止事項
 
+❌ **Gate A/B/C を確認せずに実装を開始する** ← 最も重要
+❌ **main ブランチに直接コミットする** ← 必ず feature ブランチ + PR 経由
+❌ **タスク分解せずにコードを書き始める** ← 14_IMPLEMENTATION_ORDER.md 必須
 ❌ CORE/CONTRACT層の仕様なしで実装を開始する
+❌ §3-E/F/G/H が空のまま実装を開始する
 ❌ カスタマイズログを確認せずに共通機能を実装する
 ❌ Layer 1（コア定義）を勝手に変更する
 ❌ 仕様にない機能を追加する
