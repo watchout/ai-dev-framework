@@ -1,0 +1,52 @@
+{
+  "name": "@anthropic-ai/ai-dev-framework",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI Development Framework - SSOT, CLI, Dashboard, and Skills for AI-driven development",
+  "bin": {
+    "framework": "./dist/cli/index.js"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "build:cli": "tsc -p tsconfig.cli.json",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --coverage",
+    "type-check": "tsc --noEmit",
+    "prepare": "tsc -p tsconfig.cli.json",
+    "framework": "tsx src/cli/index.ts"
+  },
+  "dependencies": {
+    "commander": "^13.0.0",
+    "next": "^16.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.1.6",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/anthropic-ai/ai-dev-framework.git"
+  },
+  "keywords": [
+    "ai",
+    "development",
+    "framework",
+    "cli",
+    "ssot",
+    "claude"
+  ],
+  "license": "MIT"
+}

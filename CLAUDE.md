@@ -1,6 +1,34 @@
-# CLAUDE.md - AI開発フレームワーク v3.3
+# CLAUDE.md - AI開発フレームワーク v3.4
 
 > このファイルはClaude Codeへの指示書です。必ず最初に読んでください。
+
+---
+
+## リポジトリ構成（統合版）
+
+```
+ai-dev-framework/
+├── CLAUDE.md              ← このファイル
+├── *.md (00-25)           ← SSOT仕様書
+├── .claude/skills/        ← スキルシステム（専門家エージェント）
+├── docs/                  ← ドキュメント・知識データベース
+├── templates/             ← プロジェクトテンプレート
+├── src/
+│   ├── cli/               ← CLIツール（framework コマンド）
+│   └── dashboard/         ← ダッシュボード（Next.js）
+├── bin/                   ← CLIスクリプト
+└── package.json
+```
+
+### このリポジトリの役割
+
+| 領域 | 内容 |
+|------|------|
+| **SSOT** | 仕様書（00-25_*.md）、テンプレート |
+| **スキル** | 専門家エージェント定義（.claude/skills/） |
+| **CLI** | `framework` コマンド（src/cli/） |
+| **Dashboard** | Web UI（src/dashboard/） |
+| **知識DB** | トレンド・市場データ（docs/knowledge/） |
 
 ---
 
@@ -138,6 +166,55 @@ Step 3: Technical（技術設計）
   ↓
 Step 4: 開発開始 🚀
 ```
+
+### スキル（専門家チーム）による合議制開発
+
+各フェーズには専門家チームが定義されており、合議制で意思決定を行う。
+
+```
+.claude/skills/
+├── deliberation/      ← 合議制意思決定プロトコル
+├── discovery/         ← Discovery Phase専門家（D1-D4）
+├── business/          ← Business Phase専門家（B1-B4）
+├── product/           ← Product Phase専門家（P1-P5）
+├── technical/         ← Technical Phase専門家（T1-T5）
+├── implementation/    ← Implementation Phase専門家（I1-I5）
+└── review-council/    ← レビュー評議会（R1-R5）
+```
+
+**スキル実行コマンド**:
+```
+「ディスカバリーを開始して」   → Discovery Phaseを実行
+「ビジネス設計を開始して」     → Business Phaseを実行
+「プロダクト設計を開始して」   → Product Phaseを実行
+「技術設計を開始して」         → Technical Phaseを実行
+「実装を開始して」             → Implementation Phaseを実行
+「レビュー評議会を開催して」   → Review Councilを実行
+```
+
+**個別エージェント実行**:
+```
+「D1を実行」  → Idea Excavator
+「P4を実行」  → Feature Spec Writer
+「I3を実行」  → Code Auditor
+```
+
+**合議の実行**:
+```
+「合議して：[議題]」     → 自動で適切な専門家を選定
+「軽量合議：[議題]」     → DETAIL層の決定（2-3名）
+「標準合議：[議題]」     → CONTRACT層の決定（3-4名）
+「重量合議：[議題]」     → CORE層の決定（全専門家）
+```
+
+**合議トリガー（自動）**:
+- CORE層の変更提案 → 重量合議
+- CONTRACT層の新規定義 → 標準合議
+- 複数SSOTへの影響 → 標準合議
+- 技術的負債の可能性 → 軽量合議
+- セキュリティ関連 → 標準合議
+
+詳細: .claude/skills/_INDEX.md 参照
 
 ---
 
@@ -505,3 +582,69 @@ SYS_xxx  - システムエラー（500, 503）
 ```
 
 **曖昧なまま実装を進めない**
+
+---
+
+## CLI開発ガイド
+
+### CLIコマンド一覧
+
+| コマンド | 対応仕様書 | 説明 |
+|---------|-----------|------|
+| `framework init` | 09_TOOLCHAIN | プロジェクト初期化 |
+| `framework discover` | 08_DISCOVERY_FLOW | ディスカバリー実行 |
+| `framework generate` | 10_GENERATION_CHAIN | SSOT自動生成 |
+| `framework plan` | 14_IMPLEMENTATION_ORDER | 実装計画作成 |
+| `framework audit` | 13, 16, 17 | 品質監査 |
+| `framework run` | 06_FULL_LIFECYCLE | フェーズ実行 |
+| `framework status` | 06_FULL_LIFECYCLE | 進捗表示 |
+| `framework retrofit` | - | 既存プロジェクト移行 |
+| `framework update` | - | フレームワーク更新 |
+
+### CLI実行方法
+
+```bash
+# 開発時（tsx直接実行）
+npm run framework -- init my-project
+
+# ビルド後
+npm run build:cli
+./dist/cli/index.js init my-project
+```
+
+### CLI開発規約
+
+- コマンドは `src/cli/commands/` に配置
+- 共通ロジックは `src/cli/lib/` に配置
+- テストは `*.test.ts` として同階層に配置
+- any型禁止、エラーは必ずハンドリング
+
+---
+
+## ダッシュボード開発ガイド
+
+### 技術スタック
+
+| カテゴリ | 技術 |
+|---------|------|
+| フレームワーク | Next.js 15 (App Router) |
+| 言語 | TypeScript 5.7 |
+| UI | React 19 |
+| テスト | Vitest |
+| ホスティング | Vercel |
+
+### 開発サーバー
+
+```bash
+npm run dev
+# http://localhost:3000
+```
+
+### ディレクトリ構造
+
+```
+src/dashboard/
+├── app/              ← App Router ページ
+├── components/       ← UIコンポーネント
+└── lib/              ← ユーティリティ
+```
