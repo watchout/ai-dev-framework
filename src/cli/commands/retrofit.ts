@@ -21,6 +21,11 @@ import {
   generateRetrofitMarkdown,
 } from "../lib/retrofit-engine.js";
 import { loadRetrofitReport } from "../lib/retrofit-model.js";
+import {
+  createGateState,
+  loadGateState,
+  saveGateState,
+} from "../lib/gate-model.js";
 import { logger } from "../lib/logger.js";
 
 export function registerRetrofitCommand(program: Command): void {
@@ -91,6 +96,18 @@ export function registerRetrofitCommand(program: Command): void {
               logger.error(err);
             }
             process.exit(1);
+          }
+
+          // Initialize gate state if not exists
+          if (!options.dryRun && !loadGateState(projectDir)) {
+            const gateState = createGateState();
+            saveGateState(projectDir, gateState);
+            logger.success(
+              "Initialized Pre-Code Gate state (.framework/gates.json)",
+            );
+            logger.info(
+              "  Run 'framework gate check' to evaluate gate status.",
+            );
           }
 
           // Output markdown if requested

@@ -23,6 +23,13 @@ import {
   generateAuditMarkdown,
 } from "../lib/audit-model.js";
 import { loadProjectProfile, isAuditEnabled } from "../lib/profile-model.js";
+import {
+  loadGateState,
+  createGateState,
+  updateGateC,
+  saveGateState,
+} from "../lib/gate-model.js";
+import { checkGateC } from "../lib/gate-engine.js";
 import { logger } from "../lib/logger.js";
 
 /** Audit modes available by default (prompt is deprecated) */
@@ -139,6 +146,18 @@ export function registerAuditCommand(program: Command): void {
             }
             fs.writeFileSync(outputPath, markdown, "utf-8");
             logger.success(`Report written to ${options.output}`);
+          }
+
+          // Auto-update Gate C after SSOT audit
+          if (mode === "ssot") {
+            const gateState = loadGateState(projectDir) ?? createGateState();
+            const gateCChecks = checkGateC(projectDir);
+            updateGateC(gateState, gateCChecks);
+            saveGateState(projectDir, gateState);
+
+            if (gateState.gateC.status === "passed") {
+              logger.success("Gate C (SSOT Completeness) automatically passed.");
+            }
           }
 
           logger.info("");

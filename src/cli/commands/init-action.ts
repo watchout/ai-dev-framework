@@ -23,6 +23,10 @@ import {
   getProfile,
   isTemplateEnabled,
 } from "../lib/profile-model.js";
+import {
+  createGateState,
+  saveGateState,
+} from "../lib/gate-model.js";
 import { logger } from "../lib/logger.js";
 
 export interface InitOptions {
@@ -154,6 +158,11 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const statePath = path.join(projectPath, ".framework/project.json");
   fs.writeFileSync(statePath, generateProjectState(config), "utf-8");
   createdFiles.push(".framework/project.json");
+
+  // Initialize gate state (all pending)
+  const gateState = createGateState();
+  saveGateState(projectPath, gateState);
+  createdFiles.push(".framework/gates.json");
 
   return { projectPath, createdFiles, errors };
 }

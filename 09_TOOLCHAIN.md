@@ -686,6 +686,7 @@ framework CLI は ai-dev-platform で開発する Node.js ツール。
 | `framework discover` | Step 0 | ディスカバリー（ヒアリング実行） |
 | `framework generate` | Step 1-3 | SSOT生成（生成チェーン実行） |
 | `framework plan` | Step 4準備 | 実装計画作成（タスク分解） |
+| `framework gate` | Gate検証 | Pre-Code Gate チェック・状態管理 |
 | `framework audit` | 品質ゲート | 品質監査（SSOT/コード/テスト） |
 | `framework run` | Step 4 | タスク実行（1タスク or 連続） |
 | `framework status` | 常時 | 進捗表示 |
@@ -780,6 +781,36 @@ framework plan
   4. 実装順序を出力
 
   出力: docs/management/IMPLEMENTATION_PLAN.md
+
+
+framework gate <subcommand>
+────────────────────────────
+  Pre-Code Gate のチェック・状態管理を行う。
+  Gate の状態は .framework/gates.json で永続化される。
+  `framework run` は全 Gate が passed でないと実行を拒否する。
+
+  サブコマンド:
+  check           全Gate（A/B/C）を一括チェック → gates.json に保存
+  check-a         Gate A（開発環境）のみチェック
+  check-b         Gate B（計画完了）のみチェック
+  check-c         Gate C（SSOT完全性）のみチェック
+  status          現在のGate状態を表示
+  reset           Gate 状態をリセット
+
+  Gate の内容:
+  Gate A: 開発環境の準備（package.json, node_modules, .env, Docker, CI, .framework/）
+  Gate B: タスク分解・計画（plan.json, project.json の存在）
+  Gate C: SSOT 完全性（§3-E/F/G/H セクションの存在チェック）
+
+  自動連動:
+  - framework plan 成功時 → Gate B が自動パス
+  - framework audit ssot 実行時 → Gate C が自動評価
+
+  例:
+  framework gate check       # 全Gateチェック
+  framework gate check-c     # SSOT完全性のみチェック
+  framework gate status      # 現在の状態表示
+  framework gate reset       # リセット
 
 
 framework audit [target]
@@ -890,6 +921,7 @@ framework update
     → framework generate product
     → framework generate technical
     → framework plan
+    → framework gate check      ← 全Gate確認
     → framework run --auto
     → framework audit all
     → framework status
@@ -897,15 +929,17 @@ framework update
 既存プロジェクト:
   framework retrofit
     → framework plan
+    → framework gate check      ← 全Gate確認
     → framework run --auto
     → framework audit all
     → framework status
 
 日常の開発:
-  framework status          ← 現在地を確認
-  framework run FEAT-001    ← 1タスク実行
-  framework audit code      ← コード監査
-  framework run --auto      ← 連続実行
+  framework gate check        ← Pre-Code Gate 確認（必須）
+  framework status            ← 現在地を確認
+  framework run FEAT-001      ← 1タスク実行（Gate通過後のみ）
+  framework audit code        ← コード監査
+  framework run --auto        ← 連続実行
 
 保守:
   framework update          ← フレームワーク更新

@@ -19,6 +19,10 @@ import {
 } from "./run-model.js";
 import { loadAuditReports } from "./audit-model.js";
 import { loadProjectProfile } from "./profile-model.js";
+import {
+  loadGateState,
+  type GateStatus,
+} from "./gate-model.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -60,11 +64,20 @@ export interface ProfileSummary {
   discoveryStages: number[];
 }
 
+export interface GateStatusInfo {
+  gateA: GateStatus;
+  gateB: GateStatus;
+  gateC: GateStatus;
+  allPassed: boolean;
+  updatedAt: string;
+}
+
 export interface StatusResult {
   currentPhase: number;
   phaseLabel: string;
   overallProgress: number;
   profile: ProfileSummary | null;
+  gates: GateStatusInfo | null;
   phases: PhaseInfo[];
   documents: DocumentStatus[];
   tasks: TaskStatusItem[];
@@ -123,11 +136,27 @@ export function collectStatus(projectDir: string): StatusResult {
       }
     : null;
 
+  // Load gate state
+  const gateState = loadGateState(projectDir);
+  const gates: GateStatusInfo | null = gateState
+    ? {
+        gateA: gateState.gateA.status,
+        gateB: gateState.gateB.status,
+        gateC: gateState.gateC.status,
+        allPassed:
+          gateState.gateA.status === "passed" &&
+          gateState.gateB.status === "passed" &&
+          gateState.gateC.status === "passed",
+        updatedAt: gateState.updatedAt,
+      }
+    : null;
+
   return {
     currentPhase: currentPhase?.number ?? 0,
     phaseLabel: currentPhase?.label ?? "Not started",
     overallProgress,
     profile,
+    gates,
     phases,
     documents,
     tasks,
@@ -302,6 +331,23 @@ export function printStatus(
     io.print("");
   }
 
+  // Pre-Code Gate status
+  if (result.gates) {
+    io.print("  Pre-Code Gate:");
+    const iconA = gateIcon(result.gates.gateA);
+    const iconB = gateIcon(result.gates.gateB);
+    const iconC = gateIcon(result.gates.gateC);
+    io.print(`    ${iconA} Gate A (Environment)       ${result.gates.gateA.toUpperCase()}`);
+    io.print(`    ${iconB} Gate B (Planning)          ${result.gates.gateB.toUpperCase()}`);
+    io.print(`    ${iconC} Gate C (SSOT Completeness) ${result.gates.gateC.toUpperCase()}`);
+    if (result.gates.allPassed) {
+      io.print("    → 'framework run' is allowed");
+    } else {
+      io.print("    → 'framework run' is BLOCKED. Run 'framework gate check'.");
+    }
+    io.print("");
+  }
+
   // Overall progress
   io.print(`  Phase: ${result.phaseLabel}`);
   io.print(
@@ -371,6 +417,17 @@ export function printStatus(
       );
     }
     io.print("");
+  }
+}
+
+function gateIcon(status: GateStatus): string {
+  switch (status) {
+    case "passed":
+      return "✅";
+    case "failed":
+      return "❌";
+    default:
+      return "⏳";
   }
 }
 

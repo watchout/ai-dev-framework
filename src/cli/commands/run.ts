@@ -15,6 +15,11 @@ import {
   loadRunState,
   calculateProgress,
 } from "../lib/run-model.js";
+import {
+  loadGateState,
+  areAllGatesPassed,
+  collectFailures,
+} from "../lib/gate-model.js";
 import { logger } from "../lib/logger.js";
 
 export function registerRunCommand(program: Command): void {
@@ -43,6 +48,36 @@ export function registerRunCommand(program: Command): void {
           if (options.status) {
             printRunStatus(projectDir);
             return;
+          }
+
+          // ── Pre-Code Gate enforcement ──
+          const gateState = loadGateState(projectDir);
+          if (!gateState || !areAllGatesPassed(gateState)) {
+            logger.error(
+              "❌ Pre-Code Gate 未通過。実装を開始できません。",
+            );
+            logger.info("");
+            if (!gateState) {
+              logger.info(
+                "  Gate 状態が見つかりません。まず 'framework gate check' を実行してください。",
+              );
+            } else {
+              const failures = collectFailures(gateState);
+              for (const failure of failures) {
+                logger.error(`  ${failure.gate}:`);
+                for (const detail of failure.details) {
+                  logger.info(`    → ${detail}`);
+                }
+              }
+            }
+            logger.info("");
+            logger.info(
+              "  → 'framework gate check' で詳細を確認してください。",
+            );
+            logger.info(
+              "  → 全ての Gate が PASSED になるまで 'framework run' は実行できません。",
+            );
+            process.exit(1);
           }
 
           const io = createRunTerminalIO();

@@ -328,9 +328,10 @@ framework init          プロジェクト初期化
 framework discover      ヒアリング実行
 framework generate      SSOT生成（生成チェーン実行）
 framework plan          実装計画作成（タスク分解）
+framework gate          Pre-Code Gate 管理（チェック/状態確認/リセット）
 framework audit         品質監査（SSOT/コード/テスト）
-framework run           タスク実行（1タスク or 連続自動実行）
-framework status        進捗表示
+framework run           タスク実行（1タスク or 連続自動実行）※Gate通過必須
+framework status        進捗表示（Gate状態含む）
 framework retrofit      既存プロジェクト導入
 framework update        フレームワーク更新
 ```
@@ -617,6 +618,14 @@ Skills 一覧:
 ```
 コードを1行でも書く前に、以下の3段階を順番に確認する。
 1つでも ☐ がある段階では、実装を開始してはならない。
+
+⚠️ Gate は CLI で構造的に強制される:
+  - `framework run` は全 Gate が passed でないと実行を拒否する
+  - Gate の状態は .framework/gates.json で永続管理される
+  - `framework gate check` で全ゲートを一括チェック
+  - `framework gate status` で現在の状態を確認
+  - `framework plan` 成功時に Gate B が自動で passed になる
+  - `framework audit ssot` 実行時に Gate C が自動で再評価される
 ```
 
 ### Gate A: 開発環境・インフラの準備（14_IMPLEMENTATION_ORDER.md Layer 0）

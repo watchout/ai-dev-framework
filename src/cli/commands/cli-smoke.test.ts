@@ -68,6 +68,13 @@ describe("CLI Smoke Tests", () => {
     expect(output).toContain("plan");
   });
 
+  it("shows help for gate command", () => {
+    const output = runCli("gate --help");
+    expect(output).toContain("gate");
+    expect(output).toContain("check");
+    expect(output).toContain("status");
+  });
+
   it("shows help for audit command", () => {
     const output = runCli("audit --help");
     expect(output).toContain("audit");
@@ -95,6 +102,7 @@ describe("CLI Smoke Tests", () => {
       "discover",
       "generate",
       "plan",
+      "gate",
       "audit",
       "run",
       "status",

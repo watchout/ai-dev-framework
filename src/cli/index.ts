@@ -19,6 +19,7 @@ import { registerCICommand } from "./commands/ci.js";
 import { registerVisualTestCommand } from "./commands/visual-test.js";
 import { registerAcceptCommand } from "./commands/accept.js";
 import { registerDeployCommand } from "./commands/deploy.js";
+import { registerGateCommand } from "./commands/gate.js";
 
 const program = new Command();
 
@@ -34,6 +35,7 @@ registerInitCommand(program);
 registerDiscoverCommand(program);
 registerGenerateCommand(program);
 registerPlanCommand(program);
+registerGateCommand(program);
 registerAuditCommand(program);
 registerRunCommand(program);
 registerStatusCommand(program);

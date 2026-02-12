@@ -86,6 +86,44 @@
 
 ---
 
+## 🔒 Pre-Code Gate（CLI で構造的に強制）
+
+```
+コードを1行でも書く前に、3段階のGateを全て通過する必要がある。
+Gate の状態は .framework/gates.json で永続管理される。
+`framework run` は全 Gate が passed でないと実行を拒否する。
+
+Gate A: 開発環境・インフラの準備
+  - package.json, node_modules, .env, docker-compose, CI/CD の存在確認
+
+Gate B: タスク分解・計画の完了
+  - .framework/plan.json（framework plan 実行済み）
+  - .framework/project.json の存在確認
+
+Gate C: SSOT 完全性チェック
+  - 各SSOT の §3-E/F/G/H セクションが記入されているか
+
+操作コマンド:
+  framework gate check       全Gate一括チェック → gates.json に保存
+  framework gate check-a     Gate A のみチェック
+  framework gate check-b     Gate B のみチェック
+  framework gate check-c     Gate C のみチェック
+  framework gate status      現在のGate状態を表示
+  framework gate reset       Gate 状態をリセット
+
+自動連動:
+  framework plan 成功時     → Gate B が自動パス
+  framework audit ssot 実行時 → Gate C が自動評価
+
+日常のワークフロー:
+  1. framework gate check   ← 全ゲートをチェック
+  2. framework gate status  ← 結果を確認
+  3. 未通過のGateがあれば修正
+  4. framework run          ← 全Gate通過後のみ実行可能
+```
+
+---
+
 ## 会社ナレッジ参照ルール
 
 > `.framework/project.json` に `knowledgeSource` が設定されている場合、

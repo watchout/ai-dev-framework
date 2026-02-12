@@ -18,6 +18,13 @@ import {
   generatePlanMarkdown,
 } from "../lib/plan-engine.js";
 import { loadPlan } from "../lib/plan-model.js";
+import {
+  loadGateState,
+  createGateState,
+  updateGateB,
+  saveGateState,
+} from "../lib/gate-model.js";
+import { checkGateB } from "../lib/gate-engine.js";
 import { logger } from "../lib/logger.js";
 
 export function registerPlanCommand(program: Command): void {
@@ -72,6 +79,16 @@ export function registerPlanCommand(program: Command): void {
             logger.success(`Plan written to ${options.output}`);
           }
 
+          // Auto-pass Gate B after successful plan generation
+          const gateState = loadGateState(projectDir) ?? createGateState();
+          const gateBChecks = checkGateB(projectDir);
+          updateGateB(gateState, gateBChecks);
+          saveGateState(projectDir, gateState);
+
+          if (gateState.gateB.status === "passed") {
+            logger.success("Gate B (Planning) automatically passed.");
+          }
+
           // Print summary
           const totalFeatures = result.plan.waves.reduce(
             (sum, w) => sum + w.features.length,
@@ -91,8 +108,8 @@ export function registerPlanCommand(program: Command): void {
           logger.header("Next steps:");
           logger.info("  1. Review the plan");
           logger.info("  2. framework plan --output docs/PLAN.md  <- Export plan");
-          logger.info("  3. framework audit   <- Verify SSOT quality");
-          logger.info("  4. framework run     <- Start auto-development");
+          logger.info("  3. framework gate check  <- Verify all gates");
+          logger.info("  4. framework run         <- Start auto-development");
           logger.info("");
         } catch (error) {
           if (error instanceof Error) {
