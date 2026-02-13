@@ -619,13 +619,31 @@ Skills 一覧:
 コードを1行でも書く前に、以下の3段階を順番に確認する。
 1つでも ☐ がある段階では、実装を開始してはならない。
 
-⚠️ Gate は CLI で構造的に強制される:
-  - `framework run` は全 Gate が passed でないと実行を拒否する
-  - Gate の状態は .framework/gates.json で永続管理される
+⚠️ Gate は 2層の構造的強制で実行される:
+
+  Layer 1: Claude Code hook（リアルタイム）
+  - PreToolUse フックが Edit/Write をインターセプト
+  - src/ 等のソースコードパスへの編集を Gate 未通過時にブロック
+  - .claude/hooks/pre-code-gate.sh → .framework/gates.json を参照
+  - docs/, config 等の非ソースファイルは制限なし
+
+  Layer 2: Git pre-commit hook（コミット時）
+  - ソースファイルが含まれるコミットで `framework gate check` をフル実行
+  - 緊急時は `git commit --no-verify` でバイパス可能
+  - .husky/pre-commit に自動追記（既存フックを保持）
+
+  CLI コマンド:
   - `framework gate check` で全ゲートを一括チェック
   - `framework gate status` で現在の状態を確認
+  - `framework run` は全 Gate が passed でないと実行を拒否する
+  - Gate の状態は .framework/gates.json で永続管理される
   - `framework plan` 成功時に Gate B が自動で passed になる
   - `framework audit ssot` 実行時に Gate C が自動で再評価される
+
+  インストール:
+  - `framework init` / `framework retrofit` で自動インストール
+  - .claude/settings.json に PreToolUse フック設定をマージ
+  - .husky/pre-commit に gate check ブロックを追記
 ```
 
 ### Gate A: 開発環境・インフラの準備（14_IMPLEMENTATION_ORDER.md Layer 0）

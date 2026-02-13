@@ -26,6 +26,7 @@ import {
   loadGateState,
   saveGateState,
 } from "../lib/gate-model.js";
+import { installAllHooks } from "../lib/hooks-installer.js";
 import { logger } from "../lib/logger.js";
 
 export function registerRetrofitCommand(program: Command): void {
@@ -108,6 +109,22 @@ export function registerRetrofitCommand(program: Command): void {
             logger.info(
               "  Run 'framework gate check' to evaluate gate status.",
             );
+          }
+
+          // Install Pre-Code Gate hooks
+          if (!options.dryRun) {
+            const hooksResult = installAllHooks(projectDir);
+            for (const w of hooksResult.warnings) {
+              logger.warn(w);
+            }
+            if (hooksResult.claudeHookInstalled) {
+              logger.success(
+                "Claude Code hook installed (PreToolUse → Edit/Write)",
+              );
+            }
+            if (hooksResult.gitHookInstalled) {
+              logger.success("Git pre-commit hook installed");
+            }
           }
 
           // Output markdown if requested

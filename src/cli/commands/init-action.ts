@@ -27,6 +27,7 @@ import {
   createGateState,
   saveGateState,
 } from "../lib/gate-model.js";
+import { installAllHooks } from "../lib/hooks-installer.js";
 import { logger } from "../lib/logger.js";
 
 export interface InitOptions {
@@ -51,7 +52,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const createdFiles: string[] = [];
   const errors: string[] = [];
 
-  const totalSteps = 8;
+  const totalSteps = 9;
 
   // Check if directory already exists and is non-empty
   if (fs.existsSync(projectPath)) {
@@ -163,6 +164,20 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const gateState = createGateState();
   saveGateState(projectPath, gateState);
   createdFiles.push(".framework/gates.json");
+
+  // Step 9: Install Pre-Code Gate hooks
+  logger.step(9, totalSteps, "Installing Pre-Code Gate hooks...");
+  const hooksResult = installAllHooks(projectPath);
+  createdFiles.push(...hooksResult.files);
+  for (const w of hooksResult.warnings) {
+    logger.warn(w);
+  }
+  if (hooksResult.claudeHookInstalled) {
+    logger.success("Claude Code hook installed (PreToolUse → Edit/Write)");
+  }
+  if (hooksResult.gitHookInstalled) {
+    logger.success("Git pre-commit hook installed");
+  }
 
   return { projectPath, createdFiles, errors };
 }

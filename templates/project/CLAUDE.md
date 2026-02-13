@@ -90,8 +90,17 @@
 
 ```
 コードを1行でも書く前に、3段階のGateを全て通過する必要がある。
-Gate の状態は .framework/gates.json で永続管理される。
-`framework run` は全 Gate が passed でないと実行を拒否する。
+Gate は 2層の構造的強制で実行される。
+
+Layer 1: Claude Code hook（リアルタイム）
+  - PreToolUse フックが Edit/Write をインターセプト
+  - src/ 等のソースコードパスへの編集を Gate 未通過時にブロック
+  - .claude/hooks/pre-code-gate.sh → .framework/gates.json を参照
+  - docs/, config 等の非ソースファイルは制限なし
+
+Layer 2: Git pre-commit hook（コミット時）
+  - ソースファイルが含まれるコミットで `framework gate check` をフル実行
+  - 緊急時は `git commit --no-verify` でバイパス可能
 
 Gate A: 開発環境・インフラの準備
   - package.json, node_modules, .env, docker-compose, CI/CD の存在確認
