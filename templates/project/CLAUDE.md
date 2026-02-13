@@ -171,6 +171,7 @@ Gate C: SSOT 完全性チェック
    - コーディング規約 → docs/standards/CODING_STANDARDS.md
    - テスト規約       → docs/standards/TESTING_STANDARDS.md
    - Git運用          → docs/standards/GIT_WORKFLOW.md
+   - 決済セキュリティ → docs/standards/SECURITY_STRIPE.md（Stripe利用時）
 4. PRD               → docs/requirements/SSOT-0_PRD.md
 ```
 

@@ -295,6 +295,11 @@ Referrer-Policy: strict-origin-when-cross-origin
 | 通信 | TLS 1.3 | HTTPS必須 |
 | セッションID | UUID v4 | 推測不可能 |
 
+### 4.7 決済セキュリティ
+
+Stripe 等の決済サービスを利用する場合は `docs/standards/SECURITY_STRIPE.md` を参照。
+PCI DSS、Webhook 署名検証、API キー管理等の決済固有要件を定義する。
+
 ---
 
 ## 5. 国際化（i18n）
