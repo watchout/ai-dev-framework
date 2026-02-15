@@ -1,137 +1,179 @@
 ---
 name: discovery
 description: |
-  Discovery Phase専門家チーム。アイデア検証と初期ヒアリングを担当。
-  「ディスカバリーを開始」「discovery」で実行。
-  個別エージェント: 「D1」「D2」「D3」「D4」で個別実行可能。
+  Discovery & Business Phase。アイデア検証・事業設計を担当。
+  「ディスカバリー」「discovery」「アイデア」「ビジネス設計」「business」で実行。
 ---
 
-# Discovery Phase Skill - アイデア発見・検証
+# Discovery & Business Skill
 
 ## 概要
 
-プロジェクトの初期段階で、アイデアの核心を引き出し、
-市場での妥当性を検証するための専門家チーム。
+プロジェクト初期段階のアイデア発掘から事業設計までを一貫して担当。
+Discovery（D1-D4）で課題を検証し、Business（B1-B4）で持続可能なビジネスモデルに落とし込む。
 
-## エージェント構成
+## ワークフロー
 
 ```
-Discovery Workflow
-─────────────────────────────────────────────────────
+Discovery                          Business
+──────────                         ──────────
+D1: Idea Excavator                 B1: Value Architect
+    ↓ アイデアの核心を抽出              ↓ 価値提案を設計
+D2: Problem Validator              B2: Competitor Analyst
+    ↓ 課題の実在性を検証               ↓ 競合と差別化を分析
+D3: User Profiler                  B3: Revenue Designer
+    ↓ ターゲットユーザーを特定          ↓ マネタイズモデルを設計
+D4: Market Scout                   B4: Go-to-Market Planner
+    ↓ 市場機会を評価                   ↓ 市場投入戦略を策定
 
-D1: Idea Excavator（アイデア発掘者）
-    ↓ アイデアの核心を抽出
-D2: Problem Validator（課題検証者）
-    ↓ 課題の実在性を検証
-D3: User Profiler（ユーザープロファイラー）
-    ↓ ターゲットユーザーを特定
-D4: Market Scout（市場偵察者）
-    ↓ 市場機会を評価
-
-→ IDEA_CANVAS.md + USER_PERSONA.md 生成
+→ IDEA_CANVAS + USER_PERSONA       → VALUE_PROPOSITION + COMPETITOR_ANALYSIS
+  + COMPETITOR_ANALYSIS(初版)         + BUSINESS_MODEL + GTM_STRATEGY
 ```
 
-## 各エージェントの役割
+## 実行ルール
+
+1. **1回の発言で1つだけ質問する**（まとめて聞かない）
+2. **必ず具体例を添える**（回答のハードルを下げる）
+3. **各Stage完了時に整理・確認する**（認識ズレを防ぐ）
+4. **「まとまっていなくてOK」と伝える**（完璧を求めない）
+5. **ドキュメント生成は1つずつ、ユーザー承認を挟む**
+
+## Discovery エージェント詳細
 
 ### D1: Idea Excavator（アイデア発掘者）
 
-**役割**: ユーザーの漠然としたアイデアから核心を引き出す
+ユーザーの漠然としたアイデアから核心を引き出す。
 
-**質問例**:
+**質問バンク**:
 - 「どんな問題を解決したいですか？」
 - 「理想の状態はどんな姿ですか？」
 - 「既存の解決策の何が不満ですか？」
+- 「その問題に気づいたきっかけは？」
+- 「解決したら誰が一番喜びますか？」
 
 **出力**: アイデアの核心、解決すべき課題の仮説
 
-詳細: `agents/d1-idea-excavator.md`
-
 ### D2: Problem Validator（課題検証者）
 
-**役割**: 課題が実在し、解決する価値があるか検証
+課題が実在し、解決する価値があるか検証する。
 
-**質問例**:
+**質問バンク**:
 - 「この問題で具体的に困った経験は？」
 - 「今どうやって対処していますか？」
 - 「解決されたらいくら払えますか？」
+- 「どのくらいの頻度で困っていますか？」
+- 「この問題を放置するとどうなりますか？」
 
-**出力**: 課題の深刻度、解決意欲の評価
+**評価基準**:
+- 深刻度: 日常的に困るか、たまにか
+- 頻度: 毎日か、月1回か
+- 代替手段: 既に何かで対処しているか
+- 支払意欲: お金を払ってでも解決したいか
 
-詳細: `agents/d2-problem-validator.md`
+**出力**: 課題の深刻度スコア、解決意欲の評価
 
 ### D3: User Profiler（ユーザープロファイラー）
 
-**役割**: ターゲットユーザーの具体像を特定
+ターゲットユーザーの具体像を特定する。
 
-**質問例**:
+**質問バンク**:
 - 「最も困っているのは誰ですか？」
 - 「その人の1日を教えてください」
 - 「その人は普段どこで情報を得ますか？」
+- 「その人のITリテラシーはどのくらい？」
+- 「その人は何に価値を感じますか？」
 
 **出力**: ペルソナ仮説、ユーザージャーニー仮説
 
-詳細: `agents/d3-user-profiler.md`
-
 ### D4: Market Scout（市場偵察者）
 
-**役割**: 市場機会と競合状況を評価
+市場機会と競合状況を評価する。
 
-**質問例**:
+**質問バンク**:
 - 「競合サービスを知っていますか？」
 - 「なぜ競合では不十分なのですか？」
 - 「どのくらいの市場規模を想定していますか？」
+- 「海外に類似サービスはありますか？」
 
 **出力**: 競合分析仮説、差別化ポイント仮説
 
-詳細: `agents/d4-market-scout.md`
+## Business エージェント詳細
 
-## 実行方法
+### B1: Value Architect（価値設計者）
 
-### フルワークフロー
+ユーザーに提供する価値を明確に言語化する。
 
-```
-「ディスカバリーを開始して」
-「discovery」
-```
+**フレームワーク**:
+- バリュープロポジションキャンバス
+- Jobs to be Done
+- ゲインクリエイター / ペインリリーバー
 
-全エージェントが順次実行され、以下が生成される：
-- IDEA_CANVAS.md
-- USER_PERSONA.md（50%完成度）
-- COMPETITOR_ANALYSIS.md（30%完成度）
+**チェックリスト**:
+- [ ] 顧客のJob（達成したいこと）が明確か
+- [ ] Pain（避けたいこと）を具体的に列挙したか
+- [ ] Gain（得たいこと）を具体的に列挙したか
+- [ ] 競合と差別化できる価値があるか
 
-### 個別エージェント
+**出力**: VALUE_PROPOSITION.md
 
-```
-「D1を実行」→ Idea Excavatorのみ実行
-「D2を実行」→ Problem Validatorのみ実行
-「D3を実行」→ User Profilerのみ実行
-「D4を実行」→ Market Scoutのみ実行
-```
+### B2: Competitor Analyst（競合分析者）
 
-## 合議ポイント
+競合状況を分析し、差別化ポイントを明確化する。
 
-Discovery Phase完了時に以下の合議を行う：
+**分析観点**:
+- 直接競合 / 間接競合 / 代替手段
+- 機能比較マトリクス
+- ポジショニングマップ（2軸）
 
-1. **課題の実在性確認**
-   - 参加者: D2 + Business Expert
-   - 判定: この課題は解決する価値があるか
+**出力**: COMPETITOR_ANALYSIS.md
 
-2. **ターゲットの妥当性確認**
-   - 参加者: D3 + User Advocate
-   - 判定: このペルソナは存在し、到達可能か
+### B3: Revenue Designer（収益設計者）
 
-3. **市場機会の評価**
-   - 参加者: D4 + Business Expert
-   - 判定: 参入する価値のある市場か
+持続可能な収益モデルを設計する。
 
-## 成果物
+**検討事項**:
+- 課金モデル（サブスク/従量/フリーミアム/買い切り）
+- 価格設定戦略（競合基準/価値基準/コスト基準）
+- LTV/CAC 試算
 
-| 成果物 | 完成度 | 次フェーズへの入力 |
-|--------|--------|-------------------|
-| IDEA_CANVAS.md | 80% | Business Phase全体 |
-| USER_PERSONA.md | 50% | Product Phase |
-| COMPETITOR_ANALYSIS.md | 30% | Business Phase |
+**出力**: BUSINESS_MODEL セクション（PRDに統合）
+
+### B4: Go-to-Market Planner（市場投入計画者）
+
+市場投入戦略を策定する。
+
+**検討事項**:
+- ローンチ戦略（PLF/Build in Public）
+- チャネル戦略
+- 初期ユーザー獲得計画
+
+**マーケティング原則参照** (specs/08_MARKETING.md):
+- ジェイ・エイブラハム: 3軸成長、リスクリバーサル
+- DRM: PASONA、2ステップ
+- ローンチ戦略: PLF、Build in Public
+
+**出力**: GTM_STRATEGY（または LP_SPEC.md への入力）
+
+## 成果物一覧
+
+| 成果物 | 完成度 | 担当 | 次フェーズ入力 |
+|--------|--------|------|---------------|
+| IDEA_CANVAS.md | 80% | D1-D4 | Business全体 |
+| USER_PERSONA.md | 50% | D3 | Product Phase |
+| COMPETITOR_ANALYSIS.md | 80% | D4+B2 | Product Phase |
+| VALUE_PROPOSITION.md | 80% | B1 | Product Phase |
+| BUSINESS_MODEL | 60% | B3 | PRD統合 |
+| GTM_STRATEGY | 40% | B4 | LP_SPEC.md |
+
+## Multi-perspective Check
+
+出力を確定する前に、以下の視点を検討:
+- **Product**: ユーザーニーズに合致するか？ペルソナは実在するか？
+- **Technical**: 技術的に実現可能か？開発コストは妥当か？
+- **Business**: ビジネスモデルは持続可能か？市場は十分か？
+
+視点間の緊張があれば、それを明記して解決策を示す。
 
 ## 次のフェーズ
 
-Discovery完了後は `.claude/skills/business/SKILL.md` へ移行。
+Discovery & Business完了後は `design/SKILL.md` へ移行。

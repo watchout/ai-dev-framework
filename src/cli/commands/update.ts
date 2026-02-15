@@ -14,6 +14,7 @@ import { type Command } from "commander";
 import {
   fetchFrameworkDocs,
   loadFrameworkState,
+  findFrameworkRoot,
   FRAMEWORK_REPO,
 } from "../lib/framework-fetch.js";
 import { AGENT_TEMPLATES, type ProjectConfig } from "../lib/templates.js";
@@ -87,7 +88,7 @@ export function registerUpdateCommand(program: Command): void {
             process.exit(1);
           }
 
-          logger.step(2, 3, "Updating Agent Teams templates...");
+          logger.step(2, 4, "Updating Agent Teams templates...");
           const agentUpdates = updateAgentTemplates(projectDir);
           if (agentUpdates > 0) {
             logger.success(
@@ -97,7 +98,17 @@ export function registerUpdateCommand(program: Command): void {
             logger.info("  Agent templates up to date (or not present)");
           }
 
-          logger.step(3, 3, "Update complete.");
+          logger.step(3, 4, "Updating skill templates...");
+          const skillUpdates = updateSkillTemplates(projectDir);
+          if (skillUpdates > 0) {
+            logger.success(
+              `Updated ${skillUpdates} skill templates`,
+            );
+          } else {
+            logger.info("  Skill templates up to date (or not present)");
+          }
+
+          logger.step(4, 4, "Update complete.");
           logger.info("");
           logger.success(
             `Updated ${result.copiedFiles.length} framework docs`,
@@ -105,6 +116,11 @@ export function registerUpdateCommand(program: Command): void {
           if (agentUpdates > 0) {
             logger.success(
               `Updated ${agentUpdates} agent templates`,
+            );
+          }
+          if (skillUpdates > 0) {
+            logger.success(
+              `Updated ${skillUpdates} skill templates`,
             );
           }
           logger.info(
@@ -166,6 +182,83 @@ function updateAgentTemplates(projectDir: string): number {
     } else {
       // Create missing agent files in existing agents directory
       fs.writeFileSync(agentPath, newContent, "utf-8");
+      updated++;
+    }
+  }
+
+  return updated;
+}
+
+const SKILL_DIRS = ["discovery", "design", "implement", "review"] as const;
+
+/**
+ * Update .claude/skills/ templates from the framework source.
+ * Copies SKILL.md files for each skill directory + _INDEX.md.
+ *
+ * Returns the number of updated files.
+ */
+function updateSkillTemplates(projectDir: string): number {
+  const skillsDir = path.join(projectDir, ".claude/skills");
+  if (!fs.existsSync(skillsDir)) {
+    return 0;
+  }
+
+  const frameworkRoot = findFrameworkRoot();
+  if (!frameworkRoot) {
+    return 0;
+  }
+
+  let updated = 0;
+
+  for (const skillName of SKILL_DIRS) {
+    const srcPath = path.join(frameworkRoot, "templates/skills", skillName, "SKILL.md");
+    if (!fs.existsSync(srcPath)) continue;
+
+    const destDir = path.join(skillsDir, skillName);
+    const destPath = path.join(destDir, "SKILL.md");
+    const newContent = fs.readFileSync(srcPath, "utf-8");
+
+    if (fs.existsSync(destPath)) {
+      const existing = fs.readFileSync(destPath, "utf-8");
+      if (existing !== newContent) {
+        fs.writeFileSync(destPath, newContent, "utf-8");
+        updated++;
+      }
+    } else {
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir, { recursive: true });
+      }
+      fs.writeFileSync(destPath, newContent, "utf-8");
+      updated++;
+    }
+  }
+
+  // Also update _INDEX.md
+  const indexSrc = path.join(frameworkRoot, ".claude/skills/_INDEX.md");
+  const indexDest = path.join(skillsDir, "_INDEX.md");
+  if (fs.existsSync(indexSrc)) {
+    const newContent = fs.readFileSync(indexSrc, "utf-8");
+    if (fs.existsSync(indexDest)) {
+      const existing = fs.readFileSync(indexDest, "utf-8");
+      if (existing !== newContent) {
+        fs.writeFileSync(indexDest, newContent, "utf-8");
+        updated++;
+      }
+    } else {
+      fs.writeFileSync(indexDest, newContent, "utf-8");
+      updated++;
+    }
+  }
+
+  // Remove deprecated skill directories (v3 → v4 migration)
+  const DEPRECATED_SKILL_DIRS = [
+    "business", "product", "technical", "implementation",
+    "review-council", "deliberation",
+  ];
+  for (const dirName of DEPRECATED_SKILL_DIRS) {
+    const deprecatedDir = path.join(skillsDir, dirName);
+    if (fs.existsSync(deprecatedDir)) {
+      fs.rmSync(deprecatedDir, { recursive: true, force: true });
       updated++;
     }
   }

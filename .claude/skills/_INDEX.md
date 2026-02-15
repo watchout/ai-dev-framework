@@ -2,82 +2,42 @@
 
 > Claude Codeで利用可能なスキル（専門家チーム）の一覧
 
-## 概要
-
-本フレームワークでは、開発フェーズごとに専門家チームを定義し、
-合議制による意思決定と品質保証を実現しています。
-
-## スキル一覧
+## スキル構成（4スキル + Agent Teams）
 
 ```
 .claude/skills/
 ├── _INDEX.md              ← このファイル
-├── agent-teams/           ← Agent Teams運用パターン（実証済み）
-│   ├── SKILL.md
-│   ├── agents/
-│   │   ├── analysis-team.md      ← 分析チーム
-│   │   └── investigation-team.md ← 調査チーム
-│   └── references/
-│       └── INTERFACE_CONTRACT_TEMPLATE.md
-├── deliberation/          ← 合議制意思決定
-│   ├── SKILL.md
-│   └── agents/
-│       └── facilitator.md
-├── discovery/             ← Discovery Phase
-│   ├── SKILL.md
-│   └── agents/
-│       └── d1-idea-excavator.md
-├── business/              ← Business Phase
-│   ├── SKILL.md
-│   └── agents/
-├── product/               ← Product Phase
-│   ├── SKILL.md
-│   └── agents/
-│       └── p4-feature-spec-writer.md
-├── technical/             ← Technical Phase
-│   ├── SKILL.md
-│   └── agents/
-├── implementation/        ← Implementation Phase
-│   ├── SKILL.md
-│   └── agents/
-│       └── i3-code-auditor.md
-└── review-council/        ← レビュー評議会
-    ├── SKILL.md
-    └── agents/
-        └── r1-ssot-auditor.md
+├── discovery/SKILL.md     ← Discovery & Business Phase（D1-D4, B1-B4）
+├── design/SKILL.md        ← Product & Technical Design（P1-P5, T1-T5）
+├── implement/SKILL.md     ← Implementation Phase（I1-I5）
+├── review/SKILL.md        ← Review & Audit（R1-R5 + 合議）
+└── agent-teams/           ← Agent Teams運用パターン（実証済み）
 ```
 
-## フェーズ別スキル
+## スキル一覧
 
-| フェーズ | スキル | 説明 | コマンド |
-|---------|--------|------|----------|
-| Agent Teams | agent-teams | 複数エージェント協調パターン | `チーム編成して` |
-| 合議 | deliberation | 多専門家合議制意思決定 | `合議して` |
-| Discovery | discovery | アイデア発見・検証 | `ディスカバリー` |
-| Business | business | 事業設計 | `ビジネス設計` |
-| Product | product | プロダクト設計 | `プロダクト設計` |
-| Technical | technical | 技術設計 | `技術設計` |
-| Implementation | implementation | 実装 | `実装` |
-| Review | review-council | 最終レビュー | `レビュー評議会` |
+| スキル | 説明 | トリガー |
+|--------|------|----------|
+| discovery | アイデア検証・事業設計 | 「ディスカバリー」「discovery」「アイデア」「ビジネス設計」 |
+| design | プロダクト設計・技術設計 | 「設計」「design」「仕様」「アーキテクチャ」 |
+| implement | 実装・テスト・品質保証 | 「実装」「implement」「コーディング」 |
+| review | レビュー評議会・監査 | 「レビュー」「review」「監査」「audit」 |
 
-## Agent Teams パターン（実証済み）
+## 開発フロー全体像
 
-国内外の事例に基づく実証済みパターン:
-
-| パターン | エージェント数 | 適用場面 | 事例 |
-|---------|---------------|----------|------|
-| 分析チーム | 3体 | サイト診断、品質評価 | クラスメソッド清水氏 |
-| 開発チーム | 3-5体 | 機能開発、アプリ構築 | Cole Medin, 和田氏 |
-| 調査チーム | 5体 | バグ調査、原因究明 | Joe Njenga氏 |
-| 企画チーム | 3体 | 企画書作成、戦略立案 | 森本洋平氏 |
-| 大規模チーム | 16体 | 大規模開発 | Nicholas Carlini氏 |
-
-**重要**: インターフェース契約を事前定義することで不整合を防止
-→ `agent-teams/references/INTERFACE_CONTRACT_TEMPLATE.md`
+```
+Discovery & Business → Design → Implementation → Review
+       ↓                 ↓           ↓              ↓
+    D1-D4, B1-B4      P1-P5      I1-I5          R1-R5
+                      T1-T5
+       ↓                 ↓           ↓              ↓
+  IDEA_CANVAS       PRD, SSOT    コード実装      最終判定
+  VALUE_PROP        API, DB      テスト          リリース可否
+```
 
 ## 専門家一覧
 
-### Discovery Phase (D1-D4)
+### Discovery (D1-D4) + Business (B1-B4)
 
 | ID | 名前 | 役割 |
 |----|------|------|
@@ -85,17 +45,12 @@
 | D2 | Problem Validator | 課題の実在性を検証 |
 | D3 | User Profiler | ターゲットユーザーを特定 |
 | D4 | Market Scout | 市場機会を評価 |
-
-### Business Phase (B1-B4)
-
-| ID | 名前 | 役割 |
-|----|------|------|
 | B1 | Value Architect | 価値提案を設計 |
 | B2 | Competitor Analyst | 競合を分析 |
 | B3 | Revenue Designer | 収益モデルを設計 |
 | B4 | Go-to-Market Planner | 市場投入戦略を策定 |
 
-### Product Phase (P1-P5)
+### Design: Product (P1-P5) + Technical (T1-T5)
 
 | ID | 名前 | 役割 |
 |----|------|------|
@@ -104,18 +59,13 @@
 | P3 | UI State Designer | UI状態を設計 |
 | P4 | Feature Spec Writer | 機能仕様を作成 |
 | P5 | UX Validator | UXを検証 |
-
-### Technical Phase (T1-T5)
-
-| ID | 名前 | 役割 |
-|----|------|------|
 | T1 | Tech Stack Selector | 技術スタックを選定 |
 | T2 | API Architect | APIを設計 |
 | T3 | Data Modeler | データモデルを設計 |
 | T4 | Cross-Cutting Designer | 横断設計 |
 | T5 | Security Reviewer | セキュリティをレビュー |
 
-### Implementation Phase (I1-I5)
+### Implementation (I1-I5)
 
 | ID | 名前 | 役割 |
 |----|------|------|
@@ -140,60 +90,36 @@
 ### フルワークフロー実行
 
 ```
-「ディスカバリーを開始して」
-「ビジネス設計を開始して」
-「プロダクト設計を開始して」
-「技術設計を開始して」
-「実装を開始して」
-「レビュー評議会を開催して」
+「ディスカバリーを開始して」→ Discovery & Business Phase
+「設計を開始して」          → Product & Technical Design
+「実装を開始して」          → Implementation Phase
+「レビュー評議会を開催して」→ Review & Audit
 ```
 
 ### 個別エージェント実行
 
 ```
-「D1を実行」  → Idea Excavator
-「P4を実行」  → Feature Spec Writer
-「I3を実行」  → Code Auditor
+「D1を実行」→ Idea Excavator
+「P4を実行」→ Feature Spec Writer
+「I3を実行」→ Code Auditor
+「R1を実行」→ SSOT Compliance Auditor
 ```
 
-### 合議の実行
+## 合議の実行
+
+review/SKILL.md に合議プロトコルが統合されている:
 
 ```
-「合議して：[議題]」
-「軽量合議：[議題]」
-「標準合議：[議題]」
-「重量合議：[議題]」
+「合議して：[議題]」     → 自動で適切な専門家を選定
+「軽量合議：[議題]」     → DETAIL層の決定（2-3名）
+「標準合議：[議題]」     → CONTRACT層の決定（3-4名）
+「重量合議：[議題]」     → CORE層の決定（全専門家）
 ```
-
-## 開発フロー全体像
-
-```
-Discovery → Business → Product → Technical → Implementation → Review
-   ↓          ↓          ↓          ↓           ↓            ↓
-  D1-D4     B1-B4      P1-P5      T1-T5       I1-I5        R1-R5
-   ↓          ↓          ↓          ↓           ↓            ↓
-   └──────────┴──────────┴──────────┴───────────┴────────────┘
-                              ↓
-                      合議制意思決定
-                     (deliberation)
-```
-
-## 合議トリガー
-
-以下の状況で自動的に合議が開始される：
-
-1. CORE層の変更提案 → 重量合議
-2. CONTRACT層の新規定義 → 標準合議
-3. 複数SSOTへの影響 → 標準合議
-4. 技術的負債の可能性 → 軽量合議
-5. セキュリティ関連 → 標準合議
 
 ## 関連ドキュメント
 
-- CLAUDE.md: 全体指示書
-- 08_DISCOVERY_FLOW.md: ディスカバリーフロー詳細
-- 10_GENERATION_CHAIN.md: 生成チェーン詳細
-- 11_FEATURE_SPEC_FLOW.md: 機能仕様フロー詳細
-- 12_SSOT_FORMAT.md: SSOT形式詳細
-- 17_CODE_AUDIT.md: コード監査基準
-- 21_AI_ESCALATION.md: エスカレーション基準
+- specs/01_DISCOVERY.md: ディスカバリーフロー詳細
+- specs/02_GENERATION_CHAIN.md: 生成チェーン詳細
+- specs/04_FEATURE_SPEC.md: 機能仕様フロー詳細
+- specs/06_CODE_QUALITY.md: コード品質基準
+- specs/07_AI_PROTOCOL.md: エスカレーション基準

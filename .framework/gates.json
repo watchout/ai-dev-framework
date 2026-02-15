@@ -1,0 +1,73 @@
+{
+  "gateA": {
+    "status": "failed",
+    "checks": [
+      {
+        "name": "package.json exists",
+        "passed": true,
+        "message": "package.json exists: found"
+      },
+      {
+        "name": "Dependencies installed (node_modules/)",
+        "passed": true,
+        "message": "Dependencies installed (node_modules/): found"
+      },
+      {
+        "name": "Environment config (.env or .env.example)",
+        "passed": false,
+        "message": ".env or .env.example not found. Create environment config."
+      },
+      {
+        "name": "Docker Compose config",
+        "passed": false,
+        "message": "docker-compose.yml not found. DB/Redis may not be available."
+      },
+      {
+        "name": "CI configuration (.github/workflows/)",
+        "passed": true,
+        "message": "CI configuration found"
+      },
+      {
+        "name": "Framework management (.framework/)",
+        "passed": false,
+        "message": ".framework/ not found. Run 'framework retrofit' or 'framework init'."
+      }
+    ],
+    "checkedAt": "2026-02-12T20:43:18.892Z"
+  },
+  "gateB": {
+    "status": "failed",
+    "checks": [
+      {
+        "name": "Implementation plan (.framework/plan.json)",
+        "passed": false,
+        "message": "No plan found. Run 'framework plan' to generate."
+      },
+      {
+        "name": "Plan contains features",
+        "passed": false,
+        "message": "Cannot check features — no plan exists."
+      },
+      {
+        "name": "Project profile configured (.framework/project.json)",
+        "passed": false,
+        "message": "No project profile. Run 'framework init' or 'framework retrofit'."
+      }
+    ],
+    "checkedAt": "2026-02-12T20:43:18.892Z"
+  },
+  "gateC": {
+    "status": "failed",
+    "checks": [
+      {
+        "name": "SSOT files found",
+        "passed": false,
+        "message": "No SSOT files found in docs/. Create feature specifications first.",
+        "filePath": "",
+        "missingSections": []
+      }
+    ],
+    "checkedAt": "2026-02-12T20:43:18.894Z"
+  },
+  "updatedAt": "2026-02-12T20:43:18.894Z"
+}

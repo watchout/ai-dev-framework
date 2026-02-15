@@ -172,7 +172,7 @@ describe("gate-engine", () => {
       const checks = checkGateC(tmpDir);
       expect(checks).toHaveLength(1);
       expect(checks[0].passed).toBe(false);
-      expect(checks[0].message).toContain("No SSOT files found");
+      expect(checks[0].message).toContain("No SSOT feature spec files found");
     });
 
     it("passes for SSOT with all required sections", () => {
@@ -227,12 +227,16 @@ describe("gate-engine", () => {
         [
           "# AUTH-001 Login",
           "",
+          "## Overview",
+          "This is the login feature specification.",
+          "",
           "## §3-E 入出力例",
           "Input: email",
           "Output: token",
           "",
           "## Scope",
           "Login functionality",
+          "More details about login.",
         ].join("\n"),
         "utf-8",
       );
@@ -248,10 +252,10 @@ describe("gate-engine", () => {
     });
 
     it("scans multiple SSOT directories", () => {
-      // Create files in different paths
+      // Create files in different feature spec paths (NOT core or requirements)
       const paths = [
         "docs/design/features/common/AUTH-001.md",
-        "docs/design/core/SSOT-2_UI.md",
+        "docs/project-features/BOOK-001_booking.md",
       ];
 
       for (const relPath of paths) {
@@ -259,13 +263,141 @@ describe("gate-engine", () => {
         fs.mkdirSync(path.dirname(fullPath), { recursive: true });
         fs.writeFileSync(
           fullPath,
-          "# Minimal SSOT\n\n## §3-E 入出力例\nExample\n## §3-F 境界値\nBoundary\n## §3-G 例外応答\nException\n## §3-H Gherkin\nScenario: Test",
+          "# Minimal SSOT\n\n## §3-E 入出力例\nExample\n## §3-F 境界値\nBoundary\n## §3-G 例外応答\nException\n## §3-H Gherkin\nScenario: Test\n\n\n\n",
           "utf-8",
         );
       }
 
       const checks = checkGateC(tmpDir);
       expect(checks).toHaveLength(2);
+    });
+
+    it("excludes core definitions (SSOT-2 through SSOT-5)", () => {
+      // Core definitions should NOT be checked for §3-E/F/G/H
+      const coreDir = path.join(tmpDir, "docs/design/core");
+      fs.mkdirSync(coreDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(coreDir, "SSOT-3_API_CONTRACT.md"),
+        "# SSOT-3 API Contract\n\n## Overview\nAPI rules and conventions.\n\nLots of content here.\nMore content.\nEven more content.\nStill more.\nAnd more.\nAnd more lines.\n",
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      // Should report "no SSOT files found" (core files are excluded)
+      expect(checks).toHaveLength(1);
+      expect(checks[0].message).toContain("No SSOT");
+    });
+
+    it("excludes requirements (PRD, Feature Catalog)", () => {
+      const reqDir = path.join(tmpDir, "docs/requirements");
+      fs.mkdirSync(reqDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(reqDir, "SSOT-0_PRD.md"),
+        "# PRD\n\n## Overview\nProduct requirements.\n\nLots of content.\nMore content.\nEven more.\nStill more.\nAnd more.\n",
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].message).toContain("No SSOT");
+    });
+
+    it("skips files in _non_ssot directories", () => {
+      const dir = path.join(tmpDir, "docs/03_ssot/_non_ssot");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "old_report.md"),
+        "# Old Report\n\nNot a feature spec.\nLine 3.\nLine 4.\nLine 5.\nLine 6.\nLine 7.\nLine 8.\nLine 9.\nLine 10.\n",
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].message).toContain("No SSOT");
+    });
+
+    it("skips files with REPORT/GUIDE in name", () => {
+      const dir = path.join(tmpDir, "docs/design/features");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "REPORT_security.md"),
+        "# Security Report\n\nNot a feature spec.\nLine 3.\nLine 4.\nLine 5.\nLine 6.\nLine 7.\nLine 8.\nLine 9.\nLine 10.\n",
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].message).toContain("No SSOT");
+    });
+
+    it("skips empty stub files with fewer than 10 lines", () => {
+      const dir = path.join(tmpDir, "docs/design/features");
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, "FEAT-001_stub.md"),
+        "# Stub\n\nTBD\n",
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].message).toContain("No SSOT");
+    });
+
+    it("auto-passes for lp profile", () => {
+      // Create .framework/project.json with lp profile
+      const fwDir = path.join(tmpDir, ".framework");
+      fs.mkdirSync(fwDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(fwDir, "project.json"),
+        JSON.stringify({ profileType: "lp" }),
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].passed).toBe(true);
+      expect(checks[0].message).toContain("auto-passed");
+    });
+
+    it("does not require §3-F for api profile", () => {
+      // Create .framework/project.json with api profile
+      const fwDir = path.join(tmpDir, ".framework");
+      fs.mkdirSync(fwDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(fwDir, "project.json"),
+        JSON.stringify({ profileType: "api" }),
+        "utf-8",
+      );
+
+      // Create a feature spec with §3-E, §3-G, §3-H but NOT §3-F
+      const ssotDir = path.join(tmpDir, "docs/design/features/project");
+      fs.mkdirSync(ssotDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(ssotDir, "API-001_users.md"),
+        [
+          "# API-001 Users",
+          "",
+          "## §3-E 入出力例",
+          "Input: GET /users",
+          "Output: user list",
+          "",
+          "## §3-G 例外応答",
+          "| Error | Code |",
+          "| NOT_FOUND | 404 |",
+          "",
+          "## §3-H Gherkin",
+          "Scenario: List users",
+          "  Given auth token",
+          "  When GET /users",
+          "  Then 200",
+        ].join("\n"),
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].passed).toBe(true);
     });
 
     it("ignores index and template files", () => {
@@ -290,7 +422,7 @@ describe("gate-engine", () => {
       const checks = checkGateC(tmpDir);
       expect(checks).toHaveLength(1);
       expect(checks[0].passed).toBe(false);
-      expect(checks[0].message).toContain("No SSOT files found");
+      expect(checks[0].message).toContain("No SSOT feature spec files found");
     });
   });
 

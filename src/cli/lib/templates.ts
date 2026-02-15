@@ -101,6 +101,47 @@ docs/
 - Do NOT modify core definitions without ADR
 - Do NOT submit PRs without tests
 - Do NOT swallow errors
+
+## Pre-Code Gate (3-gate enforcement)
+
+コードを1行でも書く前に Gate A/B/C を確認する。
+状態は .framework/gates.json で管理。
+
+- Gate A: 開発環境（package.json, node_modules, .env, docker-compose等）
+- Gate B: 計画（.framework/plan.json にwave分類済み、GitHub Issues作成済み）
+- Gate C: SSOT完全性（機能仕様書に §3-E/F/G/H が記入済み）
+
+全Gate passed でなければ src/ 以下の編集は .claude/hooks/pre-code-gate.sh でブロックされる。
+
+## Workflow Orchestration
+
+ユーザーの発言に応じて以下のワークフローを実行:
+
+### 「ディスカバリー」「何を作りたい？」
+→ docs/standards/ の Discovery テンプレートに従い5ステージのヒアリングを実施
+
+### 「仕様を作って」「スペック」
+→ 1ドキュメントずつ生成・確認。PRD → Feature Catalog → Core定義 → 各機能SSOT
+
+### 「実装計画」「タスク分解」
+→ 全SSOTの依存関係を分析し、Wave分類・GitHub Issues作成
+
+### 「実装開始」「コードを書いて」
+→ .framework/gates.json を確認。全Gate passed なら実装開始。未通過なら報告。
+
+### 「レビュー」「監査」
+→ コード品質チェックリストに基づき監査
+
+## Knowledge & Memory
+
+### セッション開始時に参照
+- .claude/memory/ — ADR（設計判断記録）、バグ教訓、改善記録
+- docs/standards/KNOWLEDGE_DIGEST.md — フレームワーク知識のダイジェスト
+
+### 実装中に参照
+- 設計判断で迷った時 → .claude/memory/ の過去ADRを確認
+- 同じバグを繰り返さないために → .claude/memory/ のバグ教訓を確認
+- フレームワークの規約を確認 → docs/standards/KNOWLEDGE_DIGEST.md
 `;
 }
 
@@ -220,6 +261,40 @@ All specifications are in \`docs/\`. See [docs/INDEX.md](docs/INDEX.md) for the 
 - **Claude Code Web**: Async execution of spec-confirmed tasks
 
 See \`CLAUDE.md\` for detailed instructions.
+`;
+}
+
+export function generateStartHere(config: ProjectConfig): string {
+  return `# ${config.projectName} — 開発開始ガイド
+
+このファイルを読んで、指示に従って進めてください。
+
+## あなたのタスク
+
+CLAUDE.md を読んで、フレームワークの手順に従ってプロジェクトを立ち上げてください。
+
+IDEA_CANVAS.md が存在しないので、ディスカバリーフローから開始してください。
+
+## ルール
+
+- 質問は1回に1つだけ（まとめて聞かない）
+- 各ドキュメントは1つずつ生成して、都度ユーザーの確認を挟む
+- 全Phase完了後、Gate A/B/C を通過させて開発可能な状態にする
+
+## フロー
+
+\`\`\`
+Phase 1: ディスカバリー（ヒアリング → IDEA_CANVAS等を生成）
+Phase 2: 事業設計（IDEA_CANVAS → PERSONA → COMPETITOR → VALUE_PROP）
+Phase 3: プロダクト設計（PRD → FEATURE_CATALOG → UI_STATE → 各機能SSOT）
+Phase 4: 技術設計（TECH_STACK → API → DB → CROSS_CUTTING → 規約）
+Phase 5: 実装計画（framework plan → Gate B 通過）
+Phase 6: 環境構築（Gate A 通過）
+Phase 7: SSOT品質確認（Gate C 通過）
+Phase 8: 開発開始
+\`\`\`
+
+まず「どんなサービスを作りたいですか？」から始めてください。
 `;
 }
 

@@ -6,6 +6,8 @@
  * - Gate A: Development environment / infrastructure ready
  * - Gate B: Task decomposition and planning complete
  * - Gate C: SSOT completeness (§3-E/F/G/H sections)
+ *
+ * v4.0: Gate C is profile-aware and filters non-feature-spec files.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -23,6 +25,7 @@ import {
   saveGateState,
 } from "./gate-model.js";
 import { loadPlan } from "./plan-model.js";
+import type { ProfileType } from "./profile-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -176,8 +179,8 @@ export function checkGateB(projectDir: string): GateCheck[] {
 // Gate C: SSOT Completeness Check
 // ─────────────────────────────────────────────
 
-/** Required SSOT sections per v3.4 */
-const REQUIRED_SECTIONS = [
+/** All possible SSOT sections */
+const ALL_SECTIONS = [
   { id: "§3-E", pattern: /§3-E|§ *3-E|### .*入出力例|## .*入出力例|input.*output.*example/i },
   { id: "§3-F", pattern: /§3-F|§ *3-F|### .*境界値|## .*境界値|boundary/i },
   { id: "§3-G", pattern: /§3-G|§ *3-G|### .*例外応答|## .*例外応答|exception.*response/i },
@@ -185,11 +188,59 @@ const REQUIRED_SECTIONS = [
 ];
 
 /**
+ * Get required sections based on project profile type.
+ * - lp, hp: Gate C auto-passes (no feature specs needed)
+ * - api, cli: §3-E/G/H required (§3-F boundary values optional)
+ * - app: all sections required
+ */
+function getRequiredSections(profileType?: ProfileType) {
+  if (profileType === "api" || profileType === "cli") {
+    return ALL_SECTIONS.filter((s) => s.id !== "§3-F");
+  }
+  return ALL_SECTIONS;
+}
+
+/**
+ * Load the project's profile type from .framework/project.json
+ */
+function loadProfileType(projectDir: string): ProfileType | undefined {
+  const projectJsonPath = path.join(projectDir, ".framework/project.json");
+  if (!fs.existsSync(projectJsonPath)) return undefined;
+  try {
+    const raw = fs.readFileSync(projectJsonPath, "utf-8");
+    const data = JSON.parse(raw);
+    return data.profileType as ProfileType | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
  * Check SSOT files for §3-E/F/G/H completeness.
- * Scans all .md files under docs/ that look like SSOT feature specs.
+ *
+ * v4.0 improvements:
+ * - Profile-aware: lp/hp profiles auto-pass Gate C
+ * - Excludes non-feature-spec files (core definitions, PRDs, reports, etc.)
+ * - Skips empty/stub files (< 10 lines)
+ * - Filters out archived and non-SSOT paths
  */
 export function checkGateC(projectDir: string): SSOTCheck[] {
   const checks: SSOTCheck[] = [];
+  const profileType = loadProfileType(projectDir);
+
+  // LP and HP profiles don't require feature specs — auto-pass
+  if (profileType === "lp" || profileType === "hp") {
+    checks.push({
+      name: "Gate C (profile: " + profileType + ")",
+      passed: true,
+      message: `Profile '${profileType}' does not require feature spec completeness. Gate C auto-passed.`,
+      filePath: "",
+      missingSections: [],
+    });
+    return checks;
+  }
+
+  const requiredSections = getRequiredSections(profileType);
 
   // Find SSOT files in known locations
   const ssotPaths = findSSOTFiles(projectDir);
@@ -198,7 +249,7 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
     checks.push({
       name: "SSOT files found",
       passed: false,
-      message: "No SSOT files found in docs/. Create feature specifications first.",
+      message: "No SSOT feature spec files found in docs/. Create feature specifications first.",
       filePath: "",
       missingSections: [],
     });
@@ -211,14 +262,14 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
     const content = fs.readFileSync(ssotPath, "utf-8");
     const missingSections: string[] = [];
 
-    for (const section of REQUIRED_SECTIONS) {
+    for (const section of requiredSections) {
       if (!section.pattern.test(content)) {
         missingSections.push(section.id);
       }
     }
 
     // Also check that existing sections are not empty stubs
-    for (const section of REQUIRED_SECTIONS) {
+    for (const section of requiredSections) {
       if (missingSections.includes(section.id)) continue;
       if (isSectionEmpty(content, section.id)) {
         missingSections.push(`${section.id}(empty)`);
@@ -230,7 +281,7 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
       name: `${relativePath}`,
       passed,
       message: passed
-        ? `${relativePath}: All §3-E/F/G/H sections present`
+        ? `${relativePath}: All required sections present`
         : `${relativePath}: Missing ${missingSections.join(", ")}`,
       filePath: relativePath,
       missingSections,
@@ -350,56 +401,93 @@ function checkDirExists(
 
 /**
  * Find SSOT feature spec files.
- * Searches standard framework paths and project-specific paths.
+ *
+ * v4.0: Only search directories that contain actual feature specifications.
+ * Excludes core definitions (SSOT-2 through SSOT-5) and requirements (PRD, Feature Catalog).
+ * These are NOT feature specs and should not require §3-E/F/G/H sections.
  */
 function findSSOTFiles(projectDir: string): string[] {
   const files: string[] = [];
 
-  // Standard framework paths
+  // Only feature spec directories — NOT core or requirements
   const searchDirs = [
     "docs/design/features",
-    "docs/design/core",
     "docs/common-features",
     "docs/project-features",
     "docs/ssot",
     "docs/03_ssot",          // hotel-kanri style
-    "docs/requirements",
   ];
 
   for (const dir of searchDirs) {
     const fullDir = path.join(projectDir, dir);
     if (fs.existsSync(fullDir)) {
-      collectMarkdownFiles(fullDir, files);
+      collectFeatureSpecFiles(fullDir, files, projectDir);
     }
   }
 
   return files;
 }
 
+/** File name patterns that indicate non-feature-spec documents */
+const NON_SPEC_PATTERNS = /^(REPORT|GUIDE|ANALYSIS|CHECKLIST|PROGRESS|RULES|WORKFLOW|TEMPLATE|INDEX|VISION|DEPLOYMENT|SSOT-[0-5]_)/i;
+
+/** Directory name patterns to skip */
+const SKIP_DIR_PATTERNS = /^(_non_ssot|_archived|_archived_progress|reports|drafts|phase0_)/i;
+
 /**
- * Recursively collect .md files
+ * Recursively collect .md files that look like feature specifications.
+ *
+ * v4.0 filters:
+ * - Skips files starting with _ or .
+ * - Skips index, readme, template, customization log
+ * - Skips files matching NON_SPEC_PATTERNS (reports, guides, etc.)
+ * - Skips directories matching SKIP_DIR_PATTERNS (_non_ssot, archived, etc.)
+ * - Skips files with fewer than 10 lines (empty stubs)
  */
-function collectMarkdownFiles(dir: string, result: string[]): void {
+function collectFeatureSpecFiles(
+  dir: string,
+  result: string[],
+  projectDir: string,
+): void {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = path.join(dir, entry.name);
+
     if (entry.isDirectory()) {
-      collectMarkdownFiles(fullPath, result);
+      // Skip archived/non-SSOT directories
+      if (SKIP_DIR_PATTERNS.test(entry.name)) continue;
+      if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
+      collectFeatureSpecFiles(fullPath, result, projectDir);
     } else if (
       entry.name.endsWith(".md") &&
       !entry.name.startsWith("_") &&
       !entry.name.startsWith(".")
     ) {
-      // Filter out index files and non-spec files
       const lower = entry.name.toLowerCase();
+
+      // Skip known non-spec files
       if (
-        lower !== "readme.md" &&
-        lower !== "_index.md" &&
-        lower !== "_template.md" &&
-        lower !== "customization_log.md"
+        lower === "readme.md" ||
+        lower === "_index.md" ||
+        lower === "_template.md" ||
+        lower === "customization_log.md"
       ) {
-        result.push(fullPath);
+        continue;
       }
+
+      // Skip files matching non-spec patterns
+      if (NON_SPEC_PATTERNS.test(entry.name)) continue;
+
+      // Skip empty/stub files (< 10 lines)
+      try {
+        const content = fs.readFileSync(fullPath, "utf-8");
+        const lineCount = content.split("\n").length;
+        if (lineCount < 10) continue;
+      } catch {
+        continue;
+      }
+
+      result.push(fullPath);
     }
   }
 }

@@ -1,0 +1,195 @@
+以下の手順でこの既存プロジェクトにAI開発フレームワークを導入して。
+
+■ Step 1: フレームワーク取得
+git clone --depth 1 https://github.com/watchout/ai-dev-framework.git /tmp/ai-dev-framework
+
+■ Step 2: 現状スキャン
+まずこのプロジェクトの現状を把握して:
+- ディレクトリ構造
+- 使用技術（package.json, 設定ファイル）
+- 既存ドキュメント（README.md, docs/ 等）
+- Git管理の状況
+結果を要約して報告して。
+
+■ Step 3: ディレクトリ作成（既存を壊さない）
+以下のディレクトリを、存在しないものだけ作成:
+docs/design/core/
+docs/design/features/common/
+docs/design/features/project/
+docs/design/adr/
+docs/standards/
+docs/ssot/
+.claude/agents/
+.claude/hooks/
+.claude/skills/
+.framework/
+
+■ Step 4: 標準ドキュメントをコピー
+/tmp/ai-dev-framework/templates/ の中身を docs/standards/ にコピー（.git, .DS_Store, ci/, profiles/, project/, skills/ は除外）
+
+■ Step 5: CLAUDE.md を生成
+プロジェクト名と説明は既存の README.md や package.json から読み取って、CLAUDE.md をプロジェクトルートに生成して。テンプレートは新規プロジェクトと同じ形式で。
+
+以下のセクションを必ず含める:
+- AI Interruption Protocol
+- Project Overview
+- Specification Reference
+- Coding Standards
+- Pre-Code Gate（3-gate enforcement）
+- Workflow Orchestration
+- Knowledge & Memory
+
+Pre-Code Gate セクション:
+コードを1行でも書く前に Gate A/B/C を確認する。
+状態は .framework/gates.json で管理。
+- Gate A: 開発環境（package.json, node_modules, .env, docker-compose等）
+- Gate B: 計画（.framework/plan.json にwave分類済み、GitHub Issues作成済み）
+- Gate C: SSOT完全性（機能仕様書に §3-E/F/G/H が記入済み）
+全Gate passed でなければ src/ 以下の編集は .claude/hooks/pre-code-gate.sh でブロックされる。
+
+Workflow Orchestration セクション:
+ユーザーの発言に応じて以下のワークフローを実行:
+- 「ディスカバリー」→ 5ステージのヒアリング
+- 「仕様を作って」→ 1ドキュメントずつ生成・確認
+- 「実装計画」→ Wave分類・GitHub Issues作成
+- 「実装開始」→ gates.json確認 → 全Gate passedなら開始
+- 「レビュー」→ コード品質チェック
+
+Knowledge & Memory セクション:
+- セッション開始時: .claude/memory/（ADR、バグ教訓、改善記録）と docs/standards/KNOWLEDGE_DIGEST.md を参照
+- 実装中: 設計判断で迷った時 → .claude/memory/ の過去ADR、同じバグ回避 → バグ教訓、規約確認 → KNOWLEDGE_DIGEST.md
+
+■ Step 6: フレームワーク状態を初期化
+以下の内容で .framework/project.json を作成:
+{
+  "profileType": "app",
+  "createdAt": "{{TODAY}}",
+  "frameworkVersion": "4.0"
+}
+※ profileType はプロジェクトの種類に応じて app/api/cli/lp/hp を判断して設定
+
+以下の内容で .framework/gates.json を作成:
+{
+  "gateA": { "status": "pending", "checks": [] },
+  "gateB": { "status": "pending", "checks": [] },
+  "gateC": { "status": "pending", "checks": [] },
+  "updatedAt": "{{TODAY}}"
+}
+
+■ Step 6.5: Pre-Code Gate フックをインストール
+以下の内容で .claude/hooks/pre-code-gate.sh を作成（実行権限を付与すること）:
+
+---pre-code-gate.sh ここから---
+#!/bin/bash
+# Pre-Code Gate hook for Claude Code (PreToolUse)
+# Reads .framework/gates.json and blocks source code edits when gates have not passed.
+# Exit 2 = deny (Claude Code convention), Exit 0 = allow
+
+input=$(cat)
+tool=$(echo "$input" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{console.log(JSON.parse(d).tool_name||'')}catch{console.log('')}})")
+
+project_dir="${CLAUDE_PROJECT_DIR:-.}"
+
+file_path=""
+if [ "$tool" = "Edit" ] || [ "$tool" = "Write" ]; then
+  file_path=$(echo "$input" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{console.log(JSON.parse(d).tool_input.file_path||'')}catch{console.log('')}})")
+fi
+
+if [ -z "$file_path" ]; then
+  exit 0
+fi
+
+rel_path="${file_path#$project_dir/}"
+
+case "$rel_path" in
+  src/*|app/*|server/*|lib/*|components/*|pages/*|composables/*|utils/*|stores/*|plugins/*)
+    ;;
+  *)
+    exit 0
+    ;;
+esac
+
+gates_file="$project_dir/.framework/gates.json"
+if [ ! -f "$gates_file" ]; then
+  echo "[Pre-Code Gate] .framework/gates.json not found. Run 'framework gate check'." >&2
+  exit 2
+fi
+
+result=$(node -e "
+  const fs = require('fs');
+  try {
+    const g = JSON.parse(fs.readFileSync('$gates_file', 'utf8'));
+    const a = g.gateA && g.gateA.status || 'pending';
+    const b = g.gateB && g.gateB.status || 'pending';
+    const c = g.gateC && g.gateC.status || 'pending';
+    if (a === 'passed' && b === 'passed' && c === 'passed') {
+      console.log('PASSED');
+    } else {
+      console.log(a + ',' + b + ',' + c);
+    }
+  } catch(e) { console.log('error'); }
+")
+
+if [ "$result" = "PASSED" ]; then
+  exit 0
+fi
+
+IFS=',' read -r gate_a gate_b gate_c <<< "$result"
+
+echo "" >&2
+echo "=====================================" >&2
+echo "  PRE-CODE GATE: EDIT BLOCKED" >&2
+echo "=====================================" >&2
+echo "  Gate A (Environment): ${gate_a:-error}" >&2
+echo "  Gate B (Planning):    ${gate_b:-error}" >&2
+echo "  Gate C (SSOT):        ${gate_c:-error}" >&2
+echo "" >&2
+echo "  Run: framework gate check" >&2
+echo "=====================================" >&2
+exit 2
+---pre-code-gate.sh ここまで---
+
+.claude/settings.json を作成（既存がある場合はマージ）:
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/pre-code-gate.sh\"",
+            "statusMessage": "Pre-Code Gate check..."
+          }
+        ]
+      }
+    ]
+  }
+}
+
+スキルテンプレートをコピー:
+/tmp/ai-dev-framework/templates/skills/ から以下の4ディレクトリを .claude/skills/ にコピー:
+- discovery/SKILL.md（Discovery & Business Phase: D1-D4, B1-B4）
+- design/SKILL.md（Product & Technical Design: P1-P5, T1-T5）
+- implement/SKILL.md（Implementation Phase: I1-I5）
+- review/SKILL.md（Review & Audit: R1-R5 + 合議プロトコル）
+また /tmp/ai-dev-framework/.claude/skills/_INDEX.md を .claude/skills/_INDEX.md にコピー。
+
+Agent Teams テンプレートを .claude/agents/ に作成:
+- visual-tester.md: ビジュアルテストエージェント
+- code-reviewer.md: Adversarial Code Review エージェント
+- ssot-explorer.md: SSOT検索エージェント
+
+■ Step 7: 既存コードから SSOT を逆生成
+以下を既存コードから分析・生成:
+1. API エンドポイントがあれば → docs/design/core/SSOT-3_API_CONTRACT.md
+2. DB スキーマがあれば → docs/design/core/SSOT-4_DATA_MODEL.md
+3. 認証・権限があれば → docs/design/core/SSOT-5_CROSS_CUTTING.md
+4. 画面があれば → docs/design/core/SSOT-2_UI_STATE.md
+各ドキュメントを1つずつ生成して、ユーザーに確認を取ること。
+
+■ Step 8: クリーンアップ
+rm -rf /tmp/ai-dev-framework
+
+■ Step 9: ギャップ報告
+不足しているドキュメント、既存コードとの乖離を報告して、次のアクションを提案して。

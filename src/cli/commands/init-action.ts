@@ -12,6 +12,7 @@ import {
   generateCursorRules,
   generateGitignore,
   generateReadme,
+  generateStartHere,
   generateDocsIndex,
   generateProjectState,
   AGENT_TEMPLATES,
@@ -52,7 +53,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const createdFiles: string[] = [];
   const errors: string[] = [];
 
-  const totalSteps = 9;
+  const totalSteps = 10;
 
   // Check if directory already exists and is non-empty
   if (fs.existsSync(projectPath)) {
@@ -107,6 +108,10 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   fs.writeFileSync(cursorRulesPath, generateCursorRules(config), "utf-8");
   createdFiles.push(".cursorrules");
 
+  const startHerePath = path.join(projectPath, "START_HERE.md");
+  fs.writeFileSync(startHerePath, generateStartHere(config), "utf-8");
+  createdFiles.push("START_HERE.md");
+
   // Step 4: Create document placeholders (profile-filtered)
   logger.step(4, totalSteps, "Creating document placeholders...");
   for (const doc of DOC_PLACEHOLDERS) {
@@ -154,8 +159,41 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   }
   logger.success(`Created ${AGENT_TEMPLATES.length} agent definitions`);
 
-  // Step 8: Create framework state
-  logger.step(8, totalSteps, "Initializing framework state...");
+  // Step 8: Copy skill templates (.claude/skills/)
+  logger.step(8, totalSteps, "Installing skill templates...");
+  const SKILL_DIRS = ["discovery", "design", "implement", "review"];
+  const frameworkRoot = options.frameworkSourceDir
+    ? options.frameworkSourceDir
+    : path.join(projectPath, ".framework/tmp");
+  let skillsCopied = 0;
+  for (const skillName of SKILL_DIRS) {
+    const srcPath = path.join(frameworkRoot, "templates/skills", skillName, "SKILL.md");
+    const destDir = path.join(projectPath, ".claude/skills", skillName);
+    const destPath = path.join(destDir, "SKILL.md");
+    if (fs.existsSync(srcPath)) {
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir, { recursive: true });
+      }
+      fs.copyFileSync(srcPath, destPath);
+      createdFiles.push(`.claude/skills/${skillName}/SKILL.md`);
+      skillsCopied++;
+    }
+  }
+  // Also copy _INDEX.md
+  const indexSrc = path.join(frameworkRoot, ".claude/skills/_INDEX.md");
+  const indexDest = path.join(projectPath, ".claude/skills/_INDEX.md");
+  if (fs.existsSync(indexSrc)) {
+    const skillsDir = path.join(projectPath, ".claude/skills");
+    if (!fs.existsSync(skillsDir)) {
+      fs.mkdirSync(skillsDir, { recursive: true });
+    }
+    fs.copyFileSync(indexSrc, indexDest);
+    createdFiles.push(".claude/skills/_INDEX.md");
+  }
+  logger.success(`Installed ${skillsCopied} skill templates`);
+
+  // Step 9: Create framework state
+  logger.step(9, totalSteps, "Initializing framework state...");
   const statePath = path.join(projectPath, ".framework/project.json");
   fs.writeFileSync(statePath, generateProjectState(config), "utf-8");
   createdFiles.push(".framework/project.json");
@@ -165,8 +203,8 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   saveGateState(projectPath, gateState);
   createdFiles.push(".framework/gates.json");
 
-  // Step 9: Install Pre-Code Gate hooks
-  logger.step(9, totalSteps, "Installing Pre-Code Gate hooks...");
+  // Step 10: Install Pre-Code Gate hooks
+  logger.step(10, totalSteps, "Installing Pre-Code Gate hooks...");
   const hooksResult = installAllHooks(projectPath);
   createdFiles.push(...hooksResult.files);
   for (const w of hooksResult.warnings) {

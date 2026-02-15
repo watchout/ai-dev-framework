@@ -26,6 +26,8 @@ import {
   type GateEntry,
   type SSOTGateEntry,
 } from "../lib/gate-model.js";
+import { scaffoldGateCsections } from "../lib/gate-scaffold.js";
+import { loadProjectProfile } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
 
 export function registerGateCommand(program: Command): void {
@@ -155,6 +157,79 @@ export function registerGateCommand(program: Command): void {
       logger.info(
         "Run 'framework gate check' to re-evaluate.",
       );
+    });
+
+  // framework gate scaffold
+  gate
+    .command("scaffold")
+    .description("Generate missing §3-E/F/G/H templates in SSOT files")
+    .option("--dry-run", "Show what would be generated without writing files")
+    .action(async (options: { dryRun?: boolean }) => {
+      const projectDir = process.cwd();
+      const dryRun = options.dryRun ?? false;
+
+      try {
+        // Load profile type for section requirements
+        const profile = loadProjectProfile(projectDir);
+        const profileType = profile?.id;
+
+        logger.header("Gate C Scaffold");
+        logger.info("");
+
+        if (profileType) {
+          logger.info(`  Profile: ${profileType}`);
+        }
+        if (dryRun) {
+          logger.info("  Mode: dry-run (no files will be modified)");
+        }
+        logger.info("");
+
+        const results = scaffoldGateCsections(projectDir, dryRun, profileType);
+
+        if (results.length === 0) {
+          logger.info("  No SSOT feature spec files found.");
+          logger.info("  Create feature specs in docs/design/features/ first.");
+          return;
+        }
+
+        let scaffoldedCount = 0;
+        let alreadyCompleteCount = 0;
+
+        for (const result of results) {
+          if (result.missingSections.length === 0) {
+            alreadyCompleteCount++;
+            logger.info(`  ✅ ${result.relativePath} — all sections present`);
+          } else {
+            scaffoldedCount++;
+            const verb = dryRun ? "would add" : "added";
+            logger.info(
+              `  📝 ${result.relativePath} — ${verb}: ${result.missingSections.join(", ")}`,
+            );
+          }
+        }
+
+        logger.info("");
+        if (dryRun) {
+          logger.info(
+            `  ${scaffoldedCount} file(s) need scaffolding, ${alreadyCompleteCount} already complete.`,
+          );
+          logger.info("  Run without --dry-run to generate templates.");
+        } else {
+          if (scaffoldedCount > 0) {
+            logger.success(
+              `  Scaffolded ${scaffoldedCount} file(s). Review the <!-- AUTO-GENERATED --> sections.`,
+            );
+          }
+          if (alreadyCompleteCount > 0) {
+            logger.info(`  ${alreadyCompleteCount} file(s) already complete.`);
+          }
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          logger.error(error.message);
+        }
+        process.exit(1);
+      }
     });
 }
 

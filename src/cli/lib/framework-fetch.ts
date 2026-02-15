@@ -25,7 +25,7 @@ const FRAMEWORK_STATE_FILE = "framework.json";
  * Find the framework root directory (for unified repo usage)
  * Returns null if not running from within the framework repo
  */
-function findFrameworkRoot(): string | null {
+export function findFrameworkRoot(): string | null {
   // Get the directory of this file
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);

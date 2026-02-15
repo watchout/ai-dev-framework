@@ -3,298 +3,52 @@
 ## 概要
 
 AI開発フレームワークの各フェーズを専門化した Agent Skills 群です。
-各 Skill は**1つのフェーズのみ**を担当し、擬似的な「専門家チーム」として機能します。
+4つのスキルに統合され、28名の専門家エージェントが各フェーズを担当します。
 
-さらに、**Deliberation Protocol（多視点対話）** により、
-1人の専門家ではなく**複数の専門家が議論して成果物を磨き上げる**構造になっています。
-
-## 設計思想: なぜ「専門家の対話」が必要か
+## スキル構成
 
 ```
-❌ 従来: 1人の専門家が仮案を出す → そのまま確定
-  → バイアス、盲点、視野の狭さが残る
-
-✅ 改善: 1人の専門家が仮案を出す
-  → 3人の異なる専門家が批判的にレビュー
-  → 対立意見を議論し統合
-  → ユーザーが最終判断
-  → 複数の視点を反映した成果物
+templates/skills/
+├── SKILLS_INDEX.md        ← このファイル
+├── discovery/SKILL.md     ← Discovery & Business Phase（D1-D4, B1-B4）
+├── design/SKILL.md        ← Product & Technical Design（P1-P5, T1-T5）
+├── implement/SKILL.md     ← Implementation Phase（I1-I5）
+└── review/SKILL.md        ← Review & Audit（R1-R5 + 合議プロトコル）
 ```
 
-### 3層の品質保証メカニズム
+## スキル一覧
+
+| スキル | 統合元 | エージェント | トリガー |
+|--------|--------|-------------|----------|
+| discovery | discovery + business | D1-D4, B1-B4 | 「ディスカバリー」「アイデア」「ビジネス設計」 |
+| design | product + technical | P1-P5, T1-T5 | 「設計」「仕様」「アーキテクチャ」 |
+| implement | implementation | I1-I5 | 「実装」「コーディング」「テスト」 |
+| review | review-council + deliberation + code-audit + ssot-audit | R1-R5 | 「レビュー」「監査」「audit」 |
+
+## 開発フロー
 
 ```
-Layer 1: 専門 Skill（生成）
-  各フェーズの専門家がドキュメント/コードを生成
-
-Layer 2: 内部 Deliberation（自己検証）
-  重要な判断ポイントで、Skill 内部の3人の専門家パネルが議論
-  → Discovery, Feature Spec, Technical Design に内蔵
-
-Layer 3: Review Council（外部検証）
-  フェーズの節目で独立したレビュー会議を開催
-  → 全フェーズの成果物を多視点でレビュー
-```
-
-## Skills アーキテクチャ全体像
-
-```
-                    ┌─────────────────────┐
-                    │   Orchestrator      │
-                    │  (全体ナビゲーター)   │
-                    └──────────┬──────────┘
-                               │
-           ┌───────────────────┼───────────────────┐
-           │                   │                   │
-    ┌──────▼──────┐     ┌──────▼──────┐     ┌──────▼──────┐
-    │  Phase Skill │     │  Phase Skill │     │  Phase Skill │
-    │  (各フェーズ  │     │  (各フェーズ  │     │  (各フェーズ  │
-    │   の専門家)   │     │   の専門家)   │     │   の専門家)   │
-    └──────┬──────┘     └──────┬──────┘     └──────┬──────┘
-           │                   │                   │
-           │  内部             │  内部             │
-           │  Deliberation     │  Deliberation     │
-           │  (3人の対話)      │  (3人の対話)      │
-           │                   │                   │
-    ┌──────▼──────┐     ┌──────▼──────┐     ┌──────▼──────┐
-    │   Review    │     │   Review    │     │   Review    │
-    │   Council   │     │   Council   │     │   Council   │
-    │ (多視点検証) │     │ (多視点検証) │     │ (多視点検証) │
-    └─────────────┘     └─────────────┘     └─────────────┘
-```
-
-## Skills 一覧
-
-### 統括系
-
-| # | Skill | 役割 | トリガー |
-|---|-------|------|---------|
-| 🎯 | framework-orchestrator | 全体ナビゲーター | 「次は何をすればいい？」 |
-| 🔍 | framework-review-council | 多視点レビュー会議 | 「レビュー会議を開いて」 |
-
-### フェーズ系（実行順）
-
-| # | Skill | 役割 | 内部 Deliberation | トリガー |
-|---|-------|------|-------------------|---------|
-| ① | framework-discovery | ディスカバリー | ✅ 完了時 | 「アイデアを整理したい」 |
-| ② | framework-business | 事業設計 | ― | 「事業設計を始めたい」 |
-| ③ | framework-product | PRD・機能カタログ | ― | 「PRD を作りたい」 |
-| ④ | framework-feature-spec | 機能仕様書 | ✅ SSOT生成前 | 「機能の仕様を作りたい」 |
-| ⑤ | framework-technical | 技術設計 | ✅ Stack/API 確定時 | 「技術設計を始めたい」 |
-| ⑥ | framework-implement | 実装 | ― | 「実装して」 |
-
-### 監査系
-
-| # | Skill | 役割 | トリガー |
-|---|-------|------|---------|
-| ⑦ | framework-code-audit | Adversarial Code Review | 「コードレビューして」 |
-| ⑧ | framework-ssot-audit | SSOT 品質監査 | 「SSOT を監査して」 |
-
-## 開発ライフサイクルのフロー
-
-```
-Phase 0                          Phase 1
-┌──────────────────────┐         ┌──────────────────────┐
-│  ① Discovery         │         │  ② Business Design   │
-│  ┌────────────────┐  │         │  ┌────────────────┐  │
-│  │ ヒアリング      │  │         │  │ IDEA_CANVAS     │  │
-│  │ (1問ずつ)      │  │         │  │ USER_PERSONA    │  │
-│  └────────┬───────┘  │         │  │ COMPETITOR      │  │
-│           ↓          │         │  │ VALUE_PROP      │  │
-│  ┌────────────────┐  │         │  └────────┬───────┘  │
-│  │ 💬 Deliberation │  │         │           ↓          │
-│  │ 起業家×リサーチ  │  │  ──→   │  ┌────────────────┐  │
-│  │ ×テクニカル     │  │         │  │ 🔍 Review       │  │
-│  └────────┬───────┘  │         │  │ Council         │  │
-│           ↓          │         │  └────────┬───────┘  │
-│  ユーザー承認        │         │  ユーザー承認        │
-└──────────────────────┘         └──────────┬───────────┘
-                                            ↓
-Phase 2                          Phase 3
-┌──────────────────────┐         ┌──────────────────────┐
-│  ③ Product Design    │         │  ⑤ Technical Design  │
-│  ┌────────────────┐  │         │  ┌────────────────┐  │
-│  │ PRD             │  │         │  │ TECH_STACK      │  │
-│  │ FEATURE_CATALOG │  │         │  │ (💬 Deliberation)│  │
-│  └────────┬───────┘  │         │  │ API_CONTRACT    │  │
-│           ↓          │         │  │ (💬 Deliberation)│  │
-│  ④ Feature Spec      │         │  │ DATA_MODEL      │  │
-│  ┌────────────────┐  │         │  │ CROSS_CUTTING   │  │
-│  │ P0機能 1つずつ  │  │         │  └────────┬───────┘  │
-│  │ (💬 Deliberation)│  │  ──→   │           ↓          │
-│  └────────┬───────┘  │         │  ┌────────────────┐  │
-│           ↓          │         │  │ 🔍 Review       │  │
-│  ┌────────────────┐  │         │  │ Council         │  │
-│  │ 🔍 Review       │  │         │  └────────┬───────┘  │
-│  │ Council         │  │         │  ユーザー承認        │
-│  └────────┬───────┘  │         └──────────┬───────────┘
-│  ユーザー承認        │                     ↓
-└──────────────────────┘
-                                 Phase 4
-                                 ┌──────────────────────┐
-                                 │  ⑥ Implementation    │
-                                 │  ┌────────────────┐  │
-                                 │  │ 実装             │  │
-                                 │  └────────┬───────┘  │
-                                 │           ↓          │
-                                 │  ⑦ Code Audit       │
-                                 │  ┌────────────────┐  │
-                                 │  │ Adversarial     │  │
-                                 │  │ Review          │  │
-                                 │  └────────┬───────┘  │
-                                 │     100点まで反復     │
-                                 └──────────────────────┘
-```
-
-## Deliberation で参加する専門家パネル一覧
-
-### 各フェーズの専門家構成
-
-| フェーズ | 専門家 A | 専門家 B | 専門家 C |
-|---------|---------|---------|---------|
-| Discovery | 起業家 | ユーザーリサーチャー | テクニカルアドバイザー |
-| Business | マーケットアナリスト | ファイナンシャルアドバイザー | カスタマーサクセス |
-| Product | プロダクトマネージャー | UX デザイナー | リードエンジニア |
-| Feature Spec | セキュリティエンジニア | QA エンジニア | FE/BE エンジニア |
-| Technical | インフラ/SRE | セキュリティアーキテクト | DBA |
-| Implementation | シニアエンジニア | テストエンジニア | コードレビュアー |
-
-### Deliberation のフロー（各 Skill 内部で実行）
-
-```
-Step 1: Draft（仮案提示）
-  主担当の専門家が仮案を出す（完成度 60% で OK）
-
-Step 2: Challenge Round（異なる視点からの挑戦）
-  3人の専門家がそれぞれ独立にレビュー
-  → 良い点・懸念点・改善提案を各自提示
-
-Step 3: Dialogue（専門家同士の議論）
-  対立点について専門家が議論
-  → 異なる立場からの反論・妥協案
-
-Step 4: Synthesis（統合）
-  合意事項・多数意見・分裂した論点を整理
-
-Step 5: User Decision（ユーザー判断）
-  ハイライトと保留事項をユーザーに報告
+Discovery & Business → Design → Implementation → Review
 ```
 
 ## 利用方法
 
-### 自動デプロイ（推奨）
-
-`ai-dev-platform` の CLI を使用すると、Skills は自動的にデプロイ・更新されます。
-
-```bash
-# プロジェクト初期化時に自動デプロイ
-framework init my-project --type=app
-# → .claude/skills/_framework/ に全 Skills が配置される
-
-# フレームワーク更新時に自動同期
-framework update
-# → .claude/skills/_framework/ が最新版に上書きされる
-# → プロジェクト固有スキル（_framework/ 外）は維持される
-```
-
-### 手動デプロイ（CLI を使わない場合）
-
-```bash
-# プロジェクトルートで実行
-mkdir -p .claude/skills/_framework
-cp -R /path/to/ai-dev-framework/templates/skills/* .claude/skills/_framework/
-```
-
-### ツール別アクセス方法
-
-| ツール | アクセス方法 |
-|--------|------------|
-| **Claude Code** | `.claude/skills/_framework/` に配置するだけで自動検出。SKILL.md の指示に従い実行される。 |
-| **Claude.ai** | `.claude/skills/_framework/` を ZIP 化 → 設定 > 機能 > スキル > アップロード。 |
-| **Cursor** | `.claude/skills/_framework/` 内の SKILL.md を `.cursor/rules/` にコピー、またはチャットに貼り付けて使用。 |
-
-## 2種類のスキルの棲み分け
-
-プロジェクト内には2種類のスキルが共存します。
-
-| 観点 | Framework Skills | Project Skills |
-|------|-----------------|----------------|
-| **配置場所** | `.claude/skills/_framework/` | `.claude/skills/` (直下) |
-| **生成方法** | `framework init` / `framework update` | `framework skill-create` |
-| **内容** | 開発プロセスの専門家ロール（Discovery, Feature Spec 等） | コードパターンの再利用（CRUD API, Form Validation 等） |
-| **更新** | `framework update` で自動同期 | 手動 or `skill-create` で追加 |
-| **例** | `framework-discovery`, `framework-feature-spec` | `SKILL-001_crud-api`, `SKILL-002_form-validation` |
-| **管理者** | フレームワーク開発者（ai-dev-framework リポジトリ） | プロジェクト開発者 |
-
-### プロジェクト内のディレクトリ構造
+### Claude Code CLI
 
 ```
-.claude/skills/
-├── _framework/                 ← Framework Skills（自動デプロイ）
-│   ├── SKILLS_INDEX.md         ← この文書
-│   ├── _deliberation/          ← 多視点対話プロトコル
-│   ├── orchestrator/           ← 🎯 全体ナビゲーター
-│   ├── discovery/              ← ① ディスカバリー専門家
-│   ├── business-design/        ← ② 事業設計専門家
-│   ├── product-design/         ← ③ プロダクトマネージャー
-│   ├── feature-spec/           ← ④ 機能仕様設計専門家
-│   ├── technical-design/       ← ⑤ テクニカルアーキテクト
-│   ├── implementation/         ← ⑥ 実装者
-│   ├── code-audit/             ← ⑦ 批判的レビュアー
-│   ├── ssot-audit/             ← ⑧ 品質監査官
-│   └── review-council/         ← 🔍 多視点レビュー会議
-├── SKILL-001_crud-api.md       ← Project Skills（skill-create で生成）
-├── SKILL-002_form-validation.md
-└── _index.json                 ← プロジェクト固有スキルのインデックス
+.claude/skills/ に配置（framework init / retrofit で自動コピー）
 ```
 
-## 3リポジトリの責任分担
+### Claude.ai
 
 ```
-ai-dev-framework (SSOT = 仕様の源泉)
-  └── templates/skills/          Skills の原本を管理
-       ├── SKILLS_INDEX.md
-       ├── _deliberation/
-       └── */SKILL.md
-
-ai-dev-platform (実行エンジン = 配達人)
-  └── framework CLI
-       ├── framework init         → Skills を .claude/skills/_framework/ にデプロイ
-       ├── framework update       → _framework/ を最新版に同期
-       └── framework skill-create → プロジェクト固有スキルを .claude/skills/ に抽出
-
-各プロジェクト (利用者)
-  └── .claude/skills/
-       ├── _framework/            ← framework 由来（自動更新）
-       ├── SKILL-001_*.md         ← プロジェクト固有（手動管理）
-       └── _index.json
+設定 > 機能 > スキル > ZIP アップロード
 ```
 
-## ディレクトリ構成（Framework 側）
+## 各スキルに内蔵される機能
 
-```
-templates/skills/
-├── SKILLS_INDEX.md              ← この文書
-├── _deliberation/
-│   └── DELIBERATION_PROTOCOL.md ← 多視点対話の共通プロトコル
-├── orchestrator/
-│   └── SKILL.md                 ← 🎯 全体ナビゲーター
-├── review-council/
-│   └── SKILL.md                 ← 🔍 多視点レビュー会議
-├── discovery/
-│   └── SKILL.md                 ← ① ディスカバリー専門家
-├── business-design/
-│   └── SKILL.md                 ← ② 事業設計専門家
-├── product-design/
-│   └── SKILL.md                 ← ③ プロダクトマネージャー
-├── feature-spec/
-│   └── SKILL.md                 ← ④ 機能仕様設計専門家
-├── technical-design/
-│   └── SKILL.md                 ← ⑤ テクニカルアーキテクト
-├── implementation/
-│   └── SKILL.md                 ← ⑥ 実装者（Role A）
-├── code-audit/
-│   └── SKILL.md                 ← ⑦ 批判的レビュアー（Role B）
-└── ssot-audit/
-    └── SKILL.md                 ← ⑧ 品質監査官
-```
+- **質問バンク**: 各エージェントのヒアリング質問集
+- **チェックリスト**: 品質確認項目
+- **出力フォーマット**: ドキュメントテンプレート
+- **Multi-perspective Check**: 3視点（Product/Technical/Business）の検証
+- **合議プロトコル**: review スキルに統合（軽量/標準/重量の3レベル）
