@@ -220,8 +220,9 @@ coverage/
 *.swo
 .DS_Store
 
-# Framework state (logs only - state is gitignored)
+# Framework state
 .framework/logs/
+backups/
 
 # Debug
 npm-debug.log*

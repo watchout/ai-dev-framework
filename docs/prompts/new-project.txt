@@ -296,7 +296,7 @@ ssot-explorer.md:
 「SSOT検索エージェント。仕様書群から特定の情報を検索・要約する。」
 
 ■ Step 11: .gitignore と README.md を作成
-.gitignore にはnode_modules, .env, dist, .DS_Store 等の標準的な内容を記載。
+.gitignore にはnode_modules, .env, dist, .DS_Store, backups/ 等の標準的な内容を記載。
 README.md にはプロジェクト名と概要を記載。
 
 ■ Step 12: クリーンアップ
