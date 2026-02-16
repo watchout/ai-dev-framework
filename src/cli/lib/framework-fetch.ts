@@ -228,18 +228,41 @@ function saveFrameworkState(
 }
 
 /**
- * Recursively copy directory contents, skipping .git and .DS_Store
+ * Directories in templates/ that should NOT be copied to docs/standards/.
+ * These are distribution templates handled separately by init/update/hooks.
+ */
+const EXCLUDED_TEMPLATE_DIRS = new Set([
+  "ci",
+  "hooks",
+  "profiles",
+  "project",
+  "skills",
+]);
+
+/**
+ * Recursively copy directory contents, skipping .git, .DS_Store,
+ * and distribution-only template directories.
  */
 function copyDirRecursive(
   src: string,
   dest: string,
   copiedFiles: string[],
   projectDir: string,
+  isTopLevel = true,
 ): void {
   const entries = fs.readdirSync(src, { withFileTypes: true });
 
   for (const entry of entries) {
     if (entry.name === ".git" || entry.name === ".DS_Store") continue;
+
+    // Skip distribution-only directories at top level of templates/
+    if (
+      isTopLevel &&
+      entry.isDirectory() &&
+      EXCLUDED_TEMPLATE_DIRS.has(entry.name)
+    ) {
+      continue;
+    }
 
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
@@ -248,7 +271,7 @@ function copyDirRecursive(
       if (!fs.existsSync(destPath)) {
         fs.mkdirSync(destPath, { recursive: true });
       }
-      copyDirRecursive(srcPath, destPath, copiedFiles, projectDir);
+      copyDirRecursive(srcPath, destPath, copiedFiles, projectDir, false);
     } else {
       fs.copyFileSync(srcPath, destPath);
       copiedFiles.push(path.relative(projectDir, destPath));
