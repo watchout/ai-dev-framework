@@ -31,6 +31,7 @@ import {
   hasProjectScope,
   listProjects,
   createProjectBoard,
+  configureProjectBoard,
 } from "../lib/github-engine.js";
 import {
   loadSyncState,
@@ -139,6 +140,16 @@ export function registerPlanCommand(program: Command): void {
                     ) ?? undefined;
                     if (projectNumber) {
                       logger.success(`  Created GitHub Project: #${projectNumber}`);
+                      // Configure board columns: Backlog → Todo → In Progress → In Review → Done
+                      const boardResult = await configureProjectBoard(
+                        existingSyncState?.repo ?? "",
+                        projectNumber,
+                      );
+                      if (boardResult.configured) {
+                        logger.success("  Board columns configured: Backlog → Todo → In Progress → In Review → Done");
+                      } else {
+                        logger.warn(`  Board column setup: ${boardResult.error ?? "unknown error"} (set manually in GitHub)`);
+                      }
                     }
                   }
                 } else {
@@ -166,6 +177,20 @@ export function registerPlanCommand(program: Command): void {
                 logger.success(
                   `GitHub Project: Issues linked to Project #${projectNumber}`,
                 );
+                // Configure board columns if this is a newly synced project
+                if (!existingSyncState?.projectNumber) {
+                  const boardResult = await configureProjectBoard(
+                    syncResult.errors.length === 0
+                      ? (loadSyncState(projectDir)?.repo ?? "")
+                      : "",
+                    projectNumber,
+                  );
+                  if (boardResult.configured) {
+                    logger.success("  Board columns configured: Backlog → Todo → In Progress → In Review → Done");
+                  } else if (boardResult.error) {
+                    logger.info(`  Board columns: configure manually (${boardResult.error})`);
+                  }
+                }
               }
             }
           }

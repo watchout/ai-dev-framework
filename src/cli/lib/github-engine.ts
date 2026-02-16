@@ -642,6 +642,137 @@ export async function listProjects(
   }
 }
 
+/**
+ * Configure a GitHub Project board's Status field with standard columns.
+ * Uses GraphQL API via `gh api graphql`.
+ *
+ * Columns per specs/05_IMPLEMENTATION.md Part 3:
+ *   Backlog → Todo → In Progress → In Review → Done
+ *
+ * @returns object with configured: true if successful, error message otherwise
+ */
+export async function configureProjectBoard(
+  repo: string,
+  projectNumber: number,
+): Promise<{ configured: boolean; error?: string }> {
+  try {
+    const owner = repo.split("/")[0];
+
+    // Step 1: Get the Project node ID via GraphQL
+    const projectIdQuery = `query {
+  user(login: "${owner}") {
+    projectV2(number: ${projectNumber}) {
+      id
+    }
+  }
+}`;
+
+    let projectNodeId: string;
+    try {
+      const output = await execGh([
+        "api", "graphql", "-f", `query=${projectIdQuery}`,
+      ]);
+      const data = JSON.parse(output) as {
+        data: { user?: { projectV2?: { id: string } }; organization?: { projectV2?: { id: string } } };
+      };
+      projectNodeId = data.data.user?.projectV2?.id ?? "";
+    } catch {
+      // Try as organization
+      const orgQuery = `query {
+  organization(login: "${owner}") {
+    projectV2(number: ${projectNumber}) {
+      id
+    }
+  }
+}`;
+      const output = await execGh([
+        "api", "graphql", "-f", `query=${orgQuery}`,
+      ]);
+      const data = JSON.parse(output) as {
+        data: { organization?: { projectV2?: { id: string } } };
+      };
+      projectNodeId = data.data.organization?.projectV2?.id ?? "";
+    }
+
+    if (!projectNodeId) {
+      return { configured: false, error: "Could not find Project node ID" };
+    }
+
+    // Step 2: Get the Status field ID
+    const fieldsQuery = `query {
+  node(id: "${projectNodeId}") {
+    ... on ProjectV2 {
+      fields(first: 30) {
+        nodes {
+          ... on ProjectV2SingleSelectField {
+            id
+            name
+          }
+        }
+      }
+    }
+  }
+}`;
+
+    const fieldsOutput = await execGh([
+      "api", "graphql", "-f", `query=${fieldsQuery}`,
+    ]);
+    const fieldsData = JSON.parse(fieldsOutput) as {
+      data: {
+        node: {
+          fields: {
+            nodes: ({ id: string; name: string } | Record<string, never>)[];
+          };
+        };
+      };
+    };
+
+    const statusField = fieldsData.data.node.fields.nodes.find(
+      (n) => "name" in n && n.name === "Status",
+    ) as { id: string; name: string } | undefined;
+
+    if (!statusField) {
+      return { configured: false, error: "Status field not found in project" };
+    }
+
+    // Step 3: Update Status field options
+    const updateMutation = `mutation {
+  updateProjectV2Field(
+    input: {
+      fieldId: "${statusField.id}"
+      singleSelectOptions: [
+        { name: "Backlog", color: GRAY, description: "" }
+        { name: "Todo", color: BLUE, description: "" }
+        { name: "In Progress", color: YELLOW, description: "" }
+        { name: "In Review", color: ORANGE, description: "" }
+        { name: "Done", color: GREEN, description: "" }
+      ]
+    }
+  ) {
+    projectV2Field {
+      ... on ProjectV2SingleSelectField {
+        id
+        name
+        options {
+          id
+          name
+        }
+      }
+    }
+  }
+}`;
+
+    await execGh([
+      "api", "graphql", "-f", `query=${updateMutation}`,
+    ]);
+
+    return { configured: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { configured: false, error: msg };
+  }
+}
+
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────

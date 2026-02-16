@@ -19,6 +19,7 @@ import {
   closeTaskIssue,
   syncStatusFromGitHub,
   isGhAvailable,
+  configureProjectBoard,
   setGhExecutor,
   type GhExecutor,
 } from "./github-engine.js";
@@ -656,5 +657,156 @@ describe("syncStatusFromGitHub", () => {
     const result = await syncStatusFromGitHub(tmpDir);
     expect(result.errors).toHaveLength(1);
     expect(result.updated).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────
+// configureProjectBoard
+// ─────────────────────────────────────────────
+
+describe("configureProjectBoard", () => {
+  it("configures board columns via GraphQL", async () => {
+    const graphqlCalls: string[] = [];
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "api" && args[1] === "graphql") {
+        const query = args[3] ?? "";
+        graphqlCalls.push(query);
+
+        // Step 1: user query → project node ID
+        if (query.includes("user(login:") && query.includes("projectV2(number:")) {
+          return JSON.stringify({
+            data: { user: { projectV2: { id: "PVT_abc123" } } },
+          });
+        }
+        // Step 2: fields query → Status field ID
+        if (query.includes("fields(first:")) {
+          return JSON.stringify({
+            data: {
+              node: {
+                fields: {
+                  nodes: [
+                    { id: "PVTSSF_status1", name: "Status" },
+                    { id: "PVTF_title", name: "Title" },
+                  ],
+                },
+              },
+            },
+          });
+        }
+        // Step 3: update mutation
+        if (query.includes("updateProjectV2Field")) {
+          return JSON.stringify({
+            data: {
+              updateProjectV2Field: {
+                projectV2Field: {
+                  id: "PVTSSF_status1",
+                  name: "Status",
+                  options: [
+                    { id: "1", name: "Backlog" },
+                    { id: "2", name: "Todo" },
+                    { id: "3", name: "In Progress" },
+                    { id: "4", name: "In Review" },
+                    { id: "5", name: "Done" },
+                  ],
+                },
+              },
+            },
+          });
+        }
+      }
+      return "";
+    });
+
+    const result = await configureProjectBoard("owner/repo", 1);
+    expect(result.configured).toBe(true);
+    expect(graphqlCalls).toHaveLength(3);
+
+    // Verify the update mutation includes all 5 columns
+    const updateCall = graphqlCalls[2];
+    expect(updateCall).toContain("Backlog");
+    expect(updateCall).toContain("Todo");
+    expect(updateCall).toContain("In Progress");
+    expect(updateCall).toContain("In Review");
+    expect(updateCall).toContain("Done");
+  });
+
+  it("falls back to organization query", async () => {
+    let callCount = 0;
+    restoreExecutor = mockGhWithErrors((args) => {
+      if (args[0] === "api" && args[1] === "graphql") {
+        const query = args[3] ?? "";
+        callCount++;
+
+        // First call (user query) fails
+        if (callCount === 1 && query.includes("user(login:")) {
+          return new Error("user not found");
+        }
+        // Second call (org query) succeeds
+        if (query.includes("organization(login:")) {
+          return JSON.stringify({
+            data: { organization: { projectV2: { id: "PVT_org456" } } },
+          });
+        }
+        // Fields query
+        if (query.includes("fields(first:")) {
+          return JSON.stringify({
+            data: {
+              node: {
+                fields: {
+                  nodes: [{ id: "PVTSSF_s2", name: "Status" }],
+                },
+              },
+            },
+          });
+        }
+        // Update mutation
+        if (query.includes("updateProjectV2Field")) {
+          return JSON.stringify({
+            data: { updateProjectV2Field: { projectV2Field: { id: "PVTSSF_s2" } } },
+          });
+        }
+      }
+      return "";
+    });
+
+    const result = await configureProjectBoard("orgname/repo", 5);
+    expect(result.configured).toBe(true);
+  });
+
+  it("returns error when Status field not found", async () => {
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "api" && args[1] === "graphql") {
+        const query = args[3] ?? "";
+        if (query.includes("user(login:")) {
+          return JSON.stringify({
+            data: { user: { projectV2: { id: "PVT_123" } } },
+          });
+        }
+        if (query.includes("fields(first:")) {
+          return JSON.stringify({
+            data: {
+              node: {
+                fields: {
+                  nodes: [{ id: "PVTF_title", name: "Title" }],
+                },
+              },
+            },
+          });
+        }
+      }
+      return "";
+    });
+
+    const result = await configureProjectBoard("owner/repo", 1);
+    expect(result.configured).toBe(false);
+    expect(result.error).toContain("Status field not found");
+  });
+
+  it("handles GraphQL errors gracefully", async () => {
+    restoreExecutor = mockGhWithErrors(() => new Error("GraphQL error"));
+
+    const result = await configureProjectBoard("owner/repo", 1);
+    expect(result.configured).toBe(false);
+    expect(result.error).toContain("GraphQL error");
   });
 });
