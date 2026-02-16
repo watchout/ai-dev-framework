@@ -424,6 +424,36 @@ describe("profile-model", () => {
         expect(profile?.id).toBe(type);
       }
     });
+
+    it("falls back to v3 'type' field when profileType is missing", () => {
+      fs.writeFileSync(
+        path.join(tmpDir, ".framework/project.json"),
+        JSON.stringify({ name: "legacy", type: "app", framework: { version: "3.0" } }),
+        "utf-8",
+      );
+
+      expect(loadProfileType(tmpDir)).toBe("app");
+    });
+
+    it("prefers v4 profileType over v3 type", () => {
+      fs.writeFileSync(
+        path.join(tmpDir, ".framework/project.json"),
+        JSON.stringify({ profileType: "cli", type: "app" }),
+        "utf-8",
+      );
+
+      expect(loadProfileType(tmpDir)).toBe("cli");
+    });
+
+    it("returns null when v3 type is invalid", () => {
+      fs.writeFileSync(
+        path.join(tmpDir, ".framework/project.json"),
+        JSON.stringify({ type: "unknown" }),
+        "utf-8",
+      );
+
+      expect(loadProfileType(tmpDir)).toBeNull();
+    });
   });
 
   // ─────────────────────────────────────────────

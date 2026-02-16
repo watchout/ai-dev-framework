@@ -456,12 +456,23 @@ export function loadProfileType(projectDir: string): ProfileType | null {
   try {
     const raw = fs.readFileSync(configPath, "utf-8");
     const state = JSON.parse(raw) as Record<string, unknown>;
+
+    // v4 format: "profileType"
     const profileType = state.profileType;
     if (
       typeof profileType === "string" &&
       isValidProfileType(profileType)
     ) {
       return profileType;
+    }
+
+    // v3 format fallback: "type"
+    const legacyType = state.type;
+    if (
+      typeof legacyType === "string" &&
+      isValidProfileType(legacyType)
+    ) {
+      return legacyType;
     }
   } catch {
     // Ignore parse errors
