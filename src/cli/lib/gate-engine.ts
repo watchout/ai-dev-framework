@@ -11,6 +11,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { loadSyncState } from "./github-model.js";
 import {
   type GateState,
   type GateCheck,
@@ -171,6 +172,23 @@ export function checkGateB(projectDir: string): GateCheck[] {
       ? "Project profile found"
       : "No project profile. Run 'framework init' or 'framework retrofit'.",
   });
+
+  // Check GitHub Issues sync (informational — does not fail Gate B)
+  const syncState = loadSyncState(projectDir);
+  if (syncState && plan) {
+    const totalFeatures = plan.waves.reduce(
+      (sum, w) => sum + w.features.length,
+      0,
+    );
+    const syncedFeatures = syncState.featureIssues.length;
+    checks.push({
+      name: "GitHub Issues synced (informational)",
+      passed: true, // Always passes — informational only
+      message: syncedFeatures >= totalFeatures
+        ? `All ${syncedFeatures} features synced to GitHub Issues`
+        : `${syncedFeatures}/${totalFeatures} features synced. Run 'framework plan --sync' to sync remaining.`,
+    });
+  }
 
   return checks;
 }

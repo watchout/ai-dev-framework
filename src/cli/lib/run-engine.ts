@@ -46,6 +46,7 @@ import {
   loadPlan,
 } from "./plan-model.js";
 import { loadProfileType } from "./profile-model.js";
+import { closeTaskIssue } from "./github-engine.js";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -263,6 +264,16 @@ export async function runTask(
 
   completeTask(state, task.taskId, files, auditScore);
   saveRunState(projectDir, state);
+
+  // Close GitHub Issue (graceful — warn only on failure)
+  try {
+    const ghResult = await closeTaskIssue(projectDir, task.taskId);
+    if (ghResult.closed) {
+      io.print(`  GitHub: Issue closed for ${task.taskId}`);
+    }
+  } catch {
+    // Silently ignore — GitHub sync is optional
+  }
 
   // Progress summary
   const progress = calculateProgress(state);
@@ -491,6 +502,13 @@ async function handleExistingEscalation(
 
   completeTask(state, task.taskId, files, auditScore);
   saveRunState(projectDir, state);
+
+  // Close GitHub Issue (graceful)
+  try {
+    await closeTaskIssue(projectDir, task.taskId);
+  } catch {
+    // Silently ignore
+  }
 
   return {
     taskId: task.taskId,

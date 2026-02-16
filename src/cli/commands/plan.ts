@@ -25,6 +25,10 @@ import {
   saveGateState,
 } from "../lib/gate-model.js";
 import { checkGateB } from "../lib/gate-engine.js";
+import {
+  isGhAvailable,
+  syncPlanToGitHub,
+} from "../lib/github-engine.js";
 import { logger } from "../lib/logger.js";
 
 export function registerPlanCommand(program: Command): void {
@@ -38,8 +42,16 @@ export function registerPlanCommand(program: Command): void {
       "--output <path>",
       "Write plan to a markdown file",
     )
+    .option(
+      "--sync",
+      "Sync plan to GitHub Issues after generation",
+    )
     .action(
-      async (options: { status?: boolean; output?: string }) => {
+      async (options: {
+        status?: boolean;
+        output?: string;
+        sync?: boolean;
+      }) => {
         const projectDir = process.cwd();
 
         try {
@@ -89,6 +101,35 @@ export function registerPlanCommand(program: Command): void {
             logger.success("Gate B (Planning) automatically passed.");
           }
 
+          // Sync to GitHub Issues if requested
+          if (options.sync) {
+            const ghAvailable = await isGhAvailable();
+            if (!ghAvailable) {
+              logger.warn(
+                "gh CLI not available or not authenticated. " +
+                  "Run 'gh auth login' first.",
+              );
+            } else {
+              logger.info("");
+              logger.header("Syncing to GitHub Issues...");
+              const syncResult = await syncPlanToGitHub(
+                projectDir,
+                result.plan,
+                {
+                  onProgress: (msg) => logger.info(msg),
+                },
+              );
+              if (syncResult.errors.length > 0) {
+                for (const err of syncResult.errors) {
+                  logger.warn(`  GitHub sync: ${err}`);
+                }
+              }
+              logger.success(
+                `GitHub Issues: ${syncResult.created} created, ${syncResult.skipped} skipped`,
+              );
+            }
+          }
+
           // Print summary
           const totalFeatures = result.plan.waves.reduce(
             (sum, w) => sum + w.features.length,
@@ -108,8 +149,14 @@ export function registerPlanCommand(program: Command): void {
           logger.header("Next steps:");
           logger.info("  1. Review the plan");
           logger.info("  2. framework plan --output docs/PLAN.md  <- Export plan");
-          logger.info("  3. framework gate check  <- Verify all gates");
-          logger.info("  4. framework run         <- Start auto-development");
+          if (!options.sync) {
+            logger.info("  3. framework plan --sync  <- Sync to GitHub Issues");
+            logger.info("  4. framework gate check   <- Verify all gates");
+            logger.info("  5. framework run          <- Start auto-development");
+          } else {
+            logger.info("  3. framework gate check  <- Verify all gates");
+            logger.info("  4. framework run         <- Start auto-development");
+          }
           logger.info("");
         } catch (error) {
           if (error instanceof Error) {

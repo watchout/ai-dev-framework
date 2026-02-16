@@ -13,6 +13,7 @@ import * as fs from "node:fs";
 import { type Command } from "commander";
 import {
   collectStatus,
+  enrichTasksFromGitHub,
   printStatus,
   createStatusTerminalIO,
 } from "../lib/status-engine.js";
@@ -22,7 +23,8 @@ export function registerStatusCommand(program: Command): void {
   program
     .command("status")
     .description("Show project progress and status")
-    .action(() => {
+    .option("--github", "Fetch live status from GitHub Issues")
+    .action(async (options: { github?: boolean }) => {
       const projectDir = process.cwd();
 
       try {
@@ -36,6 +38,19 @@ export function registerStatusCommand(program: Command): void {
 
         const io = createStatusTerminalIO();
         const result = collectStatus(projectDir);
+
+        // Enrich tasks from GitHub if sync state exists
+        if (result.tasks.length > 0 || options.github) {
+          const enriched = await enrichTasksFromGitHub(
+            result.tasks,
+            projectDir,
+            options.github ?? false,
+          );
+          if (enriched.ghSynced) {
+            result.tasks = enriched.tasks;
+          }
+        }
+
         printStatus(io, result);
       } catch (error) {
         if (error instanceof Error) {
