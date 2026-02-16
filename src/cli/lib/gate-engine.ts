@@ -170,7 +170,7 @@ export function checkGateB(projectDir: string): GateCheck[] {
     passed: hasProject,
     message: hasProject
       ? "Project profile found"
-      : "No project profile. Run 'framework init' or 'framework retrofit'.",
+      : "No project profile. Run 'framework retrofit' again to generate .framework/project.json.",
   });
 
   // Check GitHub Issues sync (informational — does not fail Gate B)

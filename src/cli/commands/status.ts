@@ -31,7 +31,16 @@ export function registerStatusCommand(program: Command): void {
         const frameworkDir = `${projectDir}/.framework`;
         if (!fs.existsSync(frameworkDir)) {
           logger.error(
-            "Not a framework project. Run 'framework init' first.",
+            "Not a framework project. Run 'framework init' or 'framework retrofit' first.",
+          );
+          process.exit(1);
+        }
+
+        // Check for project.json (required for status to work correctly)
+        const projectJsonPath = `${frameworkDir}/project.json`;
+        if (!fs.existsSync(projectJsonPath)) {
+          logger.error(
+            "Missing .framework/project.json. Run 'framework retrofit' again to generate it.",
           );
           process.exit(1);
         }

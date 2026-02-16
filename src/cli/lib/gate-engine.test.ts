@@ -165,6 +165,16 @@ describe("gate-engine", () => {
       );
       expect(profileCheck?.passed).toBe(true);
     });
+
+    it("fails project profile check when project.json is missing", () => {
+      const checks = checkGateB(tmpDir);
+      const profileCheck = checks.find((c) =>
+        c.name.includes("Project profile"),
+      );
+      expect(profileCheck?.passed).toBe(false);
+      expect(profileCheck?.message).toContain("framework retrofit");
+      expect(profileCheck?.message).toContain("project.json");
+    });
   });
 
   describe("checkGateC", () => {

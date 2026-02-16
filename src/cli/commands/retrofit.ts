@@ -28,8 +28,9 @@ import {
 } from "../lib/gate-model.js";
 import { installAllHooks } from "../lib/hooks-installer.js";
 import { installGitHubTemplates } from "../lib/github-templates.js";
-import { loadProfileType } from "../lib/profile-model.js";
+import { loadProfileType, inferProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
+import { generateProjectState, type ProjectConfig } from "../lib/templates.js";
 
 export function registerRetrofitCommand(program: Command): void {
   program
@@ -111,6 +112,41 @@ export function registerRetrofitCommand(program: Command): void {
             logger.info(
               "  Run 'framework gate check' to evaluate gate status.",
             );
+          }
+
+          // Create .framework/project.json if not exists
+          if (!options.dryRun) {
+            const projectJsonPath = path.join(projectDir, ".framework/project.json");
+            if (!fs.existsSync(projectJsonPath)) {
+              // Detect profile type from project description or package.json
+              const pkgJsonPath = path.join(projectDir, "package.json");
+              let projectName = path.basename(projectDir);
+              let description = "";
+              if (fs.existsSync(pkgJsonPath)) {
+                try {
+                  const raw = fs.readFileSync(pkgJsonPath, "utf-8");
+                  const pkg = JSON.parse(raw) as Record<string, unknown>;
+                  if (typeof pkg.name === "string") projectName = pkg.name;
+                  if (typeof pkg.description === "string") description = pkg.description;
+                } catch {
+                  // ignore parse errors
+                }
+              }
+              const detectedProfile = inferProfileType(description);
+              const config: ProjectConfig = {
+                projectName,
+                description,
+                profileType: detectedProfile,
+              };
+              const frameworkDir = path.join(projectDir, ".framework");
+              if (!fs.existsSync(frameworkDir)) {
+                fs.mkdirSync(frameworkDir, { recursive: true });
+              }
+              fs.writeFileSync(projectJsonPath, generateProjectState(config), "utf-8");
+              logger.success(
+                `Created project profile (.framework/project.json, type=${detectedProfile})`,
+              );
+            }
           }
 
           // Install Pre-Code Gate hooks
