@@ -8,9 +8,12 @@ import {
   initRunStateFromPlan,
   generateTaskPrompt,
   createEscalation,
+  completeTaskNonInteractive,
+  completeFeatureNonInteractive,
+  completeWaveNonInteractive,
 } from "./run-engine.js";
-import { type PlanState } from "./plan-model.js";
-import { saveRunState, createRunState } from "./run-model.js";
+import { type PlanState, savePlan } from "./plan-model.js";
+import { saveRunState, createRunState, loadRunState } from "./run-model.js";
 
 function createMockIO(askResponse = "done"): RunIO & { output: string[] } {
   const output: string[] = [];
@@ -385,6 +388,204 @@ describe("run-engine", () => {
 
       const result = await runTask({ projectDir: tmpDir, io });
       expect(io.output.some((o) => o.includes("completed"))).toBe(true);
+    });
+  });
+
+  describe("completeTaskNonInteractive", () => {
+    it("completes a single task", async () => {
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1", featureId: "F1", taskKind: "db",
+          name: "Task 1", status: "backlog", files: [],
+        },
+        {
+          taskId: "T2", featureId: "F1", taskKind: "api",
+          name: "Task 2", status: "backlog", files: [],
+        },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await completeTaskNonInteractive(tmpDir, "T1");
+      expect(result.error).toBeUndefined();
+      expect(result.progress).toBe(50);
+
+      const updated = loadRunState(tmpDir);
+      expect(updated?.tasks[0].status).toBe("done");
+      expect(updated?.tasks[1].status).toBe("backlog");
+    });
+
+    it("returns error for nonexistent task", async () => {
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1", featureId: "F1", taskKind: "db",
+          name: "Task 1", status: "backlog", files: [],
+        },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await completeTaskNonInteractive(tmpDir, "NOPE");
+      expect(result.error).toContain("not found");
+    });
+
+    it("returns error for already-completed task", async () => {
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1", featureId: "F1", taskKind: "db",
+          name: "Task 1", status: "done", files: [],
+        },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await completeTaskNonInteractive(tmpDir, "T1");
+      expect(result.error).toContain("already completed");
+    });
+
+    it("initializes state from plan when no run-state exists", async () => {
+      const plan = makePlan();
+      savePlan(tmpDir, plan);
+
+      const result = await completeTaskNonInteractive(tmpDir, "AUTH-001-TEST");
+      expect(result.error).toBeUndefined();
+      expect(result.progress).toBeGreaterThan(0);
+    });
+  });
+
+  describe("completeFeatureNonInteractive", () => {
+    it("completes all tasks for a feature", async () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "backlog", files: [] },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", files: [] },
+        { taskId: "F1-UI", featureId: "F1", taskKind: "ui", name: "F1 UI", status: "backlog", files: [] },
+        { taskId: "F2-DB", featureId: "F2", taskKind: "db", name: "F2 DB", status: "backlog", files: [] },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await completeFeatureNonInteractive(tmpDir, "F1");
+      expect(result.error).toBeUndefined();
+      expect(result.completed).toBe(3);
+      expect(result.skipped).toBe(0);
+      expect(result.progress).toBe(75); // 3 out of 4
+
+      const updated = loadRunState(tmpDir);
+      expect(updated?.tasks[0].status).toBe("done");
+      expect(updated?.tasks[1].status).toBe("done");
+      expect(updated?.tasks[2].status).toBe("done");
+      expect(updated?.tasks[3].status).toBe("backlog"); // F2 untouched
+    });
+
+    it("skips already-done tasks", async () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "done", files: [] },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", files: [] },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await completeFeatureNonInteractive(tmpDir, "F1");
+      expect(result.completed).toBe(1);
+      expect(result.skipped).toBe(1);
+      expect(result.progress).toBe(100);
+    });
+
+    it("returns error for unknown feature", async () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "backlog", files: [] },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await completeFeatureNonInteractive(tmpDir, "UNKNOWN");
+      expect(result.error).toContain("No tasks found");
+      expect(result.completed).toBe(0);
+    });
+
+    it("initializes state from plan when no run-state exists", async () => {
+      const plan = makePlan();
+      savePlan(tmpDir, plan);
+
+      const result = await completeFeatureNonInteractive(tmpDir, "AUTH-001");
+      expect(result.error).toBeUndefined();
+      expect(result.completed).toBe(6); // 6 standard task kinds
+      expect(result.progress).toBe(100);
+    });
+  });
+
+  describe("completeWaveNonInteractive", () => {
+    it("completes all tasks in a wave", async () => {
+      const plan = makePlan();
+      // Add a second wave with another feature
+      plan.waves.push({
+        number: 2,
+        phase: "common",
+        layer: 2,
+        title: "Notification Foundation",
+        features: [
+          {
+            id: "NOTIF-001",
+            name: "Email Notification",
+            priority: "P1",
+            size: "M",
+            type: "common",
+            dependencies: ["AUTH-001"],
+            dependencyCount: 0,
+          },
+        ],
+      });
+      savePlan(tmpDir, plan);
+
+      // Initialize state first so we have tasks for both waves
+      const state = initRunStateFromPlan(plan);
+      saveRunState(tmpDir, state);
+
+      const result = await completeWaveNonInteractive(tmpDir, 1);
+      expect(result.error).toBeUndefined();
+      expect(result.completed).toBe(6); // AUTH-001's 6 tasks
+      expect(result.skipped).toBe(0);
+
+      // Wave 2 tasks should still be backlog
+      const updated = loadRunState(tmpDir);
+      const wave2Tasks = updated?.tasks.filter((t) => t.featureId === "NOTIF-001") ?? [];
+      for (const t of wave2Tasks) {
+        expect(t.status).toBe("backlog");
+      }
+    });
+
+    it("returns error for nonexistent wave", async () => {
+      const plan = makePlan();
+      savePlan(tmpDir, plan);
+
+      const result = await completeWaveNonInteractive(tmpDir, 99);
+      expect(result.error).toContain("Wave 99 not found");
+    });
+
+    it("returns error when no plan exists", async () => {
+      const result = await completeWaveNonInteractive(tmpDir, 1);
+      expect(result.error).toContain("No plan found");
+    });
+
+    it("skips already-done tasks in wave", async () => {
+      const plan = makePlan();
+      savePlan(tmpDir, plan);
+
+      // Create state with some tasks already done
+      const state = initRunStateFromPlan(plan);
+      // Mark first 3 tasks as done
+      state.tasks[0].status = "done";
+      state.tasks[0].completedAt = new Date().toISOString();
+      state.tasks[1].status = "done";
+      state.tasks[1].completedAt = new Date().toISOString();
+      state.tasks[2].status = "done";
+      state.tasks[2].completedAt = new Date().toISOString();
+      saveRunState(tmpDir, state);
+
+      const result = await completeWaveNonInteractive(tmpDir, 1);
+      expect(result.completed).toBe(3); // remaining 3
+      expect(result.skipped).toBe(3); // already done
+      expect(result.progress).toBe(100);
     });
   });
 });

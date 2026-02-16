@@ -11,6 +11,8 @@ import {
   runTask,
   createRunTerminalIO,
   completeTaskNonInteractive,
+  completeFeatureNonInteractive,
+  completeWaveNonInteractive,
 } from "../lib/run-engine.js";
 import {
   loadRunState,
@@ -38,6 +40,14 @@ export function registerRunCommand(program: Command): void {
       "--complete",
       "Mark specified task as done (non-interactive)",
     )
+    .option(
+      "--complete-feature",
+      "Mark all tasks for a feature as done",
+    )
+    .option(
+      "--complete-wave",
+      "Mark all tasks in a wave as done (argument = wave number)",
+    )
     .action(
       async (
         taskId: string | undefined,
@@ -46,6 +56,8 @@ export function registerRunCommand(program: Command): void {
           autoCommit?: boolean;
           status?: boolean;
           complete?: boolean;
+          completeFeature?: boolean;
+          completeWave?: boolean;
         },
       ) => {
         const projectDir = process.cwd();
@@ -75,6 +87,61 @@ export function registerRunCommand(program: Command): void {
             logger.success(`Task ${taskId}: completed (${result.progress}%)`);
             if (result.issueClosed) {
               logger.info(`  GitHub Issue closed for ${taskId}`);
+            }
+            return;
+          }
+
+          // Batch feature completion: framework run <featureId> --complete-feature
+          if (options.completeFeature) {
+            if (!taskId) {
+              logger.error(
+                "Feature ID required. Usage: framework run <featureId> --complete-feature",
+              );
+              process.exit(1);
+            }
+            const result = await completeFeatureNonInteractive(
+              projectDir,
+              taskId,
+            );
+            if (result.error) {
+              logger.error(result.error);
+              process.exit(1);
+            }
+            logger.success(
+              `Feature ${taskId}: ${result.completed} tasks completed, ${result.skipped} skipped (${result.progress}%)`,
+            );
+            if (result.issuesClosed > 0) {
+              logger.info(`  ${result.issuesClosed} GitHub Issues closed`);
+            }
+            return;
+          }
+
+          // Batch wave completion: framework run <waveNumber> --complete-wave
+          if (options.completeWave) {
+            if (!taskId) {
+              logger.error(
+                "Wave number required. Usage: framework run <waveNumber> --complete-wave",
+              );
+              process.exit(1);
+            }
+            const waveNum = parseInt(taskId, 10);
+            if (isNaN(waveNum)) {
+              logger.error(`Invalid wave number: ${taskId}`);
+              process.exit(1);
+            }
+            const result = await completeWaveNonInteractive(
+              projectDir,
+              waveNum,
+            );
+            if (result.error) {
+              logger.error(result.error);
+              process.exit(1);
+            }
+            logger.success(
+              `Wave ${waveNum}: ${result.completed} tasks completed, ${result.skipped} skipped (${result.progress}%)`,
+            );
+            if (result.issuesClosed > 0) {
+              logger.info(`  ${result.issuesClosed} GitHub Issues closed`);
             }
             return;
           }

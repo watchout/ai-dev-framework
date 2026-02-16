@@ -387,6 +387,120 @@ export async function completeTaskNonInteractive(
   };
 }
 
+export interface BatchCompleteResult {
+  error?: string;
+  completed: number;
+  skipped: number;
+  progress: number;
+  issuesClosed: number;
+}
+
+/**
+ * Mark all tasks for a feature as done (non-interactive batch).
+ *
+ * Usage: framework run <featureId> --complete-feature
+ */
+export async function completeFeatureNonInteractive(
+  projectDir: string,
+  featureId: string,
+): Promise<BatchCompleteResult> {
+  let state = loadRunState(projectDir);
+  if (!state) {
+    const plan = loadPlan(projectDir);
+    if (!plan || plan.waves.length === 0) {
+      return { error: "No plan found.", completed: 0, skipped: 0, progress: 0, issuesClosed: 0 };
+    }
+    const profileType = loadProfileType(projectDir) ?? "app";
+    state = initRunStateFromPlan(plan, { profileType });
+    saveRunState(projectDir, state);
+  }
+
+  const featureTasks = state.tasks.filter((t) => t.featureId === featureId);
+  if (featureTasks.length === 0) {
+    return { error: `No tasks found for feature: ${featureId}`, completed: 0, skipped: 0, progress: 0, issuesClosed: 0 };
+  }
+
+  let completed = 0;
+  let skipped = 0;
+  let issuesClosed = 0;
+
+  for (const task of featureTasks) {
+    if (task.status === "done") {
+      skipped++;
+      continue;
+    }
+    completeTask(state, task.taskId, [], 100);
+    completed++;
+
+    try {
+      const ghResult = await closeTaskIssue(projectDir, task.taskId);
+      if (ghResult.closed) issuesClosed++;
+    } catch {
+      // Silently ignore
+    }
+  }
+
+  saveRunState(projectDir, state);
+  return { completed, skipped, progress: calculateProgress(state), issuesClosed };
+}
+
+/**
+ * Mark all tasks in a wave as done (non-interactive batch).
+ *
+ * Usage: framework run <waveNumber> --complete-wave
+ */
+export async function completeWaveNonInteractive(
+  projectDir: string,
+  waveNumber: number,
+): Promise<BatchCompleteResult> {
+  const plan = loadPlan(projectDir);
+  if (!plan || plan.waves.length === 0) {
+    return { error: "No plan found.", completed: 0, skipped: 0, progress: 0, issuesClosed: 0 };
+  }
+
+  const wave = plan.waves.find((w) => w.number === waveNumber);
+  if (!wave) {
+    return { error: `Wave ${waveNumber} not found.`, completed: 0, skipped: 0, progress: 0, issuesClosed: 0 };
+  }
+
+  let state = loadRunState(projectDir);
+  if (!state) {
+    const profileType = loadProfileType(projectDir) ?? "app";
+    state = initRunStateFromPlan(plan, { profileType });
+    saveRunState(projectDir, state);
+  }
+
+  const featureIds = new Set(wave.features.map((f) => f.id));
+  const waveTasks = state.tasks.filter((t) => featureIds.has(t.featureId));
+
+  if (waveTasks.length === 0) {
+    return { error: `No tasks found for wave ${waveNumber}.`, completed: 0, skipped: 0, progress: 0, issuesClosed: 0 };
+  }
+
+  let completed = 0;
+  let skipped = 0;
+  let issuesClosed = 0;
+
+  for (const task of waveTasks) {
+    if (task.status === "done") {
+      skipped++;
+      continue;
+    }
+    completeTask(state, task.taskId, [], 100);
+    completed++;
+
+    try {
+      const ghResult = await closeTaskIssue(projectDir, task.taskId);
+      if (ghResult.closed) issuesClosed++;
+    } catch {
+      // Silently ignore
+    }
+  }
+
+  saveRunState(projectDir, state);
+  return { completed, skipped, progress: calculateProgress(state), issuesClosed };
+}
+
 // ─────────────────────────────────────────────
 // Plan → Run State Initialization
 // ─────────────────────────────────────────────
