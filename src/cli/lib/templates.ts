@@ -113,6 +113,51 @@ docs/
 
 全Gate passed でなければ src/ 以下の編集は .claude/hooks/pre-code-gate.sh でブロックされる。
 
+## GitHub Integration
+
+タスク管理は GitHub Issues + Projects で行う。
+
+### セットアップ
+\\\`\\\`\\\`bash
+# 1. gh CLI認証（必須）
+gh auth login
+
+# 2. GitHub Projects を有効にする場合（オプション）
+gh auth refresh -h github.com -s read:project,project
+
+# 3. 実装計画を GitHub Issues に同期
+framework plan --sync
+
+# 4. ステータスを GitHub から取得
+framework status --github
+\\\`\\\`\\\`
+
+### ブランチ命名規則
+\\\`\\\`\\\`
+feature/FEAT-XXX-db          <- DB実装
+feature/FEAT-XXX-api         <- API実装
+feature/FEAT-XXX-ui          <- UI実装
+feature/FEAT-XXX-integration <- 結合
+fix/FEAT-XXX-[description]   <- バグ修正
+hotfix/[description]         <- 緊急修正
+\\\`\\\`\\\`
+
+### コミットメッセージ (Conventional Commits)
+\\\`\\\`\\\`
+feat(FEAT-XXX): [description]
+fix(FEAT-XXX): [description]
+test(FEAT-XXX): [description]
+docs(FEAT-XXX): [description]
+refactor(FEAT-XXX): [description]
+chore: [description]
+\\\`\\\`\\\`
+
+### Issue → タスク完了フロー
+1. \\\`framework plan --sync\\\` → 親Issue + タスクIssue が GitHub に作成される
+2. 各タスクは DB → API → UI → Integration → Test → Review の順で実施
+3. タスク完了時に \\\`framework run\\\` が自動で GitHub Issue を close
+4. PR テンプレート (.github/PULL_REQUEST_TEMPLATE.md) に SSOT 準拠チェックリストあり
+
 ## Workflow Orchestration
 
 このプロジェクトには4つの専門スキルが .claude/skills/ に配置されている。

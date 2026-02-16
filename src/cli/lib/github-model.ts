@@ -35,6 +35,8 @@ export interface GitHubSyncState {
   syncedAt: string;
   /** Feature-to-issue mappings */
   featureIssues: FeatureIssueMap[];
+  /** GitHub Project number (if linked) */
+  projectNumber?: number;
 }
 
 export interface GitHubIssue {

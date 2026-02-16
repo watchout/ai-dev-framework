@@ -56,15 +56,17 @@ ai-dev-framework/
 
 | コマンド | 説明 |
 |---------|------|
-| `framework init <name>` | プロジェクト初期化 |
+| `framework init <name>` | プロジェクト初期化（.github/ テンプレート含む） |
 | `framework discover` | ディスカバリー実行 |
 | `framework generate` | SSOT自動生成 |
 | `framework plan` | 実装計画作成（Gate B 自動pass） |
+| `framework plan --sync` | 実装計画 → GitHub Issues/Projects 同期 |
 | `framework gate check\|status\|reset\|scaffold` | Pre-Code Gate 管理 |
 | `framework audit ssot\|code` | 品質監査（Gate C 自動更新） |
-| `framework run` | タスク実行（全Gate通過必須） |
+| `framework run` | タスク実行（全Gate通過必須、完了時に Issue 自動close） |
 | `framework status` | 進捗表示 |
-| `framework retrofit` | 既存プロジェクト導入 |
+| `framework status --github` | GitHub Issues からライブステータス取得 |
+| `framework retrofit` | 既存プロジェクト導入（.github/ テンプレート含む） |
 | `framework update` | フレームワーク更新 |
 
 ### CLI実行方法
@@ -130,6 +132,55 @@ Gate C v4.0 改善:
 2層の強制:
 1. Claude Code hook（PreToolUse）: `.claude/hooks/pre-code-gate.sh`
 2. Git pre-commit hook: `.husky/pre-commit`
+
+---
+
+## GitHub Integration（specs/05_IMPLEMENTATION.md Part 3-4）
+
+`framework init` / `framework retrofit` 実行時に以下のテンプレートが自動生成される:
+
+```
+.github/
+├── workflows/ci.yml              ← プロファイル別CI（templates/ci/ から）
+├── PULL_REQUEST_TEMPLATE.md      ← SSOT準拠チェックリスト付きPRテンプレート
+├── ISSUE_TEMPLATE/
+│   ├── feature-db.md             ← DB実装タスク
+│   ├── feature-api.md            ← API実装タスク
+│   ├── feature-ui.md             ← UI実装タスク
+│   ├── feature-test.md           ← テストタスク
+│   └── bug.md                    ← バグ報告
+└── CODEOWNERS                    ← コードオーナー定義
+```
+
+### 適用プロジェクトでの使い方
+
+```bash
+# 1. gh CLI 認証
+gh auth login
+
+# 2. GitHub Projects を有効化（オプション）
+gh auth refresh -h github.com -s read:project,project
+
+# 3. 実装計画を GitHub Issues に同期
+framework plan --sync
+
+# 4. タスク実行（完了時に Issue 自動close）
+framework run
+
+# 5. GitHub からステータス取得
+framework status --github
+```
+
+### CLI → GitHub の連携フロー
+
+```
+framework plan → plan.json 生成
+framework plan --sync → plan.json → GitHub Issues 作成（+ Projects 連携）
+framework run → タスク完了 → GitHub Issue 自動close
+framework status --github → GitHub Issue ステータス → ローカル反映
+```
+
+同期状態: `.framework/github-sync.json`（チーム共有、.gitignore 対象外）
 
 ---
 

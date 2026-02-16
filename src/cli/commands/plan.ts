@@ -28,7 +28,13 @@ import { checkGateB } from "../lib/gate-engine.js";
 import {
   isGhAvailable,
   syncPlanToGitHub,
+  hasProjectScope,
+  listProjects,
+  createProjectBoard,
 } from "../lib/github-engine.js";
+import {
+  loadSyncState,
+} from "../lib/github-model.js";
 import { logger } from "../lib/logger.js";
 
 export function registerPlanCommand(program: Command): void {
@@ -112,11 +118,40 @@ export function registerPlanCommand(program: Command): void {
             } else {
               logger.info("");
               logger.header("Syncing to GitHub Issues...");
+
+              // Detect or create GitHub Project board
+              let projectNumber: number | undefined;
+              const existingSyncState = loadSyncState(projectDir);
+              if (existingSyncState?.projectNumber) {
+                projectNumber = existingSyncState.projectNumber;
+              } else {
+                const canProject = await hasProjectScope();
+                if (canProject) {
+                  const projects = await listProjects(existingSyncState?.repo ?? "");
+                  if (projects.length > 0) {
+                    projectNumber = projects[0].number;
+                    logger.info(`  Using GitHub Project: "${projects[0].title}" (#${projectNumber})`);
+                  } else {
+                    const projectName = path.basename(projectDir);
+                    projectNumber = await createProjectBoard(
+                      existingSyncState?.repo ?? "",
+                      `${projectName} - Development`,
+                    ) ?? undefined;
+                    if (projectNumber) {
+                      logger.success(`  Created GitHub Project: #${projectNumber}`);
+                    }
+                  }
+                } else {
+                  logger.info("  GitHub Projects: skipped (run 'gh auth refresh -h github.com -s read:project,project' to enable)");
+                }
+              }
+
               const syncResult = await syncPlanToGitHub(
                 projectDir,
                 result.plan,
                 {
                   onProgress: (msg) => logger.info(msg),
+                  projectNumber,
                 },
               );
               if (syncResult.errors.length > 0) {
@@ -127,6 +162,11 @@ export function registerPlanCommand(program: Command): void {
               logger.success(
                 `GitHub Issues: ${syncResult.created} created, ${syncResult.skipped} skipped`,
               );
+              if (projectNumber) {
+                logger.success(
+                  `GitHub Project: Issues linked to Project #${projectNumber}`,
+                );
+              }
             }
           }
 

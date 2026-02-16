@@ -315,10 +315,24 @@ ssot-explorer.md:
 .gitignore にはnode_modules, .env, dist, .DS_Store, backups/ 等の標準的な内容を記載。
 README.md にはプロジェクト名と概要を記載。
 
-■ Step 12: クリーンアップ
+■ Step 12: GitHub テンプレートをインストール
+以下のファイルをフレームワークの templates/github/ と templates/ci/ からコピー:
+
+.github/workflows/ci.yml ← プロファイル別CIワークフロー（templates/ci/{profile}.yml）
+.github/PULL_REQUEST_TEMPLATE.md ← SSOT準拠チェックリスト付きPRテンプレート
+.github/ISSUE_TEMPLATE/feature-db.md ← DB実装タスクテンプレート
+.github/ISSUE_TEMPLATE/feature-api.md ← API実装タスクテンプレート
+.github/ISSUE_TEMPLATE/feature-ui.md ← UI実装タスクテンプレート
+.github/ISSUE_TEMPLATE/feature-test.md ← テストタスクテンプレート
+.github/ISSUE_TEMPLATE/bug.md ← バグ報告テンプレート
+.github/CODEOWNERS ← コードオーナー定義
+
+ci.yml 内の {{PROJECT_NAME}} はプロジェクト名に置換する。
+
+■ Step 13: クリーンアップ
 rm -rf /tmp/ai-dev-framework
 
-■ Step 13: ディスカバリー開始
+■ Step 14: ディスカバリー開始
 セットアップ完了を報告してから、ディスカバリーフローを開始して。
 
 ディスカバリーのルール:

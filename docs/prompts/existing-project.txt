@@ -184,7 +184,15 @@ Agent Teams テンプレートを .claude/agents/ に作成:
 - code-reviewer.md: Adversarial Code Review エージェント
 - ssot-explorer.md: SSOT検索エージェント
 
-■ Step 7: 既存コードから SSOT を逆生成
+■ Step 7: GitHub テンプレートをインストール
+以下のファイルをフレームワークの templates/ からコピー:
+- .github/workflows/ci.yml（templates/ci/ からプロファイル別、{{PROJECT_NAME}} を置換）
+- .github/PULL_REQUEST_TEMPLATE.md（SSOT準拠チェックリスト付き）
+- .github/ISSUE_TEMPLATE/（feature-db.md, feature-api.md, feature-ui.md, feature-test.md, bug.md）
+- .github/CODEOWNERS
+既存の .github/ ファイルがある場合は上書きしない。
+
+■ Step 8: 既存コードから SSOT を逆生成
 以下を既存コードから分析・生成:
 1. API エンドポイントがあれば → docs/design/core/SSOT-3_API_CONTRACT.md
 2. DB スキーマがあれば → docs/design/core/SSOT-4_DATA_MODEL.md
@@ -192,8 +200,8 @@ Agent Teams テンプレートを .claude/agents/ に作成:
 4. 画面があれば → docs/design/core/SSOT-2_UI_STATE.md
 各ドキュメントを1つずつ生成して、ユーザーに確認を取ること。
 
-■ Step 8: クリーンアップ
+■ Step 9: クリーンアップ
 rm -rf /tmp/ai-dev-framework
 
-■ Step 9: ギャップ報告
+■ Step 10: ギャップ報告
 不足しているドキュメント、既存コードとの乖離を報告して、次のアクションを提案して。

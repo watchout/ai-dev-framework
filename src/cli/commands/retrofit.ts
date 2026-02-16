@@ -27,6 +27,8 @@ import {
   saveGateState,
 } from "../lib/gate-model.js";
 import { installAllHooks } from "../lib/hooks-installer.js";
+import { installGitHubTemplates } from "../lib/github-templates.js";
+import { loadProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
 
 export function registerRetrofitCommand(program: Command): void {
@@ -124,6 +126,32 @@ export function registerRetrofitCommand(program: Command): void {
             }
             if (hooksResult.gitHookInstalled) {
               logger.success("Git pre-commit hook installed");
+            }
+          }
+
+          // Install GitHub templates (.github/) if not present
+          if (!options.dryRun) {
+            const profileType = loadProfileType(projectDir) ?? "app";
+            // Detect framework root from global install or local
+            const frameworkRoot = path.resolve(__dirname, "../../../..");
+            const ghResult = installGitHubTemplates(
+              projectDir,
+              profileType,
+              frameworkRoot,
+              { projectName: path.basename(projectDir) },
+            );
+            if (ghResult.installed.length > 0) {
+              logger.success(
+                `Installed ${ghResult.installed.length} GitHub templates`,
+              );
+              for (const f of ghResult.installed) {
+                logger.info(`  + ${f}`);
+              }
+            }
+            if (ghResult.skipped.length > 0) {
+              logger.info(
+                `  Skipped ${ghResult.skipped.length} existing GitHub files`,
+              );
             }
           }
 

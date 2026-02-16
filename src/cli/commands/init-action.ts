@@ -29,6 +29,7 @@ import {
   saveGateState,
 } from "../lib/gate-model.js";
 import { installAllHooks } from "../lib/hooks-installer.js";
+import { installGitHubTemplates } from "../lib/github-templates.js";
 import { logger } from "../lib/logger.js";
 
 export interface InitOptions {
@@ -53,7 +54,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const createdFiles: string[] = [];
   const errors: string[] = [];
 
-  const totalSteps = 10;
+  const totalSteps = 11;
 
   // Check if directory already exists and is non-empty
   if (fs.existsSync(projectPath)) {
@@ -215,6 +216,25 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   }
   if (hooksResult.gitHookInstalled) {
     logger.success("Git pre-commit hook installed");
+  }
+
+  // Step 11: Install GitHub templates (.github/)
+  logger.step(11, totalSteps, "Installing GitHub templates...");
+  const ghResult = installGitHubTemplates(
+    projectPath,
+    profileType,
+    frameworkRoot,
+    { projectName: options.projectName },
+  );
+  createdFiles.push(...ghResult.installed);
+  for (const err of ghResult.errors) {
+    logger.warn(`GitHub templates: ${err}`);
+    errors.push(err);
+  }
+  if (ghResult.installed.length > 0) {
+    logger.success(
+      `Installed ${ghResult.installed.length} GitHub templates (CI, PR template, Issue templates, CODEOWNERS)`,
+    );
   }
 
   return { projectPath, createdFiles, errors };

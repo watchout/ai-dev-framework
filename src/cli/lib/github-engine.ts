@@ -288,6 +288,8 @@ export interface SyncPlanOptions {
   repo?: string;
   /** Callback for progress reporting */
   onProgress?: (message: string) => void;
+  /** GitHub Project number to add issues to */
+  projectNumber?: number;
 }
 
 /**
@@ -318,6 +320,9 @@ export async function syncPlanToGitHub(
   // Load or create sync state
   const syncState = loadSyncState(projectDir) ?? createSyncState(repo);
   syncState.repo = repo;
+
+  // Track project number for issue-to-project linking
+  const projectNumber = options?.projectNumber ?? syncState.projectNumber;
 
   // Iterate waves → features → tasks
   for (const wave of plan.waves) {
@@ -352,6 +357,14 @@ export async function syncPlanToGitHub(
           );
           created++;
           log(`  [created] ${feature.id} → #${parentIssueNumber}`);
+
+          // Add to GitHub Project if available
+          if (projectNumber) {
+            const added = await addIssueToProject(repo, projectNumber, parentIssueNumber);
+            if (added) {
+              log(`  [project] ${feature.id} → Project #${projectNumber}`);
+            }
+          }
         }
 
         // Create task issues
@@ -386,6 +399,11 @@ export async function syncPlanToGitHub(
             });
             created++;
             log(`  [created] ${task.id} → #${taskIssueNumber}`);
+
+            // Add task issue to GitHub Project
+            if (projectNumber) {
+              await addIssueToProject(repo, projectNumber, taskIssueNumber).catch(() => {});
+            }
           } catch (err) {
             const msg =
               err instanceof Error ? err.message : String(err);
@@ -404,6 +422,11 @@ export async function syncPlanToGitHub(
         );
       }
     }
+  }
+
+  // Save project number to sync state
+  if (projectNumber) {
+    syncState.projectNumber = projectNumber;
   }
 
   // Save sync state
@@ -498,6 +521,105 @@ export async function closeTaskIssue(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { closed: false, error: msg };
+  }
+}
+
+// ─────────────────────────────────────────────
+// GitHub Projects Integration
+// ─────────────────────────────────────────────
+
+/**
+ * Check if the current gh auth token has the `project` scope.
+ * Returns false if gh is unavailable or scope is missing.
+ */
+export async function hasProjectScope(): Promise<boolean> {
+  try {
+    // gh project list will fail with "missing required scopes [read:project]"
+    // if the token lacks the scope
+    await _execGh(["project", "list", "--limit", "1"]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Create a GitHub Project board for the repo.
+ * Returns the project number, or null if Projects are not available.
+ */
+export async function createProjectBoard(
+  repo: string,
+  title: string,
+): Promise<number | null> {
+  try {
+    const owner = repo.split("/")[0];
+    const output = await execGh([
+      "project",
+      "create",
+      "--owner",
+      owner,
+      "--title",
+      title,
+      "--format",
+      "json",
+    ]);
+    const data = JSON.parse(output) as { number: number };
+    return data.number;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Add an issue to a GitHub Project.
+ * Graceful: returns false on failure (scope missing, project not found, etc.)
+ */
+export async function addIssueToProject(
+  repo: string,
+  projectNumber: number,
+  issueNumber: number,
+): Promise<boolean> {
+  try {
+    const owner = repo.split("/")[0];
+    const issueUrl = `https://github.com/${repo}/issues/${issueNumber}`;
+    await execGh([
+      "project",
+      "item-add",
+      String(projectNumber),
+      "--owner",
+      owner,
+      "--url",
+      issueUrl,
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * List existing GitHub Projects for the repo owner.
+ * Returns an array of {number, title} or empty array on failure.
+ */
+export async function listProjects(
+  repo: string,
+): Promise<{ number: number; title: string }[]> {
+  try {
+    const owner = repo.split("/")[0];
+    const output = await execGh([
+      "project",
+      "list",
+      "--owner",
+      owner,
+      "--format",
+      "json",
+    ]);
+    const data = JSON.parse(output) as {
+      projects: { number: number; title: string }[];
+    };
+    return data.projects ?? [];
+  } catch {
+    return [];
   }
 }
 

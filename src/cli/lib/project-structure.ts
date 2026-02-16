@@ -28,6 +28,10 @@ export const PROJECT_DIRECTORIES = [
   "src/services",
   "src/__tests__",
 
+  // GitHub
+  ".github/workflows",
+  ".github/ISSUE_TEMPLATE",
+
   // other
   "public",
 
