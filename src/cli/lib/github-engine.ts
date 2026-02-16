@@ -95,8 +95,13 @@ export async function createFeatureIssue(
     .map((t) => `- [ ] ${t.id}: ${t.name.split(" - ")[1] ?? t.name}`)
     .join("\n");
 
+  const ssotPath = constructSsotPath(feature);
+
   const body = [
     `## Feature: ${feature.id}`,
+    "",
+    "### SSOT Reference",
+    `  ${ssotPath}`,
     "",
     `**Priority**: ${feature.priority}`,
     `**Size**: ${feature.size}`,
@@ -137,6 +142,14 @@ export async function createFeatureIssue(
 /**
  * Create a task Issue (child of feature Issue).
  * Returns the created issue number.
+ *
+ * Body structure per specs/05_IMPLEMENTATION.md Part 3 Issue Template:
+ * - SSOT Reference (full path + section)
+ * - Summary
+ * - Definition of Done
+ * - Branch (feature/FEAT-XXX-{layer})
+ * - Dependencies (Blocked by / Blocks)
+ * - Parent reference
  */
 export async function createTaskIssue(
   repo: string,
@@ -147,30 +160,36 @@ export async function createTaskIssue(
 ): Promise<number> {
   const kindLabel = task.kind;
   const taskName = task.name.split(" - ")[1] ?? task.name;
+  const ssotPath = constructSsotPath(feature);
+  const sectionLabel = task.references.join(", ");
+  const branchName = `feature/${task.id.toLowerCase()}`;
 
   const body = [
     `## ${task.id}: ${taskName}`,
     "",
+    "### SSOT Reference",
+    `  ${ssotPath}`,
+    `  Section: ${sectionLabel}`,
+    "",
+    "### Summary",
+    `${taskName} implementation for ${feature.name} per SSOT ${sectionLabel}.`,
+    "",
     `**Feature**: ${feature.id} - ${feature.name}`,
-    `**SSOT Sections**: ${task.references.join(", ")}`,
     `**Size**: ${task.size}`,
     "",
-    "## Definition of Done",
+    "### Definition of Done",
     "",
     generateDefinitionOfDone(task.kind),
     "",
-    "## Dependencies",
+    "### Branch",
+    `\`${branchName}\``,
     "",
-    task.blockedBy.length > 0
-      ? `Blocked by: ${task.blockedBy.join(", ")}`
-      : "None",
-    task.blocks.length > 0
-      ? `Blocks: ${task.blocks.join(", ")}`
-      : "",
+    "### Dependencies",
+    `- Blocked by: ${task.blockedBy.length > 0 ? task.blockedBy.join(", ") : "(none)"}`,
+    `- Blocks: ${task.blocks.length > 0 ? task.blocks.join(", ") : "(none)"}`,
     "",
     `Parent: #${parentIssueNumber}`,
   ]
-    .filter((line) => line !== "")
     .join("\n");
 
   const labels = [
@@ -639,6 +658,20 @@ export function extractIssueNumber(ghOutput: string): number {
     );
   }
   return parseInt(match[1], 10);
+}
+
+/**
+ * Construct SSOT document path for a feature.
+ * Format: docs/design/features/{common|project}/FEAT-XXX_{name-slug}.md
+ * Per specs/05_IMPLEMENTATION.md Part 3 Issue Template.
+ */
+function constructSsotPath(feature: Feature): string {
+  const typeDir = feature.type === "common" ? "common" : "project";
+  const slug = feature.name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_|_$/g, "");
+  return `docs/design/features/${typeDir}/${feature.id}_${slug}.md`;
 }
 
 /**

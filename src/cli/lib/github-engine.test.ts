@@ -336,6 +336,126 @@ describe("syncPlanToGitHub", () => {
     expect(messages[0]).toContain("[created]");
   });
 
+  it("parent issue body contains SSOT path reference", async () => {
+    const capturedBodies: string[] = [];
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "issue" && args[1] === "create") {
+        const bodyIdx = args.indexOf("--body");
+        if (bodyIdx >= 0) {
+          capturedBodies.push(args[bodyIdx + 1]);
+        }
+        return `https://github.com/owner/repo/issues/${capturedBodies.length}`;
+      }
+      return "";
+    });
+
+    const plan: PlanState = {
+      status: "generated",
+      generatedAt: "",
+      updatedAt: "",
+      waves: [
+        {
+          number: 1,
+          phase: "common",
+          title: "W1",
+          features: [
+            {
+              id: "FEAT-100",
+              name: "User Login",
+              priority: "P0",
+              size: "S",
+              type: "common",
+              dependencies: [],
+              dependencyCount: 0,
+            },
+          ],
+        },
+      ],
+      circularDependencies: [],
+    };
+
+    await syncPlanToGitHub(tmpDir, plan, { repo: "o/r" });
+
+    // First body = parent issue
+    expect(capturedBodies[0]).toContain("### SSOT Reference");
+    expect(capturedBodies[0]).toContain(
+      "docs/design/features/common/FEAT-100_user_login.md",
+    );
+  });
+
+  it("task issue body contains SSOT path, branch, and dependencies per spec", async () => {
+    const capturedBodies: string[] = [];
+    const capturedTitles: string[] = [];
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "issue" && args[1] === "create") {
+        const bodyIdx = args.indexOf("--body");
+        if (bodyIdx >= 0) {
+          capturedBodies.push(args[bodyIdx + 1]);
+        }
+        const titleIdx = args.indexOf("--title");
+        if (titleIdx >= 0) {
+          capturedTitles.push(args[titleIdx + 1]);
+        }
+        return `https://github.com/owner/repo/issues/${capturedBodies.length}`;
+      }
+      return "";
+    });
+
+    const plan: PlanState = {
+      status: "generated",
+      generatedAt: "",
+      updatedAt: "",
+      waves: [
+        {
+          number: 1,
+          phase: "common",
+          title: "W1",
+          features: [
+            {
+              id: "FEAT-050",
+              name: "Payment Processing",
+              priority: "P0",
+              size: "M",
+              type: "proprietary",
+              dependencies: [],
+              dependencyCount: 0,
+            },
+          ],
+        },
+      ],
+      circularDependencies: [],
+    };
+
+    await syncPlanToGitHub(tmpDir, plan, { repo: "o/r" });
+
+    // capturedBodies[0] = parent issue, [1] = DB task, [2] = API task, etc.
+    const dbBody = capturedBodies[1];
+    expect(dbBody).toBeDefined();
+
+    // SSOT Reference section (per spec: full path + section)
+    expect(dbBody).toContain("### SSOT Reference");
+    expect(dbBody).toContain(
+      "docs/design/features/project/FEAT-050_payment_processing.md",
+    );
+    expect(dbBody).toContain("Section: §4");
+
+    // Summary section (per spec)
+    expect(dbBody).toContain("### Summary");
+
+    // Definition of Done (per spec)
+    expect(dbBody).toContain("### Definition of Done");
+    expect(dbBody).toContain("Migration file created");
+
+    // Branch section (per spec: feature/FEAT-XXX-db)
+    expect(dbBody).toContain("### Branch");
+    expect(dbBody).toContain("`feature/feat-050-db`");
+
+    // Dependencies section (per spec: Blocked by / Blocks)
+    expect(dbBody).toContain("### Dependencies");
+    expect(dbBody).toContain("- Blocked by:");
+    expect(dbBody).toContain("- Blocks:");
+  });
+
   it("verifies issue body contains feature checklist", async () => {
     const capturedBodies: string[] = [];
     restoreExecutor = mockGh((args) => {
