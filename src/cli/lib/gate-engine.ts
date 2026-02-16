@@ -425,6 +425,32 @@ function findSSOTFiles(projectDir: string): string[] {
     }
   }
 
+  // Legacy: pick SSOT_*.md files from docs/ root (non-recursive)
+  const legacyDocsDir = path.join(projectDir, "docs");
+  if (fs.existsSync(legacyDocsDir)) {
+    const entries = fs.readdirSync(legacyDocsDir, { withFileTypes: true });
+    for (const entry of entries) {
+      if (
+        entry.isFile() &&
+        entry.name.startsWith("SSOT_") &&
+        entry.name.endsWith(".md") &&
+        !NON_SPEC_PATTERNS.test(entry.name)
+      ) {
+        const fullPath = path.join(legacyDocsDir, entry.name);
+        // Skip empty/stub files (< 10 lines)
+        try {
+          const content = fs.readFileSync(fullPath, "utf-8");
+          const lineCount = content.split("\n").length;
+          if (lineCount >= 10) {
+            files.push(fullPath);
+          }
+        } catch {
+          // skip unreadable files
+        }
+      }
+    }
+  }
+
   return files;
 }
 

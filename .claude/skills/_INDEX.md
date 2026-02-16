@@ -85,15 +85,34 @@ Discovery & Business → Design → Implementation → Review
 | R4 | User Experience Advocate | UXを検証 |
 | R5 | Performance Analyst | パフォーマンスを検証 |
 
-## 使い方
+## スキルの起動方法
 
-### フルワークフロー実行
+スキルは Skill ツール経由で起動する。以下の2つの方法がある:
+
+### 1. 明示的起動（キーワードで即発動）
+
+ユーザーがフェーズキーワードを発言 → LLM が即座に Skill ツールで起動:
 
 ```
-「ディスカバリーを開始して」→ Discovery & Business Phase
-「設計を開始して」          → Product & Technical Design
-「実装を開始して」          → Implementation Phase
-「レビュー評議会を開催して」→ Review & Audit
+「ディスカバリーを開始して」→ Skill ツールで /discovery を起動
+「設計を開始して」          → Skill ツールで /design を起動
+「実装を開始して」          → Skill ツールで /implement を起動
+「レビュー評議会を開催して」→ Skill ツールで /review を起動
+```
+
+### 2. 提案起動（タスク指示から提案）
+
+タスク指示に対して LLM が適切なスキルを提案 → ユーザー承認後に Skill ツールで起動:
+
+```
+「DEV-XXXを実装して」→ 「/implement スキルを起動しますか？」→ 承認 → 起動
+「新機能を作って」    → 「/design → /implement の順で進めますか？」→ 承認 → 起動
+```
+
+### フルワークフロー例
+
+```
+/discovery 起動 → 完了 → /design を提案 → 承認 → /design 起動 → 完了 → /implement を提案 → ...
 ```
 
 ### 個別エージェント実行

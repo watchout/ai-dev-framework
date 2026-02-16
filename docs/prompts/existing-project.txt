@@ -48,12 +48,16 @@ Pre-Code Gate セクション:
 全Gate passed でなければ src/ 以下の編集は .claude/hooks/pre-code-gate.sh でブロックされる。
 
 Workflow Orchestration セクション:
-ユーザーの発言に応じて以下のワークフローを実行:
-- 「ディスカバリー」→ 5ステージのヒアリング
-- 「仕様を作って」→ 1ドキュメントずつ生成・確認
-- 「実装計画」→ Wave分類・GitHub Issues作成
-- 「実装開始」→ gates.json確認 → 全Gate passedなら開始
-- 「レビュー」→ コード品質チェック
+このプロジェクトには4つの専門スキルが .claude/skills/ に配置されている。
+各スキルには専門エージェントが定義されており、品質の高い成果物を生成する。
+
+スキル起動ルール:
+- 明示的なフェーズ指示（「ディスカバリー」「設計」「実装開始」「レビュー」等）→ 即座に Skill ツールで対応スキルを起動
+  - /discovery, /design, /implement, /review
+- タスク指示（「DEV-XXXを実装して」「〇〇機能を作って」等）→ 適切なスキルの起動を提案 → ユーザー承認後に起動
+- 軽微な作業（typo修正、設定変更等）→ スキル不要、直接作業
+
+フェーズ遷移: 各スキル完了後、次のフェーズを提案（discovery → design → implement → review）
 
 Knowledge & Memory セクション:
 - セッション開始時: .claude/memory/（ADR、バグ教訓、改善記録）と docs/standards/KNOWLEDGE_DIGEST.md を参照

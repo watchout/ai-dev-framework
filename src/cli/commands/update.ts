@@ -18,6 +18,8 @@ import {
   FRAMEWORK_REPO,
 } from "../lib/framework-fetch.js";
 import { AGENT_TEMPLATES, type ProjectConfig } from "../lib/templates.js";
+import { updateClaudeMdSkillSection } from "../lib/claudemd-updater.js";
+import { installClaudeCodeHook } from "../lib/hooks-installer.js";
 import { logger } from "../lib/logger.js";
 
 export function registerUpdateCommand(program: Command): void {
@@ -74,8 +76,9 @@ export function registerUpdateCommand(program: Command): void {
             );
           }
 
+          const totalSteps = 6;
           logger.info("");
-          logger.step(1, 2, "Fetching latest framework docs...");
+          logger.step(1, totalSteps, "Fetching latest framework docs...");
 
           const result = await fetchFrameworkDocs(projectDir, {
             force: true,
@@ -88,7 +91,7 @@ export function registerUpdateCommand(program: Command): void {
             process.exit(1);
           }
 
-          logger.step(2, 4, "Updating Agent Teams templates...");
+          logger.step(2, totalSteps, "Updating Agent Teams templates...");
           const agentUpdates = updateAgentTemplates(projectDir);
           if (agentUpdates > 0) {
             logger.success(
@@ -98,7 +101,7 @@ export function registerUpdateCommand(program: Command): void {
             logger.info("  Agent templates up to date (or not present)");
           }
 
-          logger.step(3, 4, "Updating skill templates...");
+          logger.step(3, totalSteps, "Updating skill templates...");
           const skillUpdates = updateSkillTemplates(projectDir);
           if (skillUpdates > 0) {
             logger.success(
@@ -108,7 +111,34 @@ export function registerUpdateCommand(program: Command): void {
             logger.info("  Skill templates up to date (or not present)");
           }
 
-          logger.step(4, 4, "Update complete.");
+          logger.step(
+            4,
+            totalSteps,
+            "Updating CLAUDE.md skill section...",
+          );
+          const claudeMdResult = updateClaudeMdSkillSection(projectDir);
+          if (claudeMdResult.updated) {
+            logger.success(claudeMdResult.reason);
+          } else {
+            logger.info(`  ${claudeMdResult.reason}`);
+          }
+
+          logger.step(
+            5,
+            totalSteps,
+            "Updating hooks (skill-tracker + pre-code-gate)...",
+          );
+          const hookResult = installClaudeCodeHook(projectDir);
+          if (hookResult.files.length > 0) {
+            logger.success(
+              `Updated ${hookResult.files.length} hook files`,
+            );
+          }
+          for (const w of hookResult.warnings) {
+            logger.warn(w);
+          }
+
+          logger.step(6, totalSteps, "Update complete.");
           logger.info("");
           logger.success(
             `Updated ${result.copiedFiles.length} framework docs`,
@@ -122,6 +152,12 @@ export function registerUpdateCommand(program: Command): void {
             logger.success(
               `Updated ${skillUpdates} skill templates`,
             );
+          }
+          if (claudeMdResult.updated) {
+            logger.success("CLAUDE.md skill section updated");
+          }
+          if (hookResult.files.length > 0) {
+            logger.success("Hooks updated (skill-tracker + pre-code-gate)");
           }
           logger.info(
             `  Version: ${result.version.slice(0, 8)}`,

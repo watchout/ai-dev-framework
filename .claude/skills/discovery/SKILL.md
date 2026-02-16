@@ -176,4 +176,7 @@ D4: Market Scout                   B4: Go-to-Market Planner
 
 ## 次のフェーズ
 
-Discovery & Business完了後は `design/SKILL.md` へ移行。
+Discovery & Business 完了後:
+1. 成果物一覧をユーザーに提示して確認
+2. 「設計フェーズ（/design）に進みますか？」と提案
+3. 承認されたら Skill ツールで /design を起動

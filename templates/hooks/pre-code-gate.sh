@@ -32,6 +32,33 @@ case "$rel_path" in
     ;;
 esac
 
+# ─── Skill Warning (soft layer) ───
+# Check if a skill has been activated recently (within 6 hours).
+# If not, print a warning to stderr. Does NOT block (exit 0 continues).
+skill_file="$project_dir/.framework/active-skill.json"
+skill_active=false
+if [ -f "$skill_file" ]; then
+  skill_active=$(node -e "
+    const fs = require('fs');
+    try {
+      const d = JSON.parse(fs.readFileSync('$skill_file', 'utf8'));
+      const age = Date.now() - new Date(d.activatedAt).getTime();
+      console.log(age < 6 * 3600 * 1000 ? 'true' : 'false');
+    } catch { console.log('false'); }
+  ")
+fi
+
+if [ "$skill_active" != "true" ]; then
+  echo "" >&2
+  echo "[Skill Warning] No skill activated for this session." >&2
+  echo "  Consider using a skill before editing source code:" >&2
+  echo "  /implement — for implementation tasks" >&2
+  echo "  /design    — for design tasks" >&2
+  echo "  /review    — for code review" >&2
+  echo "" >&2
+fi
+
+# ─── Pre-Code Gate (hard layer) ───
 # Check .framework/gates.json
 gates_file="$project_dir/.framework/gates.json"
 if [ ! -f "$gates_file" ]; then

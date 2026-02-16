@@ -227,4 +227,7 @@ SSOT → テスト作成 → 実装 → コード監査
 
 ## 次のフェーズ
 
-Design完了後は `implement/SKILL.md` へ移行。
+Design 完了後:
+1. 設計成果物をユーザーに提示して確認
+2. 「実装フェーズ（/implement）に進みますか？」と提案
+3. 承認されたら Skill ツールで /implement を起動

@@ -170,4 +170,7 @@ fix/[機能ID]-[説明]: バグ修正用
 
 ## 次のフェーズ
 
-Implementation完了後は `review/SKILL.md` で最終レビュー。
+Implementation 完了後:
+1. 実装結果をユーザーに報告
+2. 「レビュー（/review）を実施しますか？」と提案
+3. 承認されたら Skill ツールで /review を起動

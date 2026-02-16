@@ -115,22 +115,38 @@ docs/
 
 ## Workflow Orchestration
 
-ユーザーの発言に応じて以下のワークフローを実行:
+このプロジェクトには4つの専門スキルが .claude/skills/ に配置されている。
+各スキルには専門エージェントが定義されており、品質の高い成果物を生成する。
 
-### 「ディスカバリー」「何を作りたい？」
-→ docs/standards/ の Discovery テンプレートに従い5ステージのヒアリングを実施
+### スキル起動ルール
 
-### 「仕様を作って」「スペック」
-→ 1ドキュメントずつ生成・確認。PRD → Feature Catalog → Core定義 → 各機能SSOT
+**明示的なフェーズ指示**（以下のキーワード）→ 即座に Skill ツールで対応スキルを起動:
 
-### 「実装計画」「タスク分解」
-→ 全SSOTの依存関係を分析し、Wave分類・GitHub Issues作成
+| キーワード | 起動スキル |
+|-----------|-----------|
+| 「ディスカバリー」「何を作りたい？」「アイデア」 | /discovery |
+| 「設計」「仕様を作って」「スペック」「アーキテクチャ」 | /design |
+| 「実装開始」「コードを書いて」「タスク分解」 | /implement |
+| 「レビュー」「監査」「audit」 | /review |
 
-### 「実装開始」「コードを書いて」
-→ .framework/gates.json を確認。全Gate passed なら実装開始。未通過なら報告。
+**タスク指示**（「DEV-XXXを実装して」「〇〇機能を作って」等）→ 適切なスキルの起動を提案:
+- 新機能の場合: 「/design で設計してから /implement で実装しますか？」
+- 既存機能の修正: 「/implement で実装しますか？」
+- 品質確認: 「/review で監査しますか？」
+ユーザーが承認したら Skill ツールで起動。不要と判断されたらスキップ。
 
-### 「レビュー」「監査」
-→ コード品質チェックリストに基づき監査
+**軽微な作業**（typo修正、設定変更、1ファイルの小修正等）→ スキル不要。直接作業。
+
+### フェーズ遷移
+各スキル完了後、次のフェーズを提案する:
+discovery → design → implement → review
+ユーザー承認後に次スキルを Skill ツールで起動。
+
+### Pre-Code Gate 連携
+「実装開始」の場合:
+1. Skill ツールで /implement を起動
+2. /implement スキル内で .framework/gates.json を確認
+3. 全Gate passed なら実装開始。未通過なら報告。
 
 ## Knowledge & Memory
 
@@ -222,6 +238,7 @@ coverage/
 
 # Framework state
 .framework/logs/
+.framework/active-skill.json
 backups/
 
 # Debug

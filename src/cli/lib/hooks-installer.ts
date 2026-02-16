@@ -47,6 +47,33 @@ case "$rel_path" in
     ;;
 esac
 
+# ─── Skill Warning (soft layer) ───
+# Check if a skill has been activated recently (within 6 hours).
+# If not, print a warning to stderr. Does NOT block (exit 0 continues).
+skill_file="$project_dir/.framework/active-skill.json"
+skill_active=false
+if [ -f "$skill_file" ]; then
+  skill_active=$(node -e "
+    const fs = require('fs');
+    try {
+      const d = JSON.parse(fs.readFileSync('$skill_file', 'utf8'));
+      const age = Date.now() - new Date(d.activatedAt).getTime();
+      console.log(age < 6 * 3600 * 1000 ? 'true' : 'false');
+    } catch { console.log('false'); }
+  ")
+fi
+
+if [ "$skill_active" != "true" ]; then
+  echo "" >&2
+  echo "[Skill Warning] No skill activated for this session." >&2
+  echo "  Consider using a skill before editing source code:" >&2
+  echo "  /implement — for implementation tasks" >&2
+  echo "  /design    — for design tasks" >&2
+  echo "  /review    — for code review" >&2
+  echo "" >&2
+fi
+
+# ─── Pre-Code Gate (hard layer) ───
 # Check .framework/gates.json
 gates_file="$project_dir/.framework/gates.json"
 if [ ! -f "$gates_file" ]; then
@@ -88,6 +115,39 @@ echo "=====================================" >&2
 exit 2
 `;
 
+const SKILL_TRACKER_SCRIPT = `#!/bin/bash
+# Skill Tracker hook for Claude Code (PreToolUse → Skill)
+# Records skill activation to .framework/active-skill.json
+# Always exits 0 (never blocks)
+
+input=$(cat)
+
+project_dir="\${CLAUDE_PROJECT_DIR:-.}"
+
+# Extract skill name from tool_input
+skill_name=$(echo "$input" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const p=JSON.parse(d);console.log((p.tool_input||{}).skill||'')}catch{console.log('')}})")
+
+# No skill name = unexpected, just allow
+if [ -z "$skill_name" ]; then
+  exit 0
+fi
+
+# Ensure .framework/ exists
+framework_dir="$project_dir/.framework"
+if [ ! -d "$framework_dir" ]; then
+  mkdir -p "$framework_dir"
+fi
+
+# Write active-skill.json with timestamp
+node -e "
+  const fs = require('fs');
+  const data = { skill: '$skill_name', activatedAt: new Date().toISOString() };
+  fs.writeFileSync('$framework_dir/active-skill.json', JSON.stringify(data, null, 2));
+"
+
+exit 0
+`;
+
 const PRE_COMMIT_BLOCK = `# === ${GATE_HOOK_MARKER} ===
 PROTECTED_STAGED=$(git diff --cached --name-only | grep -E '^(src|app|server|lib|components|pages|composables|utils|stores|plugins)/')
 if [ -n "$PROTECTED_STAGED" ] && command -v framework >/dev/null 2>&1; then
@@ -124,6 +184,11 @@ export function installClaudeCodeHook(projectDir: string): {
   const scriptPath = path.join(hooksDir, "pre-code-gate.sh");
   fs.writeFileSync(scriptPath, CLAUDE_HOOK_SCRIPT, { mode: 0o755 });
   files.push(".claude/hooks/pre-code-gate.sh");
+
+  // 2b. Write skill-tracker.sh
+  const skillTrackerPath = path.join(hooksDir, "skill-tracker.sh");
+  fs.writeFileSync(skillTrackerPath, SKILL_TRACKER_SCRIPT, { mode: 0o755 });
+  files.push(".claude/hooks/skill-tracker.sh");
 
   // 3. Merge into .claude/settings.json
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
@@ -169,6 +234,19 @@ export function mergeClaudeSettings(
     ],
   };
 
+  // Build the skill tracker hook entry
+  const skillTrackerEntry = {
+    matcher: "Skill",
+    hooks: [
+      {
+        type: "command",
+        command:
+          'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/skill-tracker.sh"',
+        statusMessage: "Tracking skill activation...",
+      },
+    ],
+  };
+
   // Get or create PreToolUse array
   let preToolUse = hooks.PreToolUse;
   if (!Array.isArray(preToolUse)) {
@@ -190,6 +268,23 @@ export function mergeClaudeSettings(
 
   if (!hasGateHook) {
     (preToolUse as unknown[]).push(gateHookEntry);
+  }
+
+  // Check for existing skill tracker hook (idempotency)
+  const hasSkillTracker = (
+    preToolUse as Array<Record<string, unknown>>
+  ).some((entry) => {
+    const entryHooks = entry.hooks;
+    if (!Array.isArray(entryHooks)) return false;
+    return entryHooks.some(
+      (h: Record<string, unknown>) =>
+        typeof h.command === "string" &&
+        h.command.includes("skill-tracker"),
+    );
+  });
+
+  if (!hasSkillTracker) {
+    (preToolUse as unknown[]).push(skillTrackerEntry);
   }
 
   hooks.PreToolUse = preToolUse;

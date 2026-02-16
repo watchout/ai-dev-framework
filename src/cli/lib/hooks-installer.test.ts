@@ -25,17 +25,21 @@ describe("hooks-installer", () => {
   // ─────────────────────────────────────────────
 
   describe("mergeClaudeSettings", () => {
-    it("creates PreToolUse hook on empty settings", () => {
+    it("creates PreToolUse hooks on empty settings", () => {
       const result = mergeClaudeSettings({});
       const hooks = result.hooks as Record<string, unknown>;
       const preToolUse = hooks.PreToolUse as Array<Record<string, unknown>>;
 
-      expect(preToolUse).toHaveLength(1);
-      expect(preToolUse[0].matcher).toBe("Edit|Write");
-      const hookEntries = preToolUse[0].hooks as Array<
-        Record<string, unknown>
-      >;
-      expect(hookEntries[0].command).toContain("pre-code-gate");
+      // gate + skill-tracker
+      expect(preToolUse).toHaveLength(2);
+
+      const gateEntry = preToolUse.find((e) => e.matcher === "Edit|Write");
+      expect(gateEntry).toBeDefined();
+      const gateHooks = gateEntry!.hooks as Array<Record<string, unknown>>;
+      expect(gateHooks[0].command).toContain("pre-code-gate");
+
+      const skillEntry = preToolUse.find((e) => e.matcher === "Skill");
+      expect(skillEntry).toBeDefined();
     });
 
     it("preserves existing env and mcpServers", () => {
@@ -67,9 +71,22 @@ describe("hooks-installer", () => {
       const sessionStart = hooks.SessionStart as Array<unknown>;
       expect(sessionStart).toHaveLength(1);
 
-      // Also has PreToolUse
+      // Also has PreToolUse (gate + skill-tracker)
       const preToolUse = hooks.PreToolUse as Array<unknown>;
-      expect(preToolUse).toHaveLength(1);
+      expect(preToolUse).toHaveLength(2);
+    });
+
+    it("creates Skill tracker hook on empty settings", () => {
+      const result = mergeClaudeSettings({});
+      const hooks = result.hooks as Record<string, unknown>;
+      const preToolUse = hooks.PreToolUse as Array<Record<string, unknown>>;
+
+      expect(preToolUse).toHaveLength(2);
+
+      const skillEntry = preToolUse.find((e) => e.matcher === "Skill");
+      expect(skillEntry).toBeDefined();
+      const skillHooks = skillEntry!.hooks as Array<Record<string, unknown>>;
+      expect(skillHooks[0].command).toContain("skill-tracker");
     });
 
     it("does not duplicate gate hook on second call", () => {
@@ -78,7 +95,7 @@ describe("hooks-installer", () => {
       const hooks = second.hooks as Record<string, unknown>;
       const preToolUse = hooks.PreToolUse as Array<unknown>;
 
-      expect(preToolUse).toHaveLength(1);
+      expect(preToolUse).toHaveLength(2); // gate + skill-tracker
     });
 
     it("preserves existing PreToolUse hooks", () => {
@@ -98,8 +115,8 @@ describe("hooks-installer", () => {
       const hooks = result.hooks as Record<string, unknown>;
       const preToolUse = hooks.PreToolUse as Array<unknown>;
 
-      // Original + gate hook
-      expect(preToolUse).toHaveLength(2);
+      // Original + gate hook + skill-tracker
+      expect(preToolUse).toHaveLength(3);
     });
   });
 
@@ -108,10 +125,11 @@ describe("hooks-installer", () => {
   // ─────────────────────────────────────────────
 
   describe("installClaudeCodeHook", () => {
-    it("creates hook script and settings file", () => {
+    it("creates hook scripts and settings file", () => {
       const result = installClaudeCodeHook(tmpDir);
 
       expect(result.files).toContain(".claude/hooks/pre-code-gate.sh");
+      expect(result.files).toContain(".claude/hooks/skill-tracker.sh");
       expect(result.files).toContain(".claude/settings.json");
 
       const scriptPath = path.join(
@@ -119,6 +137,12 @@ describe("hooks-installer", () => {
         ".claude/hooks/pre-code-gate.sh",
       );
       expect(fs.existsSync(scriptPath)).toBe(true);
+
+      const trackerPath = path.join(
+        tmpDir,
+        ".claude/hooks/skill-tracker.sh",
+      );
+      expect(fs.existsSync(trackerPath)).toBe(true);
 
       const settingsPath = path.join(tmpDir, ".claude/settings.json");
       expect(fs.existsSync(settingsPath)).toBe(true);
@@ -174,8 +198,8 @@ describe("hooks-installer", () => {
       expect(parsed.env).toEqual({ TEST: "1" });
       // Existing SessionStart preserved
       expect(parsed.hooks.SessionStart).toHaveLength(1);
-      // PreToolUse added
-      expect(parsed.hooks.PreToolUse).toHaveLength(1);
+      // PreToolUse added (gate + skill-tracker)
+      expect(parsed.hooks.PreToolUse).toHaveLength(2);
     });
 
     it("is idempotent on second call", () => {
@@ -184,7 +208,8 @@ describe("hooks-installer", () => {
 
       const settingsPath = path.join(tmpDir, ".claude/settings.json");
       const parsed = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
-      expect(parsed.hooks.PreToolUse).toHaveLength(1);
+      // gate + skill-tracker, no duplicates
+      expect(parsed.hooks.PreToolUse).toHaveLength(2);
     });
 
     it("warns on invalid existing JSON", () => {
