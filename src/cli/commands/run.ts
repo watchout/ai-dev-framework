@@ -10,6 +10,7 @@ import { type Command } from "commander";
 import {
   runTask,
   createRunTerminalIO,
+  completeTaskNonInteractive,
 } from "../lib/run-engine.js";
 import {
   loadRunState,
@@ -33,6 +34,10 @@ export function registerRunCommand(program: Command): void {
       "Auto-commit generated code",
     )
     .option("--status", "Show current run state")
+    .option(
+      "--complete",
+      "Mark specified task as done (non-interactive)",
+    )
     .action(
       async (
         taskId: string | undefined,
@@ -40,6 +45,7 @@ export function registerRunCommand(program: Command): void {
           dryRun?: boolean;
           autoCommit?: boolean;
           status?: boolean;
+          complete?: boolean;
         },
       ) => {
         const projectDir = process.cwd();
@@ -47,6 +53,29 @@ export function registerRunCommand(program: Command): void {
         try {
           if (options.status) {
             printRunStatus(projectDir);
+            return;
+          }
+
+          // Non-interactive completion: framework run <taskId> --complete
+          if (options.complete) {
+            if (!taskId) {
+              logger.error(
+                "Task ID required. Usage: framework run <taskId> --complete",
+              );
+              process.exit(1);
+            }
+            const result = await completeTaskNonInteractive(
+              projectDir,
+              taskId,
+            );
+            if (result.error) {
+              logger.error(result.error);
+              process.exit(1);
+            }
+            logger.success(`Task ${taskId}: completed (${result.progress}%)`);
+            if (result.issueClosed) {
+              logger.info(`  GitHub Issue closed for ${taskId}`);
+            }
             return;
           }
 

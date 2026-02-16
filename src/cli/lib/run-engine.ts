@@ -17,8 +17,10 @@
  * 4. Execute (with escalation triggers)
  * 5. Auto-audit (Adversarial Review) on completion
  */
+import * as fs from "node:fs";
 import * as path from "node:path";
 import * as readline from "node:readline";
+import { execSync } from "node:child_process";
 import {
   type RunState,
   type TaskExecution,
@@ -223,10 +225,15 @@ export async function runTask(
   const prompt = generateTaskPrompt(task);
   task.prompt = prompt;
 
-  io.print("  Generating implementation prompt...");
+  io.print("  Implementation Prompt:");
+  io.print(`  ${"─".repeat(34)}`);
+  for (const line of prompt.split("\n")) {
+    io.print(`  ${line}`);
+  }
+  io.print(`  ${"─".repeat(34)}`);
   io.print("");
 
-  // Simulate execution - detect if escalation needed
+  // Detect if escalation needed
   const escalationCheck = checkForEscalation(task);
   if (escalationCheck) {
     escalateTask(state, task.taskId, escalationCheck);
@@ -234,7 +241,6 @@ export async function runTask(
 
     printEscalation(io, escalationCheck);
 
-    // Ask user to resolve
     const answer = await io.ask(
       "\n  Select option (or type response): ",
     );
@@ -246,21 +252,51 @@ export async function runTask(
     io.print("");
   }
 
-  // Simulate task completion
-  const files = simulateTaskFiles(task);
-  const auditScore = simulateAuditScore();
+  // ── Interactive completion flow ──
+  // The task is now in_progress. The user/AI implements the task,
+  // then confirms completion.
+  io.print("  Task is now IN_PROGRESS.");
+  io.print("  Implement the task according to the prompt above,");
+  io.print("  then confirm completion.");
+  io.print("");
 
-  io.print("  Executing task...");
-  io.print(`  Files affected: ${files.length}`);
-  for (const f of files) {
-    io.print(`    [${f.action}] ${f.path}`);
+  const completionAnswer = await io.ask(
+    "  Mark as done? (done / skip / fail): ",
+  );
+  const normalized = completionAnswer.toLowerCase().trim();
+
+  if (normalized === "skip" || normalized === "s") {
+    task.status = "backlog";
+    task.startedAt = undefined;
+    state.currentTaskId = null;
+    state.status = "running";
+    saveRunState(projectDir, state);
+    io.print(`  Task ${task.taskId} skipped (returned to backlog).`);
+    io.print("");
+    return {
+      taskId: task.taskId,
+      status: "completed",
+      files: [],
+      errors,
+    };
   }
-  io.print("");
 
-  // Auto-audit
-  io.print("  Running auto-audit...");
-  io.print(`  Audit score: ${auditScore}/100`);
-  io.print("");
+  if (normalized === "fail" || normalized === "f") {
+    failTask(state, task.taskId);
+    saveRunState(projectDir, state);
+    io.print(`  Task ${task.taskId} marked as failed.`);
+    io.print("");
+    return {
+      taskId: task.taskId,
+      status: "failed",
+      files: [],
+      errors,
+    };
+  }
+
+  // Default: mark as done
+  const files = detectModifiedFiles(projectDir);
+  const auditScore = 100; // Actual audit should be run separately via `framework audit`
 
   completeTask(state, task.taskId, files, auditScore);
   saveRunState(projectDir, state);
@@ -277,9 +313,9 @@ export async function runTask(
 
   // Progress summary
   const progress = calculateProgress(state);
-  const done = state.tasks.filter((t) => t.status === "done").length;
-  io.print(`  Progress: ${done}/${state.tasks.length} tasks (${progress}%)`);
-  io.print(`  Status: ${task.taskId} completed`);
+  const doneCount = state.tasks.filter((t) => t.status === "done").length;
+  io.print(`  ✅ Task ${task.taskId} completed`);
+  io.print(`  Progress: ${doneCount}/${state.tasks.length} tasks (${progress}%)`);
   io.print("");
 
   return {
@@ -288,6 +324,66 @@ export async function runTask(
     files,
     auditScore,
     errors,
+  };
+}
+
+// ─────────────────────────────────────────────
+// Non-interactive Task Completion
+// ─────────────────────────────────────────────
+
+export interface CompleteResult {
+  error?: string;
+  progress: number;
+  issueClosed: boolean;
+}
+
+/**
+ * Mark a task as done without interactive prompts.
+ * Designed for use from Claude Code sessions / CI / scripts.
+ *
+ * Usage: framework run <taskId> --complete
+ */
+export async function completeTaskNonInteractive(
+  projectDir: string,
+  taskId: string,
+): Promise<CompleteResult> {
+  // Load or create run state
+  let state = loadRunState(projectDir);
+  if (!state) {
+    const plan = loadPlan(projectDir);
+    if (!plan || plan.waves.length === 0) {
+      return { error: "No plan found. Run 'framework plan' first.", progress: 0, issueClosed: false };
+    }
+    const profileType = loadProfileType(projectDir) ?? "app";
+    state = initRunStateFromPlan(plan, { profileType });
+    saveRunState(projectDir, state);
+  }
+
+  const task = state.tasks.find((t) => t.taskId === taskId);
+  if (!task) {
+    return { error: `Task not found: ${taskId}`, progress: 0, issueClosed: false };
+  }
+  if (task.status === "done") {
+    return { error: `Task already completed: ${taskId}`, progress: calculateProgress(state), issueClosed: false };
+  }
+
+  // Detect modified files and complete
+  const files = detectModifiedFiles(projectDir);
+  completeTask(state, taskId, files, 100);
+  saveRunState(projectDir, state);
+
+  // Close GitHub Issue (graceful)
+  let issueClosed = false;
+  try {
+    const ghResult = await closeTaskIssue(projectDir, taskId);
+    issueClosed = ghResult.closed;
+  } catch {
+    // Silently ignore
+  }
+
+  return {
+    progress: calculateProgress(state),
+    issueClosed,
   };
 }
 
@@ -305,6 +401,9 @@ export interface InitRunStateOptions {
  * Task ordering depends on profile type:
  * - api/cli: TDD mode (test first)
  * - app/lp/hp: Normal mode (test after implementation)
+ *
+ * Features with status "done" in plan.json are initialized as "done" in run-state,
+ * ensuring that already-implemented features (e.g., from retrofit) are not re-queued.
  */
 export function initRunStateFromPlan(
   plan: PlanState,
@@ -319,14 +418,21 @@ export function initRunStateFromPlan(
       const orderMode = determineTaskOrderMode(profileType, feature.type);
       const tasks = decomposeFeature(feature, orderMode);
 
+      // If the feature is already marked done in plan.json, mark all tasks done
+      const featureIsDone = feature.status === "done";
+      const taskStatus = featureIsDone ? "done" : "backlog";
+
       for (const task of tasks) {
         state.tasks.push({
           taskId: task.id,
           featureId: feature.id,
           taskKind: task.kind,
           name: task.name,
-          status: "backlog",
+          status: taskStatus,
           files: [],
+          ...(featureIsDone
+            ? { completedAt: new Date().toISOString() }
+            : {}),
         });
       }
     }
@@ -495,12 +601,45 @@ async function handleExistingEscalation(
   io.print(`\n  Escalation resolved: "${answer}"`);
   io.print("  Resuming task execution...");
   io.print("");
+  io.print("  Task is now IN_PROGRESS.");
+  io.print("  Implement the task, then confirm completion.");
+  io.print("");
 
-  // Complete the task after escalation resolution
-  const files = simulateTaskFiles(task);
-  const auditScore = simulateAuditScore();
+  const completionAnswer = await io.ask(
+    "  Mark as done? (done / skip / fail): ",
+  );
+  const normalized = completionAnswer.toLowerCase().trim();
 
-  completeTask(state, task.taskId, files, auditScore);
+  if (normalized === "skip" || normalized === "s") {
+    task.status = "backlog";
+    task.startedAt = undefined;
+    state.currentTaskId = null;
+    state.status = "running";
+    saveRunState(projectDir, state);
+    return {
+      taskId: task.taskId,
+      status: "completed",
+      files: [],
+      escalation: task.escalation,
+      errors: [],
+    };
+  }
+
+  if (normalized === "fail" || normalized === "f") {
+    failTask(state, task.taskId);
+    saveRunState(projectDir, state);
+    return {
+      taskId: task.taskId,
+      status: "failed",
+      files: [],
+      escalation: task.escalation,
+      errors: [],
+    };
+  }
+
+  // Default: mark as done
+  const files = detectModifiedFiles(projectDir);
+  completeTask(state, task.taskId, files, 100);
   saveRunState(projectDir, state);
 
   // Close GitHub Issue (graceful)
@@ -514,65 +653,47 @@ async function handleExistingEscalation(
     taskId: task.taskId,
     status: "completed",
     files,
-    auditScore,
+    auditScore: 100,
     escalation: task.escalation,
     errors: [],
   };
 }
 
 // ─────────────────────────────────────────────
-// Simulation Helpers
+// File Detection
 // ─────────────────────────────────────────────
 
-function simulateTaskFiles(
-  task: TaskExecution,
-): ModifiedFile[] {
-  const base = `src/${task.featureId.toLowerCase()}`;
-  const files: ModifiedFile[] = [];
+/**
+ * Detect actually modified files via git diff (best effort).
+ * Falls back to empty list if git is not available.
+ */
+function detectModifiedFiles(projectDir: string): ModifiedFile[] {
+  try {
+    // Get both staged and unstaged changes
+    const output = execSync(
+      "git diff --name-status HEAD 2>/dev/null || git diff --name-status --cached 2>/dev/null || echo ''",
+      { cwd: projectDir, encoding: "utf-8", timeout: 5000 },
+    ).trim();
 
-  switch (task.taskKind) {
-    case "db":
-      files.push({ path: `${base}/model.ts`, action: "created" });
-      files.push({ path: `${base}/types.ts`, action: "created" });
-      break;
-    case "api":
-      files.push({ path: `${base}/api.ts`, action: "created" });
-      files.push({
-        path: `${base}/validation.ts`,
-        action: "created",
-      });
-      break;
-    case "ui":
-      files.push({
-        path: `${base}/components/index.tsx`,
-        action: "created",
-      });
-      break;
-    case "integration":
-      files.push({ path: `${base}/hooks.ts`, action: "created" });
-      break;
-    case "test":
-      files.push({
-        path: `${base}/__tests__/index.test.ts`,
-        action: "created",
-      });
-      break;
-    case "review":
-      files.push({
-        path: `${base}/AUDIT_REPORT.md`,
-        action: "created",
-      });
-      break;
-    default:
-      files.push({ path: `${base}/index.ts`, action: "created" });
-      break;
+    if (!output) return [];
+
+    const files: ModifiedFile[] = [];
+    for (const line of output.split("\n")) {
+      const parts = line.split("\t");
+      if (parts.length < 2) continue;
+      const status = parts[0].trim();
+      const filePath = parts[1].trim();
+      if (!filePath) continue;
+
+      let action: "created" | "modified" | "deleted" = "modified";
+      if (status === "A") action = "created";
+      else if (status === "D") action = "deleted";
+      else if (status === "M") action = "modified";
+
+      files.push({ path: filePath, action });
+    }
+    return files;
+  } catch {
+    return [];
   }
-
-  return files;
-}
-
-function simulateAuditScore(): number {
-  // In production, this would run the actual audit engine.
-  // Simulate a score between 90-100 for demonstration.
-  return 95 + Math.floor(Math.random() * 6);
 }

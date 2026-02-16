@@ -12,7 +12,7 @@ import {
 import { type PlanState } from "./plan-model.js";
 import { saveRunState, createRunState } from "./run-model.js";
 
-function createMockIO(): RunIO & { output: string[] } {
+function createMockIO(askResponse = "done"): RunIO & { output: string[] } {
   const output: string[] = [];
   return {
     output,
@@ -20,7 +20,7 @@ function createMockIO(): RunIO & { output: string[] } {
       output.push(message);
     },
     async ask(): Promise<string> {
-      return "1";
+      return askResponse;
     },
   };
 }
@@ -102,8 +102,29 @@ describe("run-engine", () => {
       expect(state.tasks[5].taskId).toBe("AUTH-001-TEST");
     });
 
-    it("all tasks start as backlog", () => {
+    it("all tasks start as backlog when feature has no status", () => {
       const plan = makePlan();
+      const state = initRunStateFromPlan(plan);
+
+      for (const task of state.tasks) {
+        expect(task.status).toBe("backlog");
+      }
+    });
+
+    it("marks tasks done when feature status is done", () => {
+      const plan = makePlan();
+      plan.waves[0].features[0].status = "done";
+      const state = initRunStateFromPlan(plan);
+
+      for (const task of state.tasks) {
+        expect(task.status).toBe("done");
+        expect(task.completedAt).toBeDefined();
+      }
+    });
+
+    it("keeps tasks as backlog when feature status is in_progress", () => {
+      const plan = makePlan();
+      plan.waves[0].features[0].status = "in_progress";
       const state = initRunStateFromPlan(plan);
 
       for (const task of state.tasks) {
@@ -309,6 +330,46 @@ describe("run-engine", () => {
       expect(result.status).toBe("dry_run");
       expect(io.output.some((o) => o.includes("DRY RUN"))).toBe(true);
       expect(io.output.some((o) => o.includes("Prompt"))).toBe(true);
+    });
+
+    it("skips task when user answers skip", async () => {
+      const io = createMockIO("skip");
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1", featureId: "F1", taskKind: "db",
+          name: "Task 1", status: "backlog", files: [],
+        },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await runTask({
+        projectDir: tmpDir,
+        io,
+      });
+      expect(result.taskId).toBe("T1");
+      // Task should be returned to backlog
+      const { loadRunState: load } = await import("./run-model.js");
+      const updated = load(tmpDir);
+      expect(updated?.tasks[0].status).toBe("backlog");
+    });
+
+    it("fails task when user answers fail", async () => {
+      const io = createMockIO("fail");
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1", featureId: "F1", taskKind: "db",
+          name: "Task 1", status: "backlog", files: [],
+        },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await runTask({
+        projectDir: tmpDir,
+        io,
+      });
+      expect(result.status).toBe("failed");
     });
 
     it("reports all completed when no pending tasks", async () => {
