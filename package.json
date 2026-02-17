@@ -17,7 +17,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest --coverage",
     "type-check": "tsc --noEmit",
-    "prepare": "tsc -p tsconfig.cli.json",
+    "prepare": "tsc -p tsconfig.cli.json && husky || true",
     "framework": "tsx src/cli/index.ts"
   },
   "dependencies": {
