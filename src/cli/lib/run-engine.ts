@@ -532,21 +532,14 @@ export function initRunStateFromPlan(
       const orderMode = determineTaskOrderMode(profileType, feature.type);
       const tasks = decomposeFeature(feature, orderMode);
 
-      // If the feature is already marked done in plan.json, mark all tasks done
-      const featureIsDone = feature.status === "done";
-      const taskStatus = featureIsDone ? "done" : "backlog";
-
       for (const task of tasks) {
         state.tasks.push({
           taskId: task.id,
           featureId: feature.id,
           taskKind: task.kind,
           name: task.name,
-          status: taskStatus,
+          status: "backlog",
           files: [],
-          ...(featureIsDone
-            ? { completedAt: new Date().toISOString() }
-            : {}),
         });
       }
     }

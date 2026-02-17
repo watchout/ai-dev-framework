@@ -19,7 +19,6 @@ const execFileAsync = promisify(execFile);
 export interface TaskIssueMap {
   taskId: string;
   issueNumber: number;
-  status: "open" | "closed";
 }
 
 export interface FeatureIssueMap {
@@ -176,20 +175,3 @@ export function findTaskIssueNumber(
   return null;
 }
 
-/**
- * Update a task's status in the sync state.
- */
-export function updateTaskSyncStatus(
-  state: GitHubSyncState,
-  taskId: string,
-  status: "open" | "closed",
-): boolean {
-  for (const feature of state.featureIssues) {
-    const task = feature.taskIssues.find((t) => t.taskId === taskId);
-    if (task) {
-      task.status = status;
-      return true;
-    }
-  }
-  return false;
-}

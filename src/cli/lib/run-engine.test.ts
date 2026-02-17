@@ -114,27 +114,6 @@ describe("run-engine", () => {
       }
     });
 
-    it("marks tasks done when feature status is done", () => {
-      const plan = makePlan();
-      plan.waves[0].features[0].status = "done";
-      const state = initRunStateFromPlan(plan);
-
-      for (const task of state.tasks) {
-        expect(task.status).toBe("done");
-        expect(task.completedAt).toBeDefined();
-      }
-    });
-
-    it("keeps tasks as backlog when feature status is in_progress", () => {
-      const plan = makePlan();
-      plan.waves[0].features[0].status = "in_progress";
-      const state = initRunStateFromPlan(plan);
-
-      for (const task of state.tasks) {
-        expect(task.status).toBe("backlog");
-      }
-    });
-
     it("handles multiple features", () => {
       const plan = makePlan();
       plan.waves[0].features.push({

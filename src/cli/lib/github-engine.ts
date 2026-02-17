@@ -18,7 +18,6 @@ import {
   detectRepoSlug,
   findFeatureMapping,
   findTaskIssueNumber,
-  updateTaskSyncStatus,
 } from "./github-model.js";
 import {
   type PlanState,
@@ -531,7 +530,6 @@ export async function syncPlanToGitHub(
             featureMap.taskIssues.push({
               taskId: task.id,
               issueNumber: taskIssueNumber,
-              status: "open",
             });
             created++;
             log(`  [created] ${task.id} → #${taskIssueNumber}`);
@@ -582,8 +580,8 @@ export async function syncPlanToGitHub(
 // ─────────────────────────────────────────────
 
 /**
- * Read issue statuses from GitHub and update local sync state.
- * Returns the list of updated tasks.
+ * Read issue statuses from GitHub.
+ * Returns the live status of all tasks (no local caching).
  */
 export async function syncStatusFromGitHub(
   projectDir: string,
@@ -607,15 +605,12 @@ export async function syncStatusFromGitHub(
           syncState.repo,
           task.issueNumber,
         );
-        if (ghIssue.state !== task.status) {
-          task.status = ghIssue.state;
-          updated++;
-          issues.push({
-            taskId: task.taskId,
-            issueNumber: task.issueNumber,
-            status: ghIssue.state,
-          });
-        }
+        updated++;
+        issues.push({
+          taskId: task.taskId,
+          issueNumber: task.issueNumber,
+          status: ghIssue.state,
+        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         errors.push(
@@ -623,10 +618,6 @@ export async function syncStatusFromGitHub(
         );
       }
     }
-  }
-
-  if (updated > 0) {
-    saveSyncState(projectDir, syncState);
   }
 
   return { updated, issues, errors };
@@ -656,8 +647,6 @@ export async function closeTaskIssue(
     }
 
     await closeIssue(syncState.repo, issueNumber);
-    updateTaskSyncStatus(syncState, taskId, "closed");
-    saveSyncState(projectDir, syncState);
 
     return { closed: true };
   } catch (err) {

@@ -209,12 +209,12 @@ describe("syncPlanToGitHub", () => {
         featureId: "FEAT-001",
         parentIssueNumber: 10,
         taskIssues: [
-          { taskId: "FEAT-001-DB", issueNumber: 11, status: "open" },
-          { taskId: "FEAT-001-API", issueNumber: 12, status: "open" },
-          { taskId: "FEAT-001-UI", issueNumber: 13, status: "open" },
-          { taskId: "FEAT-001-INTEGRATION", issueNumber: 14, status: "open" },
-          { taskId: "FEAT-001-REVIEW", issueNumber: 15, status: "open" },
-          { taskId: "FEAT-001-TEST", issueNumber: 16, status: "open" },
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+          { taskId: "FEAT-001-API", issueNumber: 12 },
+          { taskId: "FEAT-001-UI", issueNumber: 13 },
+          { taskId: "FEAT-001-INTEGRATION", issueNumber: 14 },
+          { taskId: "FEAT-001-REVIEW", issueNumber: 15 },
+          { taskId: "FEAT-001-TEST", issueNumber: 16 },
         ],
       },
     ];
@@ -516,29 +516,30 @@ describe("syncPlanToGitHub", () => {
 // ─────────────────────────────────────────────
 
 describe("closeTaskIssue", () => {
-  it("closes issue and updates sync state", async () => {
+  it("closes issue via gh CLI", async () => {
     const syncState = createSyncState("owner/repo");
     syncState.featureIssues = [
       {
         featureId: "FEAT-001",
         parentIssueNumber: 10,
         taskIssues: [
-          { taskId: "FEAT-001-DB", issueNumber: 11, status: "open" },
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
         ],
       },
     ];
     saveSyncState(tmpDir, syncState);
 
-    restoreExecutor = mockGh(() => "");
+    const closedIssues: number[] = [];
+    restoreExecutor = mockGh((args) => {
+      if (args.includes("close")) {
+        closedIssues.push(parseInt(args[args.indexOf("close") + 1], 10));
+      }
+      return "";
+    });
 
     const result = await closeTaskIssue(tmpDir, "FEAT-001-DB");
     expect(result.closed).toBe(true);
-
-    // Verify sync state updated
-    const updated = loadSyncState(tmpDir);
-    expect(updated!.featureIssues[0].taskIssues[0].status).toBe(
-      "closed",
-    );
+    expect(closedIssues).toContain(11);
   });
 
   it("returns error when no sync state exists", async () => {
@@ -563,7 +564,7 @@ describe("closeTaskIssue", () => {
         featureId: "FEAT-001",
         parentIssueNumber: 10,
         taskIssues: [
-          { taskId: "FEAT-001-DB", issueNumber: 11, status: "open" },
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
         ],
       },
     ];
@@ -588,15 +589,15 @@ describe("syncStatusFromGitHub", () => {
     expect(result.errors[0]).toContain("No GitHub sync state");
   });
 
-  it("updates task statuses from GitHub", async () => {
+  it("returns live task statuses from GitHub", async () => {
     const syncState = createSyncState("owner/repo");
     syncState.featureIssues = [
       {
         featureId: "FEAT-001",
         parentIssueNumber: 10,
         taskIssues: [
-          { taskId: "FEAT-001-DB", issueNumber: 11, status: "open" },
-          { taskId: "FEAT-001-API", issueNumber: 12, status: "open" },
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+          { taskId: "FEAT-001-API", issueNumber: 12 },
         ],
       },
     ];
@@ -605,7 +606,6 @@ describe("syncStatusFromGitHub", () => {
     restoreExecutor = mockGh((args) => {
       if (args[0] === "issue" && args[1] === "view") {
         const issueNum = parseInt(args[2], 10);
-        // Issue #11 is now closed, #12 still open
         const state = issueNum === 11 ? "CLOSED" : "OPEN";
         return JSON.stringify({
           number: issueNum,
@@ -618,15 +618,10 @@ describe("syncStatusFromGitHub", () => {
     });
 
     const result = await syncStatusFromGitHub(tmpDir);
-    expect(result.updated).toBe(1);
-    expect(result.issues).toHaveLength(1);
-    expect(result.issues[0].taskId).toBe("FEAT-001-DB");
-    expect(result.issues[0].status).toBe("closed");
-
-    // Verify state was saved
-    const updated = loadSyncState(tmpDir);
-    expect(updated!.featureIssues[0].taskIssues[0].status).toBe("closed");
-    expect(updated!.featureIssues[0].taskIssues[1].status).toBe("open");
+    expect(result.updated).toBe(2);
+    expect(result.issues).toHaveLength(2);
+    expect(result.issues.find(i => i.taskId === "FEAT-001-DB")?.status).toBe("closed");
+    expect(result.issues.find(i => i.taskId === "FEAT-001-API")?.status).toBe("open");
   });
 
   it("handles per-issue errors without stopping", async () => {
@@ -636,8 +631,8 @@ describe("syncStatusFromGitHub", () => {
         featureId: "FEAT-001",
         parentIssueNumber: 10,
         taskIssues: [
-          { taskId: "FEAT-001-DB", issueNumber: 11, status: "open" },
-          { taskId: "FEAT-001-API", issueNumber: 12, status: "open" },
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+          { taskId: "FEAT-001-API", issueNumber: 12 },
         ],
       },
     ];

@@ -12,7 +12,6 @@ import {
   createSyncState,
   findFeatureMapping,
   findTaskIssueNumber,
-  updateTaskSyncStatus,
   type GitHubSyncState,
 } from "./github-model.js";
 
@@ -94,8 +93,8 @@ describe("sync state persistence", () => {
         featureId: "FEAT-001",
         parentIssueNumber: 10,
         taskIssues: [
-          { taskId: "FEAT-001-DB", issueNumber: 11, status: "open" },
-          { taskId: "FEAT-001-API", issueNumber: 12, status: "open" },
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+          { taskId: "FEAT-001-API", issueNumber: 12 },
         ],
       },
     ];
@@ -173,16 +172,16 @@ describe("sync state lookups", () => {
         featureId: "FEAT-001",
         parentIssueNumber: 10,
         taskIssues: [
-          { taskId: "FEAT-001-DB", issueNumber: 11, status: "open" },
-          { taskId: "FEAT-001-API", issueNumber: 12, status: "closed" },
-          { taskId: "FEAT-001-UI", issueNumber: 13, status: "open" },
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+          { taskId: "FEAT-001-API", issueNumber: 12 },
+          { taskId: "FEAT-001-UI", issueNumber: 13 },
         ],
       },
       {
         featureId: "FEAT-002",
         parentIssueNumber: 20,
         taskIssues: [
-          { taskId: "FEAT-002-DB", issueNumber: 21, status: "open" },
+          { taskId: "FEAT-002-DB", issueNumber: 21 },
         ],
       },
     ];
@@ -215,38 +214,4 @@ describe("sync state lookups", () => {
     });
   });
 
-  describe("updateTaskSyncStatus", () => {
-    it("updates open task to closed", () => {
-      const result = updateTaskSyncStatus(
-        state,
-        "FEAT-001-DB",
-        "closed",
-      );
-      expect(result).toBe(true);
-
-      const task = state.featureIssues[0].taskIssues[0];
-      expect(task.status).toBe("closed");
-    });
-
-    it("updates closed task to open", () => {
-      const result = updateTaskSyncStatus(
-        state,
-        "FEAT-001-API",
-        "open",
-      );
-      expect(result).toBe(true);
-
-      const task = state.featureIssues[0].taskIssues[1];
-      expect(task.status).toBe("open");
-    });
-
-    it("returns false for non-existent task", () => {
-      const result = updateTaskSyncStatus(
-        state,
-        "FEAT-999-DB",
-        "closed",
-      );
-      expect(result).toBe(false);
-    });
-  });
 });

@@ -28,8 +28,6 @@ export interface Feature {
   dependencies: string[];
   /** Number of other features that depend on this one */
   dependencyCount: number;
-  /** Optional status — set by retrofit or manual update */
-  status?: "backlog" | "in_progress" | "done";
 }
 
 export interface Task {

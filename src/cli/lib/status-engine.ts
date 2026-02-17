@@ -267,11 +267,11 @@ function collectTasks(projectDir: string): TaskStatusItem[] {
 
 /**
  * Enrich task statuses from GitHub Issues (async).
- * Reads github-sync.json and optionally fetches live status from GitHub.
+ * GitHub Issues are the single source of truth for task status.
  *
  * @param tasks Local task statuses
  * @param projectDir Project directory
- * @param fetchLive If true, calls gh CLI to get live status (requires gh auth)
+ * @param fetchLive If true, calls gh CLI to get live status from GitHub
  */
 export async function enrichTasksFromGitHub(
   tasks: TaskStatusItem[],
@@ -283,42 +283,39 @@ export async function enrichTasksFromGitHub(
     return { tasks, ghSynced: false };
   }
 
-  // If fetchLive, sync from GitHub first
-  if (fetchLive) {
-    try {
-      const ghOk = await isGhAvailable();
-      if (ghOk) {
-        await syncStatusFromGitHub(projectDir);
-      }
-    } catch {
-      // Graceful degradation: fall through to local sync state
-    }
-  }
-
-  // Reload sync state (may have been updated by syncStatusFromGitHub)
-  const freshState = loadSyncState(projectDir);
-  if (!freshState) {
+  if (!fetchLive) {
     return { tasks, ghSynced: false };
   }
 
-  // Build issue status map: taskId → "open" | "closed"
-  const issueStatusMap = new Map<string, "open" | "closed">();
-  for (const feature of freshState.featureIssues) {
-    for (const task of feature.taskIssues) {
-      issueStatusMap.set(task.taskId, task.status);
+  // Fetch live status from GitHub (the single source of truth)
+  try {
+    const ghOk = await isGhAvailable();
+    if (!ghOk) {
+      return { tasks, ghSynced: false };
     }
+
+    const result = await syncStatusFromGitHub(projectDir);
+
+    // Build issue status map: taskId → "open" | "closed"
+    const issueStatusMap = new Map<string, "open" | "closed">();
+    for (const issue of result.issues) {
+      issueStatusMap.set(issue.taskId, issue.status);
+    }
+
+    // Enrich: GitHub closed → done, GitHub open → keep local status
+    const enriched = tasks.map((t) => {
+      const ghStatus = issueStatusMap.get(t.id);
+      if (ghStatus === "closed" && t.status !== "done") {
+        return { ...t, status: "done" };
+      }
+      return t;
+    });
+
+    return { tasks: enriched, ghSynced: true };
+  } catch {
+    // Graceful degradation: return local status
+    return { tasks, ghSynced: false };
   }
-
-  // Enrich: if local task is "backlog" but GitHub shows "closed", mark "done"
-  const enriched = tasks.map((t) => {
-    const ghStatus = issueStatusMap.get(t.id);
-    if (ghStatus === "closed" && t.status !== "done") {
-      return { ...t, status: "done" };
-    }
-    return t;
-  });
-
-  return { tasks: enriched, ghSynced: true };
 }
 
 function collectAudits(projectDir: string): AuditSummary[] {
