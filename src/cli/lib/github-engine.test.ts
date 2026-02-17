@@ -21,6 +21,7 @@ import {
   isGhAvailable,
   configureProjectBoard,
   setGhExecutor,
+  setSleepFn,
   type GhExecutor,
 } from "./github-engine.js";
 import {
@@ -106,13 +107,18 @@ function mockGhWithErrors(
 // Setup / Teardown
 // ─────────────────────────────────────────────
 
+let restoreSleep: () => void;
+
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "gh-engine-test-"));
   fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+  // Disable sleep in tests to avoid timeouts
+  restoreSleep = setSleepFn(async () => {});
 });
 
 afterEach(() => {
   if (restoreExecutor) restoreExecutor();
+  restoreSleep();
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 

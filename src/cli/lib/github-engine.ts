@@ -35,6 +35,20 @@ const execFileAsync = promisify(execFile);
 
 export type GhExecutor = (args: string[]) => Promise<string>;
 
+/** Sleep utility for rate limiting delays (injectable for testing) */
+let _sleep = (ms: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Override the sleep function (for testing).
+ * Returns a restore function.
+ */
+export function setSleepFn(fn: (ms: number) => Promise<void>): () => void {
+  const prev = _sleep;
+  _sleep = fn;
+  return () => { _sleep = prev; };
+}
+
 /** Default executor: calls real gh CLI */
 async function defaultExecGh(args: string[]): Promise<string> {
   const { stdout } = await execFileAsync("gh", args);
@@ -60,9 +74,67 @@ export function setGhExecutor(
 
 /**
  * Execute a gh CLI command via the current executor.
+ * Retries on secondary rate limit (HTTP 403) with exponential backoff.
+ * Max 4 retries: 30s → 60s → 120s → 240s (total ~7.5min worst case).
  */
 export async function execGh(args: string[]): Promise<string> {
+  const MAX_RETRIES = 4;
+  const BASE_DELAY_MS = 30_000; // 30 seconds
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await _execGh(args);
+      // gh CLI sometimes returns empty stdout on rate limit instead of throwing
+      // Detect this for content-creation commands (issue create, label create)
+      if (
+        result === "" &&
+        args.includes("create") &&
+        attempt < MAX_RETRIES
+      ) {
+        const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
+        _rateLimitCallback?.(
+          `  [rate-limit] Empty response detected, retrying in ${Math.round(delayMs / 1000)}s... (attempt ${attempt + 1}/${MAX_RETRIES})`,
+        );
+        await _sleep(delayMs);
+        continue;
+      }
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isRateLimit =
+        msg.includes("secondary rate limit") ||
+        msg.includes("abuse detection") ||
+        msg.includes("HTTP 403");
+
+      if (isRateLimit && attempt < MAX_RETRIES) {
+        const delayMs = BASE_DELAY_MS * Math.pow(2, attempt);
+        _rateLimitCallback?.(
+          `  [rate-limit] Hit secondary rate limit, retrying in ${Math.round(delayMs / 1000)}s... (attempt ${attempt + 1}/${MAX_RETRIES})`,
+        );
+        await _sleep(delayMs);
+        continue;
+      }
+      throw err;
+    }
+  }
+  // Should not reach here, but satisfy TypeScript
   return _execGh(args);
+}
+
+/**
+ * Optional callback for rate-limit log messages.
+ * Set via setRateLimitCallback().
+ */
+let _rateLimitCallback: ((msg: string) => void) | undefined;
+
+/**
+ * Set a callback to receive rate-limit retry messages.
+ * Used by syncPlanToGitHub to forward messages to the logger.
+ */
+export function setRateLimitCallback(
+  cb: ((msg: string) => void) | undefined,
+): void {
+  _rateLimitCallback = cb;
 }
 
 /**
@@ -365,6 +437,9 @@ export async function syncPlanToGitHub(
   let skipped = 0;
   const log = options?.onProgress ?? (() => {});
 
+  // Set rate-limit callback for retry logging
+  setRateLimitCallback(log);
+
   // Detect or use provided repo
   const repo = options?.repo ?? (await detectRepoSlug(projectDir));
   if (!repo) {
@@ -416,6 +491,9 @@ export async function syncPlanToGitHub(
           created++;
           log(`  [created] ${feature.id} → #${parentIssueNumber}`);
 
+          // Throttle to avoid rate limits (1s between creations)
+          await _sleep(1000);
+
           // Add to GitHub Project if available
           if (projectNumber) {
             const added = await addIssueToProject(repo, projectNumber, parentIssueNumber);
@@ -458,6 +536,9 @@ export async function syncPlanToGitHub(
             created++;
             log(`  [created] ${task.id} → #${taskIssueNumber}`);
 
+            // Throttle to avoid rate limits (1s between creations)
+            await _sleep(1000);
+
             // Add task issue to GitHub Project
             if (projectNumber) {
               await addIssueToProject(repo, projectNumber, taskIssueNumber).catch(() => {});
@@ -489,6 +570,9 @@ export async function syncPlanToGitHub(
 
   // Save sync state
   saveSyncState(projectDir, syncState);
+
+  // Clear rate-limit callback
+  setRateLimitCallback(undefined);
 
   return { created, skipped, errors };
 }
