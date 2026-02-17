@@ -76,26 +76,35 @@ export function registerPlanCommand(program: Command): void {
             process.exit(1);
           }
 
-          const io = createPlanTerminalIO();
-          const result = await runPlanEngine({ projectDir, io });
+          // If --sync only and plan.json already exists, skip regeneration
+          let plan = loadPlan(projectDir);
+          if (options.sync && plan && plan.waves.length > 0) {
+            logger.info("Using existing plan.json for GitHub sync.");
+          } else {
+            // Generate plan from feature catalog
+            const io = createPlanTerminalIO();
+            const result = await runPlanEngine({ projectDir, io });
 
-          if (result.errors.length > 0) {
-            for (const err of result.errors) {
-              logger.error(err);
+            if (result.errors.length > 0) {
+              for (const err of result.errors) {
+                logger.error(err);
+              }
+              process.exit(1);
             }
-            process.exit(1);
-          }
 
-          // Output markdown file if requested
-          if (options.output) {
-            const markdown = generatePlanMarkdown(result.plan);
-            const outputPath = path.resolve(projectDir, options.output);
-            const dir = path.dirname(outputPath);
-            if (!fs.existsSync(dir)) {
-              fs.mkdirSync(dir, { recursive: true });
+            plan = result.plan;
+
+            // Output markdown file if requested
+            if (options.output) {
+              const markdown = generatePlanMarkdown(plan);
+              const outputPath = path.resolve(projectDir, options.output);
+              const dir = path.dirname(outputPath);
+              if (!fs.existsSync(dir)) {
+                fs.mkdirSync(dir, { recursive: true });
+              }
+              fs.writeFileSync(outputPath, markdown, "utf-8");
+              logger.success(`Plan written to ${options.output}`);
             }
-            fs.writeFileSync(outputPath, markdown, "utf-8");
-            logger.success(`Plan written to ${options.output}`);
           }
 
           // Auto-pass Gate B after successful plan generation
@@ -159,7 +168,7 @@ export function registerPlanCommand(program: Command): void {
 
               const syncResult = await syncPlanToGitHub(
                 projectDir,
-                result.plan,
+                plan,
                 {
                   onProgress: (msg) => logger.info(msg),
                   projectNumber,
@@ -196,18 +205,18 @@ export function registerPlanCommand(program: Command): void {
           }
 
           // Print summary
-          const totalFeatures = result.plan.waves.reduce(
+          const totalFeatures = plan.waves.reduce(
             (sum, w) => sum + w.features.length,
             0,
           );
           logger.info("");
-          logger.header("Plan Generated");
-          logger.info(`  Waves: ${result.plan.waves.length}`);
+          logger.header("Plan Summary");
+          logger.info(`  Waves: ${plan.waves.length}`);
           logger.info(`  Features: ${totalFeatures}`);
           logger.info(`  Tasks: ~${totalFeatures * 6}`);
-          if (result.plan.circularDependencies.length > 0) {
+          if (plan.circularDependencies.length > 0) {
             logger.warn(
-              `  Circular deps: ${result.plan.circularDependencies.length} (needs resolution)`,
+              `  Circular deps: ${plan.circularDependencies.length} (needs resolution)`,
             );
           }
           logger.info("");

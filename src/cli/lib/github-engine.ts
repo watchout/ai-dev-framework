@@ -78,6 +78,41 @@ export async function isGhAvailable(): Promise<boolean> {
 }
 
 // ─────────────────────────────────────────────
+// Label Management
+// ─────────────────────────────────────────────
+
+/** Cache of confirmed-existing labels per repo to avoid repeated API calls */
+const _confirmedLabels = new Map<string, Set<string>>();
+
+/**
+ * Ensure labels exist in the repo, creating any missing ones.
+ * Uses a per-repo cache so each label is checked at most once per session.
+ */
+async function ensureLabels(repo: string, labels: string[]): Promise<void> {
+  let confirmed = _confirmedLabels.get(repo);
+  if (!confirmed) {
+    confirmed = new Set<string>();
+    _confirmedLabels.set(repo, confirmed);
+  }
+
+  for (const label of labels) {
+    if (confirmed.has(label)) continue;
+    try {
+      // gh label create --force is idempotent (creates or updates)
+      await _execGh([
+        "label", "create", label,
+        "--repo", repo,
+        "--force",
+      ]);
+      confirmed.add(label);
+    } catch {
+      // If label creation fails, still proceed (Issue creation will warn)
+      confirmed.add(label);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────
 // Issue Operations
 // ─────────────────────────────────────────────
 
@@ -122,6 +157,8 @@ export async function createFeatureIssue(
     feature.priority.toLowerCase(),
     `wave-${waveNumber}`,
   ];
+
+  await ensureLabels(repo, labels);
 
   const output = await execGh([
     "issue",
@@ -198,6 +235,8 @@ export async function createTaskIssue(
     feature.id,
     `wave-${waveNumber}`,
   ];
+
+  await ensureLabels(repo, labels);
 
   const output = await execGh([
     "issue",
