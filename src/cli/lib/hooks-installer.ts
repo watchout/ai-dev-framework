@@ -17,6 +17,7 @@ const GATE_HOOK_MARKER = "Pre-Code Gate (framework)";
 const CLAUDE_HOOK_SCRIPT = `#!/bin/bash
 # Pre-Code Gate hook for Claude Code (PreToolUse)
 # Reads .framework/gates.json and blocks source code edits when gates have not passed.
+# Also requires an active task from \\\`framework run\\\` before allowing edits.
 # Exit 2 = deny (Claude Code convention), Exit 0 = allow
 
 input=$(cat)
@@ -96,23 +97,70 @@ result=$(node -e "
   } catch(e) { console.log('error'); }
 ")
 
-if [ "$result" = "PASSED" ]; then
+if [ "$result" != "PASSED" ]; then
+  IFS=',' read -r gate_a gate_b gate_c <<< "$result"
+
+  echo "" >&2
+  echo "=====================================" >&2
+  echo "  PRE-CODE GATE: EDIT BLOCKED" >&2
+  echo "=====================================" >&2
+  echo "  Gate A (Environment): \${gate_a:-error}" >&2
+  echo "  Gate B (Planning):    \${gate_b:-error}" >&2
+  echo "  Gate C (SSOT):        \${gate_c:-error}" >&2
+  echo "" >&2
+  echo "  Run: framework gate check" >&2
+  echo "=====================================" >&2
+  exit 2
+fi
+
+# ─── Active Task Check (hard layer) ───
+# Requires a task started via \\\`framework run\\\` before allowing source edits.
+# Skip: FRAMEWORK_SKIP_TASK_CHECK=1, profile lp/hp
+
+if [ "\${FRAMEWORK_SKIP_TASK_CHECK:-}" = "1" ]; then
   exit 0
 fi
 
-IFS=',' read -r gate_a gate_b gate_c <<< "$result"
+# Single node call: check profile + run-state
+task_check=$(node -e "
+  const fs = require('fs');
+  try {
+    const pf = '$project_dir/.framework/project.json';
+    if (fs.existsSync(pf)) {
+      const p = JSON.parse(fs.readFileSync(pf, 'utf8'));
+      const pt = p.profileType || p.type || '';
+      if (pt === 'lp' || pt === 'hp') { console.log('SKIP'); process.exit(0); }
+    }
+    const rf = '$project_dir/.framework/run-state.json';
+    if (!fs.existsSync(rf)) { console.log('NO_STATE'); process.exit(0); }
+    const s = JSON.parse(fs.readFileSync(rf, 'utf8'));
+    if (s.currentTaskId) { console.log('ACTIVE:' + s.currentTaskId); }
+    else {
+      const t = (s.tasks || []).find(t => t.status === 'in_progress');
+      console.log(t ? 'ACTIVE:' + t.taskId : 'NO_TASK');
+    }
+  } catch { console.log('ERROR'); }
+")
 
-echo "" >&2
-echo "=====================================" >&2
-echo "  PRE-CODE GATE: EDIT BLOCKED" >&2
-echo "=====================================" >&2
-echo "  Gate A (Environment): \${gate_a:-error}" >&2
-echo "  Gate B (Planning):    \${gate_b:-error}" >&2
-echo "  Gate C (SSOT):        \${gate_c:-error}" >&2
-echo "" >&2
-echo "  Run: framework gate check" >&2
-echo "=====================================" >&2
-exit 2
+case "$task_check" in
+  SKIP|ACTIVE:*)
+    exit 0
+    ;;
+  *)
+    echo "" >&2
+    echo "=====================================" >&2
+    echo "  ACTIVE TASK REQUIRED" >&2
+    echo "=====================================" >&2
+    echo "  Gates passed, but no task is in progress." >&2
+    echo "  Start a task first:" >&2
+    echo "    framework run <taskId>" >&2
+    echo "" >&2
+    echo "  Emergency bypass:" >&2
+    echo "    FRAMEWORK_SKIP_TASK_CHECK=1" >&2
+    echo "=====================================" >&2
+    exit 2
+    ;;
+esac
 `;
 
 const SKILL_TRACKER_SCRIPT = `#!/bin/bash
