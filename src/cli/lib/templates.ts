@@ -203,6 +203,21 @@ discovery → design → implement → review
 - 設計判断で迷った時 → .claude/memory/ の過去ADRを確認
 - 同じバグを繰り返さないために → .claude/memory/ のバグ教訓を確認
 - フレームワークの規約を確認 → docs/standards/KNOWLEDGE_DIGEST.md
+
+## Browser Debugging (MCP)
+
+ブラウザのビジュアルテスト・デバッグには .mcp.json で設定された Playwright MCP を使用する。
+
+### ルール
+- **Playwright MCP が提供する専用 Chromium を使う**（ユーザーの Chrome を使わない）
+- Chrome 拡張機能との競合を防ぐため、--headless 推奨
+- E2E テスト・画面確認は必ず Playwright MCP 経由
+
+### 使い方
+\\\`\\\`\\\`bash
+# Playwright MCP は .mcp.json で自動設定済み
+# Claude Code セッション内で直接ブラウザ操作が可能
+\\\`\\\`\\\`
 `;
 }
 
@@ -436,9 +451,15 @@ export function generateVisualTesterAgent(config: ProjectConfig): string {
   return `# Visual Tester Agent
 
 ブラウザベースのビジュアルテストを実行する専門エージェント。
-Playwright MCP を使用して画面表示・操作フロー・状態表示を検証する。
+Playwright MCP（\`.mcp.json\` で設定済み）を使用して画面表示・操作フロー・状態表示を検証する。
 
 > このエージェントは \`${config.projectName}\` のビジュアルテストに使用する。
+
+## 前提条件
+
+- \`.mcp.json\` に Playwright MCP が設定されていること（\`framework init\`/\`retrofit\`/\`update\` で自動設定）
+- **Playwright MCP が提供する専用 Chromium を使う**（ユーザーの Chrome を使わない）
+- Chrome 拡張機能との競合を避けるため、ユーザーのブラウザプロファイルは使用しない
 
 ## 実行手順
 
@@ -582,6 +603,25 @@ export const AGENT_TEMPLATES: AgentTemplate[] = [
   { filename: "code-reviewer.md", generate: generateCodeReviewerAgent },
   { filename: "ssot-explorer.md", generate: generateSsotExplorerAgent },
 ];
+
+/**
+ * Generate .mcp.json for Playwright MCP browser automation.
+ * Uses dedicated Chromium (not user's Chrome) to avoid Claude extension conflicts.
+ */
+export function generateMcpJson(): string {
+  return JSON.stringify(
+    {
+      mcpServers: {
+        playwright: {
+          command: "npx",
+          args: ["@playwright/mcp@latest"],
+        },
+      },
+    },
+    null,
+    2,
+  );
+}
 
 export function generateProjectState(config: ProjectConfig): string {
   const now = new Date().toISOString();

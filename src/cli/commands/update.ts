@@ -22,6 +22,7 @@ import {
 } from "../lib/update-engine.js";
 import { updateClaudeMdSkillSection } from "../lib/claudemd-updater.js";
 import { installClaudeCodeHook } from "../lib/hooks-installer.js";
+import { installMcpJson } from "../lib/mcp-installer.js";
 import { logger } from "../lib/logger.js";
 
 export function registerUpdateCommand(program: Command): void {
@@ -78,7 +79,7 @@ export function registerUpdateCommand(program: Command): void {
             );
           }
 
-          const totalSteps = 6;
+          const totalSteps = 7;
           logger.info("");
           logger.step(1, totalSteps, "Fetching latest framework docs...");
 
@@ -143,7 +144,19 @@ export function registerUpdateCommand(program: Command): void {
             logger.warn(w);
           }
 
-          logger.step(6, totalSteps, "Update complete.");
+          logger.step(
+            6,
+            totalSteps,
+            "Updating .mcp.json (Playwright MCP)...",
+          );
+          const mcpResult = installMcpJson(projectDir);
+          if (mcpResult.installed) {
+            logger.success("Playwright MCP configured (.mcp.json)");
+          } else {
+            logger.info(`  ${mcpResult.reason}`);
+          }
+
+          logger.step(7, totalSteps, "Update complete.");
           logger.info("");
           logger.success(
             `Updated ${result.copiedFiles.length} framework docs`,
@@ -163,6 +176,9 @@ export function registerUpdateCommand(program: Command): void {
           }
           if (hookResult.files.length > 0) {
             logger.success("Hooks updated (skill-tracker + pre-code-gate)");
+          }
+          if (mcpResult.installed) {
+            logger.success("Playwright MCP configured (.mcp.json)");
           }
           logger.info(
             `  Version: ${result.version.slice(0, 8)}`,

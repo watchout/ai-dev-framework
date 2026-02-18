@@ -17,8 +17,8 @@ function runHook(
   envOverrides?: Record<string, string>,
 ): { exitCode: number; stderr: string } {
   const input = JSON.stringify(toolInput);
-  const env: Record<string, string> = {
-    ...process.env as Record<string, string>,
+  const env = {
+    ...process.env,
     CLAUDE_PROJECT_DIR: tmpDir,
     ...envOverrides,
   };

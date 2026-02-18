@@ -10,6 +10,7 @@ import {
   generateCodeReviewerAgent,
   generateSsotExplorerAgent,
   generateProjectState,
+  generateMcpJson,
   AGENT_TEMPLATES,
   type ProjectConfig,
 } from "./templates.js";
@@ -337,5 +338,60 @@ describe("generateProjectState", () => {
     const result = JSON.parse(generateProjectState(testConfig));
     expect(result.phase).toBe(-1);
     expect(result.status).toBe("initialized");
+  });
+});
+
+// ─────────────────────────────────────────────
+// generateMcpJson
+// ─────────────────────────────────────────────
+
+describe("generateMcpJson", () => {
+  it("returns valid JSON", () => {
+    const result = generateMcpJson();
+    const parsed = JSON.parse(result);
+    expect(parsed).toBeDefined();
+  });
+
+  it("includes playwright MCP server", () => {
+    const parsed = JSON.parse(generateMcpJson());
+    expect(parsed.mcpServers.playwright).toBeDefined();
+    expect(parsed.mcpServers.playwright.command).toBe("npx");
+    expect(parsed.mcpServers.playwright.args).toContain(
+      "@playwright/mcp@latest",
+    );
+  });
+});
+
+// ─────────────────────────────────────────────
+// generateClaudeMd — Browser Debugging section
+// ─────────────────────────────────────────────
+
+describe("generateClaudeMd browser debugging", () => {
+  it("includes Browser Debugging MCP section", () => {
+    const result = generateClaudeMd(testConfig);
+    expect(result).toContain("Browser Debugging (MCP)");
+    expect(result).toContain("Playwright MCP");
+  });
+
+  it("mentions dedicated Chromium", () => {
+    const result = generateClaudeMd(testConfig);
+    expect(result).toContain("専用 Chromium");
+  });
+});
+
+// ─────────────────────────────────────────────
+// generateVisualTesterAgent — MCP prerequisites
+// ─────────────────────────────────────────────
+
+describe("generateVisualTesterAgent MCP", () => {
+  it("includes .mcp.json prerequisite", () => {
+    const result = generateVisualTesterAgent(testConfig);
+    expect(result).toContain(".mcp.json");
+    expect(result).toContain("Playwright MCP");
+  });
+
+  it("warns about Chrome extension conflict", () => {
+    const result = generateVisualTesterAgent(testConfig);
+    expect(result).toContain("Chrome 拡張機能");
   });
 });

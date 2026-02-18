@@ -31,6 +31,7 @@ import { installGitHubTemplates } from "../lib/github-templates.js";
 import { loadProfileType, inferProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
 import { generateProjectState, type ProjectConfig } from "../lib/templates.js";
+import { installMcpJson } from "../lib/mcp-installer.js";
 
 export function registerRetrofitCommand(program: Command): void {
   program
@@ -188,6 +189,14 @@ export function registerRetrofitCommand(program: Command): void {
               logger.info(
                 `  Skipped ${ghResult.skipped.length} existing GitHub files`,
               );
+            }
+          }
+
+          // Install .mcp.json (Playwright MCP)
+          if (!options.dryRun) {
+            const mcpResult = installMcpJson(projectDir);
+            if (mcpResult.installed) {
+              logger.success("Playwright MCP configured (.mcp.json)");
             }
           }
 

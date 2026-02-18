@@ -30,6 +30,7 @@ import {
 } from "../lib/gate-model.js";
 import { installAllHooks } from "../lib/hooks-installer.js";
 import { installGitHubTemplates } from "../lib/github-templates.js";
+import { installMcpJson } from "../lib/mcp-installer.js";
 import { logger } from "../lib/logger.js";
 
 export interface InitOptions {
@@ -54,7 +55,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const createdFiles: string[] = [];
   const errors: string[] = [];
 
-  const totalSteps = 11;
+  const totalSteps = 12;
 
   // Check if directory already exists and is non-empty
   if (fs.existsSync(projectPath)) {
@@ -235,6 +236,16 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
     logger.success(
       `Installed ${ghResult.installed.length} GitHub templates (CI, PR template, Issue templates, CODEOWNERS)`,
     );
+  }
+
+  // Step 12: Install .mcp.json (Playwright MCP)
+  logger.step(12, totalSteps, "Installing .mcp.json (Playwright MCP)...");
+  const mcpResult = installMcpJson(projectPath);
+  if (mcpResult.installed) {
+    createdFiles.push(".mcp.json");
+    logger.success("Playwright MCP configured (.mcp.json)");
+  } else {
+    logger.info(`  ${mcpResult.reason}`);
   }
 
   return { projectPath, createdFiles, errors };

@@ -1,10 +1,16 @@
 # Visual Tester Agent
 
 ブラウザベースのビジュアルテストを実行する専門エージェント。
-Playwright MCP を使用して画面表示・操作フロー・状態表示を検証する。
+Playwright MCP（`.mcp.json` で設定済み）を使用して画面表示・操作フロー・状態表示を検証する。
 
 > このエージェントは `{{PROJECT_NAME}}` のビジュアルテストに使用する。
 > 参照: ai-dev-framework/20_VISUAL_TEST.md §4
+
+## 前提条件
+
+- `.mcp.json` に Playwright MCP が設定されていること（`framework init`/`retrofit`/`update` で自動設定）
+- **Playwright MCP が提供する専用 Chromium を使う**（ユーザーの Chrome を使わない）
+- Chrome 拡張機能との競合を避けるため、ユーザーのブラウザプロファイルは使用しない
 
 ## 実行手順
 
