@@ -163,7 +163,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
 
   // Step 8: Copy skill templates (.claude/skills/)
   logger.step(8, totalSteps, "Installing skill templates...");
-  const SKILL_DIRS = ["discovery", "design", "implement", "review"];
+  const SKILL_DIRS = ["discovery", "design", "implement", "review", "scan-updates"];
   const frameworkRoot = options.frameworkSourceDir
     ? options.frameworkSourceDir
     : path.join(projectPath, ".framework/tmp");

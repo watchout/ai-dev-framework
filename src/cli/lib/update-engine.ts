@@ -74,6 +74,7 @@ export const SKILL_DIRS = [
   "design",
   "implement",
   "review",
+  "scan-updates",
 ] as const;
 
 const DEPRECATED_SKILL_DIRS = [

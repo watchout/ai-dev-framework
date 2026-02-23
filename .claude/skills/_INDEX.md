@@ -2,7 +2,7 @@
 
 > Claude Codeで利用可能なスキル（専門家チーム）の一覧
 
-## スキル構成（4スキル + Agent Teams）
+## スキル構成（5スキル + Agent Teams）
 
 ```
 .claude/skills/
@@ -11,6 +11,7 @@
 ├── design/SKILL.md        ← Product & Technical Design（P1-P5, T1-T5）
 ├── implement/SKILL.md     ← Implementation Phase（I1-I5）
 ├── review/SKILL.md        ← Review & Audit（R1-R5 + 合議）
+├── scan-updates/SKILL.md  ← AI開発エコシステム最新情報収集
 └── agent-teams/           ← Agent Teams運用パターン（実証済み）
 ```
 
@@ -22,6 +23,7 @@
 | design | プロダクト設計・技術設計 | 「設計」「design」「仕様」「アーキテクチャ」 |
 | implement | 実装・テスト・品質保証 | 「実装」「implement」「コーディング」 |
 | review | レビュー評議会・監査 | 「レビュー」「review」「監査」「audit」 |
+| scan-updates | AI開発ツール最新情報収集 | 「最新情報」「scan-updates」「アップデート確認」「ツール動向」 |
 
 ## 開発フロー全体像
 
@@ -98,6 +100,7 @@ Discovery & Business → Design → Implementation → Review
 「設計を開始して」          → Skill ツールで /design を起動
 「実装を開始して」          → Skill ツールで /implement を起動
 「レビュー評議会を開催して」→ Skill ツールで /review を起動
+「最新情報を確認して」      → Skill ツールで /scan-updates を起動
 ```
 
 ### 2. 提案起動（タスク指示から提案）
