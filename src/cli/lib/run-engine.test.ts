@@ -130,6 +130,18 @@ describe("run-engine", () => {
       const state = initRunStateFromPlan(plan);
       expect(state.tasks.length).toBe(12);
     });
+
+    it("preserves blockedBy from plan.tasks", () => {
+      const plan = makePlan();
+      const state = initRunStateFromPlan(plan);
+
+      // First task has no blockers
+      expect(state.tasks[0].blockedBy).toEqual([]);
+
+      // Subsequent tasks are blocked by the previous task
+      expect(state.tasks[1].blockedBy).toEqual([state.tasks[0].taskId]);
+      expect(state.tasks[2].blockedBy).toEqual([state.tasks[1].taskId]);
+    });
   });
 
   describe("generateTaskPrompt", () => {
@@ -140,6 +152,7 @@ describe("run-engine", () => {
         taskKind: "db",
         name: "Feature - Database",
         status: "in_progress",
+        blockedBy: [],
         files: [],
       });
       expect(prompt).toContain("FEAT-001-DB");
@@ -154,6 +167,7 @@ describe("run-engine", () => {
         taskKind: "api",
         name: "Feature - API",
         status: "in_progress",
+        blockedBy: [],
         files: [],
       });
       expect(prompt).toContain("API endpoint");
@@ -167,6 +181,7 @@ describe("run-engine", () => {
         taskKind: "ui",
         name: "Feature - UI",
         status: "in_progress",
+        blockedBy: [],
         files: [],
       });
       expect(prompt).toContain("React component");
@@ -179,6 +194,7 @@ describe("run-engine", () => {
         taskKind: "test",
         name: "Feature - Testing",
         status: "in_progress",
+        blockedBy: [],
         files: [],
       });
       expect(prompt).toContain("unit tests");
@@ -192,6 +208,7 @@ describe("run-engine", () => {
         taskKind: "db",
         name: "Test",
         status: "in_progress",
+        blockedBy: [],
         files: [],
       });
       expect(prompt).toContain("Constraints");
@@ -258,11 +275,11 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "backlog", files: [],
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
         },
         {
           taskId: "T2", featureId: "F1", taskKind: "api",
-          name: "Task 2", status: "backlog", files: [],
+          name: "Task 2", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -282,7 +299,7 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "backlog", files: [],
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -301,7 +318,7 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "backlog", files: [],
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -322,7 +339,7 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "backlog", files: [],
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -344,7 +361,7 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "backlog", files: [],
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -362,7 +379,7 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "backlog", files: [],
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -409,7 +426,7 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "done", files: [],
+          name: "Task 1", status: "done", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -425,11 +442,11 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "backlog", files: [],
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
         },
         {
           taskId: "T2", featureId: "F1", taskKind: "api",
-          name: "Task 2", status: "backlog", files: [],
+          name: "Task 2", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -448,7 +465,7 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "backlog", files: [],
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -462,7 +479,7 @@ describe("run-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "done", files: [],
+          name: "Task 1", status: "done", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
@@ -485,10 +502,10 @@ describe("run-engine", () => {
     it("completes all tasks for a feature", async () => {
       const state = createRunState();
       state.tasks = [
-        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "backlog", files: [] },
-        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", files: [] },
-        { taskId: "F1-UI", featureId: "F1", taskKind: "ui", name: "F1 UI", status: "backlog", files: [] },
-        { taskId: "F2-DB", featureId: "F2", taskKind: "db", name: "F2 DB", status: "backlog", files: [] },
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "backlog", blockedBy: [], files: [] },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", blockedBy: [], files: [] },
+        { taskId: "F1-UI", featureId: "F1", taskKind: "ui", name: "F1 UI", status: "backlog", blockedBy: [], files: [] },
+        { taskId: "F2-DB", featureId: "F2", taskKind: "db", name: "F2 DB", status: "backlog", blockedBy: [], files: [] },
       ];
       saveRunState(tmpDir, state);
 
@@ -508,8 +525,8 @@ describe("run-engine", () => {
     it("skips already-done tasks", async () => {
       const state = createRunState();
       state.tasks = [
-        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "done", files: [] },
-        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", files: [] },
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "done", blockedBy: [], files: [] },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", blockedBy: [], files: [] },
       ];
       saveRunState(tmpDir, state);
 
@@ -522,7 +539,7 @@ describe("run-engine", () => {
     it("returns error for unknown feature", async () => {
       const state = createRunState();
       state.tasks = [
-        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "backlog", files: [] },
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "backlog", blockedBy: [], files: [] },
       ];
       saveRunState(tmpDir, state);
 

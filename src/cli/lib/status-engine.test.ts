@@ -99,11 +99,11 @@ describe("status-engine", () => {
       state.tasks = [
         {
           taskId: "T1", featureId: "F1", taskKind: "db",
-          name: "Task 1", status: "done", files: [],
+          name: "Task 1", status: "done", blockedBy: [], files: [],
         },
         {
           taskId: "T2", featureId: "F1", taskKind: "api",
-          name: "Task 2", status: "backlog", files: [],
+          name: "Task 2", status: "backlog", blockedBy: [], files: [],
         },
       ];
       saveRunState(tmpDir, state);
