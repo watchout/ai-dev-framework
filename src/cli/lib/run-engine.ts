@@ -48,7 +48,7 @@ import {
   loadPlan,
 } from "./plan-model.js";
 import { loadProfileType } from "./profile-model.js";
-import { closeTaskIssue, syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
+import { closeTaskIssue, labelTaskIssue, syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
 import { loadSyncState } from "./github-model.js";
 
 // ─────────────────────────────────────────────
@@ -285,6 +285,17 @@ export async function runTask(
   if (normalized === "fail" || normalized === "f") {
     failTask(state, task.taskId);
     saveRunState(projectDir, state);
+
+    // Label GitHub Issue as "failed" (keep open for re-execution)
+    try {
+      const lblResult = await labelTaskIssue(projectDir, task.taskId, "failed");
+      if (lblResult.labeled) {
+        io.print(`  GitHub: Issue labeled "failed" for ${task.taskId}`);
+      }
+    } catch {
+      // Silently ignore — GitHub sync is optional
+    }
+
     io.print(`  Task ${task.taskId} marked as failed.`);
     io.print("");
     return {
@@ -843,6 +854,14 @@ async function handleExistingEscalation(
   if (normalized === "fail" || normalized === "f") {
     failTask(state, task.taskId);
     saveRunState(projectDir, state);
+
+    // Label GitHub Issue as "failed" (keep open for re-execution)
+    try {
+      await labelTaskIssue(projectDir, task.taskId, "failed");
+    } catch {
+      // Silently ignore
+    }
+
     return {
       taskId: task.taskId,
       status: "failed",

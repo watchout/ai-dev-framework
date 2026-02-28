@@ -296,17 +296,21 @@ export async function enrichTasksFromGitHub(
 
     const result = await syncStatusFromGitHub(projectDir);
 
-    // Build issue status map: taskId → "open" | "closed"
-    const issueStatusMap = new Map<string, "open" | "closed">();
+    // Build issue info map: taskId → { status, labels }
+    const issueInfoMap = new Map<string, { status: "open" | "closed"; labels: string[] }>();
     for (const issue of result.issues) {
-      issueStatusMap.set(issue.taskId, issue.status);
+      issueInfoMap.set(issue.taskId, { status: issue.status, labels: issue.labels });
     }
 
-    // Enrich: GitHub closed → done, GitHub open → keep local status
+    // Enrich: GitHub closed → done, open + "failed" label → failed
     const enriched = tasks.map((t) => {
-      const ghStatus = issueStatusMap.get(t.id);
-      if (ghStatus === "closed" && t.status !== "done") {
+      const ghInfo = issueInfoMap.get(t.id);
+      if (!ghInfo) return t;
+      if (ghInfo.status === "closed" && t.status !== "done") {
         return { ...t, status: "done" };
+      }
+      if (ghInfo.status === "open" && ghInfo.labels.includes("failed")) {
+        return { ...t, status: "failed" };
       }
       return t;
     });

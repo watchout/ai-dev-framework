@@ -53,7 +53,7 @@ export interface SyncResult {
 
 export interface StatusSyncResult {
   updated: number;
-  issues: { taskId: string; issueNumber: number; status: "open" | "closed" }[];
+  issues: { taskId: string; issueNumber: number; status: "open" | "closed"; labels: string[] }[];
   errors: string[];
 }
 
