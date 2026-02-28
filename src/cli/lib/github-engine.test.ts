@@ -31,7 +31,7 @@ import {
   saveSyncState,
   loadSyncState,
 } from "./github-model.js";
-import type { PlanState, Feature, Wave } from "./plan-model.js";
+import { type PlanState, type Feature, type Wave, decomposeFeature } from "./plan-model.js";
 
 // ─────────────────────────────────────────────
 // Test helpers
@@ -78,11 +78,14 @@ function createTestPlan(): PlanState {
     },
   ];
 
+  const tasks = features.flatMap((f) => decomposeFeature(f));
+
   return {
     status: "generated",
     generatedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     waves,
+    tasks,
     circularDependencies: [],
   };
 }
@@ -266,6 +269,15 @@ describe("syncPlanToGitHub", () => {
       return "";
     });
 
+    const feature: Feature = {
+      id: "FEAT-001",
+      name: "Test",
+      priority: "P0",
+      size: "S",
+      type: "common",
+      dependencies: [],
+      dependencyCount: 0,
+    };
     const plan: PlanState = {
       status: "generated",
       generatedAt: "",
@@ -276,19 +288,10 @@ describe("syncPlanToGitHub", () => {
           phase: "common",
           layer: 1,
           title: "Wave 1",
-          features: [
-            {
-              id: "FEAT-001",
-              name: "Test",
-              priority: "P0",
-              size: "S",
-              type: "common",
-              dependencies: [],
-              dependencyCount: 0,
-            },
-          ],
+          features: [feature],
         },
       ],
+      tasks: decomposeFeature(feature),
       circularDependencies: [],
     };
 
@@ -311,6 +314,15 @@ describe("syncPlanToGitHub", () => {
     });
 
     const messages: string[] = [];
+    const feature: Feature = {
+      id: "F-001",
+      name: "X",
+      priority: "P0",
+      size: "S",
+      type: "common",
+      dependencies: [],
+      dependencyCount: 0,
+    };
     const plan: PlanState = {
       status: "generated",
       generatedAt: "",
@@ -320,19 +332,10 @@ describe("syncPlanToGitHub", () => {
           number: 1,
           phase: "common",
           title: "Wave 1",
-          features: [
-            {
-              id: "F-001",
-              name: "X",
-              priority: "P0",
-              size: "S",
-              type: "common",
-              dependencies: [],
-              dependencyCount: 0,
-            },
-          ],
+          features: [feature],
         },
       ],
+      tasks: decomposeFeature(feature),
       circularDependencies: [],
     };
 
@@ -358,6 +361,15 @@ describe("syncPlanToGitHub", () => {
       return "";
     });
 
+    const feature: Feature = {
+      id: "FEAT-100",
+      name: "User Login",
+      priority: "P0",
+      size: "S",
+      type: "common",
+      dependencies: [],
+      dependencyCount: 0,
+    };
     const plan: PlanState = {
       status: "generated",
       generatedAt: "",
@@ -367,19 +379,10 @@ describe("syncPlanToGitHub", () => {
           number: 1,
           phase: "common",
           title: "W1",
-          features: [
-            {
-              id: "FEAT-100",
-              name: "User Login",
-              priority: "P0",
-              size: "S",
-              type: "common",
-              dependencies: [],
-              dependencyCount: 0,
-            },
-          ],
+          features: [feature],
         },
       ],
+      tasks: decomposeFeature(feature),
       circularDependencies: [],
     };
 
@@ -410,6 +413,15 @@ describe("syncPlanToGitHub", () => {
       return "";
     });
 
+    const feature: Feature = {
+      id: "FEAT-050",
+      name: "Payment Processing",
+      priority: "P0",
+      size: "M",
+      type: "proprietary",
+      dependencies: [],
+      dependencyCount: 0,
+    };
     const plan: PlanState = {
       status: "generated",
       generatedAt: "",
@@ -419,19 +431,10 @@ describe("syncPlanToGitHub", () => {
           number: 1,
           phase: "common",
           title: "W1",
-          features: [
-            {
-              id: "FEAT-050",
-              name: "Payment Processing",
-              priority: "P0",
-              size: "M",
-              type: "proprietary",
-              dependencies: [],
-              dependencyCount: 0,
-            },
-          ],
+          features: [feature],
         },
       ],
+      tasks: decomposeFeature(feature),
       circularDependencies: [],
     };
 
@@ -479,6 +482,15 @@ describe("syncPlanToGitHub", () => {
       return "";
     });
 
+    const feature: Feature = {
+      id: "FEAT-X",
+      name: "Test Feature",
+      priority: "P0",
+      size: "S",
+      type: "common",
+      dependencies: [],
+      dependencyCount: 0,
+    };
     const plan: PlanState = {
       status: "generated",
       generatedAt: "",
@@ -488,19 +500,10 @@ describe("syncPlanToGitHub", () => {
           number: 1,
           phase: "common",
           title: "W1",
-          features: [
-            {
-              id: "FEAT-X",
-              name: "Test Feature",
-              priority: "P0",
-              size: "S",
-              type: "common",
-              dependencies: [],
-              dependencyCount: 0,
-            },
-          ],
+          features: [feature],
         },
       ],
+      tasks: decomposeFeature(feature),
       circularDependencies: [],
     };
 

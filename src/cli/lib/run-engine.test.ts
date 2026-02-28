@@ -13,7 +13,7 @@ import {
   completeWaveNonInteractive,
   syncRunStateFromGitHub,
 } from "./run-engine.js";
-import { type PlanState, savePlan } from "./plan-model.js";
+import { type PlanState, type Task, decomposeFeature, savePlan } from "./plan-model.js";
 import { saveRunState, createRunState, loadRunState } from "./run-model.js";
 import { setGhExecutor, setSleepFn } from "./github-engine.js";
 import { createSyncState, saveSyncState } from "./github-model.js";
@@ -31,7 +31,16 @@ function createMockIO(askResponse = "done"): RunIO & { output: string[] } {
   };
 }
 
-function makePlan(): PlanState {
+function makePlan(orderMode: "normal" | "tdd" = "tdd"): PlanState {
+  const feature = {
+    id: "AUTH-001",
+    name: "Login",
+    priority: "P0" as const,
+    size: "M" as const,
+    type: "common" as const,
+    dependencies: [] as string[],
+    dependencyCount: 0,
+  };
   return {
     status: "generated",
     generatedAt: new Date().toISOString(),
@@ -42,19 +51,10 @@ function makePlan(): PlanState {
         phase: "common",
         layer: 1,
         title: "Auth Foundation",
-        features: [
-          {
-            id: "AUTH-001",
-            name: "Login",
-            priority: "P0",
-            size: "M",
-            type: "common",
-            dependencies: [],
-            dependencyCount: 0,
-          },
-        ],
+        features: [feature],
       },
     ],
+    tasks: decomposeFeature(feature, orderMode),
     circularDependencies: [],
   };
 }
@@ -72,13 +72,12 @@ describe("run-engine", () => {
   });
 
   describe("initRunStateFromPlan", () => {
-    it("decomposes features into tasks (app profile uses TDD for common features)", () => {
-      const plan = makePlan();
-      // Common features in app profile use TDD (test first)
-      const state = initRunStateFromPlan(plan, { profileType: "app" });
+    it("reads TDD task order from plan.tasks", () => {
+      const plan = makePlan("tdd");
+      const state = initRunStateFromPlan(plan);
 
       expect(state.tasks.length).toBe(6);
-      // TDD order for common features: TEST → DB → API → UI → INTEGRATION → REVIEW
+      // TDD order: TEST → DB → API → UI → INTEGRATION → REVIEW
       expect(state.tasks[0].taskId).toBe("AUTH-001-TEST");
       expect(state.tasks[1].taskId).toBe("AUTH-001-DB");
       expect(state.tasks[2].taskId).toBe("AUTH-001-API");
@@ -87,20 +86,9 @@ describe("run-engine", () => {
       expect(state.tasks[5].taskId).toBe("AUTH-001-REVIEW");
     });
 
-    it("api profile uses TDD order for all features", () => {
-      const plan = makePlan();
-      plan.waves[0].features[0].type = "proprietary";
-      const state = initRunStateFromPlan(plan, { profileType: "api" });
-
-      // TDD order: TEST → DB → API → UI → INTEGRATION → REVIEW
-      expect(state.tasks[0].taskId).toBe("AUTH-001-TEST");
-      expect(state.tasks[5].taskId).toBe("AUTH-001-REVIEW");
-    });
-
-    it("lp profile uses normal order (impl first)", () => {
-      const plan = makePlan();
-      plan.waves[0].features[0].type = "proprietary";
-      const state = initRunStateFromPlan(plan, { profileType: "lp" });
+    it("reads normal task order from plan.tasks", () => {
+      const plan = makePlan("normal");
+      const state = initRunStateFromPlan(plan);
 
       // Normal order: DB → API → UI → INTEGRATION → REVIEW → TEST
       expect(state.tasks[0].taskId).toBe("AUTH-001-DB");
@@ -108,7 +96,16 @@ describe("run-engine", () => {
       expect(state.tasks[5].taskId).toBe("AUTH-001-TEST");
     });
 
-    it("all tasks start as backlog when feature has no status", () => {
+    it("throws when plan.tasks is missing", () => {
+      const plan = makePlan();
+      delete (plan as Record<string, unknown>).tasks;
+
+      expect(() => initRunStateFromPlan(plan)).toThrow(
+        "plan.json missing tasks[]",
+      );
+    });
+
+    it("all tasks start as backlog", () => {
       const plan = makePlan();
       const state = initRunStateFromPlan(plan);
 
@@ -119,15 +116,17 @@ describe("run-engine", () => {
 
     it("handles multiple features", () => {
       const plan = makePlan();
-      plan.waves[0].features.push({
+      const feature2 = {
         id: "AUTH-002",
         name: "Register",
-        priority: "P0",
-        size: "M",
-        type: "common",
+        priority: "P0" as const,
+        size: "M" as const,
+        type: "common" as const,
         dependencies: ["AUTH-001"],
         dependencyCount: 0,
-      });
+      };
+      plan.waves[0].features.push(feature2);
+      plan.tasks!.push(...decomposeFeature(feature2, "tdd"));
       const state = initRunStateFromPlan(plan);
       expect(state.tasks.length).toBe(12);
     });
@@ -547,23 +546,23 @@ describe("run-engine", () => {
     it("completes all tasks in a wave", async () => {
       const plan = makePlan();
       // Add a second wave with another feature
+      const feature2 = {
+        id: "NOTIF-001",
+        name: "Email Notification",
+        priority: "P1" as const,
+        size: "M" as const,
+        type: "common" as const,
+        dependencies: ["AUTH-001"],
+        dependencyCount: 0,
+      };
       plan.waves.push({
         number: 2,
         phase: "common",
         layer: 2,
         title: "Notification Foundation",
-        features: [
-          {
-            id: "NOTIF-001",
-            name: "Email Notification",
-            priority: "P1",
-            size: "M",
-            type: "common",
-            dependencies: ["AUTH-001"],
-            dependencyCount: 0,
-          },
-        ],
+        features: [feature2],
       });
+      plan.tasks!.push(...decomposeFeature(feature2, "tdd"));
       savePlan(tmpDir, plan);
 
       // Initialize state first so we have tasks for both waves
