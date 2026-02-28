@@ -19,11 +19,15 @@ const execFileAsync = promisify(execFile);
 export interface TaskIssueMap {
   taskId: string;
   issueNumber: number;
+  /** Stored issue body for drift detection and reconstruction */
+  body?: string;
 }
 
 export interface FeatureIssueMap {
   featureId: string;
   parentIssueNumber: number;
+  /** Stored parent issue body for drift detection and reconstruction */
+  body?: string;
   taskIssues: TaskIssueMap[];
 }
 

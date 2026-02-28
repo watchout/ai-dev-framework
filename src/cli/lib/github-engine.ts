@@ -190,19 +190,21 @@ async function ensureLabels(repo: string, labels: string[]): Promise<void> {
  * Create a parent Issue for a feature.
  * Returns the created issue number.
  */
-export async function createFeatureIssue(
-  repo: string,
+/**
+ * Generate the issue body for a feature (parent) issue.
+ * Exported for testing and body reconstruction.
+ */
+export function generateFeatureIssueBody(
   feature: Feature,
-  waveNumber: number,
   tasks: Task[],
-): Promise<number> {
+): string {
   const taskChecklist = tasks
     .map((t) => `- [ ] ${t.id}: ${t.name.split(" - ")[1] ?? t.name}`)
     .join("\n");
 
   const ssotPath = constructSsotPath(feature);
 
-  const body = [
+  return [
     `## Feature: ${feature.id}`,
     "",
     "### SSOT Reference",
@@ -221,6 +223,15 @@ export async function createFeatureIssue(
   ]
     .filter((line) => line !== "")
     .join("\n");
+}
+
+export async function createFeatureIssue(
+  repo: string,
+  feature: Feature,
+  waveNumber: number,
+  tasks: Task[],
+): Promise<{ issueNumber: number; body: string }> {
+  const body = generateFeatureIssueBody(feature, tasks);
 
   const labels = [
     "feature",
@@ -243,12 +254,12 @@ export async function createFeatureIssue(
     labels.join(","),
   ]);
 
-  return extractIssueNumber(output);
+  return { issueNumber: extractIssueNumber(output), body };
 }
 
 /**
  * Create a task Issue (child of feature Issue).
- * Returns the created issue number.
+ * Returns the created issue number and body.
  *
  * Body structure per specs/05_IMPLEMENTATION.md Part 3 Issue Template:
  * - SSOT Reference (full path + section)
@@ -258,20 +269,21 @@ export async function createFeatureIssue(
  * - Dependencies (Blocked by / Blocks)
  * - Parent reference
  */
-export async function createTaskIssue(
-  repo: string,
+/**
+ * Generate the issue body for a task (child) issue.
+ * Exported for testing and body reconstruction.
+ */
+export function generateTaskIssueBody(
   feature: Feature,
   task: Task,
-  waveNumber: number,
   parentIssueNumber: number,
-): Promise<number> {
-  const kindLabel = task.kind;
+): string {
   const taskName = task.name.split(" - ")[1] ?? task.name;
   const ssotPath = constructSsotPath(feature);
   const sectionLabel = task.references.join(", ");
   const branchName = `feature/${task.id.toLowerCase()}`;
 
-  const body = [
+  return [
     `## ${task.id}: ${taskName}`,
     "",
     "### SSOT Reference",
@@ -298,6 +310,18 @@ export async function createTaskIssue(
     `Parent: #${parentIssueNumber}`,
   ]
     .join("\n");
+}
+
+export async function createTaskIssue(
+  repo: string,
+  feature: Feature,
+  task: Task,
+  waveNumber: number,
+  parentIssueNumber: number,
+): Promise<{ issueNumber: number; body: string }> {
+  const kindLabel = task.kind;
+  const taskName = task.name.split(" - ")[1] ?? task.name;
+  const body = generateTaskIssueBody(feature, task, parentIssueNumber);
 
   const labels = [
     kindLabel,
@@ -321,7 +345,7 @@ export async function createTaskIssue(
     labels.join(","),
   ]);
 
-  return extractIssueNumber(output);
+  return { issueNumber: extractIssueNumber(output), body };
 }
 
 /**
@@ -493,15 +517,16 @@ export async function syncPlanToGitHub(
         if (featureMap.parentIssueNumber) {
           log(`  [skip] ${feature.id} parent: #${featureMap.parentIssueNumber}`);
         } else {
-          const parentIssueNumber = await createFeatureIssue(
+          const parentResult = await createFeatureIssue(
             repo,
             feature,
             wave.number,
             tasks,
           );
-          featureMap.parentIssueNumber = parentIssueNumber;
+          featureMap.parentIssueNumber = parentResult.issueNumber;
+          featureMap.body = parentResult.body;
           created++;
-          log(`  [created] ${feature.id} → #${parentIssueNumber}`);
+          log(`  [created] ${feature.id} → #${featureMap.parentIssueNumber}`);
 
           // Save incrementally so parent mapping survives crashes
           saveSyncState(projectDir, syncState);
@@ -511,7 +536,7 @@ export async function syncPlanToGitHub(
 
           // Add to GitHub Project if available
           if (projectNumber) {
-            const added = await addIssueToProject(repo, projectNumber, parentIssueNumber);
+            const added = await addIssueToProject(repo, projectNumber, featureMap.parentIssueNumber);
             if (added) {
               log(`  [project] ${feature.id} → Project #${projectNumber}`);
             }
@@ -530,7 +555,7 @@ export async function syncPlanToGitHub(
           }
 
           try {
-            const taskIssueNumber = await createTaskIssue(
+            const taskResult = await createTaskIssue(
               repo,
               feature,
               task,
@@ -539,10 +564,11 @@ export async function syncPlanToGitHub(
             );
             featureMap.taskIssues.push({
               taskId: task.id,
-              issueNumber: taskIssueNumber,
+              issueNumber: taskResult.issueNumber,
+              body: taskResult.body,
             });
             created++;
-            log(`  [created] ${task.id} → #${taskIssueNumber}`);
+            log(`  [created] ${task.id} → #${taskResult.issueNumber}`);
 
             // Save incrementally after each task for crash recovery
             saveSyncState(projectDir, syncState);
@@ -552,7 +578,7 @@ export async function syncPlanToGitHub(
 
             // Add task issue to GitHub Project
             if (projectNumber) {
-              await addIssueToProject(repo, projectNumber, taskIssueNumber).catch(() => {});
+              await addIssueToProject(repo, projectNumber, taskResult.issueNumber).catch(() => {});
             }
           } catch (err) {
             const msg =

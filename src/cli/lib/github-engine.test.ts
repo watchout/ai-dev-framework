@@ -22,6 +22,8 @@ import {
   listAllIssues,
   isGhAvailable,
   configureProjectBoard,
+  generateFeatureIssueBody,
+  generateTaskIssueBody,
   setGhExecutor,
   setSleepFn,
   type GhExecutor,
@@ -204,6 +206,12 @@ describe("syncPlanToGitHub", () => {
     expect(syncState!.featureIssues[0].featureId).toBe("FEAT-001");
     expect(syncState!.featureIssues[0].parentIssueNumber).toBe(1);
     expect(syncState!.featureIssues[0].taskIssues).toHaveLength(6);
+
+    // Verify issue bodies are stored for reconstruction
+    expect(syncState!.featureIssues[0].body).toContain("FEAT-001");
+    expect(syncState!.featureIssues[0].body).toContain("## Tasks");
+    expect(syncState!.featureIssues[0].taskIssues[0].body).toContain("### SSOT Reference");
+    expect(syncState!.featureIssues[0].taskIssues[0].body).toContain("### Definition of Done");
   });
 
   it("skips already synced features (idempotent)", async () => {
@@ -1032,5 +1040,57 @@ describe("configureProjectBoard", () => {
     const result = await configureProjectBoard("owner/repo", 1);
     expect(result.configured).toBe(false);
     expect(result.error).toContain("GraphQL error");
+  });
+});
+
+// ─────────────────────────────────────────────
+// Issue body generation (deterministic reconstruction)
+// ─────────────────────────────────────────────
+
+describe("generateFeatureIssueBody", () => {
+  it("produces deterministic body from feature and tasks", () => {
+    const feature: Feature = {
+      id: "FEAT-001",
+      name: "User Login",
+      priority: "P0",
+      size: "M",
+      type: "common",
+      dependencies: ["FEAT-000"],
+      dependencyCount: 0,
+    };
+    const tasks = decomposeFeature(feature);
+
+    const body1 = generateFeatureIssueBody(feature, tasks);
+    const body2 = generateFeatureIssueBody(feature, tasks);
+    expect(body1).toBe(body2);
+    expect(body1).toContain("FEAT-001");
+    expect(body1).toContain("## Tasks");
+    expect(body1).toContain("FEAT-001-DB");
+    expect(body1).toContain("FEAT-000");
+  });
+});
+
+describe("generateTaskIssueBody", () => {
+  it("produces deterministic body from feature, task, and parent issue number", () => {
+    const feature: Feature = {
+      id: "FEAT-001",
+      name: "User Login",
+      priority: "P0",
+      size: "M",
+      type: "common",
+      dependencies: [],
+      dependencyCount: 0,
+    };
+    const tasks = decomposeFeature(feature);
+    const dbTask = tasks[0]; // DB task
+
+    const body1 = generateTaskIssueBody(feature, dbTask, 42);
+    const body2 = generateTaskIssueBody(feature, dbTask, 42);
+    expect(body1).toBe(body2);
+    expect(body1).toContain("### SSOT Reference");
+    expect(body1).toContain("### Definition of Done");
+    expect(body1).toContain("### Branch");
+    expect(body1).toContain("`feature/feat-001-db`");
+    expect(body1).toContain("Parent: #42");
   });
 });
