@@ -17,6 +17,7 @@ import {
   printStatus,
   createStatusTerminalIO,
 } from "../lib/status-engine.js";
+import { syncRunStateFromGitHub } from "../lib/run-engine.js";
 import { logger } from "../lib/logger.js";
 
 export function registerStatusCommand(program: Command): void {
@@ -57,6 +58,19 @@ export function registerStatusCommand(program: Command): void {
           );
           if (enriched.ghSynced) {
             result.tasks = enriched.tasks;
+          }
+        }
+
+        // Writeback: persist GitHub statuses to run-state.json
+        if (options.github) {
+          const wb = await syncRunStateFromGitHub(projectDir);
+          if (wb.updated > 0 || wb.created) {
+            io.print(`  GitHub writeback: ${wb.updated} tasks updated${wb.created ? " (run-state.json created)" : ""}`);
+            // Re-collect to show updated state
+            const refreshed = collectStatus(projectDir);
+            result.tasks = refreshed.tasks;
+            result.overallProgress = refreshed.overallProgress;
+            result.phases = refreshed.phases;
           }
         }
 

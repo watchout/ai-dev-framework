@@ -48,7 +48,8 @@ import {
   loadPlan,
 } from "./plan-model.js";
 import { loadProfileType } from "./profile-model.js";
-import { closeTaskIssue } from "./github-engine.js";
+import { closeTaskIssue, syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
+import { loadSyncState } from "./github-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -499,6 +500,97 @@ export async function completeWaveNonInteractive(
 
   saveRunState(projectDir, state);
   return { completed, skipped, progress: calculateProgress(state), issuesClosed };
+}
+
+// ─────────────────────────────────────────────
+// GitHub → Run State Writeback
+// ─────────────────────────────────────────────
+
+export interface GitHubWritebackResult {
+  updated: number;
+  created: boolean;
+  progress: number;
+  errors: string[];
+}
+
+/**
+ * Sync GitHub Issue statuses back to run-state.json.
+ * If run-state.json doesn't exist, creates it from plan.json.
+ * Marks tasks as "done" when their corresponding GitHub Issue is closed.
+ */
+export async function syncRunStateFromGitHub(
+  projectDir: string,
+): Promise<GitHubWritebackResult> {
+  const errors: string[] = [];
+
+  // Require GitHub sync state (created by `framework plan --sync`)
+  const syncState = loadSyncState(projectDir);
+  if (!syncState) {
+    return { updated: 0, created: false, progress: 0, errors: ["No GitHub sync state found."] };
+  }
+
+  // Check gh CLI availability
+  const ghOk = await isGhAvailable();
+  if (!ghOk) {
+    return { updated: 0, created: false, progress: 0, errors: ["gh CLI not available."] };
+  }
+
+  // Load or create run state from plan
+  let created = false;
+  let state = loadRunState(projectDir);
+  if (!state) {
+    const plan = loadPlan(projectDir);
+    if (!plan || plan.waves.length === 0) {
+      return { updated: 0, created: false, progress: 0, errors: ["No plan found."] };
+    }
+    const profileType = loadProfileType(projectDir) ?? "app";
+    state = initRunStateFromPlan(plan, { profileType });
+    created = true;
+  }
+
+  // Fetch live statuses from GitHub
+  const ghResult = await syncStatusFromGitHub(projectDir);
+  if (ghResult.errors.length > 0) {
+    errors.push(...ghResult.errors);
+  }
+
+  // Build issue status map: taskId → "open" | "closed"
+  const issueStatusMap = new Map<string, "open" | "closed">();
+  for (const issue of ghResult.issues) {
+    issueStatusMap.set(issue.taskId, issue.status);
+  }
+
+  // Update run-state tasks: GitHub closed → done
+  let updated = 0;
+  for (const task of state.tasks) {
+    const ghStatus = issueStatusMap.get(task.taskId);
+    if (ghStatus === "closed" && task.status !== "done") {
+      task.status = "done";
+      task.completedAt = new Date().toISOString();
+      updated++;
+    }
+  }
+
+  // Update overall status if all tasks are done
+  const allDone = state.tasks.every(
+    (t) => t.status === "done" || t.status === "failed",
+  );
+  if (allDone && state.tasks.length > 0) {
+    state.status = "completed";
+    state.completedAt = new Date().toISOString();
+  }
+
+  // Save if there were changes
+  if (updated > 0 || created) {
+    saveRunState(projectDir, state);
+  }
+
+  return {
+    updated,
+    created,
+    progress: calculateProgress(state),
+    errors,
+  };
 }
 
 // ─────────────────────────────────────────────
