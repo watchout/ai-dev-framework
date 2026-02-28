@@ -181,6 +181,110 @@ describe("plan-engine", () => {
   });
 });
 
+describe("runPlanEngine - task persistence", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fw-plan-tasks-"));
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("saves decomposed tasks in plan.tasks (app profile: TDD for common features)", async () => {
+    const io = createMockIO();
+    const features = [
+      makeFeature({ id: "AUTH-001", name: "Login", type: "common" }),
+    ];
+
+    const result = await runPlanEngine({
+      projectDir: tmpDir,
+      io,
+      features,
+      profileType: "app",
+    });
+
+    // app profile + common feature → TDD order: TEST first
+    expect(result.plan.tasks).toHaveLength(6);
+    expect(result.plan.tasks![0].id).toBe("AUTH-001-TEST");
+    expect(result.plan.tasks![5].id).toBe("AUTH-001-REVIEW");
+    // all tasks reference the correct featureId
+    expect(result.plan.tasks!.every((t) => t.featureId === "AUTH-001")).toBe(true);
+  });
+
+  it("saves tasks in normal order for lp profile (proprietary feature)", async () => {
+    const io = createMockIO();
+    const features = [
+      makeFeature({ id: "HERO-001", name: "Hero Section", type: "proprietary" }),
+    ];
+
+    const result = await runPlanEngine({
+      projectDir: tmpDir,
+      io,
+      features,
+      profileType: "lp",
+    });
+
+    // lp profile → normal order: DB first, TEST last
+    expect(result.plan.tasks).toHaveLength(6);
+    expect(result.plan.tasks![0].id).toBe("HERO-001-DB");
+    expect(result.plan.tasks![5].id).toBe("HERO-001-TEST");
+  });
+
+  it("saves tasks in TDD order for api profile", async () => {
+    const io = createMockIO();
+    const features = [
+      makeFeature({ id: "API-001", name: "Endpoint", type: "proprietary" }),
+    ];
+
+    const result = await runPlanEngine({
+      projectDir: tmpDir,
+      io,
+      features,
+      profileType: "api",
+    });
+
+    // api profile → TDD order: TEST first, REVIEW last
+    expect(result.plan.tasks![0].id).toBe("API-001-TEST");
+    expect(result.plan.tasks![5].id).toBe("API-001-REVIEW");
+  });
+
+  it("persists tasks to plan.json and loadPlan returns them", async () => {
+    const io = createMockIO();
+    const features = [
+      makeFeature({ id: "FEAT-001", name: "Feature One" }),
+      makeFeature({ id: "FEAT-002", name: "Feature Two" }),
+    ];
+
+    await runPlanEngine({ projectDir: tmpDir, io, features, profileType: "lp" });
+
+    const loaded = loadPlan(tmpDir);
+    expect(loaded?.tasks).toBeDefined();
+    expect(loaded!.tasks!).toHaveLength(12); // 2 features × 6 tasks each
+  });
+
+  it("flattens tasks across multiple waves in wave order", async () => {
+    const io = createMockIO();
+    const features = [
+      makeFeature({ id: "A", name: "Feature A" }),
+      makeFeature({ id: "B", name: "Feature B", dependencies: ["A"] }),
+    ];
+
+    const result = await runPlanEngine({
+      projectDir: tmpDir,
+      io,
+      features,
+      profileType: "lp",
+    });
+
+    // A is in wave 1, B in wave 2; A tasks should come before B tasks
+    expect(result.plan.tasks![0].featureId).toBe("A");
+    expect(result.plan.tasks![6].featureId).toBe("B");
+  });
+});
+
 describe("parseFeaturesFromMarkdown", () => {
   it("parses feature table from markdown", () => {
     const markdown = `# Feature Catalog

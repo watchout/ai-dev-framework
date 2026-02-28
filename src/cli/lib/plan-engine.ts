@@ -14,6 +14,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import {
   type Feature,
+  type Task,
   type Wave,
   type PlanState,
   buildDependencyGraph,
@@ -21,9 +22,11 @@ import {
   topologicalSort,
   sortFeaturesInWave,
   decomposeFeature,
+  determineTaskOrderMode,
   savePlan,
   loadPlan,
 } from "./plan-model.js";
+import { loadProfileType } from "./profile-model.js";
 
 export interface PlanIO {
   print(message: string): void;
@@ -34,6 +37,8 @@ export interface PlanOptions {
   io: PlanIO;
   /** Override features (for testing / manual input) */
   features?: Feature[];
+  /** Override profile type for task order mode (for testing) */
+  profileType?: string;
 }
 
 export interface PlanResult {
@@ -164,12 +169,24 @@ export async function runPlanEngine(
   // Print plan
   printPlan(io, waves, cycles);
 
+  // Decompose all features into tasks (profile-aware, single source of truth)
+  const profileType = options.profileType ?? loadProfileType(projectDir) ?? "app";
+  const allTasks: Task[] = [];
+  for (const wave of waves) {
+    for (const feature of wave.features) {
+      const orderMode = determineTaskOrderMode(profileType, feature.type);
+      const tasks = decomposeFeature(feature, orderMode);
+      allTasks.push(...tasks);
+    }
+  }
+
   // Save plan state
   const plan: PlanState = {
     status: "generated",
     generatedAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     waves,
+    tasks: allTasks,
     circularDependencies: cycles,
   };
   savePlan(projectDir, plan);
@@ -349,7 +366,9 @@ export function generatePlanMarkdown(plan: PlanState): string {
 
     // Task decomposition per feature
     for (const feature of wave.features) {
-      const tasks = decomposeFeature(feature);
+      // Use pre-computed tasks from plan when available (profile-aware order)
+      const featureTasks = (plan.tasks ?? []).filter((t) => t.featureId === feature.id);
+      const tasks = featureTasks.length > 0 ? featureTasks : decomposeFeature(feature);
       lines.push(`### ${feature.id}: ${feature.name}`);
       lines.push("");
       lines.push("| Task | Size | Blocked By | References |");
@@ -397,6 +416,7 @@ function createEmptyPlan(): PlanState {
     generatedAt: now,
     updatedAt: now,
     waves: [],
+    tasks: [],
     circularDependencies: [],
   };
 }
