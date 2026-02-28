@@ -18,6 +18,7 @@ import {
   syncPlanToGitHub,
   closeTaskIssue,
   syncStatusFromGitHub,
+  listAllIssues,
   isGhAvailable,
   configureProjectBoard,
   setGhExecutor,
@@ -582,6 +583,31 @@ describe("closeTaskIssue", () => {
 // syncStatusFromGitHub
 // ─────────────────────────────────────────────
 
+describe("listAllIssues", () => {
+  it("fetches all issues in a single batch call", async () => {
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+        return JSON.stringify([
+          { number: 1, title: "Issue 1", state: "OPEN", labels: [{ name: "bug" }] },
+          { number: 2, title: "Issue 2", state: "CLOSED", labels: [] },
+        ]);
+      }
+      return "";
+    });
+
+    const issues = await listAllIssues("owner/repo");
+    expect(issues).toHaveLength(2);
+    expect(issues[0].state).toBe("open");
+    expect(issues[1].state).toBe("closed");
+    expect(issues[0].labels).toEqual(["bug"]);
+  });
+
+  it("throws on gh CLI failure", async () => {
+    restoreExecutor = mockGhWithErrors(() => new Error("network error"));
+    await expect(listAllIssues("owner/repo")).rejects.toThrow("network error");
+  });
+});
+
 describe("syncStatusFromGitHub", () => {
   it("returns error when no sync state", async () => {
     const result = await syncStatusFromGitHub(tmpDir);
@@ -589,7 +615,7 @@ describe("syncStatusFromGitHub", () => {
     expect(result.errors[0]).toContain("No GitHub sync state");
   });
 
-  it("returns live task statuses from GitHub", async () => {
+  it("returns live task statuses from GitHub via batch fetch", async () => {
     const syncState = createSyncState("owner/repo");
     syncState.featureIssues = [
       {
@@ -604,15 +630,12 @@ describe("syncStatusFromGitHub", () => {
     saveSyncState(tmpDir, syncState);
 
     restoreExecutor = mockGh((args) => {
-      if (args[0] === "issue" && args[1] === "view") {
-        const issueNum = parseInt(args[2], 10);
-        const state = issueNum === 11 ? "CLOSED" : "OPEN";
-        return JSON.stringify({
-          number: issueNum,
-          title: `Task ${issueNum}`,
-          state,
-          labels: [],
-        });
+      if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+        return JSON.stringify([
+          { number: 10, title: "Feature", state: "OPEN", labels: [] },
+          { number: 11, title: "DB Task", state: "CLOSED", labels: [] },
+          { number: 12, title: "API Task", state: "OPEN", labels: [] },
+        ]);
       }
       return "";
     });
@@ -624,7 +647,7 @@ describe("syncStatusFromGitHub", () => {
     expect(result.issues.find(i => i.taskId === "FEAT-001-API")?.status).toBe("open");
   });
 
-  it("handles per-issue errors without stopping", async () => {
+  it("reports error for issues not found in batch results", async () => {
     const syncState = createSyncState("owner/repo");
     syncState.featureIssues = [
       {
@@ -632,32 +655,47 @@ describe("syncStatusFromGitHub", () => {
         parentIssueNumber: 10,
         taskIssues: [
           { taskId: "FEAT-001-DB", issueNumber: 11 },
-          { taskId: "FEAT-001-API", issueNumber: 12 },
+          { taskId: "FEAT-001-API", issueNumber: 99 },
         ],
       },
     ];
     saveSyncState(tmpDir, syncState);
 
-    let callCount = 0;
-    restoreExecutor = mockGhWithErrors((args) => {
-      if (args[0] === "issue" && args[1] === "view") {
-        callCount++;
-        if (callCount === 1) {
-          return new Error("not found");
-        }
-        return JSON.stringify({
-          number: 12,
-          title: "Task",
-          state: "CLOSED",
-          labels: [],
-        });
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+        return JSON.stringify([
+          { number: 11, title: "DB Task", state: "CLOSED", labels: [] },
+        ]);
       }
       return "";
     });
 
     const result = await syncStatusFromGitHub(tmpDir);
-    expect(result.errors).toHaveLength(1);
     expect(result.updated).toBe(1);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toContain("#99");
+    expect(result.errors[0]).toContain("not found in GitHub");
+  });
+
+  it("handles batch fetch failure gracefully", async () => {
+    const syncState = createSyncState("owner/repo");
+    syncState.featureIssues = [
+      {
+        featureId: "FEAT-001",
+        parentIssueNumber: 10,
+        taskIssues: [
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+        ],
+      },
+    ];
+    saveSyncState(tmpDir, syncState);
+
+    restoreExecutor = mockGhWithErrors(() => new Error("network error"));
+
+    const result = await syncStatusFromGitHub(tmpDir);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0]).toContain("Failed to fetch issues");
+    expect(result.updated).toBe(0);
   });
 });
 

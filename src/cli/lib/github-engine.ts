@@ -580,8 +580,46 @@ export async function syncPlanToGitHub(
 // ─────────────────────────────────────────────
 
 /**
- * Read issue statuses from GitHub.
+ * Fetch all issues from a repo in a single gh CLI call.
+ * Uses `gh issue list --state all` to avoid N+1 per-task API calls.
+ */
+export async function listAllIssues(
+  repo: string,
+): Promise<GitHubIssue[]> {
+  const output = await execGh([
+    "issue",
+    "list",
+    "--repo",
+    repo,
+    "--state",
+    "all",
+    "--json",
+    "number,title,state,labels",
+    "--limit",
+    "500",
+  ]);
+
+  const data = JSON.parse(output) as {
+    number: number;
+    title: string;
+    state: string;
+    labels: { name: string }[];
+  }[];
+
+  return data.map((d) => ({
+    number: d.number,
+    title: d.title,
+    state: d.state === "CLOSED" ? "closed" : "open",
+    labels: d.labels.map((l) => l.name),
+  }));
+}
+
+/**
+ * Read issue statuses from GitHub using a single batch query.
  * Returns the live status of all tasks (no local caching).
+ *
+ * Previously called `getIssueState()` per task (N+1 problem).
+ * Now uses `listAllIssues()` for a single API call.
  */
 export async function syncStatusFromGitHub(
   projectDir: string,
@@ -598,23 +636,31 @@ export async function syncStatusFromGitHub(
     return { updated, issues, errors };
   }
 
+  // Batch fetch: single gh issue list call instead of N × gh issue view
+  let issueMap: Map<number, GitHubIssue>;
+  try {
+    const allIssues = await listAllIssues(syncState.repo);
+    issueMap = new Map(allIssues.map((i) => [i.number, i]));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    errors.push(`Failed to fetch issues from GitHub: ${msg}`);
+    return { updated, issues, errors };
+  }
+
+  // Map lookup per task (O(1) per task, no additional API calls)
   for (const feature of syncState.featureIssues) {
     for (const task of feature.taskIssues) {
-      try {
-        const ghIssue = await getIssueState(
-          syncState.repo,
-          task.issueNumber,
-        );
+      const ghIssue = issueMap.get(task.issueNumber);
+      if (ghIssue) {
         updated++;
         issues.push({
           taskId: task.taskId,
           issueNumber: task.issueNumber,
           status: ghIssue.state,
         });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+      } else {
         errors.push(
-          `Failed to get status for #${task.issueNumber} (${task.taskId}): ${msg}`,
+          `Issue #${task.issueNumber} (${task.taskId}) not found in GitHub`,
         );
       }
     }
