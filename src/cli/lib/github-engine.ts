@@ -23,7 +23,6 @@ import {
   type PlanState,
   type Feature,
   type Task,
-  decomposeFeature,
 } from "./plan-model.js";
 
 const execFileAsync = promisify(execFile);
@@ -459,12 +458,16 @@ export async function syncPlanToGitHub(
   // Iterate waves → features → tasks
   for (const wave of plan.waves) {
     for (const feature of wave.features) {
+      // Use pre-computed tasks from plan.tasks (Single Source of Truth)
+      const tasks = (plan.tasks ?? []).filter(
+        (t) => t.featureId === feature.id,
+      );
+
       // Check if feature already synced
       const existing = findFeatureMapping(syncState, feature.id);
       if (existing) {
         const existingTaskCount = existing.taskIssues.length;
-        const expectedTasks = decomposeFeature(feature);
-        if (existingTaskCount >= expectedTasks.length) {
+        if (existingTaskCount >= tasks.length) {
           skipped += 1 + existingTaskCount;
           log(`  [skip] ${feature.id}: already synced`);
           continue;
@@ -472,8 +475,6 @@ export async function syncPlanToGitHub(
       }
 
       try {
-        // Decompose feature into tasks
-        const tasks = decomposeFeature(feature);
 
         // Create parent issue (if not exists)
         let parentIssueNumber: number;

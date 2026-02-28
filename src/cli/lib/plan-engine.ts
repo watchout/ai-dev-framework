@@ -367,8 +367,7 @@ export function generatePlanMarkdown(plan: PlanState): string {
     // Task decomposition per feature
     for (const feature of wave.features) {
       // Use pre-computed tasks from plan when available (profile-aware order)
-      const featureTasks = (plan.tasks ?? []).filter((t) => t.featureId === feature.id);
-      const tasks = featureTasks.length > 0 ? featureTasks : decomposeFeature(feature);
+      const tasks = (plan.tasks ?? []).filter((t) => t.featureId === feature.id);
       lines.push(`### ${feature.id}: ${feature.name}`);
       lines.push("");
       lines.push("| Task | Size | Blocked By | References |");

@@ -9,7 +9,7 @@ import {
   calculateDependencyCounts,
   generatePlanMarkdown,
 } from "./plan-engine.js";
-import { type Feature, loadPlan } from "./plan-model.js";
+import { type Feature, decomposeFeature, loadPlan } from "./plan-model.js";
 
 function createMockIO(): PlanIO & { output: string[] } {
   const output: string[] = [];
@@ -364,6 +364,7 @@ describe("calculateDependencyCounts", () => {
 
 describe("generatePlanMarkdown", () => {
   it("generates markdown with wave tables", () => {
+    const feature = makeFeature({ id: "FEAT-001", name: "Login", priority: "P0", size: "M" });
     const plan = {
       status: "generated" as const,
       generatedAt: "2026-02-03T00:00:00Z",
@@ -373,11 +374,10 @@ describe("generatePlanMarkdown", () => {
           number: 1,
           phase: "individual" as const,
           title: "Wave 1: Independent Features",
-          features: [
-            makeFeature({ id: "FEAT-001", name: "Login", priority: "P0", size: "M" }),
-          ],
+          features: [feature],
         },
       ],
+      tasks: decomposeFeature(feature),
       circularDependencies: [],
     };
 
