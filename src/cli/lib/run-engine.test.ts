@@ -11,9 +11,12 @@ import {
   completeTaskNonInteractive,
   completeFeatureNonInteractive,
   completeWaveNonInteractive,
+  syncRunStateFromGitHub,
 } from "./run-engine.js";
 import { type PlanState, savePlan } from "./plan-model.js";
 import { saveRunState, createRunState, loadRunState } from "./run-model.js";
+import { setGhExecutor, setSleepFn } from "./github-engine.js";
+import { createSyncState, saveSyncState } from "./github-model.js";
 
 function createMockIO(askResponse = "done"): RunIO & { output: string[] } {
   const output: string[] = [];
@@ -565,6 +568,197 @@ describe("run-engine", () => {
       expect(result.completed).toBe(3); // remaining 3
       expect(result.skipped).toBe(3); // already done
       expect(result.progress).toBe(100);
+    });
+  });
+
+  describe("syncRunStateFromGitHub", () => {
+    let restoreExecutor: () => void;
+    let restoreSleep: () => void;
+
+    beforeEach(() => {
+      restoreSleep = setSleepFn(async () => {});
+    });
+
+    afterEach(() => {
+      restoreExecutor?.();
+      restoreSleep?.();
+    });
+
+    it("returns error when no sync state exists", async () => {
+      const result = await syncRunStateFromGitHub(tmpDir);
+      expect(result.errors).toContain("No GitHub sync state found.");
+      expect(result.updated).toBe(0);
+    });
+
+    it("returns error when gh CLI is unavailable", async () => {
+      // Create sync state
+      const syncState = createSyncState("owner/repo");
+      saveSyncState(tmpDir, syncState);
+
+      restoreExecutor = setGhExecutor(async () => {
+        throw new Error("gh not found");
+      });
+
+      const result = await syncRunStateFromGitHub(tmpDir);
+      expect(result.errors).toContain("gh CLI not available.");
+      expect(result.updated).toBe(0);
+    });
+
+    it("returns error when no plan exists", async () => {
+      const syncState = createSyncState("owner/repo");
+      saveSyncState(tmpDir, syncState);
+
+      restoreExecutor = setGhExecutor(async (args: string[]) => {
+        if (args[0] === "auth") return "Logged in";
+        return "[]";
+      });
+
+      const result = await syncRunStateFromGitHub(tmpDir);
+      expect(result.errors).toContain("No plan found.");
+    });
+
+    it("creates run-state.json and marks closed issues as done", async () => {
+      const plan = makePlan();
+      savePlan(tmpDir, plan);
+
+      // Create sync state with task mappings
+      const syncState = createSyncState("owner/repo");
+      syncState.featureIssues = [
+        {
+          featureId: "AUTH-001",
+          parentIssueNumber: 1,
+          taskIssues: [
+            { taskId: "AUTH-001-TEST", issueNumber: 10 },
+            { taskId: "AUTH-001-DB", issueNumber: 11 },
+            { taskId: "AUTH-001-API", issueNumber: 12 },
+            { taskId: "AUTH-001-UI", issueNumber: 13 },
+            { taskId: "AUTH-001-INTEGRATION", issueNumber: 14 },
+            { taskId: "AUTH-001-REVIEW", issueNumber: 15 },
+          ],
+        },
+      ];
+      saveSyncState(tmpDir, syncState);
+
+      // Mock gh CLI: auth succeeds, all issues are closed
+      restoreExecutor = setGhExecutor(async (args: string[]) => {
+        if (args[0] === "auth") return "Logged in";
+        if (args[0] === "issue" && args[1] === "view") {
+          const num = parseInt(args[2], 10);
+          return JSON.stringify({
+            number: num,
+            title: `Task #${num}`,
+            state: "CLOSED",
+            labels: [],
+          });
+        }
+        return "";
+      });
+
+      const result = await syncRunStateFromGitHub(tmpDir);
+      expect(result.created).toBe(true);
+      expect(result.updated).toBe(6);
+      expect(result.progress).toBe(100);
+
+      // Verify run-state.json was created
+      const state = loadRunState(tmpDir);
+      expect(state).not.toBeNull();
+      expect(state?.status).toBe("completed");
+      for (const task of state?.tasks ?? []) {
+        expect(task.status).toBe("done");
+      }
+    });
+
+    it("updates existing run-state with closed issues", async () => {
+      const plan = makePlan();
+      savePlan(tmpDir, plan);
+
+      // Create existing run-state with some backlog tasks
+      const state = initRunStateFromPlan(plan);
+      saveRunState(tmpDir, state);
+
+      // Create sync state
+      const syncState = createSyncState("owner/repo");
+      syncState.featureIssues = [
+        {
+          featureId: "AUTH-001",
+          parentIssueNumber: 1,
+          taskIssues: [
+            { taskId: "AUTH-001-TEST", issueNumber: 10 },
+            { taskId: "AUTH-001-DB", issueNumber: 11 },
+          ],
+        },
+      ];
+      saveSyncState(tmpDir, syncState);
+
+      // Mock: only TEST is closed, DB is open
+      restoreExecutor = setGhExecutor(async (args: string[]) => {
+        if (args[0] === "auth") return "Logged in";
+        if (args[0] === "issue" && args[1] === "view") {
+          const num = parseInt(args[2], 10);
+          return JSON.stringify({
+            number: num,
+            title: `Task #${num}`,
+            state: num === 10 ? "CLOSED" : "OPEN",
+            labels: [],
+          });
+        }
+        return "";
+      });
+
+      const result = await syncRunStateFromGitHub(tmpDir);
+      expect(result.created).toBe(false);
+      expect(result.updated).toBe(1); // only AUTH-001-TEST
+
+      const updated = loadRunState(tmpDir);
+      const testTask = updated?.tasks.find((t) => t.taskId === "AUTH-001-TEST");
+      const dbTask = updated?.tasks.find((t) => t.taskId === "AUTH-001-DB");
+      expect(testTask?.status).toBe("done");
+      expect(dbTask?.status).toBe("backlog");
+    });
+
+    it("does not re-update already done tasks", async () => {
+      const plan = makePlan();
+      savePlan(tmpDir, plan);
+
+      // Create run-state with one task already done
+      const state = initRunStateFromPlan(plan);
+      state.tasks[0].status = "done";
+      state.tasks[0].completedAt = "2026-01-01T00:00:00.000Z";
+      saveRunState(tmpDir, state);
+
+      // Create sync state
+      const syncState = createSyncState("owner/repo");
+      syncState.featureIssues = [
+        {
+          featureId: "AUTH-001",
+          parentIssueNumber: 1,
+          taskIssues: [
+            { taskId: "AUTH-001-TEST", issueNumber: 10 },
+          ],
+        },
+      ];
+      saveSyncState(tmpDir, syncState);
+
+      restoreExecutor = setGhExecutor(async (args: string[]) => {
+        if (args[0] === "auth") return "Logged in";
+        if (args[0] === "issue" && args[1] === "view") {
+          return JSON.stringify({
+            number: 10,
+            title: "Task #10",
+            state: "CLOSED",
+            labels: [],
+          });
+        }
+        return "";
+      });
+
+      const result = await syncRunStateFromGitHub(tmpDir);
+      expect(result.updated).toBe(0); // already done, no update
+
+      // Verify original completedAt preserved
+      const updated = loadRunState(tmpDir);
+      const task = updated?.tasks.find((t) => t.taskId === "AUTH-001-TEST");
+      expect(task?.completedAt).toBe("2026-01-01T00:00:00.000Z");
     });
   });
 });
