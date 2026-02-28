@@ -55,6 +55,9 @@ export interface PlanState {
   generatedAt: string;
   updatedAt: string;
   waves: Wave[];
+  /** Flattened list of all tasks across all waves, in execution order.
+   * Optional for backward compatibility with plan.json files generated before this field was added. */
+  tasks?: Task[];
   circularDependencies: string[][];
 }
 
@@ -335,7 +338,12 @@ export function loadPlan(projectDir: string): PlanState | null {
   const filePath = path.join(projectDir, PLAN_FILE);
   if (!fs.existsSync(filePath)) return null;
   const raw = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(raw) as PlanState;
+  const parsed = JSON.parse(raw) as PlanState;
+  // Backward compat: older plan.json files may not have the tasks field
+  if (!parsed.tasks) {
+    parsed.tasks = [];
+  }
+  return parsed;
 }
 
 export function savePlan(projectDir: string, plan: PlanState): void {

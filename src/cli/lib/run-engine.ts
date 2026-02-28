@@ -524,8 +524,24 @@ export function initRunStateFromPlan(
   options: InitRunStateOptions = {},
 ): RunState {
   const state = createRunState();
-  const profileType = options.profileType ?? "app";
 
+  // Fast path: use pre-computed tasks from plan.json (profile-aware order already applied)
+  if (plan.tasks && plan.tasks.length > 0) {  // plan.tasks is optional for backward compat
+    for (const task of plan.tasks) {
+      state.tasks.push({
+        taskId: task.id,
+        featureId: task.featureId,
+        taskKind: task.kind,
+        name: task.name,
+        status: "backlog",
+        files: [],
+      });
+    }
+    return state;
+  }
+
+  // Fallback: older plan.json without tasks field (backward compatibility)
+  const profileType = options.profileType ?? "app";
   for (const wave of plan.waves) {
     for (const feature of wave.features) {
       // Determine task order mode based on profile and feature type
