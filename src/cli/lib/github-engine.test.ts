@@ -17,6 +17,7 @@ import {
   extractIssueNumber,
   syncPlanToGitHub,
   closeTaskIssue,
+  labelTaskIssue,
   syncStatusFromGitHub,
   listAllIssues,
   isGhAvailable,
@@ -580,6 +581,81 @@ describe("closeTaskIssue", () => {
 });
 
 // ─────────────────────────────────────────────
+// labelTaskIssue
+// ─────────────────────────────────────────────
+
+describe("labelTaskIssue", () => {
+  it("adds label to issue via gh CLI", async () => {
+    const syncState = createSyncState("owner/repo");
+    syncState.featureIssues = [
+      {
+        featureId: "FEAT-001",
+        parentIssueNumber: 10,
+        taskIssues: [
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+        ],
+      },
+    ];
+    saveSyncState(tmpDir, syncState);
+
+    const editedIssues: { number: number; label: string }[] = [];
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "issue" && args[1] === "edit") {
+        const num = parseInt(args[2], 10);
+        const labelIdx = args.indexOf("--add-label");
+        const label = labelIdx >= 0 ? args[labelIdx + 1] : "";
+        editedIssues.push({ number: num, label });
+      }
+      return "";
+    });
+
+    const result = await labelTaskIssue(tmpDir, "FEAT-001-DB", "failed");
+    expect(result.labeled).toBe(true);
+    expect(editedIssues).toContainEqual({ number: 11, label: "failed" });
+  });
+
+  it("returns error when no sync state exists", async () => {
+    const result = await labelTaskIssue(tmpDir, "FEAT-001-DB", "failed");
+    expect(result.labeled).toBe(false);
+    expect(result.error).toBe("No sync state");
+  });
+
+  it("returns error when task has no mapping", async () => {
+    const syncState = createSyncState("owner/repo");
+    saveSyncState(tmpDir, syncState);
+
+    const result = await labelTaskIssue(tmpDir, "FEAT-999-DB", "failed");
+    expect(result.labeled).toBe(false);
+    expect(result.error).toContain("No issue mapping");
+  });
+
+  it("handles gh CLI failure gracefully", async () => {
+    const syncState = createSyncState("owner/repo");
+    syncState.featureIssues = [
+      {
+        featureId: "FEAT-001",
+        parentIssueNumber: 10,
+        taskIssues: [
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+        ],
+      },
+    ];
+    saveSyncState(tmpDir, syncState);
+
+    restoreExecutor = mockGhWithErrors((args) => {
+      if (args[0] === "issue" && args[1] === "edit") {
+        return new Error("network error");
+      }
+      return "";
+    });
+
+    const result = await labelTaskIssue(tmpDir, "FEAT-001-DB", "failed");
+    expect(result.labeled).toBe(false);
+    expect(result.error).toContain("network error");
+  });
+});
+
+// ─────────────────────────────────────────────
 // syncStatusFromGitHub
 // ─────────────────────────────────────────────
 
@@ -615,7 +691,7 @@ describe("syncStatusFromGitHub", () => {
     expect(result.errors[0]).toContain("No GitHub sync state");
   });
 
-  it("returns live task statuses from GitHub via batch fetch", async () => {
+  it("returns live task statuses with labels from GitHub via batch fetch", async () => {
     const syncState = createSyncState("owner/repo");
     syncState.featureIssues = [
       {
@@ -634,7 +710,7 @@ describe("syncStatusFromGitHub", () => {
         return JSON.stringify([
           { number: 10, title: "Feature", state: "OPEN", labels: [] },
           { number: 11, title: "DB Task", state: "CLOSED", labels: [] },
-          { number: 12, title: "API Task", state: "OPEN", labels: [] },
+          { number: 12, title: "API Task", state: "OPEN", labels: [{ name: "failed" }] },
         ]);
       }
       return "";
@@ -643,8 +719,14 @@ describe("syncStatusFromGitHub", () => {
     const result = await syncStatusFromGitHub(tmpDir);
     expect(result.updated).toBe(2);
     expect(result.issues).toHaveLength(2);
-    expect(result.issues.find(i => i.taskId === "FEAT-001-DB")?.status).toBe("closed");
-    expect(result.issues.find(i => i.taskId === "FEAT-001-API")?.status).toBe("open");
+
+    const dbIssue = result.issues.find(i => i.taskId === "FEAT-001-DB");
+    expect(dbIssue?.status).toBe("closed");
+    expect(dbIssue?.labels).toEqual([]);
+
+    const apiIssue = result.issues.find(i => i.taskId === "FEAT-001-API");
+    expect(apiIssue?.status).toBe("open");
+    expect(apiIssue?.labels).toEqual(["failed"]);
   });
 
   it("reports error for issues not found in batch results", async () => {

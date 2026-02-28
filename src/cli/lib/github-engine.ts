@@ -657,6 +657,7 @@ export async function syncStatusFromGitHub(
           taskId: task.taskId,
           issueNumber: task.issueNumber,
           status: ghIssue.state,
+          labels: ghIssue.labels,
         });
       } else {
         errors.push(
@@ -698,6 +699,45 @@ export async function closeTaskIssue(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     return { closed: false, error: msg };
+  }
+}
+
+/**
+ * Add a label to a GitHub Issue (e.g. "failed").
+ * Does not close the issue — keeps it open for re-execution.
+ * Graceful degradation: returns false on failure.
+ */
+export async function labelTaskIssue(
+  projectDir: string,
+  taskId: string,
+  label: string,
+): Promise<{ labeled: boolean; error?: string }> {
+  try {
+    const syncState = loadSyncState(projectDir);
+    if (!syncState) {
+      return { labeled: false, error: "No sync state" };
+    }
+
+    const issueNumber = findTaskIssueNumber(syncState, taskId);
+    if (!issueNumber) {
+      return { labeled: false, error: `No issue mapping for ${taskId}` };
+    }
+
+    await ensureLabels(syncState.repo, [label]);
+    await execGh([
+      "issue",
+      "edit",
+      String(issueNumber),
+      "--repo",
+      syncState.repo,
+      "--add-label",
+      label,
+    ]);
+
+    return { labeled: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { labeled: false, error: msg };
   }
 }
 
