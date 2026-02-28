@@ -595,6 +595,7 @@ describe("syncPlanToGitHub", () => {
         dependencyCount: 0,
       },
     ];
+    const tasks = features.flatMap((f) => decomposeFeature(f));
     const plan: PlanState = {
       status: "generated",
       generatedAt: "",
@@ -602,6 +603,7 @@ describe("syncPlanToGitHub", () => {
       waves: [
         { number: 1, phase: "common", title: "W1", features },
       ],
+      tasks,
       circularDependencies: [],
     };
 

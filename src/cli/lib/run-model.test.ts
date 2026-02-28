@@ -24,6 +24,7 @@ function makeTask(overrides?: Partial<TaskExecution>): TaskExecution {
     taskKind: "db",
     name: "Feature 1 - Database",
     status: "backlog",
+    blockedBy: [],
     files: [],
     ...overrides,
   };

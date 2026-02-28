@@ -72,6 +72,8 @@ export interface TaskExecution {
   taskKind: string;
   name: string;
   status: TaskExecutionStatus;
+  /** Task IDs that must complete before this task can start */
+  blockedBy: string[];
   prompt?: string;
   files: ModifiedFile[];
   auditScore?: number;

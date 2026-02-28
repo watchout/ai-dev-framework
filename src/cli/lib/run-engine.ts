@@ -622,6 +622,7 @@ export function initRunStateFromPlan(plan: PlanState): RunState {
       taskKind: task.kind,
       name: task.name,
       status: "backlog",
+      blockedBy: task.blockedBy,
       files: [],
     });
   }
