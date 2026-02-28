@@ -511,6 +511,104 @@ describe("syncPlanToGitHub", () => {
     expect(capturedBodies[0]).toContain("## Tasks");
     expect(capturedBodies[0]).toContain("FEAT-X-DB");
   });
+
+  it("recovers from partial failure: re-run creates only missing task issues", async () => {
+    // Simulate partial failure: parent + 2 tasks were created, then process crashed.
+    // Sync state was saved incrementally, so it has parent + 2 task mappings.
+    const existingState = createSyncState("owner/repo");
+    existingState.featureIssues = [
+      {
+        featureId: "FEAT-001",
+        parentIssueNumber: 10,
+        taskIssues: [
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+          { taskId: "FEAT-001-API", issueNumber: 12 },
+        ],
+      },
+    ];
+    saveSyncState(tmpDir, existingState);
+
+    let issueCounter = 20;
+    const createdTitles: string[] = [];
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "issue" && args[1] === "create") {
+        issueCounter++;
+        const titleIdx = args.indexOf("--title");
+        if (titleIdx >= 0) createdTitles.push(args[titleIdx + 1]);
+        return `https://github.com/owner/repo/issues/${issueCounter}`;
+      }
+      return "";
+    });
+
+    const plan = createTestPlan();
+    const result = await syncPlanToGitHub(tmpDir, plan, {
+      repo: "owner/repo",
+    });
+
+    // FEAT-001: parent reused (not counted), DB skipped, API skipped, 4 remaining tasks created
+    // FEAT-002: parent + 6 tasks created = 7
+    expect(result.skipped).toBe(2); // DB + API
+    expect(result.created).toBe(11); // 4 remaining FEAT-001 tasks + 7 FEAT-002
+
+    // Verify DB and API were NOT re-created
+    expect(createdTitles).not.toContain(expect.stringContaining("FEAT-001-DB"));
+    expect(createdTitles).not.toContain(expect.stringContaining("FEAT-001-API"));
+
+    // Verify sync state is complete
+    const syncState = loadSyncState(tmpDir);
+    const feat001 = syncState!.featureIssues.find((f) => f.featureId === "FEAT-001");
+    expect(feat001!.taskIssues).toHaveLength(6);
+    expect(feat001!.parentIssueNumber).toBe(10);
+  });
+
+  it("saves sync state incrementally after each issue creation", async () => {
+    let issueCounter = 0;
+    let saveCount = 0;
+    const originalLoadSyncState = loadSyncState;
+
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "issue" && args[1] === "create") {
+        issueCounter++;
+        // Check that sync state has been saved after previous creation
+        if (issueCounter > 1) {
+          const state = originalLoadSyncState(tmpDir);
+          if (state && state.featureIssues.length > 0) {
+            saveCount++;
+          }
+        }
+        return `https://github.com/owner/repo/issues/${issueCounter}`;
+      }
+      return "";
+    });
+
+    const features: Feature[] = [
+      {
+        id: "FEAT-010",
+        name: "Test",
+        priority: "P0",
+        size: "S",
+        type: "common",
+        dependencies: [],
+        dependencyCount: 0,
+      },
+    ];
+    const plan: PlanState = {
+      status: "generated",
+      generatedAt: "",
+      updatedAt: "",
+      waves: [
+        { number: 1, phase: "common", title: "W1", features },
+      ],
+      circularDependencies: [],
+    };
+
+    await syncPlanToGitHub(tmpDir, plan, { repo: "o/r" });
+
+    // After parent creation (issue #1), sync state should be saved.
+    // Then after each of the 6 task creations, sync state is saved again.
+    // So when issue #2 is created, we should see the parent already in sync state.
+    expect(saveCount).toBeGreaterThan(0);
+  });
 });
 
 // ─────────────────────────────────────────────

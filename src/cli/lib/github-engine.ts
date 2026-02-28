@@ -475,20 +475,35 @@ export async function syncPlanToGitHub(
         // Decompose feature into tasks
         const tasks = decomposeFeature(feature);
 
-        // Create parent issue (if not exists)
-        let parentIssueNumber: number;
-        if (existing?.parentIssueNumber) {
-          parentIssueNumber = existing.parentIssueNumber;
-          log(`  [skip] ${feature.id} parent: #${parentIssueNumber}`);
+        // Reuse or create feature mapping (register immediately for crash recovery)
+        let featureMap: FeatureIssueMap;
+        if (existing) {
+          featureMap = existing;
         } else {
-          parentIssueNumber = await createFeatureIssue(
+          featureMap = {
+            featureId: feature.id,
+            parentIssueNumber: 0, // placeholder until parent is created
+            taskIssues: [],
+          };
+          syncState.featureIssues.push(featureMap);
+        }
+
+        // Create parent issue (if not exists)
+        if (featureMap.parentIssueNumber) {
+          log(`  [skip] ${feature.id} parent: #${featureMap.parentIssueNumber}`);
+        } else {
+          const parentIssueNumber = await createFeatureIssue(
             repo,
             feature,
             wave.number,
             tasks,
           );
+          featureMap.parentIssueNumber = parentIssueNumber;
           created++;
           log(`  [created] ${feature.id} → #${parentIssueNumber}`);
+
+          // Save incrementally so parent mapping survives crashes
+          saveSyncState(projectDir, syncState);
 
           // Throttle to avoid rate limits (1s between creations)
           await _sleep(1000);
@@ -503,12 +518,6 @@ export async function syncPlanToGitHub(
         }
 
         // Create task issues
-        const featureMap: FeatureIssueMap = existing ?? {
-          featureId: feature.id,
-          parentIssueNumber,
-          taskIssues: [],
-        };
-
         for (const task of tasks) {
           // Skip if task already has mapping
           const existingTask = featureMap.taskIssues.find(
@@ -525,7 +534,7 @@ export async function syncPlanToGitHub(
               feature,
               task,
               wave.number,
-              parentIssueNumber,
+              featureMap.parentIssueNumber,
             );
             featureMap.taskIssues.push({
               taskId: task.id,
@@ -533,6 +542,9 @@ export async function syncPlanToGitHub(
             });
             created++;
             log(`  [created] ${task.id} → #${taskIssueNumber}`);
+
+            // Save incrementally after each task for crash recovery
+            saveSyncState(projectDir, syncState);
 
             // Throttle to avoid rate limits (1s between creations)
             await _sleep(1000);
@@ -546,11 +558,6 @@ export async function syncPlanToGitHub(
               err instanceof Error ? err.message : String(err);
             errors.push(`Failed to create issue for ${task.id}: ${msg}`);
           }
-        }
-
-        // Update or add feature mapping
-        if (!existing) {
-          syncState.featureIssues.push(featureMap);
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
