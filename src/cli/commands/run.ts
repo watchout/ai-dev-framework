@@ -13,6 +13,7 @@ import {
   completeTaskNonInteractive,
   completeFeatureNonInteractive,
   completeWaveNonInteractive,
+  syncRunStateFromGitHub,
 } from "../lib/run-engine.js";
 import {
   loadRunState,
@@ -88,6 +89,9 @@ export function registerRunCommand(program: Command): void {
             if (result.issueClosed) {
               logger.info(`  GitHub Issue closed for ${taskId}`);
             }
+            if (result.parentClosed) {
+              logger.info(`  GitHub parent Issue closed (all feature tasks done)`);
+            }
             return;
           }
 
@@ -112,6 +116,9 @@ export function registerRunCommand(program: Command): void {
             );
             if (result.issuesClosed > 0) {
               logger.info(`  ${result.issuesClosed} GitHub Issues closed`);
+            }
+            if (result.parentClosed) {
+              logger.info(`  GitHub parent Issue closed for ${taskId}`);
             }
             return;
           }
@@ -143,7 +150,22 @@ export function registerRunCommand(program: Command): void {
             if (result.issuesClosed > 0) {
               logger.info(`  ${result.issuesClosed} GitHub Issues closed`);
             }
+            if (result.parentClosed) {
+              logger.info(`  GitHub parent Issue(s) closed`);
+            }
             return;
+          }
+
+          // ── Pre-run: sync GitHub → run-state (graceful) ──
+          try {
+            const syncResult = await syncRunStateFromGitHub(projectDir);
+            if (syncResult.updated > 0) {
+              logger.info(
+                `  GitHub sync: ${syncResult.updated} tasks updated from GitHub`,
+              );
+            }
+          } catch {
+            // Silently ignore — GitHub sync is optional
           }
 
           // ── Pre-Code Gate enforcement ──

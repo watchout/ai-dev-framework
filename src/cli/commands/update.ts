@@ -7,6 +7,7 @@
  * Usage:
  *   framework update [path]           Update framework docs
  *   framework update [path] --status  Show current framework version
+ *   framework update --all            Update all registered projects
  */
 import * as path from "node:path";
 import { type Command } from "commander";
@@ -36,11 +37,71 @@ export function registerUpdateCommand(program: Command): void {
       "Path to project (default: current directory)",
     )
     .option("--status", "Show current framework version info")
+    .option("--all", "Update all registered projects")
     .action(
       async (
         targetPath: string | undefined,
-        options: { status?: boolean },
+        options: { status?: boolean; all?: boolean },
       ) => {
+        // --all: update all registered projects
+        if (options.all) {
+          try {
+            const { listRegisteredProjects } = await import(
+              "../lib/projects-engine.js"
+            );
+            const { projects, warnings } = listRegisteredProjects();
+
+            if (projects.length === 0) {
+              logger.info("No registered projects. Use 'framework projects register' first.");
+              return;
+            }
+
+            for (const w of warnings) {
+              logger.warn(w);
+            }
+
+            logger.header("Update All Registered Projects");
+            logger.info("");
+
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const project of projects) {
+              logger.info(`  Updating: ${project.name} (${project.path})`);
+              try {
+                const result = await fetchFrameworkDocs(project.path, {
+                  force: true,
+                });
+                if (result.errors.length > 0) {
+                  for (const err of result.errors) {
+                    logger.error(`    ${err}`);
+                  }
+                  failCount++;
+                } else {
+                  logger.success(`    Updated ${result.copiedFiles.length} files`);
+                  successCount++;
+                }
+              } catch (err) {
+                const msg = err instanceof Error ? err.message : "unknown error";
+                logger.error(`    Failed: ${msg}`);
+                failCount++;
+              }
+            }
+
+            logger.info("");
+            logger.info(`  Results: ${successCount} succeeded, ${failCount} failed`);
+            if (failCount > 0) {
+              process.exit(1);
+            }
+          } catch (error) {
+            if (error instanceof Error) {
+              logger.error(error.message);
+            }
+            process.exit(1);
+          }
+          return;
+        }
+
         const projectDir = targetPath
           ? path.resolve(process.cwd(), targetPath)
           : process.cwd();

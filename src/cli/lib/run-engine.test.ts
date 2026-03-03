@@ -634,6 +634,124 @@ describe("run-engine", () => {
     });
   });
 
+  describe("parent feature issue auto-close", () => {
+    let restoreExecutor: () => void;
+    let restoreSleep: () => void;
+
+    beforeEach(() => {
+      restoreSleep = setSleepFn(async () => {});
+    });
+
+    afterEach(() => {
+      restoreExecutor?.();
+      restoreSleep?.();
+    });
+
+    it("closes parent issue when last task of feature is completed", async () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "done", blockedBy: [], files: [] },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", blockedBy: [], files: [] },
+      ];
+      saveRunState(tmpDir, state);
+
+      // Set up sync state
+      const syncState = createSyncState("owner/repo");
+      syncState.featureIssues = [
+        {
+          featureId: "F1",
+          parentIssueNumber: 1,
+          taskIssues: [
+            { taskId: "F1-DB", issueNumber: 10 },
+            { taskId: "F1-API", issueNumber: 11 },
+          ],
+        },
+      ];
+      saveSyncState(tmpDir, syncState);
+
+      const closedIssues: number[] = [];
+      restoreExecutor = setGhExecutor(async (args: string[]) => {
+        if (args.includes("close")) {
+          closedIssues.push(parseInt(args[args.indexOf("close") + 1], 10));
+        }
+        return "";
+      });
+
+      const result = await completeTaskNonInteractive(tmpDir, "F1-API");
+      expect(result.error).toBeUndefined();
+      expect(result.parentClosed).toBe(true);
+      expect(closedIssues).toContain(1); // parent issue #1
+    });
+
+    it("does not close parent when other tasks remain", async () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "backlog", blockedBy: [], files: [] },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", blockedBy: [], files: [] },
+      ];
+      saveRunState(tmpDir, state);
+
+      const syncState = createSyncState("owner/repo");
+      syncState.featureIssues = [
+        {
+          featureId: "F1",
+          parentIssueNumber: 1,
+          taskIssues: [
+            { taskId: "F1-DB", issueNumber: 10 },
+            { taskId: "F1-API", issueNumber: 11 },
+          ],
+        },
+      ];
+      saveSyncState(tmpDir, syncState);
+
+      const closedIssues: number[] = [];
+      restoreExecutor = setGhExecutor(async (args: string[]) => {
+        if (args.includes("close")) {
+          closedIssues.push(parseInt(args[args.indexOf("close") + 1], 10));
+        }
+        return "";
+      });
+
+      const result = await completeTaskNonInteractive(tmpDir, "F1-DB");
+      expect(result.parentClosed).toBeFalsy();
+      expect(closedIssues).not.toContain(1);
+    });
+
+    it("closes parent when completing all feature tasks at once", async () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "F1 DB", status: "backlog", blockedBy: [], files: [] },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "F1 API", status: "backlog", blockedBy: [], files: [] },
+      ];
+      saveRunState(tmpDir, state);
+
+      const syncState = createSyncState("owner/repo");
+      syncState.featureIssues = [
+        {
+          featureId: "F1",
+          parentIssueNumber: 1,
+          taskIssues: [
+            { taskId: "F1-DB", issueNumber: 10 },
+            { taskId: "F1-API", issueNumber: 11 },
+          ],
+        },
+      ];
+      saveSyncState(tmpDir, syncState);
+
+      const closedIssues: number[] = [];
+      restoreExecutor = setGhExecutor(async (args: string[]) => {
+        if (args.includes("close")) {
+          closedIssues.push(parseInt(args[args.indexOf("close") + 1], 10));
+        }
+        return "";
+      });
+
+      const result = await completeFeatureNonInteractive(tmpDir, "F1");
+      expect(result.parentClosed).toBe(true);
+      expect(closedIssues).toContain(1);
+    });
+  });
+
   describe("syncRunStateFromGitHub", () => {
     let restoreExecutor: () => void;
     let restoreSleep: () => void;

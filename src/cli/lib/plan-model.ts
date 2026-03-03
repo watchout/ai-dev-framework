@@ -28,6 +28,8 @@ export interface Feature {
   dependencies: string[];
   /** Number of other features that depend on this one */
   dependencyCount: number;
+  /** Resolved SSOT file path (e.g. docs/design/features/common/AUTH-001_login.md) */
+  ssotFile?: string;
 }
 
 export interface Task {

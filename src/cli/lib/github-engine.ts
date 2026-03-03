@@ -737,6 +737,34 @@ export async function closeTaskIssue(
 }
 
 /**
+ * Close a parent Feature Issue when all tasks are completed.
+ * Silently returns on failure (graceful degradation).
+ */
+export async function closeFeatureIssue(
+  projectDir: string,
+  featureId: string,
+): Promise<{ closed: boolean; error?: string }> {
+  try {
+    const syncState = loadSyncState(projectDir);
+    if (!syncState) {
+      return { closed: false, error: "No sync state" };
+    }
+
+    const featureMap = findFeatureMapping(syncState, featureId);
+    if (!featureMap || !featureMap.parentIssueNumber) {
+      return { closed: false, error: `No issue mapping for feature ${featureId}` };
+    }
+
+    await closeIssue(syncState.repo, featureMap.parentIssueNumber);
+
+    return { closed: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { closed: false, error: msg };
+  }
+}
+
+/**
  * Add a label to a GitHub Issue (e.g. "failed").
  * Does not close the issue — keeps it open for re-execution.
  * Graceful degradation: returns false on failure.
@@ -1027,14 +1055,25 @@ export function extractIssueNumber(ghOutput: string): number {
  * Construct SSOT document path for a feature.
  * Format: docs/design/features/{common|project}/FEAT-XXX_{name-slug}.md
  * Per specs/05_IMPLEMENTATION.md Part 3 Issue Template.
+ *
+ * Priority: feature.ssotFile (resolved from disk) → fallback using feature.id as slug.
+ * This avoids broken paths when feature.name contains non-ASCII characters (e.g. Japanese).
  */
-function constructSsotPath(feature: Feature): string {
+export function constructSsotPath(feature: Feature): string {
+  // Use pre-resolved file path if available
+  if (feature.ssotFile) {
+    return feature.ssotFile;
+  }
+
   const typeDir = feature.type === "common" ? "common" : "project";
   const slug = feature.name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_|_$/g, "");
-  return `docs/design/features/${typeDir}/${feature.id}_${slug}.md`;
+
+  // Fallback: if slug is empty (e.g. Japanese-only name), use lowercased feature ID
+  const effectiveSlug = slug || feature.id.toLowerCase();
+  return `docs/design/features/${typeDir}/${feature.id}_${effectiveSlug}.md`;
 }
 
 /**
