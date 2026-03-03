@@ -226,7 +226,8 @@ describe("approveProposal", () => {
 
     const result = approveProposal(tmpDir, "P1");
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("Failed to apply diff");
+    // /dev/null/impossible/file.txt はプロジェクトディレクトリ外なのでパストラバーサルエラー
+    expect(result.error).toMatch(/outside project directory|Failed to apply diff/);
   });
 });
 

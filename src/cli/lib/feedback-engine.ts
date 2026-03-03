@@ -6,7 +6,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { execSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import type { Proposal, ProposalStore } from "./feedback-model.js";
 
 // ─────────────────────────────────────────────
@@ -71,6 +71,10 @@ export function approveProposal(
   // Apply diff to target file
   try {
     const targetPath = path.resolve(dir, proposal.proposedChange.target);
+    // S-R3-2: パストラバーサル防御
+    if (!targetPath.startsWith(path.resolve(dir) + path.sep)) {
+      return { ok: false, error: "Target path is outside project directory" };
+    }
     applyDiff(targetPath, proposal.proposedChange.diff);
   } catch (err) {
     return {
@@ -84,10 +88,16 @@ export function approveProposal(
   proposal.approvedAt = new Date().toISOString();
   saveProposals(dir, store);
 
-  // Git commit (best effort)
+  // Git commit (best effort) — spawnSync to avoid shell injection
   try {
-    execSync(
-      `git add "${proposal.proposedChange.target}" "${PROPOSALS_FILE}" && git commit -m "feedback: apply proposal ${proposal.id} - ${proposal.title}"`,
+    spawnSync("git", ["add", proposal.proposedChange.target, PROPOSALS_FILE], {
+      cwd: dir,
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+    spawnSync(
+      "git",
+      ["commit", "-m", `feedback: apply proposal ${proposal.id} - ${proposal.title}`],
       { cwd: dir, encoding: "utf-8", timeout: 10000 },
     );
   } catch {
