@@ -17,6 +17,7 @@ import {
   extractIssueNumber,
   syncPlanToGitHub,
   closeTaskIssue,
+  closeFeatureIssue,
   labelTaskIssue,
   syncStatusFromGitHub,
   listAllIssues,
@@ -24,6 +25,7 @@ import {
   configureProjectBoard,
   generateFeatureIssueBody,
   generateTaskIssueBody,
+  constructSsotPath,
   setGhExecutor,
   setSleepFn,
   type GhExecutor,
@@ -1092,5 +1094,120 @@ describe("generateTaskIssueBody", () => {
     expect(body1).toContain("### Branch");
     expect(body1).toContain("`feature/feat-001-db`");
     expect(body1).toContain("Parent: #42");
+  });
+});
+
+// ─────────────────────────────────────────────
+// constructSsotPath (P0: Japanese name bug fix)
+// ─────────────────────────────────────────────
+
+describe("constructSsotPath", () => {
+  it("uses ssotFile when available", () => {
+    const feature: Feature = {
+      id: "AUTH-001",
+      name: "ログイン機能",
+      priority: "P0",
+      size: "M",
+      type: "common",
+      dependencies: [],
+      dependencyCount: 0,
+      ssotFile: "docs/design/features/common/AUTH-001_login.md",
+    };
+    expect(constructSsotPath(feature)).toBe(
+      "docs/design/features/common/AUTH-001_login.md",
+    );
+  });
+
+  it("falls back to feature.id when name is Japanese-only", () => {
+    const feature: Feature = {
+      id: "AUTH-001",
+      name: "ログイン機能",
+      priority: "P0",
+      size: "M",
+      type: "common",
+      dependencies: [],
+      dependencyCount: 0,
+    };
+    expect(constructSsotPath(feature)).toBe(
+      "docs/design/features/common/AUTH-001_auth-001.md",
+    );
+  });
+
+  it("uses name slug for ASCII names without ssotFile", () => {
+    const feature: Feature = {
+      id: "FEAT-050",
+      name: "Payment Processing",
+      priority: "P0",
+      size: "M",
+      type: "proprietary",
+      dependencies: [],
+      dependencyCount: 0,
+    };
+    expect(constructSsotPath(feature)).toBe(
+      "docs/design/features/project/FEAT-050_payment_processing.md",
+    );
+  });
+
+  it("handles mixed Japanese and ASCII name", () => {
+    const feature: Feature = {
+      id: "NOTIF-001",
+      name: "通知 Notification",
+      priority: "P1",
+      size: "S",
+      type: "common",
+      dependencies: [],
+      dependencyCount: 0,
+    };
+    // ASCII part "notification" should be extracted
+    expect(constructSsotPath(feature)).toBe(
+      "docs/design/features/common/NOTIF-001_notification.md",
+    );
+  });
+});
+
+// ─────────────────────────────────────────────
+// closeFeatureIssue (P1-A: parent auto-close)
+// ─────────────────────────────────────────────
+
+describe("closeFeatureIssue", () => {
+  it("closes parent issue when feature ID is found", async () => {
+    const syncState = createSyncState("owner/repo");
+    syncState.featureIssues = [
+      {
+        featureId: "FEAT-001",
+        parentIssueNumber: 10,
+        taskIssues: [
+          { taskId: "FEAT-001-DB", issueNumber: 11 },
+        ],
+      },
+    ];
+    saveSyncState(tmpDir, syncState);
+
+    const closedIssues: number[] = [];
+    restoreExecutor = mockGh((args) => {
+      if (args.includes("close")) {
+        closedIssues.push(parseInt(args[args.indexOf("close") + 1], 10));
+      }
+      return "";
+    });
+
+    const result = await closeFeatureIssue(tmpDir, "FEAT-001");
+    expect(result.closed).toBe(true);
+    expect(closedIssues).toContain(10);
+  });
+
+  it("returns error when no sync state exists", async () => {
+    const result = await closeFeatureIssue(tmpDir, "FEAT-001");
+    expect(result.closed).toBe(false);
+    expect(result.error).toBe("No sync state");
+  });
+
+  it("returns error when feature has no mapping", async () => {
+    const syncState = createSyncState("owner/repo");
+    saveSyncState(tmpDir, syncState);
+
+    const result = await closeFeatureIssue(tmpDir, "FEAT-999");
+    expect(result.closed).toBe(false);
+    expect(result.error).toContain("No issue mapping");
   });
 });

@@ -20,6 +20,8 @@ import { registerVisualTestCommand } from "./commands/visual-test.js";
 import { registerAcceptCommand } from "./commands/accept.js";
 import { registerDeployCommand } from "./commands/deploy.js";
 import { registerGateCommand } from "./commands/gate.js";
+import { registerFeedbackCommand } from "./commands/feedback.js";
+import { registerProjectsCommand } from "./commands/projects.js";
 
 const program = new Command();
 
@@ -43,6 +45,8 @@ registerStatusCommand(program);
 // Project management
 registerRetrofitCommand(program);
 registerUpdateCommand(program);
+registerFeedbackCommand(program);
+registerProjectsCommand(program);
 
 // Verification & quality
 registerCheckpointCommand(program);

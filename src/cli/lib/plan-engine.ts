@@ -169,6 +169,9 @@ export async function runPlanEngine(
   // Print plan
   printPlan(io, waves, cycles);
 
+  // Resolve SSOT file paths for each feature
+  resolveSsotFiles(projectDir, waves);
+
   // Decompose all features into tasks (profile-aware, single source of truth)
   const profileType = options.profileType ?? loadProfileType(projectDir) ?? "app";
   const allTasks: Task[] = [];
@@ -406,6 +409,46 @@ export function generatePlanMarkdown(plan: PlanState): string {
   );
 
   return lines.join("\n");
+}
+
+/**
+ * Scan docs/design/features/ to resolve actual SSOT file paths for features.
+ * Matches files by feature ID prefix (e.g. AUTH-001_*.md).
+ */
+export function resolveSsotFiles(projectDir: string, waves: Wave[]): void {
+  const featuresDir = path.join(projectDir, "docs/design/features");
+  if (!fs.existsSync(featuresDir)) return;
+
+  // Build a map: featureId → relative file path
+  const fileMap = new Map<string, string>();
+  for (const subDir of ["common", "project"]) {
+    const dir = path.join(featuresDir, subDir);
+    if (!fs.existsSync(dir)) continue;
+    try {
+      const files = fs.readdirSync(dir);
+      for (const file of files) {
+        if (!file.endsWith(".md")) continue;
+        // Extract feature ID: everything before the first underscore
+        const underscoreIdx = file.indexOf("_");
+        const featureId = underscoreIdx > 0
+          ? file.slice(0, underscoreIdx)
+          : file.replace(/\.md$/, "");
+        fileMap.set(featureId, `docs/design/features/${subDir}/${file}`);
+      }
+    } catch {
+      // Ignore read errors
+    }
+  }
+
+  // Assign ssotFile to matching features
+  for (const wave of waves) {
+    for (const feature of wave.features) {
+      const resolved = fileMap.get(feature.id);
+      if (resolved) {
+        feature.ssotFile = resolved;
+      }
+    }
+  }
 }
 
 function createEmptyPlan(): PlanState {

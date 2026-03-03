@@ -44,7 +44,7 @@ import {
   type Task,
   loadPlan,
 } from "./plan-model.js";
-import { closeTaskIssue, labelTaskIssue, syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
+import { closeTaskIssue, closeFeatureIssue, labelTaskIssue, syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
 import { loadSyncState } from "./github-model.js";
 
 // ─────────────────────────────────────────────
@@ -317,6 +317,16 @@ export async function runTask(
     // Silently ignore — GitHub sync is optional
   }
 
+  // Close parent Feature Issue if all tasks for this feature are done
+  try {
+    const parentClosed = await tryCloseParentIssue(state, task.featureId, projectDir);
+    if (parentClosed) {
+      io.print(`  GitHub: Parent issue closed for ${task.featureId}`);
+    }
+  } catch {
+    // Silently ignore
+  }
+
   // Progress summary
   const progress = calculateProgress(state);
   const doneCount = state.tasks.filter((t) => t.status === "done").length;
@@ -341,6 +351,7 @@ export interface CompleteResult {
   error?: string;
   progress: number;
   issueClosed: boolean;
+  parentClosed?: boolean;
 }
 
 /**
@@ -386,9 +397,18 @@ export async function completeTaskNonInteractive(
     // Silently ignore
   }
 
+  // Close parent Feature Issue if all tasks for this feature are done
+  let parentClosed = false;
+  try {
+    parentClosed = await tryCloseParentIssue(state, task.featureId, projectDir);
+  } catch {
+    // Silently ignore
+  }
+
   return {
     progress: calculateProgress(state),
     issueClosed,
+    parentClosed,
   };
 }
 
@@ -398,6 +418,7 @@ export interface BatchCompleteResult {
   skipped: number;
   progress: number;
   issuesClosed: number;
+  parentClosed?: boolean;
 }
 
 /**
@@ -444,8 +465,16 @@ export async function completeFeatureNonInteractive(
     }
   }
 
+  // Close parent Feature Issue (all tasks are now done)
+  let parentClosed = false;
+  try {
+    parentClosed = await tryCloseParentIssue(state, featureId, projectDir);
+  } catch {
+    // Silently ignore
+  }
+
   saveRunState(projectDir, state);
-  return { completed, skipped, progress: calculateProgress(state), issuesClosed };
+  return { completed, skipped, progress: calculateProgress(state), issuesClosed, parentClosed };
 }
 
 /**
@@ -500,8 +529,19 @@ export async function completeWaveNonInteractive(
     }
   }
 
+  // Close parent Feature Issues for all features in the wave
+  let parentsClosed = 0;
+  for (const fId of featureIds) {
+    try {
+      const closed = await tryCloseParentIssue(state, fId, projectDir);
+      if (closed) parentsClosed++;
+    } catch {
+      // Silently ignore
+    }
+  }
+
   saveRunState(projectDir, state);
-  return { completed, skipped, progress: calculateProgress(state), issuesClosed };
+  return { completed, skipped, progress: calculateProgress(state), issuesClosed, parentClosed: parentsClosed > 0 };
 }
 
 // ─────────────────────────────────────────────
@@ -846,6 +886,13 @@ async function handleExistingEscalation(
     // Silently ignore
   }
 
+  // Close parent Feature Issue if all tasks for this feature are done
+  try {
+    await tryCloseParentIssue(state, task.featureId, projectDir);
+  } catch {
+    // Silently ignore
+  }
+
   return {
     taskId: task.taskId,
     status: "completed",
@@ -854,6 +901,31 @@ async function handleExistingEscalation(
     escalation: task.escalation,
     errors: [],
   };
+}
+
+// ─────────────────────────────────────────────
+// Parent Feature Issue Auto-Close
+// ─────────────────────────────────────────────
+
+/**
+ * Check if all tasks for a feature are done, and close the parent Issue if so.
+ * Returns true if the parent issue was closed.
+ */
+async function tryCloseParentIssue(
+  state: RunState,
+  featureId: string,
+  projectDir: string,
+): Promise<boolean> {
+  const featureTasks = state.tasks.filter((t) => t.featureId === featureId);
+  const allDone = featureTasks.every((t) => t.status === "done");
+  if (!allDone) return false;
+
+  try {
+    const result = await closeFeatureIssue(projectDir, featureId);
+    return result.closed;
+  } catch {
+    return false;
+  }
 }
 
 // ─────────────────────────────────────────────
