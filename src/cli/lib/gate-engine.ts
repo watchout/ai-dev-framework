@@ -241,6 +241,7 @@ function loadProfileType(projectDir: string): ProfileType | undefined {
  * - Excludes non-feature-spec files (core definitions, PRDs, reports, etc.)
  * - Skips empty/stub files (< 10 lines)
  * - Filters out archived and non-SSOT paths
+ * - Recognizes new-format SSOT (SSOT-0~5) as complete
  */
 export function checkGateC(projectDir: string): SSOTCheck[] {
   const checks: SSOTCheck[] = [];
@@ -252,6 +253,20 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
       name: "Gate C (profile: " + profileType + ")",
       passed: true,
       message: `Profile '${profileType}' does not require feature spec completeness. Gate C auto-passed.`,
+      filePath: "",
+      missingSections: [],
+    });
+    return checks;
+  }
+
+  // New-format SSOT (SSOT-0~5) auto-passes Gate C
+  const newFormatFiles = findNewFormatSSOTFiles(projectDir);
+  if (newFormatFiles.length > 0) {
+    const fileList = newFormatFiles.map((f) => path.relative(projectDir, f));
+    checks.push({
+      name: "Gate C (new-format SSOT-0~5)",
+      passed: true,
+      message: `New-format SSOT detected (${newFormatFiles.length} files: ${fileList.join(", ")}). Gate C auto-passed.`,
       filePath: "",
       missingSections: [],
     });
@@ -415,6 +430,51 @@ function checkDirExists(
     passed: exists,
     message: exists ? `${name}: found` : failMessage,
   };
+}
+
+/** Pattern matching new-format SSOT file names (SSOT-0 through SSOT-5) */
+const NEW_FORMAT_SSOT_PATTERN = /^SSOT-[0-5]_.*\.md$/;
+
+/**
+ * Find new-format SSOT files (SSOT-0~5) across known directories.
+ * These files use a structured format that replaces §3-E/F/G/H sections.
+ */
+function findNewFormatSSOTFiles(projectDir: string): string[] {
+  const files: string[] = [];
+  const searchDirs = [
+    "docs",
+    "docs/requirements",
+    "docs/design/core",
+    "docs/core",
+    "docs/ssot",
+  ];
+
+  for (const dir of searchDirs) {
+    const fullDir = path.join(projectDir, dir);
+    if (!fs.existsSync(fullDir)) continue;
+    try {
+      const entries = fs.readdirSync(fullDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isFile() && NEW_FORMAT_SSOT_PATTERN.test(entry.name)) {
+          const fullPath = path.join(fullDir, entry.name);
+          // Skip empty/stub files (< 10 lines)
+          try {
+            const content = fs.readFileSync(fullPath, "utf-8");
+            if (content.split("\n").length >= 10) {
+              files.push(fullPath);
+            }
+          } catch {
+            // skip unreadable files
+          }
+        }
+      }
+    } catch {
+      // skip unreadable directories
+    }
+  }
+
+  // Deduplicate (docs/ root overlaps with more specific paths)
+  return [...new Set(files)];
 }
 
 /**
