@@ -1,6 +1,6 @@
 {
   "name": "@anthropic-ai/ai-dev-framework",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "AI Development Framework - SSOT, CLI, Dashboard, and Skills for AI-driven development",
@@ -21,7 +21,9 @@
     "framework": "tsx src/cli/index.ts"
   },
   "dependencies": {
-    "commander": "^13.0.0",
+    "commander": "^13.0.0"
+  },
+  "optionalDependencies": {
     "next": "^16.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
@@ -34,6 +36,7 @@
     "eslint-config-next": "^16.1.6",
     "tsx": "^4.0.0",
     "typescript": "^5.7.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "vitest": "^4.0.18"
   },
   "repository": {
