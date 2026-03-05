@@ -14,6 +14,11 @@ import {
   rejectProposal,
   applyDiff,
   notifyProposal,
+  loadApprovals,
+  saveApprovals,
+  requestApproval,
+  appendLessonLearned,
+  pushToUpstream,
 } from "./feedback-engine.js";
 
 // ─────────────────────────────────────────────
@@ -339,5 +344,185 @@ describe("notifyProposal", () => {
     // notifyProposal uses spawnSync which returns an error object if command not found
     // but does not throw — so this should not throw either
     expect(() => notifyProposal(proposal)).not.toThrow();
+  });
+});
+
+// ─────────────────────────────────────────────
+// loadApprovals / saveApprovals
+// ─────────────────────────────────────────────
+
+describe("loadApprovals", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-approvals-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns empty store when file does not exist", () => {
+    const store = loadApprovals(tmpDir);
+    expect(store.pending).toEqual([]);
+  });
+
+  it("round-trips correctly", () => {
+    const store = {
+      pending: [
+        {
+          proposalId: "PROP-001",
+          requestedAt: "2026-03-05T00:00:00.000Z",
+          status: "awaiting" as const,
+          respondedAt: null,
+          channel: "telegram" as const,
+        },
+      ],
+    };
+    saveApprovals(tmpDir, store);
+    const loaded = loadApprovals(tmpDir);
+    expect(loaded.pending).toHaveLength(1);
+    expect(loaded.pending[0].proposalId).toBe("PROP-001");
+  });
+});
+
+// ─────────────────────────────────────────────
+// requestApproval
+// ─────────────────────────────────────────────
+
+describe("requestApproval", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-reqapproval-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns error when proposal not found", () => {
+    saveProposals(tmpDir, { proposals: [] });
+    const result = requestApproval(tmpDir, "PROP-NONEXISTENT");
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("not found");
+  });
+
+  it("returns error when proposal is already approved", () => {
+    saveProposals(tmpDir, {
+      proposals: [
+        makeProposal({ id: "P1", status: "approved", approvedAt: "2026-01-01T00:00:00Z" }),
+      ],
+    });
+    const result = requestApproval(tmpDir, "P1");
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("already approved");
+  });
+
+  it("creates an approval request for a pending proposal", () => {
+    saveProposals(tmpDir, {
+      proposals: [makeProposal({ id: "P1" })],
+    });
+    const result = requestApproval(tmpDir, "P1");
+    expect(result.ok).toBe(true);
+
+    const approvals = loadApprovals(tmpDir);
+    expect(approvals.pending).toHaveLength(1);
+    expect(approvals.pending[0].proposalId).toBe("P1");
+    expect(approvals.pending[0].status).toBe("awaiting");
+  });
+
+  it("prevents duplicate approval requests", () => {
+    saveProposals(tmpDir, {
+      proposals: [makeProposal({ id: "P1" })],
+    });
+    requestApproval(tmpDir, "P1");
+    const result = requestApproval(tmpDir, "P1");
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("already requested");
+  });
+});
+
+// ─────────────────────────────────────────────
+// appendLessonLearned
+// ─────────────────────────────────────────────
+
+describe("appendLessonLearned", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-lessons-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("creates lessons-learned.md with header when file does not exist", () => {
+    const proposal = makeProposal({
+      id: "P1",
+      status: "approved",
+      approvedAt: "2026-03-05T00:00:00Z",
+    });
+    appendLessonLearned(tmpDir, proposal);
+
+    const filePath = path.join(tmpDir, "docs/knowledge/lessons-learned.md");
+    expect(fs.existsSync(filePath)).toBe(true);
+    const content = fs.readFileSync(filePath, "utf-8");
+    expect(content).toContain("# Lessons Learned");
+    expect(content).toContain("Add Gate D");
+    expect(content).toContain("P1");
+  });
+
+  it("appends to existing lessons-learned.md", () => {
+    const lessonsDir = path.join(tmpDir, "docs/knowledge");
+    fs.mkdirSync(lessonsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(lessonsDir, "lessons-learned.md"),
+      "# Lessons Learned\n\n## Existing entry\n",
+      "utf-8",
+    );
+
+    appendLessonLearned(tmpDir, makeProposal({ id: "P2", title: "New lesson" }));
+
+    const content = fs.readFileSync(
+      path.join(lessonsDir, "lessons-learned.md"),
+      "utf-8",
+    );
+    expect(content).toContain("Existing entry");
+    expect(content).toContain("New lesson");
+    expect(content).toContain("P2");
+  });
+});
+
+// ─────────────────────────────────────────────
+// pushToUpstream
+// ─────────────────────────────────────────────
+
+describe("pushToUpstream", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-upstream-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("returns error when proposal not found", () => {
+    saveProposals(tmpDir, { proposals: [] });
+    const result = pushToUpstream(tmpDir, "PROP-NONEXISTENT");
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("not found");
+  });
+
+  it("returns error when proposal is not approved", () => {
+    saveProposals(tmpDir, {
+      proposals: [makeProposal({ id: "P1", status: "pending" })],
+    });
+    const result = pushToUpstream(tmpDir, "P1");
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("Only approved");
   });
 });

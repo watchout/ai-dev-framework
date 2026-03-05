@@ -16,6 +16,9 @@ import {
   approveProposal,
   rejectProposal,
   notifyProposal,
+  requestApproval,
+  pushToUpstream,
+  appendLessonLearned,
 } from "../lib/feedback-engine.js";
 import { logger } from "../lib/logger.js";
 
@@ -56,14 +59,29 @@ export function registerFeedbackCommand(program: Command): void {
       }
     });
 
-  // framework feedback approve <id>
+  // framework feedback approve <id> [--push-upstream] [--telegram]
   feedback
     .command("approve")
     .description("Approve a proposal by ID (applies diff and commits)")
     .argument("<id>", "Proposal ID")
-    .action((id: string) => {
+    .option("--push-upstream", "Create PR in ai-dev-framework repository")
+    .option("--telegram", "Request approval via Telegram before applying")
+    .action((id: string, options: { pushUpstream?: boolean; telegram?: boolean }) => {
       try {
         const projectDir = process.cwd();
+
+        // If --telegram, request approval via Telegram and return
+        if (options.telegram) {
+          const reqResult = requestApproval(projectDir, id);
+          if (!reqResult.ok) {
+            logger.error(reqResult.error ?? "Unknown error");
+            process.exit(1);
+            return;
+          }
+          logger.success(`Approval request sent via Telegram: ${id}`);
+          return;
+        }
+
         const result = approveProposal(projectDir, id);
 
         if (!result.ok) {
@@ -73,6 +91,25 @@ export function registerFeedbackCommand(program: Command): void {
         }
 
         logger.success(`Approved: ${id}`);
+
+        // Append to lessons learned
+        const store = loadProposals(projectDir);
+        const proposal = store.proposals.find((p) => p.id === id);
+        if (proposal) {
+          appendLessonLearned(projectDir, proposal);
+          logger.info("  Lesson recorded in docs/knowledge/lessons-learned.md");
+        }
+
+        // Push upstream if requested
+        if (options.pushUpstream) {
+          logger.info("  Creating upstream PR...");
+          const prResult = pushToUpstream(projectDir, id);
+          if (prResult.ok) {
+            logger.success(`  PR created: ${prResult.prUrl ?? "(url pending)"}`);
+          } else {
+            logger.warn(`  Upstream PR failed: ${prResult.error ?? "unknown"}`);
+          }
+        }
       } catch (error) {
         if (error instanceof Error) {
           logger.error(error.message);

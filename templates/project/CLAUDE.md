@@ -386,6 +386,35 @@ discovery → design → implement → review
 
 ---
 
+## フィードバック（フレームワーク改善提案）
+
+開発中に発見した問題パターンやフレームワーク改善案を提案できる:
+
+```bash
+# 手動で提案作成
+framework feedback propose \
+  --title "エラーパターンの検出ルール追加" \
+  --problem "特定のTypeErrorが頻発" \
+  --target "docs/knowledge/lessons-learned.md" \
+  --diff "## Type Safety\n- 関数呼び出し前に型ガードを追加" \
+  --impact "同種のTypeErrorを予防" \
+  --category "coding-rule" \
+  --source "{{PROJECT_NAME}}"
+
+# 保留中の提案を確認
+framework feedback list
+
+# 承認（diff適用 + ナレッジ記録）
+framework feedback approve <id>
+
+# フレームワーク本体へPR作成
+framework feedback approve <id> --push-upstream
+```
+
+`framework run` 失敗時や `framework audit` 低スコア時に自動提案も生成される。
+
+---
+
 ## 禁止事項
 
 ```
