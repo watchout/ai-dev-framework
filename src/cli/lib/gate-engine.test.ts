@@ -282,8 +282,8 @@ describe("gate-engine", () => {
       expect(checks).toHaveLength(2);
     });
 
-    it("excludes core definitions (SSOT-2 through SSOT-5)", () => {
-      // Core definitions should NOT be checked for §3-E/F/G/H
+    it("auto-passes for core definitions (SSOT-2 through SSOT-5) as new-format", () => {
+      // Core definitions are now recognized as new-format SSOT and auto-pass
       const coreDir = path.join(tmpDir, "docs/design/core");
       fs.mkdirSync(coreDir, { recursive: true });
       fs.writeFileSync(
@@ -293,12 +293,12 @@ describe("gate-engine", () => {
       );
 
       const checks = checkGateC(tmpDir);
-      // Should report "no SSOT files found" (core files are excluded)
       expect(checks).toHaveLength(1);
-      expect(checks[0].message).toContain("No SSOT");
+      expect(checks[0].passed).toBe(true);
+      expect(checks[0].message).toContain("New-format SSOT");
     });
 
-    it("excludes requirements (PRD, Feature Catalog)", () => {
+    it("auto-passes for requirements (PRD, Feature Catalog) as new-format", () => {
       const reqDir = path.join(tmpDir, "docs/requirements");
       fs.mkdirSync(reqDir, { recursive: true });
       fs.writeFileSync(
@@ -309,7 +309,8 @@ describe("gate-engine", () => {
 
       const checks = checkGateC(tmpDir);
       expect(checks).toHaveLength(1);
-      expect(checks[0].message).toContain("No SSOT");
+      expect(checks[0].passed).toBe(true);
+      expect(checks[0].message).toContain("New-format SSOT");
     });
 
     it("skips files in _non_ssot directories", () => {
@@ -408,6 +409,97 @@ describe("gate-engine", () => {
       const checks = checkGateC(tmpDir);
       expect(checks).toHaveLength(1);
       expect(checks[0].passed).toBe(true);
+    });
+
+    it("auto-passes when new-format SSOT-0~5 files exist in docs/", () => {
+      const docsDir = path.join(tmpDir, "docs");
+      fs.mkdirSync(docsDir, { recursive: true });
+      // Create a new-format SSOT file with enough lines
+      fs.writeFileSync(
+        path.join(docsDir, "SSOT-0_PRD.md"),
+        Array.from({ length: 15 }, (_, i) => `Line ${i + 1}`).join("\n"),
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].passed).toBe(true);
+      expect(checks[0].message).toContain("New-format SSOT");
+      expect(checks[0].message).toContain("auto-passed");
+    });
+
+    it("auto-passes when new-format SSOT files exist in docs/requirements/", () => {
+      const reqDir = path.join(tmpDir, "docs/requirements");
+      fs.mkdirSync(reqDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(reqDir, "SSOT-0_PRD.md"),
+        Array.from({ length: 15 }, (_, i) => `Line ${i + 1}`).join("\n"),
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(reqDir, "SSOT-1_FEATURE_CATALOG.md"),
+        Array.from({ length: 15 }, (_, i) => `Line ${i + 1}`).join("\n"),
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].passed).toBe(true);
+      expect(checks[0].message).toContain("2 files");
+    });
+
+    it("auto-passes when new-format SSOT files exist in docs/design/core/", () => {
+      const coreDir = path.join(tmpDir, "docs/design/core");
+      fs.mkdirSync(coreDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(coreDir, "SSOT-3_API_CONTRACT.md"),
+        Array.from({ length: 15 }, (_, i) => `Line ${i + 1}`).join("\n"),
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].passed).toBe(true);
+      expect(checks[0].message).toContain("New-format SSOT");
+    });
+
+    it("skips new-format SSOT files with fewer than 10 lines", () => {
+      const docsDir = path.join(tmpDir, "docs");
+      fs.mkdirSync(docsDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(docsDir, "SSOT-0_PRD.md"),
+        "# PRD\n\nTBD\n",
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      // Should NOT auto-pass since the file is too short
+      expect(checks).toHaveLength(1);
+      expect(checks[0].passed).toBe(false);
+      expect(checks[0].message).toContain("No SSOT");
+    });
+
+    it("auto-passes with mixed new-format SSOT across multiple directories", () => {
+      // SSOT-0 in docs/requirements, SSOT-3 in docs/design/core
+      const reqDir = path.join(tmpDir, "docs/requirements");
+      const coreDir = path.join(tmpDir, "docs/design/core");
+      fs.mkdirSync(reqDir, { recursive: true });
+      fs.mkdirSync(coreDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(reqDir, "SSOT-0_PRD.md"),
+        Array.from({ length: 15 }, (_, i) => `Line ${i + 1}`).join("\n"),
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(coreDir, "SSOT-4_DATA_MODEL.md"),
+        Array.from({ length: 15 }, (_, i) => `Line ${i + 1}`).join("\n"),
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].passed).toBe(true);
+      expect(checks[0].message).toContain("2 files");
     });
 
     it("ignores index and template files", () => {
