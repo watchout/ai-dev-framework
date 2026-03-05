@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 import { registerInitCommand } from "./commands/init.js";
 import { registerDiscoverCommand } from "./commands/discover.js";
 import { registerGenerateCommand } from "./commands/generate.js";
@@ -23,6 +26,13 @@ import { registerGateCommand } from "./commands/gate.js";
 import { registerFeedbackCommand } from "./commands/feedback.js";
 import { registerProjectsCommand } from "./commands/projects.js";
 
+// Read version from package.json
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const packageJson = JSON.parse(
+  readFileSync(join(__dirname, "../../package.json"), "utf-8"),
+);
+const version = packageJson.version;
+
 const program = new Command();
 
 program
@@ -30,7 +40,7 @@ program
   .description(
     "AI Development Framework CLI - Automates the development lifecycle from discovery to deployment",
   )
-  .version("0.1.0");
+  .version(version);
 
 // Core workflow
 registerInitCommand(program);
