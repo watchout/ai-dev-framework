@@ -242,6 +242,53 @@ npm run dev    # http://localhost:3000
 
 ---
 
+## 自己進化ワークフロー
+
+フレームワーク自体が使用中のプロジェクトからフィードバックを受け取り、改善提案を蓄積・承認・適用する仕組み。
+
+### フィードバック提案フロー
+
+```
+エラー検出 / 監査低スコア
+  → auto-feedback が提案自動生成
+  → .framework/feedback/proposals.json に保存
+  → openclaw system event で通知
+
+手動提案:
+  framework feedback propose --title "..." --problem "..." ...
+```
+
+### 承認フロー
+
+```
+framework feedback list                          ← 保留中の提案一覧
+framework feedback approve <id>                  ← 承認（diff適用 + git commit + lessons-learned記録）
+framework feedback approve <id> --telegram       ← Telegram経由で承認依頼
+framework feedback approve <id> --push-upstream  ← 承認後にai-dev-frameworkリポジトリへPR作成
+framework feedback reject <id> --reason "..."    ← 却下
+```
+
+### 自動フィードバックトリガー
+
+| トリガー | 条件 | 処理 |
+|---------|------|------|
+| run-failure | `framework run` タスク失敗時 | エラーパターン検出 → 提案生成 |
+| audit-low-score | `framework audit` 低スコア時 | 品質改善提案を生成 |
+
+### ナレッジ層自動更新
+
+承認時に `docs/knowledge/lessons-learned.md` に自動追記。カテゴリ別（coding-rule/ssot-template/skill/gate/workflow）に分類。
+
+### 状態ファイル
+
+| ファイル | 用途 |
+|---------|------|
+| `.framework/feedback/proposals.json` | 提案ストア |
+| `.framework/feedback/approvals-pending.json` | Telegram承認待ち |
+| `docs/knowledge/lessons-learned.md` | 承認済みナレッジ |
+
+---
+
 ## 禁止事項
 
 - `any` 型の使用

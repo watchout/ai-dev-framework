@@ -7,6 +7,11 @@ import type {
   ProposalStore,
   ProposalCategory,
   ProposalStatus,
+  ApprovalRequest,
+  ApprovalStore,
+  AutoFeedbackContext,
+  AutoFeedbackTrigger,
+  LessonEntry,
 } from "./feedback-model.js";
 
 describe("feedback-model types", () => {
@@ -106,5 +111,62 @@ describe("feedback-model types", () => {
     };
     expect(proposal.status).toBe("rejected");
     expect(proposal.rejectedReason).toBe("Not applicable to current version");
+  });
+
+  it("ApprovalRequest interface has all required fields", () => {
+    const request: ApprovalRequest = {
+      proposalId: "PROP-001",
+      requestedAt: "2026-03-05T00:00:00.000Z",
+      status: "awaiting",
+      respondedAt: null,
+      channel: "telegram",
+    };
+    expect(request.proposalId).toBe("PROP-001");
+    expect(request.status).toBe("awaiting");
+    expect(request.channel).toBe("telegram");
+  });
+
+  it("ApprovalStore wraps pending requests", () => {
+    const store: ApprovalStore = {
+      pending: [
+        {
+          proposalId: "PROP-001",
+          requestedAt: "2026-03-05T00:00:00.000Z",
+          status: "awaiting",
+          respondedAt: null,
+          channel: "telegram",
+        },
+      ],
+    };
+    expect(store.pending).toHaveLength(1);
+  });
+
+  it("AutoFeedbackTrigger covers expected values", () => {
+    const triggers: AutoFeedbackTrigger[] = ["run-failure", "audit-low-score"];
+    expect(triggers).toHaveLength(2);
+  });
+
+  it("AutoFeedbackContext has optional fields", () => {
+    const context: AutoFeedbackContext = {
+      trigger: "run-failure",
+      errorMessage: "TypeError: x is not a function",
+    };
+    expect(context.trigger).toBe("run-failure");
+    expect(context.taskId).toBeUndefined();
+    expect(context.auditScore).toBeUndefined();
+  });
+
+  it("LessonEntry has all required fields", () => {
+    const entry: LessonEntry = {
+      date: "2026-03-05",
+      proposalId: "PROP-001",
+      category: "coding-rule",
+      title: "Add type guard",
+      problem: "TypeError detected",
+      solution: "// add type guard",
+      sourceProject: "test-project",
+    };
+    expect(entry.category).toBe("coding-rule");
+    expect(entry.proposalId).toBe("PROP-001");
   });
 });
