@@ -98,7 +98,7 @@ describe("run-engine", () => {
 
     it("throws when plan.tasks is missing", () => {
       const plan = makePlan();
-      delete (plan as Record<string, unknown>).tasks;
+      delete (plan as unknown as Record<string, unknown>).tasks;
 
       expect(() => initRunStateFromPlan(plan)).toThrow(
         "plan.json missing tasks[]",
