@@ -12,7 +12,7 @@
     "build": "next build",
     "build:cli": "tsc -p tsconfig.cli.json",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint src/ --max-warnings=0",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest --coverage",
