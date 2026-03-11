@@ -134,25 +134,67 @@ jobs:
 
       - name: Phase 2 — Code Audit Scorecard
         id: code_audit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          node dist/cli/index.js audit code --json > /tmp/code-result.json 2>&1 || true
-          cat /tmp/code-result.json
-
-          SCORE=$(node -e "
-            try {
-              const r = require('/tmp/code-result.json');
-              console.log(r.totalScore || 0);
-            } catch { console.log(0); }
-          " 2>/dev/null || echo "0")
-
-          echo "score=$SCORE" >> "$GITHUB_OUTPUT"
-          echo "Code audit score: $SCORE"
-
-          if [ "$SCORE" -lt 70 ]; then
-            echo "❌ Code audit score $SCORE is below threshold (70)"
+          PR="${{ needs.guard.outputs.pr_number }}"
+          
+          # Get changed .ts files in this PR
+          CHANGED_FILES=$(gh pr view "$PR" \
+            --repo "${{ github.repository }}" \
+            --json files \
+            --jq '.files[] | select(.path | endswith(".ts")) | .path' | head -5)
+          
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No .ts files changed in this PR - skipping code audit"
+            echo "score=100" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          # Audit each changed file (100 points required per file)
+          TOTAL_SCORE=0
+          FILE_COUNT=0
+          FAILED_FILES=""
+          
+          while IFS= read -r file; do
+            if [ ! -f "$file" ]; then continue; fi
+            
+            echo "Auditing: $file"
+            node dist/cli/index.js audit code "$file" --json > /tmp/code-result-$FILE_COUNT.json 2>&1 || true
+            
+            SCORE=$(node -e "
+              try {
+                const r = require('/tmp/code-result-$FILE_COUNT.json');
+                console.log(r.totalScore || 0);
+              } catch { console.log(0); }
+            " 2>/dev/null || echo "0")
+            
+            echo "  Score: $SCORE/100"
+            
+            if [ "$SCORE" -lt 100 ]; then
+              FAILED_FILES="$FAILED_FILES\n  - $file: $SCORE/100"
+            fi
+            
+            TOTAL_SCORE=$((TOTAL_SCORE + SCORE))
+            FILE_COUNT=$((FILE_COUNT + 1))
+          done <<< "$CHANGED_FILES"
+          
+          if [ "$FILE_COUNT" -eq 0 ]; then
+            echo "No files audited"
+            echo "score=100" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          
+          AVG_SCORE=$((TOTAL_SCORE / FILE_COUNT))
+          echo "score=$AVG_SCORE" >> "$GITHUB_OUTPUT"
+          echo "Average code audit score: $AVG_SCORE/100 ($FILE_COUNT files)"
+          
+          if [ -n "$FAILED_FILES" ]; then
+            echo "❌ Following files did not achieve 100 points:$FAILED_FILES"
             exit 1
           fi
-          echo "✅ Code audit score: $SCORE/100"
+          
+          echo "✅ All changed files achieved 100/100"
 
   # ============================================================
   # Phase 3: 破壊的変更チェック
