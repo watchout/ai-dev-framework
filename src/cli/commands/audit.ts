@@ -141,9 +141,10 @@ export function registerAuditCommand(program: Command): void {
               mode,
               target,
               verdict: result.report.verdict,
-              score: result.report.score,
-              issues: result.report.issues,
-              sections: result.report.sections,
+              totalScore: result.report.totalScore,
+              scorecard: result.report.scorecard,
+              findings: result.report.findings,
+              absoluteConditions: result.report.absoluteConditions,
             };
             process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
             process.exit(result.report.verdict === "pass" ? 0 : 1);
