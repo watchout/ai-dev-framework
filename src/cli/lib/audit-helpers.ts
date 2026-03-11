@@ -3,7 +3,8 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { type AuditResult, generateAuditMarkdown } from "./audit-model.js";
+import { type AuditResult } from "./audit-engine.js";
+import { generateAuditMarkdown } from "./audit-model.js";
 import { logger } from "./logger.js";
 
 /**
