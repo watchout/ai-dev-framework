@@ -151,13 +151,26 @@ GitHub Issues のラベルも自動更新する。
 
 ---
 
-## 6. review → merge → 次タスク フロー
+## 6. PR → 最終監査 → マージ → 次タスク フロー
 
 ```
 実装完了
   → PR 作成（本文に Closes #xxx 必須）
-  → R1-R5 Review Council → Approve
-  → main マージ
+  → CI 実行（pull_request trigger）
+  → CI 全通過
+  → 最終監査（Final Audit）3フェーズ自動実行
+       Phase 1: SSOT準拠最終確認（全MUST要件）
+       Phase 2: コード監査（100点スコアカード）
+       Phase 3: 破壊的変更・デプロイ影響チェック
+                （API契約変更 / DBスキーマ変更 / env vars / マイグレーション有無）
+  → 全フェーズ合格
+  → マージ承認要求
+       ├── GitHub: Required Reviewer に Approve 要求
+       └── Telegram 通知（PR URL・監査結果サマリー）
+  → CEO: Telegram で承認 → GitHub で Approve 実行
+  → Squash & Merge
+  → main CI 再実行 → Staging 自動デプロイ
+  → GitHub Projects → Done
   → CI hook: framework sync 自動実行（atomic write）
        → GitHub Issue 自動 close
        → plan.json 更新
@@ -165,6 +178,19 @@ GitHub Issues のラベルも自動更新する。
        → 最小 WWWFFFFTTT の todo を返す
        → 次タスク開始
 ```
+
+### 最終監査フェーズ詳細
+
+| Phase | 内容 | 判定 |
+|-------|------|------|
+| Phase 1 | SSOT全MUST要件準拠確認 | 1件でも不備 → Reject |
+| Phase 2 | コード監査 100点スコアカード | 閾値未満 → Reject |
+| Phase 3 | 破壊的変更チェック（API契約 / DBスキーマ / env vars / migration） | 未申告の破壊的変更 → Reject |
+
+### 人間による停止
+
+- PR に `hold` ラベルを付与 → 自動マージをスキップ
+- `framework block <PR番号>` でラベル付与可能
 
 ---
 
