@@ -159,8 +159,11 @@ jobs:
           echo "Scanning for hardcoded secrets (password, token, api_key, secret)..."
           
           # Search for patterns like: password="...", token: "...", api_key='...'
+          # Exclude test files (*.test.ts, *.spec.ts) as they contain sample data
           if grep -r -n -E '(password|secret|api_?key|token)\s*[:=]\s*["'"'"'][^"'"'"']+["'"'"']' \
             --include='*.ts' --include='*.js' --include='*.tsx' --include='*.jsx' \
+            --exclude='*.test.ts' --exclude='*.test.js' \
+            --exclude='*.spec.ts' --exclude='*.spec.js' \
             --exclude-dir=node_modules --exclude-dir=dist --exclude-dir=.next \
             src/ ; then
             echo "❌ Found hardcoded secrets in source code!"
