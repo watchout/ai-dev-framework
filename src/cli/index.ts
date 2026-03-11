@@ -25,6 +25,7 @@ import { registerDeployCommand } from "./commands/deploy.js";
 import { registerGateCommand } from "./commands/gate.js";
 import { registerFeedbackCommand } from "./commands/feedback.js";
 import { registerProjectsCommand } from "./commands/projects.js";
+import { registerNextCommand } from "./commands/next.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +51,7 @@ registerPlanCommand(program);
 registerGateCommand(program);
 registerAuditCommand(program);
 registerRunCommand(program);
+registerNextCommand(program);
 registerStatusCommand(program);
 
 // Project management
