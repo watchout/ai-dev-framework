@@ -328,6 +328,7 @@ export async function createTaskIssue(
     feature.priority.toLowerCase(),
     feature.id,
     `wave-${waveNumber}`,
+    ...(task.seq ? [`seq:${task.seq}`] : []),
   ];
 
   await ensureLabels(repo, labels);
