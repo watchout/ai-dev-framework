@@ -95,7 +95,7 @@ jobs:
           # Check for MUST requirement failures
           if node -e "
             const r = require('/tmp/ssot-result.json');
-            const failed = (r.issues || []).filter(i => i.severity === 'must');
+            const failed = (r.findings || []).filter(i => i.severity === 'must');
             if (failed.length > 0) {
               console.error('MUST failures:', failed.map(f => f.message).join(', '));
               process.exit(1);
@@ -141,7 +141,7 @@ jobs:
           SCORE=$(node -e "
             try {
               const r = require('/tmp/code-result.json');
-              console.log(r.score || 0);
+              console.log(r.totalScore || 0);
             } catch { console.log(0); }
           " 2>/dev/null || echo "0")
 
