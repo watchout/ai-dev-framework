@@ -157,12 +157,19 @@ GitHub Issues のラベルも自動更新する。
 実装完了
   → PR 作成（本文に Closes #xxx 必須）
   → CI 実行（pull_request trigger）
+       - Lint (コーディング規約・型安全性・200行/50行制限)
+       - Type Check
+       - Unit Tests
+       - Security Audit (npm + ハードコード秘密検出)
+       - Build
   → CI 全通過
-  → 最終監査（Final Audit）3フェーズ自動実行
-       Phase 1: SSOT準拠最終確認（全MUST要件）
-       Phase 2: コード監査（100点スコアカード）
-       Phase 3: 破壊的変更・デプロイ影響チェック
-                （API契約変更 / DBスキーマ変更 / env vars / マイグレーション有無）
+  → 最終監査（Final Audit）2フェーズ自動実行
+       Phase 1: SSOT準拠 + 省略コメント検出
+                - SSOT全MUST要件準拠確認
+                - 変更ファイル内の // ... 検出（実装未完了の証拠）
+       Phase 2: 破壊的変更・デプロイ影響チェック
+                - API契約変更 / DBスキーマ変更 / env vars / マイグレーション有無
+                - PR本文に破壊的変更の申告が必要
   → 全フェーズ合格
   → マージ承認要求
        ├── GitHub: Required Reviewer に Approve 要求
@@ -179,13 +186,26 @@ GitHub Issues のラベルも自動更新する。
        → 次タスク開始
 ```
 
-### 最終監査フェーズ詳細
+### CI と Final Audit の役割分担
+
+**CI (機械的品質チェック - 必須)**
+- Lint: コーディング規約、命名規則、型安全性（no-explicit-any）
+- 構造チェック: 200行超ファイル、50行超関数（警告）
+- Security: npm audit + ハードコード秘密検出
+- Tests: ユニットテスト + カバレッジ
+
+**Final Audit (設計準拠・リスク評価 - 必須)**
 
 | Phase | 内容 | 判定 |
 |-------|------|------|
-| Phase 1 | SSOT全MUST要件準拠確認 | 1件でも不備 → Reject |
-| Phase 2 | コード監査 100点スコアカード | 閾値未満 → Reject |
-| Phase 3 | 破壊的変更チェック（API契約 / DBスキーマ / env vars / migration） | 未申告の破壊的変更 → Reject |
+| Phase 1 | SSOT準拠 + 省略コメント検出 | MUST要件不備 or // ... 検出 → Reject |
+| Phase 2 | 破壊的変更チェック | 未申告の破壊的変更 → Reject |
+
+**削除されたチェック（CI に統合済み）:**
+- 型安全性 → CI (TypeScript strict + ESLint no-explicit-any)
+- エラーハンドリング → CI (ESLint no-empty)
+- コーディング規約 → CI (ESLint max-lines / max-lines-per-function)
+- ハードコード秘密 → CI (secrets-scan job)
 
 ### 人間による停止
 
