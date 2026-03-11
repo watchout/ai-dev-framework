@@ -17,11 +17,13 @@ import {
   runAudit,
   createAuditTerminalIO,
 } from "../lib/audit-engine.js";
+import { type AuditMode } from "../lib/audit-model.js";
+import { printAuditStatus } from "../lib/audit-status.js";
 import {
-  type AuditMode,
-  loadAuditReports,
-  generateAuditMarkdown,
-} from "../lib/audit-model.js";
+  resolveAuditTarget,
+  outputJson,
+  outputMarkdown,
+} from "../lib/audit-helpers.js";
 import { loadProjectProfile, isAuditEnabled } from "../lib/profile-model.js";
 import {
   loadGateState,
@@ -105,28 +107,10 @@ export function registerAuditCommand(program: Command): void {
             process.exit(1);
           }
 
-          // Determine target: use specified path or default SSOT file
-          let targetPath: string;
-          if (!target) {
-            // Default: use ssot/SSOT-0_PRD.md for project-level audit
-            const defaultTarget = path.join(projectDir, "ssot", "SSOT-0_PRD.md");
-            if (!fs.existsSync(defaultTarget)) {
-              logger.error(
-                "No target specified and default SSOT file not found.\n" +
-                  "Usage: framework audit <mode> <target>\n" +
-                  "Or create: ssot/SSOT-0_PRD.md",
-              );
-              process.exit(1);
-            }
-            targetPath = defaultTarget;
-            target = "ssot/SSOT-0_PRD.md";
-          } else {
-            targetPath = path.resolve(projectDir, target);
-            if (!fs.existsSync(targetPath)) {
-              logger.error(`Target not found: ${target}`);
-              process.exit(1);
-            }
-          }
+          // Resolve target path
+          const resolved = resolveAuditTarget(projectDir, target);
+          const targetPath = resolved.targetPath;
+          target = resolved.target;
 
           // Use silent IO for JSON output mode
           const io = options.json
@@ -150,32 +134,12 @@ export function registerAuditCommand(program: Command): void {
 
           // Output JSON if requested
           if (options.json) {
-            const jsonOutput = {
-              mode,
-              target,
-              verdict: result.report.verdict,
-              totalScore: result.report.totalScore,
-              scorecard: result.report.scorecard,
-              findings: result.report.findings,
-              absoluteConditions: result.report.absoluteConditions,
-            };
-            process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
-            process.exit(result.report.verdict === "pass" ? 0 : 1);
+            outputJson(mode, target, result);
           }
 
           // Output markdown if requested
           if (options.output) {
-            const markdown = generateAuditMarkdown(result.report);
-            const outputPath = path.resolve(
-              projectDir,
-              options.output,
-            );
-            const dir = path.dirname(outputPath);
-            if (!fs.existsSync(dir)) {
-              fs.mkdirSync(dir, { recursive: true });
-            }
-            fs.writeFileSync(outputPath, markdown, "utf-8");
-            logger.success(`Report written to ${options.output}`);
+            outputMarkdown(projectDir, options.output, result);
           }
 
           // Auto-update Gate C after SSOT audit
@@ -215,35 +179,4 @@ export function registerAuditCommand(program: Command): void {
         }
       },
     );
-}
-
-function printAuditStatus(
-  projectDir: string,
-  mode?: AuditMode,
-): void {
-  const reports = loadAuditReports(projectDir, mode);
-
-  if (reports.length === 0) {
-    logger.info(
-      "No audit reports found. Run 'framework audit <mode> <target>' to audit.",
-    );
-    return;
-  }
-
-  logger.header("Recent Audit Results");
-  logger.info("");
-
-  for (const report of reports.slice(0, 10)) {
-    const verdictLabel =
-      report.verdict === "pass"
-        ? "PASS"
-        : report.verdict === "conditional"
-          ? "COND"
-          : "FAIL";
-    logger.info(
-      `  [${report.mode.toUpperCase()}] ${report.target.name} - ${report.totalScore}/100 ${verdictLabel} (${report.target.auditDate})`,
-    );
-  }
-
-  logger.info("");
 }
