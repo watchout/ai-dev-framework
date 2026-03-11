@@ -65,12 +65,12 @@ export async function pruneTask(
     // Filter out removed tasks
     plan.tasks = plan.tasks.filter((t) => !taskIdSet.has(t.id));
 
-    // Also remove from waves
+    // Also remove from waves: prune features that have zero tasks remaining
     for (const wave of plan.waves) {
       wave.features = wave.features.filter((f) => {
         // Keep features that still have at least one task remaining
-        // (or features not related to pruned tasks)
-        return true; // Features are kept; only tasks[] is pruned
+        const hasRemainingTasks = plan.tasks.some((t) => t.featureId === f.id);
+        return hasRemainingTasks;
       });
     }
 
