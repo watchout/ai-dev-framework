@@ -30,6 +30,7 @@ import {
   ESCALATION_LABELS,
   createRunState,
   getNextPendingTask,
+  getNextTaskBySeq,
   startTask,
   escalateTask,
   resolveEscalation,
@@ -152,7 +153,7 @@ export async function runTask(
     // Resume waiting_input task or get next pending
     task = state.tasks.find((t) => t.status === "waiting_input");
     if (!task) {
-      task = getNextPendingTask(state);
+      task = getNextTaskBySeq(state);
     }
   }
 
@@ -663,6 +664,7 @@ export function initRunStateFromPlan(plan: PlanState): RunState {
       name: task.name,
       status: "backlog",
       blockedBy: task.blockedBy,
+      seq: task.seq,
       files: [],
     });
   }

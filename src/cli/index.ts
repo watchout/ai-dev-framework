@@ -27,6 +27,9 @@ import { registerFeedbackCommand } from "./commands/feedback.js";
 import { registerProjectsCommand } from "./commands/projects.js";
 import { registerNextCommand } from "./commands/next.js";
 import { registerBlockCommand } from "./commands/block.js";
+import { registerSyncCommand } from "./commands/sync.js";
+import { registerResequenceCommand } from "./commands/resequence.js";
+import { registerPruneCommand } from "./commands/prune.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -54,6 +57,9 @@ registerAuditCommand(program);
 registerRunCommand(program);
 registerNextCommand(program);
 registerBlockCommand(program);
+registerSyncCommand(program);
+registerResequenceCommand(program);
+registerPruneCommand(program);
 registerStatusCommand(program);
 
 // Project management
