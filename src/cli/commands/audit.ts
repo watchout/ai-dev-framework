@@ -128,7 +128,11 @@ export function registerAuditCommand(program: Command): void {
             }
           }
 
-          const io = createAuditTerminalIO();
+          // Use silent IO for JSON output mode
+          const io = options.json
+            ? { print: () => {} }  // Silent IO
+            : createAuditTerminalIO();
+          
           const result = await runAudit({
             projectDir,
             io,
