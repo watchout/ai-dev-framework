@@ -69,7 +69,7 @@ export async function pruneTask(
     for (const wave of plan.waves) {
       wave.features = wave.features.filter((f) => {
         // Keep features that still have at least one task remaining
-        const hasRemainingTasks = plan.tasks.some((t) => t.featureId === f.id);
+        const hasRemainingTasks = (plan.tasks ?? []).some((t) => t.featureId === f.id);
         return hasRemainingTasks;
       });
     }
