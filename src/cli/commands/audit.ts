@@ -105,18 +105,27 @@ export function registerAuditCommand(program: Command): void {
             process.exit(1);
           }
 
-          // Validate target
+          // Determine target: use specified path or default SSOT file
+          let targetPath: string;
           if (!target) {
-            logger.error(
-              "Target file required. Usage: framework audit <mode> <target>",
-            );
-            process.exit(1);
-          }
-
-          const targetPath = path.resolve(projectDir, target);
-          if (!fs.existsSync(targetPath)) {
-            logger.error(`Target not found: ${target}`);
-            process.exit(1);
+            // Default: use ssot/SSOT-0_PRD.md for project-level audit
+            const defaultTarget = path.join(projectDir, "ssot", "SSOT-0_PRD.md");
+            if (!fs.existsSync(defaultTarget)) {
+              logger.error(
+                "No target specified and default SSOT file not found.\n" +
+                  "Usage: framework audit <mode> <target>\n" +
+                  "Or create: ssot/SSOT-0_PRD.md",
+              );
+              process.exit(1);
+            }
+            targetPath = defaultTarget;
+            target = "ssot/SSOT-0_PRD.md";
+          } else {
+            targetPath = path.resolve(projectDir, target);
+            if (!fs.existsSync(targetPath)) {
+              logger.error(`Target not found: ${target}`);
+              process.exit(1);
+            }
           }
 
           const io = createAuditTerminalIO();

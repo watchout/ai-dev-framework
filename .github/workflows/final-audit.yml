@@ -88,7 +88,7 @@ jobs:
       - name: Phase 1 — SSOT Compliance Check
         id: ssot_check
         run: |
-          # Run framework audit ssot and capture output
+          # Run framework audit ssot (uses default ssot/SSOT-0_PRD.md)
           node dist/cli/index.js audit ssot --json > /tmp/ssot-result.json 2>&1 || true
           cat /tmp/ssot-result.json
 
