@@ -80,6 +80,11 @@ export interface TaskExecution {
   escalation?: Escalation;
   startedAt?: string;
   completedAt?: string;
+  /**
+   * Implementation sequence number (WWWFFFFTTT, 10-digit).
+   * Populated from plan.json Task.seq at run-state initialization.
+   */
+  seq?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -122,6 +127,35 @@ export function getNextPendingTask(
   state: RunState,
 ): TaskExecution | undefined {
   return state.tasks.find((t) => t.status === "backlog");
+}
+
+/**
+ * Get the currently in-progress task (framework current).
+ */
+export function getCurrentTask(
+  state: RunState,
+): TaskExecution | undefined {
+  return state.tasks.find((t) => t.status === "in_progress");
+}
+
+/**
+ * Get the next todo task by seq order (framework next).
+ * Returns the backlog task with the smallest seq value.
+ * Falls back to insertion order if seq is not available.
+ */
+export function getNextTaskBySeq(
+  state: RunState,
+): TaskExecution | undefined {
+  const backlog = state.tasks.filter((t) => t.status === "backlog");
+  if (backlog.length === 0) return undefined;
+
+  // Sort by seq (lexicographic), fall back to original order if seq absent
+  return backlog.sort((a, b) => {
+    if (a.seq && b.seq) return a.seq.localeCompare(b.seq);
+    if (a.seq) return -1;
+    if (b.seq) return 1;
+    return 0;
+  })[0];
 }
 
 export function startTask(

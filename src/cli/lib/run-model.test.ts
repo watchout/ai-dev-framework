@@ -239,3 +239,79 @@ describe("run-model", () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────
+// getCurrentTask / getNextTaskBySeq
+// ─────────────────────────────────────────────
+
+import { getCurrentTask, getNextTaskBySeq } from "./run-model.js";
+
+function makeTaskWithSeq(
+  taskId: string,
+  status: TaskExecution["status"],
+  seq?: string,
+): TaskExecution {
+  return {
+    taskId,
+    featureId: "F1",
+    taskKind: "db",
+    name: taskId,
+    status,
+    blockedBy: [],
+    files: [],
+    seq,
+  };
+}
+
+describe("getCurrentTask", () => {
+  it("returns in_progress task", () => {
+    const state = createRunState();
+    state.tasks = [
+      makeTaskWithSeq("T1", "backlog", "1000100010"),
+      makeTaskWithSeq("T2", "in_progress", "1000100020"),
+    ];
+    expect(getCurrentTask(state)?.taskId).toBe("T2");
+  });
+
+  it("returns undefined when no in_progress task", () => {
+    const state = createRunState();
+    state.tasks = [makeTaskWithSeq("T1", "backlog", "1000100010")];
+    expect(getCurrentTask(state)).toBeUndefined();
+  });
+});
+
+describe("getNextTaskBySeq", () => {
+  it("returns backlog task with smallest seq", () => {
+    const state = createRunState();
+    state.tasks = [
+      makeTaskWithSeq("T3", "backlog", "1000300010"),
+      makeTaskWithSeq("T1", "backlog", "1000100010"),
+      makeTaskWithSeq("T2", "backlog", "1000200010"),
+    ];
+    expect(getNextTaskBySeq(state)?.taskId).toBe("T1");
+  });
+
+  it("skips done tasks", () => {
+    const state = createRunState();
+    state.tasks = [
+      makeTaskWithSeq("T1", "done", "1000100010"),
+      makeTaskWithSeq("T2", "backlog", "1000200010"),
+    ];
+    expect(getNextTaskBySeq(state)?.taskId).toBe("T2");
+  });
+
+  it("returns undefined when no backlog tasks", () => {
+    const state = createRunState();
+    state.tasks = [makeTaskWithSeq("T1", "done", "1000100010")];
+    expect(getNextTaskBySeq(state)).toBeUndefined();
+  });
+
+  it("falls back to insertion order when seq is absent", () => {
+    const state = createRunState();
+    state.tasks = [
+      makeTaskWithSeq("T1", "backlog", undefined),
+      makeTaskWithSeq("T2", "backlog", undefined),
+    ];
+    expect(getNextTaskBySeq(state)?.taskId).toBe("T1");
+  });
+});
