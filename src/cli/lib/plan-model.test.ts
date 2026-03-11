@@ -4,6 +4,8 @@ import * as path from "node:path";
 import * as os from "node:os";
 import {
   type Feature,
+  type Wave,
+  type Task,
   decomposeFeature,
   determineTaskOrderMode,
   buildDependencyGraph,
