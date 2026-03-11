@@ -394,6 +394,7 @@ export function assignSeqNumbers(waves: Wave[], tasks: Task[]): void {
 // ─────────────────────────────────────────────
 
 const PLAN_FILE = ".framework/plan.json";
+const PLAN_TMP = ".framework/plan.json.tmp";
 
 export function loadPlan(projectDir: string): PlanState | null {
   const filePath = path.join(projectDir, PLAN_FILE);
@@ -407,12 +408,36 @@ export function loadPlan(projectDir: string): PlanState | null {
   return parsed;
 }
 
+/**
+ * Save plan.json with atomic write (tmp + rename) to prevent corruption on crash.
+ * Uses the same pattern as sync-engine.ts atomicWritePlan().
+ */
 export function savePlan(projectDir: string, plan: PlanState): void {
-  const filePath = path.join(projectDir, PLAN_FILE);
-  const dir = path.dirname(filePath);
+  const planFilePath = path.join(projectDir, PLAN_FILE);
+  const tmpFilePath = path.join(projectDir, PLAN_TMP);
+  const dir = path.dirname(planFilePath);
+
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  plan.updatedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(plan, null, 2), "utf-8");
+
+  try {
+    // Write to tmp
+    plan.updatedAt = new Date().toISOString();
+    fs.writeFileSync(
+      tmpFilePath,
+      JSON.stringify(plan, null, 2),
+      "utf-8",
+    );
+    // Atomic rename
+    fs.renameSync(tmpFilePath, planFilePath);
+  } catch (err) {
+    // Cleanup tmp on failure
+    try {
+      fs.rmSync(tmpFilePath, { force: true });
+    } catch {
+      /* ignore cleanup errors */
+    }
+    throw err;
+  }
 }
