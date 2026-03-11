@@ -50,6 +50,7 @@ export function registerAuditCommand(program: Command): void {
     .option("--id <id>", "Target identifier (default: filename)")
     .option("--status", "Show recent audit results")
     .option("--legacy", "Enable deprecated prompt audit mode")
+    .option("--json", "Output result as JSON")
     .action(
       async (
         mode: string,
@@ -59,6 +60,7 @@ export function registerAuditCommand(program: Command): void {
           id?: string;
           status?: boolean;
           legacy?: boolean;
+          json?: boolean;
         },
       ) => {
         const projectDir = process.cwd();
@@ -131,6 +133,20 @@ export function registerAuditCommand(program: Command): void {
               logger.error(err);
             }
             process.exit(1);
+          }
+
+          // Output JSON if requested
+          if (options.json) {
+            const jsonOutput = {
+              mode,
+              target,
+              verdict: result.report.verdict,
+              score: result.report.score,
+              issues: result.report.issues,
+              sections: result.report.sections,
+            };
+            process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
+            process.exit(result.report.verdict === "pass" ? 0 : 1);
           }
 
           // Output markdown if requested
