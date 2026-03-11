@@ -4,6 +4,8 @@ import * as path from "node:path";
 import * as os from "node:os";
 import {
   type Feature,
+  type Wave,
+  type Task,
   decomposeFeature,
   determineTaskOrderMode,
   buildDependencyGraph,
@@ -311,5 +313,95 @@ describe("plan-model", () => {
       savePlan(tmpDir, plan);
       expect(fs.existsSync(path.join(tmpDir, ".framework"))).toBe(true);
     });
+  });
+});
+
+// ─────────────────────────────────────────────
+// buildSeq / assignSeqNumbers
+// ─────────────────────────────────────────────
+
+import { buildSeq, assignSeqNumbers } from "./plan-model.js";
+
+describe("buildSeq", () => {
+  it("generates 10-digit fixed string", () => {
+    // WWW(100) + FFFF(0100) + TTT(010) = "1000100010"
+    expect(buildSeq(0, 0, 0)).toBe("1000100010");
+    expect(buildSeq(0, 0, 0).length).toBe(10);
+  });
+
+  it("wave index increments by 10 starting at 100", () => {
+    expect(buildSeq(0, 0, 0).slice(0, 3)).toBe("100");
+    expect(buildSeq(1, 0, 0).slice(0, 3)).toBe("110");
+    expect(buildSeq(2, 0, 0).slice(0, 3)).toBe("120");
+  });
+
+  it("feature index increments by 10 starting at 0100", () => {
+    expect(buildSeq(0, 0, 0).slice(3, 7)).toBe("0100");
+    expect(buildSeq(0, 1, 0).slice(3, 7)).toBe("0110");
+    expect(buildSeq(0, 9, 0).slice(3, 7)).toBe("0190");
+  });
+
+  it("task index increments by 10 starting at 010", () => {
+    expect(buildSeq(0, 0, 0).slice(7)).toBe("010");
+    expect(buildSeq(0, 0, 1).slice(7)).toBe("020");
+    expect(buildSeq(0, 0, 8).slice(7)).toBe("090");
+  });
+
+  it("lexicographic sort equals execution order", () => {
+    const seqs = [
+      buildSeq(1, 0, 0),
+      buildSeq(0, 1, 0),
+      buildSeq(0, 0, 1),
+      buildSeq(0, 0, 0),
+    ];
+    const sorted = [...seqs].sort();
+    expect(sorted).toEqual([
+      buildSeq(0, 0, 0),
+      buildSeq(0, 0, 1),
+      buildSeq(0, 1, 0),
+      buildSeq(1, 0, 0),
+    ]);
+  });
+});
+
+describe("assignSeqNumbers", () => {
+  it("assigns seq to all tasks in wave/feature/task order", () => {
+    const feature1: Feature = {
+      id: "F1", name: "F1", priority: "P0", size: "M",
+      type: "common", dependencies: [], dependencyCount: 0,
+    };
+    const feature2: Feature = {
+      id: "F2", name: "F2", priority: "P1", size: "M",
+      type: "proprietary", dependencies: [], dependencyCount: 0,
+    };
+    const wave: Wave = { number: 1, phase: "common", title: "W1", features: [feature1, feature2] };
+
+    const tasks: Task[] = [
+      { id: "F1-DB",  featureId: "F1", kind: "db",  name: "F1 DB",  references: [], blockedBy: [], blocks: [], size: "S" },
+      { id: "F1-API", featureId: "F1", kind: "api", name: "F1 API", references: [], blockedBy: [], blocks: [], size: "M" },
+      { id: "F2-DB",  featureId: "F2", kind: "db",  name: "F2 DB",  references: [], blockedBy: [], blocks: [], size: "S" },
+    ];
+
+    assignSeqNumbers([wave], tasks);
+
+    expect(tasks[0].seq).toBe(buildSeq(0, 0, 0)); // Wave0, Feature0, Task0
+    expect(tasks[1].seq).toBe(buildSeq(0, 0, 1)); // Wave0, Feature0, Task1
+    expect(tasks[2].seq).toBe(buildSeq(0, 1, 0)); // Wave0, Feature1, Task0
+  });
+
+  it("seq values are lexicographically sorted in execution order", () => {
+    const f: Feature = {
+      id: "F1", name: "F1", priority: "P0", size: "M",
+      type: "common", dependencies: [], dependencyCount: 0,
+    };
+    const wave: Wave = { number: 1, phase: "common", title: "W1", features: [f] };
+    const tasks: Task[] = [
+      { id: "F1-DB",  featureId: "F1", kind: "db",  name: "", references: [], blockedBy: [], blocks: [], size: "S" },
+      { id: "F1-API", featureId: "F1", kind: "api", name: "", references: [], blockedBy: [], blocks: [], size: "M" },
+      { id: "F1-UI",  featureId: "F1", kind: "ui",  name: "", references: [], blockedBy: [], blocks: [], size: "M" },
+    ];
+    assignSeqNumbers([wave], tasks);
+    const seqs = tasks.map((t) => t.seq!);
+    expect([...seqs].sort()).toEqual(seqs);
   });
 });

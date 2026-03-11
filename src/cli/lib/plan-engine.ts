@@ -23,6 +23,7 @@ import {
   sortFeaturesInWave,
   decomposeFeature,
   determineTaskOrderMode,
+  assignSeqNumbers,
   savePlan,
   loadPlan,
 } from "./plan-model.js";
@@ -182,6 +183,9 @@ export async function runPlanEngine(
       allTasks.push(...tasks);
     }
   }
+
+  // Assign WWWFFFFTTT sequence numbers to all tasks
+  assignSeqNumbers(waves, allTasks);
 
   // Save plan state
   const plan: PlanState = {

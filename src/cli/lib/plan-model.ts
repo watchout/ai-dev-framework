@@ -42,6 +42,13 @@ export interface Task {
   blockedBy: string[];
   blocks: string[];
   size: Size;
+  /**
+   * Implementation sequence number (WWWFFFFTTT, 10-digit fixed string).
+   * Format: WWW(Wave, starts 100, step 10) + FFFF(Feature, starts 0100, step 10) + TTT(Task, starts 010, step 10)
+   * Lexicographic sort = execution order.
+   * Assigned by assignSeqNumbers() during plan generation.
+   */
+  seq?: string;
 }
 
 export interface Wave {
@@ -328,6 +335,58 @@ export function sortFeaturesInWave(features: Feature[]): Feature[] {
     // Rule 4: ID (alphabetical)
     return a.id.localeCompare(b.id);
   });
+}
+
+// ─────────────────────────────────────────────
+// Sequence Number Assignment (WWWFFFFTTT)
+// ─────────────────────────────────────────────
+
+/**
+ * Generate a WWWFFFFTTT sequence number (10-digit fixed string).
+ *
+ * @param waveIdx    0-based wave index  → WWW = 100 + waveIdx * 10
+ * @param featureIdx 0-based feature index within wave → FFFF = 100 + featureIdx * 10
+ * @param taskIdx    0-based task index within feature → TTT = 10 + taskIdx * 10
+ */
+export function buildSeq(
+  waveIdx: number,
+  featureIdx: number,
+  taskIdx: number,
+): string {
+  const waveSeq = String(100 + waveIdx * 10).padStart(3, "0");
+  const featureSeq = String(100 + featureIdx * 10).padStart(4, "0");
+  const taskSeq = String(10 + taskIdx * 10).padStart(3, "0");
+  return `${waveSeq}${featureSeq}${taskSeq}`;
+}
+
+/**
+ * Assign seq numbers to all tasks in-place.
+ * Tasks in waves[] must already be in final execution order.
+ */
+export function assignSeqNumbers(waves: Wave[], tasks: Task[]): void {
+  // Build a lookup: taskId → { waveIdx, featureIdx, taskIdx }
+  const seqMap = new Map<string, string>();
+
+  for (let waveIdx = 0; waveIdx < waves.length; waveIdx++) {
+    const wave = waves[waveIdx];
+    for (let featureIdx = 0; featureIdx < wave.features.length; featureIdx++) {
+      const feature = wave.features[featureIdx];
+      // Tasks for this feature, in order they appear in the flat tasks array
+      const featureTasks = tasks.filter((t) => t.featureId === feature.id);
+      for (let taskIdx = 0; taskIdx < featureTasks.length; taskIdx++) {
+        const seq = buildSeq(waveIdx, featureIdx, taskIdx);
+        seqMap.set(featureTasks[taskIdx].id, seq);
+      }
+    }
+  }
+
+  // Apply seq to tasks in-place
+  for (const task of tasks) {
+    const seq = seqMap.get(task.id);
+    if (seq !== undefined) {
+      task.seq = seq;
+    }
+  }
 }
 
 // ─────────────────────────────────────────────
