@@ -41,3 +41,8 @@ coverage/
 
 # Vercel
 .vercel
+
+# Framework runtime data
+.framework/audits/
+.framework/feedback/
+docs/audits/
