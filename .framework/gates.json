@@ -62,12 +62,12 @@
       {
         "name": "SSOT files found",
         "passed": false,
-        "message": "No SSOT files found in docs/. Create feature specifications first.",
+        "message": "No SSOT feature spec files found in docs/. Create feature specifications first.",
         "filePath": "",
         "missingSections": []
       }
     ],
-    "checkedAt": "2026-02-12T20:43:18.894Z"
+    "checkedAt": "2026-03-17T08:24:14.660Z"
   },
-  "updatedAt": "2026-02-12T20:43:18.894Z"
+  "updatedAt": "2026-03-17T08:24:14.660Z"
 }

@@ -25,17 +25,21 @@ import {
   type RunState,
   type TaskExecution,
   type ModifiedFile,
+  type AcceptanceCheck,
   type Escalation,
   type EscalationTrigger,
   ESCALATION_LABELS,
   createRunState,
   getNextPendingTask,
   getNextTaskBySeq,
+  getTaskExecutionHealth,
+  areTaskBlockersSatisfied,
   startTask,
   escalateTask,
   resolveEscalation,
   completeTask,
   failTask,
+  touchTaskHeartbeat,
   calculateProgress,
   loadRunState,
   saveRunState,
@@ -128,6 +132,34 @@ export async function runTask(
 
   // Find target task
   let task: TaskExecution | undefined;
+  const activeTask = state.tasks.find((t) => t.status === "in_progress");
+
+  if (activeTask) {
+    const health = getTaskExecutionHealth(activeTask);
+    if (health.expired) {
+      failTask(
+        state,
+        activeTask.taskId,
+        health.reason ?? "max_idle_exceeded",
+        health.detail,
+      );
+      saveRunState(projectDir, state);
+      io.print(
+        `  Previous task ${activeTask.taskId} marked failed: ${health.detail}`,
+      );
+      io.print("");
+    } else {
+      errors.push(
+        `Task already in progress: ${activeTask.taskId}. Complete or fail it before starting another task.`,
+      );
+      return {
+        taskId: activeTask.taskId,
+        status: "failed",
+        files: [],
+        errors,
+      };
+    }
+  }
 
   if (options.taskId) {
     task = state.tasks.find((t) => t.taskId === options.taskId);
@@ -142,6 +174,15 @@ export async function runTask(
     }
     if (task.status === "done") {
       errors.push(`Task already completed: ${options.taskId}`);
+      return {
+        taskId: options.taskId,
+        status: "failed",
+        files: [],
+        errors,
+      };
+    }
+    if (!areTaskBlockersSatisfied(state, task)) {
+      errors.push(`Task is blocked by: ${task.blockedBy.join(", ")}`);
       return {
         taskId: options.taskId,
         status: "failed",
@@ -178,6 +219,9 @@ export async function runTask(
   io.print(`  Task: ${task.taskId}`);
   io.print(`  Name: ${task.name}`);
   io.print(`  Feature: ${task.featureId}`);
+  if (task.blockedBy.length > 0) {
+    io.print(`  Blocked By: ${task.blockedBy.join(", ")}`);
+  }
   io.print("");
 
   if (options.dryRun) {
@@ -220,6 +264,8 @@ export async function runTask(
   // Generate implementation prompt
   const prompt = generateTaskPrompt(task);
   task.prompt = prompt;
+  touchTaskHeartbeat(state, task.taskId);
+  saveRunState(projectDir, state);
 
   io.print("  Implementation Prompt:");
   io.print(`  ${"─".repeat(34)}`);
@@ -278,7 +324,12 @@ export async function runTask(
   }
 
   if (normalized === "fail" || normalized === "f") {
-    failTask(state, task.taskId);
+    failTask(
+      state,
+      task.taskId,
+      "manual_fail",
+      "Marked as failed by operator",
+    );
     saveRunState(projectDir, state);
 
     // Label GitHub Issue as "failed" (keep open for re-execution)
@@ -303,8 +354,24 @@ export async function runTask(
 
   // Default: mark as done
   const files = detectModifiedFiles(projectDir);
+  const validation = validateTaskCompletion(projectDir, state, task, files);
+  if (!validation.ok) {
+    task.acceptanceChecks = validation.checks;
+    task.stopReason = validation.reason;
+    task.stopDetails = validation.detail;
+    touchTaskHeartbeat(state, task.taskId);
+    saveRunState(projectDir, state);
+    errors.push(validation.detail);
+    return {
+      taskId: task.taskId,
+      status: "failed",
+      files,
+      errors,
+    };
+  }
   const auditScore = 100; // Actual audit should be run separately via `framework audit`
 
+  task.acceptanceChecks = validation.checks;
   completeTask(state, task.taskId, files, auditScore);
   saveRunState(projectDir, state);
 
@@ -355,6 +422,30 @@ export interface CompleteResult {
   parentClosed?: boolean;
 }
 
+export interface StartTaskResult {
+  error?: string;
+  taskId: string;
+  progress: number;
+  prompt?: string;
+  heartbeatAt?: string;
+  leaseExpiresAt?: string;
+}
+
+export interface HeartbeatResult {
+  error?: string;
+  taskId: string;
+  progress: number;
+  heartbeatAt?: string;
+  leaseExpiresAt?: string;
+}
+
+export interface FailTaskResult {
+  error?: string;
+  taskId: string;
+  progress: number;
+  issueLabeled: boolean;
+}
+
 /**
  * Mark a task as done without interactive prompts.
  * Designed for use from Claude Code sessions / CI / scripts.
@@ -386,6 +477,20 @@ export async function completeTaskNonInteractive(
 
   // Detect modified files and complete
   const files = detectModifiedFiles(projectDir);
+  const validation = validateTaskCompletion(projectDir, state, task, files);
+  if (!validation.ok) {
+    task.acceptanceChecks = validation.checks;
+    task.stopReason = validation.reason;
+    task.stopDetails = validation.detail;
+    touchTaskHeartbeat(state, task.taskId);
+    saveRunState(projectDir, state);
+    return {
+      error: validation.detail,
+      progress: calculateProgress(state),
+      issueClosed: false,
+    };
+  }
+  task.acceptanceChecks = validation.checks;
   completeTask(state, taskId, files, 100);
   saveRunState(projectDir, state);
 
@@ -410,6 +515,206 @@ export async function completeTaskNonInteractive(
     progress: calculateProgress(state),
     issueClosed,
     parentClosed,
+  };
+}
+
+export async function startTaskNonInteractive(
+  projectDir: string,
+  taskId?: string,
+): Promise<StartTaskResult> {
+  const state = loadOrInitRunState(projectDir);
+  if ("error" in state) {
+    return {
+      error: state.error,
+      taskId: taskId ?? "",
+      progress: 0,
+    };
+  }
+
+  const runState = state;
+  const activeTask = runState.tasks.find((t) => t.status === "in_progress");
+  if (activeTask) {
+    const health = getTaskExecutionHealth(activeTask);
+    if (health.expired) {
+      failTask(
+        runState,
+        activeTask.taskId,
+        health.reason ?? "max_idle_exceeded",
+        health.detail,
+      );
+      saveRunState(projectDir, runState);
+    } else {
+      return {
+        error: `Task already in progress: ${activeTask.taskId}`,
+        taskId: activeTask.taskId,
+        progress: calculateProgress(runState),
+        prompt: activeTask.prompt,
+        heartbeatAt: activeTask.heartbeatAt,
+        leaseExpiresAt: activeTask.leaseExpiresAt,
+      };
+    }
+  }
+
+  let task: TaskExecution | undefined;
+  if (taskId) {
+    task = runState.tasks.find((t) => t.taskId === taskId);
+    if (!task) {
+      return {
+        error: `Task not found: ${taskId}`,
+        taskId,
+        progress: calculateProgress(runState),
+      };
+    }
+    if (task.status === "done") {
+      return {
+        error: `Task already completed: ${taskId}`,
+        taskId,
+        progress: calculateProgress(runState),
+      };
+    }
+    if (task.status === "waiting_input") {
+      return {
+        error: `Task requires escalation input before start: ${taskId}`,
+        taskId,
+        progress: calculateProgress(runState),
+      };
+    }
+    if (!areTaskBlockersSatisfied(runState, task)) {
+      return {
+        error: `Task is blocked by: ${task.blockedBy.join(", ")}`,
+        taskId,
+        progress: calculateProgress(runState),
+      };
+    }
+  } else {
+    task = getNextTaskBySeq(runState);
+  }
+
+  if (!task) {
+    return {
+      error: "No startable task available.",
+      taskId: taskId ?? "",
+      progress: calculateProgress(runState),
+    };
+  }
+
+  startTask(runState, task.taskId);
+  task.prompt = generateTaskPrompt(task);
+  touchTaskHeartbeat(runState, task.taskId);
+  saveRunState(projectDir, runState);
+
+  return {
+    taskId: task.taskId,
+    progress: calculateProgress(runState),
+    prompt: task.prompt,
+    heartbeatAt: task.heartbeatAt,
+    leaseExpiresAt: task.leaseExpiresAt,
+  };
+}
+
+export function heartbeatTaskNonInteractive(
+  projectDir: string,
+  taskId?: string,
+): HeartbeatResult {
+  const state = loadRunState(projectDir);
+  if (!state) {
+    return {
+      error: "No run state found. Run 'framework run --start-only' first.",
+      taskId: taskId ?? "",
+      progress: 0,
+    };
+  }
+
+  const task = taskId
+    ? state.tasks.find((t) => t.taskId === taskId)
+    : state.tasks.find((t) => t.status === "in_progress");
+
+  if (!task) {
+    return {
+      error: taskId
+        ? `Task not found: ${taskId}`
+        : "No in-progress task found.",
+      taskId: taskId ?? "",
+      progress: calculateProgress(state),
+    };
+  }
+
+  if (task.status !== "in_progress") {
+    return {
+      error: `Task is not in progress: ${task.taskId}`,
+      taskId: task.taskId,
+      progress: calculateProgress(state),
+    };
+  }
+
+  const health = getTaskExecutionHealth(task);
+  if (health.expired) {
+    failTask(
+      state,
+      task.taskId,
+      health.reason ?? "max_idle_exceeded",
+      health.detail,
+    );
+    saveRunState(projectDir, state);
+    return {
+      error: health.detail ?? "Task execution expired.",
+      taskId: task.taskId,
+      progress: calculateProgress(state),
+    };
+  }
+
+  const updated = touchTaskHeartbeat(state, task.taskId);
+  saveRunState(projectDir, state);
+
+  return {
+    taskId: task.taskId,
+    progress: calculateProgress(state),
+    heartbeatAt: updated?.heartbeatAt,
+    leaseExpiresAt: updated?.leaseExpiresAt,
+  };
+}
+
+export async function failTaskNonInteractive(
+  projectDir: string,
+  taskId: string,
+  reason = "manual_fail",
+  detail?: string,
+): Promise<FailTaskResult> {
+  const state = loadRunState(projectDir);
+  if (!state) {
+    return {
+      error: "No run state found. Run 'framework run --start-only' first.",
+      taskId,
+      progress: 0,
+      issueLabeled: false,
+    };
+  }
+
+  const task = state.tasks.find((t) => t.taskId === taskId);
+  if (!task) {
+    return {
+      error: `Task not found: ${taskId}`,
+      taskId,
+      progress: calculateProgress(state),
+      issueLabeled: false,
+    };
+  }
+
+  failTask(state, taskId, reason as Parameters<typeof failTask>[2], detail);
+  saveRunState(projectDir, state);
+
+  let issueLabeled = false;
+  try {
+    const lblResult = await labelTaskIssue(projectDir, taskId, "failed");
+    issueLabeled = lblResult.labeled;
+  } catch {
+    // Silently ignore — GitHub sync is optional
+  }
+
+  return {
+    taskId,
+    progress: calculateProgress(state),
+    issueLabeled,
   };
 }
 
@@ -635,6 +940,24 @@ export async function syncRunStateFromGitHub(
   };
 }
 
+function loadOrInitRunState(
+  projectDir: string,
+): RunState | { error: string } {
+  let state = loadRunState(projectDir);
+  if (state) {
+    return state;
+  }
+
+  const plan = loadPlan(projectDir);
+  if (!plan || plan.waves.length === 0) {
+    return { error: "No plan found. Run 'framework plan' first." };
+  }
+
+  state = initRunStateFromPlan(plan);
+  saveRunState(projectDir, state);
+  return state;
+}
+
 // ─────────────────────────────────────────────
 // Plan → Run State Initialization
 // ─────────────────────────────────────────────
@@ -733,6 +1056,12 @@ export function generateTaskPrompt(task: TaskExecution): string {
   lines.push("- No `any` types");
   lines.push("- No console.log in production code");
   lines.push("- Handle all error cases");
+  lines.push(
+    `- Timebox: ${task.maxRuntimeMin ?? 25} min runtime / ${task.maxIdleMin ?? 7} min idle`,
+  );
+  if (task.blockedBy.length > 0) {
+    lines.push(`- Start only after: ${task.blockedBy.join(", ")}`);
+  }
   lines.push("");
   lines.push("## Acceptance Criteria");
   lines.push("- All MUST requirements from SSOT implemented");
@@ -857,7 +1186,12 @@ async function handleExistingEscalation(
   }
 
   if (normalized === "fail" || normalized === "f") {
-    failTask(state, task.taskId);
+    failTask(
+      state,
+      task.taskId,
+      "manual_fail",
+      "Marked as failed by operator",
+    );
     saveRunState(projectDir, state);
 
     // Label GitHub Issue as "failed" (keep open for re-execution)
@@ -878,6 +1212,22 @@ async function handleExistingEscalation(
 
   // Default: mark as done
   const files = detectModifiedFiles(projectDir);
+  const validation = validateTaskCompletion(projectDir, state, task, files);
+  if (!validation.ok) {
+    task.acceptanceChecks = validation.checks;
+    task.stopReason = validation.reason;
+    task.stopDetails = validation.detail;
+    touchTaskHeartbeat(state, task.taskId);
+    saveRunState(projectDir, state);
+    return {
+      taskId: task.taskId,
+      status: "failed",
+      files,
+      escalation: task.escalation,
+      errors: [validation.detail],
+    };
+  }
+  task.acceptanceChecks = validation.checks;
   completeTask(state, task.taskId, files, 100);
   saveRunState(projectDir, state);
 
@@ -967,4 +1317,77 @@ function detectModifiedFiles(projectDir: string): ModifiedFile[] {
   } catch {
     return [];
   }
+}
+
+function validateTaskCompletion(
+  projectDir: string,
+  state: RunState,
+  task: TaskExecution,
+  files: ModifiedFile[],
+): {
+  ok: boolean;
+  reason?: TaskExecution["stopReason"];
+  detail: string;
+  checks: AcceptanceCheck[];
+} {
+  const checks: AcceptanceCheck[] = [];
+
+  const blockersSatisfied = areTaskBlockersSatisfied(state, task);
+  checks.push({
+    name: "dependencies_resolved",
+    passed: blockersSatisfied,
+    detail: blockersSatisfied
+      ? "All blockedBy tasks are completed"
+      : `Pending blockers: ${task.blockedBy.join(", ")}`,
+  });
+  if (!blockersSatisfied) {
+    return {
+      ok: false,
+      reason: "dependency_blocked",
+      detail: `Task is blocked by: ${task.blockedBy.join(", ")}`,
+      checks,
+    };
+  }
+
+  const executionHealth = getTaskExecutionHealth(task);
+  checks.push({
+    name: "execution_window",
+    passed: !executionHealth.expired,
+    detail: executionHealth.detail ?? "Execution lease is healthy",
+  });
+  if (executionHealth.expired) {
+    return {
+      ok: false,
+      reason: executionHealth.reason,
+      detail: executionHealth.detail ?? "Execution window expired",
+      checks,
+    };
+  }
+
+  const requiresChanges =
+    task.taskKind !== "review" && fs.existsSync(path.join(projectDir, ".git"));
+  const hasMeaningfulChanges = files.some((file) => file.action !== "deleted");
+  checks.push({
+    name: "meaningful_changes_detected",
+    passed: !requiresChanges || hasMeaningfulChanges,
+    detail: !requiresChanges
+      ? "Review tasks may complete without code changes"
+      : hasMeaningfulChanges
+        ? `${files.length} changed file(s) detected`
+        : "No modified files detected for implementation task",
+  });
+  if (requiresChanges && !hasMeaningfulChanges) {
+    return {
+      ok: false,
+      reason: "no_changes_detected",
+      detail: "No modified files detected. Refusing to mark implementation task as done.",
+      checks,
+    };
+  }
+
+  return {
+    ok: true,
+    detail: "Task satisfies basic automation checks",
+    checks,
+  };
 }

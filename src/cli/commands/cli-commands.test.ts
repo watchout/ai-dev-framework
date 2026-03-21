@@ -171,6 +171,20 @@ describe("init command", () => {
 });
 
 // ---------------------------------------------------------------------------
+// run
+// ---------------------------------------------------------------------------
+describe("run command", () => {
+  it("--help shows run automation options", () => {
+    const output = runCli("run --help");
+    expect(output).toContain("run");
+    expect(output).toContain("--start-only");
+    expect(output).toContain("--heartbeat");
+    expect(output).toContain("--fail-task");
+    expect(output).toContain("--json");
+  });
+});
+
+// ---------------------------------------------------------------------------
 // status
 // ---------------------------------------------------------------------------
 describe("status command", () => {
@@ -178,6 +192,7 @@ describe("status command", () => {
     const output = runCli("status --help");
     expect(output).toContain("status");
     expect(output).toContain("--github");
+    expect(output).toContain("--json");
   });
 
   it("status in a non-framework dir exits with error", () => {

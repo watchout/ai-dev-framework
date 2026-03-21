@@ -8,6 +8,9 @@ import {
   initRunStateFromPlan,
   generateTaskPrompt,
   createEscalation,
+  startTaskNonInteractive,
+  heartbeatTaskNonInteractive,
+  failTaskNonInteractive,
   completeTaskNonInteractive,
   completeFeatureNonInteractive,
   completeWaveNonInteractive,
@@ -214,6 +217,7 @@ describe("run-engine", () => {
       expect(prompt).toContain("Constraints");
       expect(prompt).toContain("any");
       expect(prompt).toContain("Acceptance Criteria");
+      expect(prompt).toContain("Timebox");
     });
   });
 
@@ -310,6 +314,57 @@ describe("run-engine", () => {
         taskId: "NONEXISTENT",
       });
       expect(result.errors.length).toBeGreaterThan(0);
+    });
+
+    it("blocks task selection when dependencies are unresolved", async () => {
+      const io = createMockIO();
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1", featureId: "F1", taskKind: "db",
+          name: "Task 1", status: "backlog", blockedBy: [], files: [],
+        },
+        {
+          taskId: "T2", featureId: "F1", taskKind: "api",
+          name: "Task 2", status: "backlog", blockedBy: ["T1"], files: [],
+        },
+      ];
+      saveRunState(tmpDir, state);
+
+      const result = await runTask({
+        projectDir: tmpDir,
+        io,
+        taskId: "T2",
+      });
+      expect(result.status).toBe("failed");
+      expect(result.errors[0]).toContain("blocked");
+    });
+
+    it("blocks starting another task when one is already in progress", async () => {
+      const io = createMockIO();
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1", featureId: "F1", taskKind: "db",
+          name: "Task 1", status: "in_progress", blockedBy: [], files: [],
+          startedAt: new Date().toISOString(),
+          heartbeatAt: new Date().toISOString(),
+        },
+        {
+          taskId: "T2", featureId: "F1", taskKind: "api",
+          name: "Task 2", status: "backlog", blockedBy: [], files: [],
+        },
+      ];
+      state.currentTaskId = "T1";
+      state.status = "running";
+      saveRunState(tmpDir, state);
+
+      const result = await runTask({
+        projectDir: tmpDir,
+        io,
+      });
+      expect(result.status).toBe("failed");
+      expect(result.errors[0]).toContain("already in progress");
     });
 
     it("dry run shows prompt without executing", async () => {
@@ -495,6 +550,71 @@ describe("run-engine", () => {
       const result = await completeTaskNonInteractive(tmpDir, "AUTH-001-TEST");
       expect(result.error).toBeUndefined();
       expect(result.progress).toBeGreaterThan(0);
+    });
+  });
+
+  describe("non-interactive lifecycle controls", () => {
+    it("starts a task and returns prompt/lease metadata", async () => {
+      const plan = makePlan();
+      savePlan(tmpDir, plan);
+
+      const result = await startTaskNonInteractive(tmpDir, "AUTH-001-TEST");
+      expect(result.error).toBeUndefined();
+      expect(result.taskId).toBe("AUTH-001-TEST");
+      expect(result.prompt).toContain("Implementation Task");
+      expect(result.heartbeatAt).toBeDefined();
+      expect(result.leaseExpiresAt).toBeDefined();
+
+      const state = loadRunState(tmpDir);
+      expect(state?.currentTaskId).toBe("AUTH-001-TEST");
+      expect(state?.tasks[0].status).toBe("in_progress");
+    });
+
+    it("refreshes heartbeat for in-progress task", async () => {
+      const plan = makePlan();
+      const state = initRunStateFromPlan(plan);
+      state.tasks[0].status = "in_progress";
+      state.tasks[0].startedAt = new Date().toISOString();
+      state.tasks[0].heartbeatAt = new Date().toISOString();
+      state.currentTaskId = state.tasks[0].taskId;
+      saveRunState(tmpDir, state);
+
+      const result = heartbeatTaskNonInteractive(tmpDir, state.tasks[0].taskId);
+      expect(result.error).toBeUndefined();
+      expect(result.taskId).toBe(state.tasks[0].taskId);
+      expect(result.heartbeatAt).toBeDefined();
+      expect(result.leaseExpiresAt).toBeDefined();
+    });
+
+    it("fails a task non-interactively with reason", async () => {
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1",
+          featureId: "F1",
+          taskKind: "db",
+          name: "Task 1",
+          status: "in_progress",
+          blockedBy: [],
+          files: [],
+        },
+      ];
+      state.currentTaskId = "T1";
+      saveRunState(tmpDir, state);
+
+      const result = await failTaskNonInteractive(
+        tmpDir,
+        "T1",
+        "max_idle_exceeded",
+        "No heartbeat for 7 minutes",
+      );
+      expect(result.error).toBeUndefined();
+      expect(result.taskId).toBe("T1");
+
+      const updated = loadRunState(tmpDir);
+      expect(updated?.tasks[0].status).toBe("failed");
+      expect(updated?.tasks[0].stopReason).toBe("max_idle_exceeded");
+      expect(updated?.tasks[0].stopDetails).toContain("No heartbeat");
     });
   });
 

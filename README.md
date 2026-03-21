@@ -11,6 +11,7 @@ AI駆動の開発フレームワーク。曖昧なプロダクトアイデアか
 - **完全な開発ライフサイクル**: アイデア → 仕様 → 実装 → テスト → デプロイ → 保守
 - **5種類のプロジェクトタイプ**: app / lp / hp / api / cli
 - **知識データベース**: docs/knowledge/ にドメイン知識を蓄積し、仕様品質を向上
+- **外部ランナー連携**: `--json` / heartbeat / lease により openclaw 等の外部オーケストレータと接続可能
 
 ---
 
@@ -42,7 +43,7 @@ framework generate business
 framework generate product
 framework generate technical
 framework plan
-framework run --auto
+framework run --start-only --json
 framework audit all
 ```
 
@@ -51,7 +52,7 @@ framework audit all
 cd /path/to/existing-project
 framework retrofit
 framework plan
-framework run --auto
+framework run --start-only --json
 framework audit all
 ```
 
@@ -72,8 +73,8 @@ framework discover          ディスカバリー（ヒアリング実行）
 framework generate <step>   SSOT生成（business|product|technical）
 framework plan              実装計画作成（タスク分解）
 framework audit [target]    品質監査（ssot|code|test|visual|all）
-framework run <task-id>     タスク実行（--auto で連続実行）
-framework status            進捗表示（--json でダッシュボード連携）
+framework run <task-id>     タスク実行 / start-only / heartbeat / fail-task
+framework status            進捗表示（--json でダッシュボード・ランナー連携）
 framework retrofit          既存プロジェクト導入
 framework update            フレームワーク更新
 ```
@@ -104,6 +105,7 @@ framework update            フレームワーク更新
 | [GUIDE_NEW_PROJECT.md](docs/GUIDE_NEW_PROJECT.md) | 新規プロジェクト |
 | [GUIDE_EXISTING_PROJECT.md](docs/GUIDE_EXISTING_PROJECT.md) | 既存プロジェクト導入 |
 | [FRAMEWORK_SUMMARY.md](docs/FRAMEWORK_SUMMARY.md) | 全体サマリー・引き継ぎ |
+| [OPENCLAW_RUNTIME_CONTRACT.md](docs/guides/OPENCLAW_RUNTIME_CONTRACT.md) | 外部ランナー連携契約 |
 
 ---
 

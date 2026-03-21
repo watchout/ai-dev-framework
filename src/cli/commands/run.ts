@@ -13,11 +13,15 @@ import {
   completeTaskNonInteractive,
   completeFeatureNonInteractive,
   completeWaveNonInteractive,
+  startTaskNonInteractive,
+  heartbeatTaskNonInteractive,
+  failTaskNonInteractive,
   syncRunStateFromGitHub,
 } from "../lib/run-engine.js";
 import {
   loadRunState,
   calculateProgress,
+  getCurrentExecutionHealth,
 } from "../lib/run-model.js";
 import {
   loadGateState,
@@ -32,6 +36,7 @@ export function registerRunCommand(program: Command): void {
     .description("Execute next implementation task")
     .argument("[taskId]", "Specific task ID to execute")
     .option("--dry-run", "Preview without executing")
+    .option("--json", "Output machine-readable JSON")
     .option(
       "--auto-commit",
       "Auto-commit generated code",
@@ -49,23 +54,94 @@ export function registerRunCommand(program: Command): void {
       "--complete-wave",
       "Mark all tasks in a wave as done (argument = wave number)",
     )
+    .option(
+      "--start-only",
+      "Start a task non-interactively and return prompt/lease info",
+    )
+    .option(
+      "--heartbeat",
+      "Refresh heartbeat/lease for the current or specified task",
+    )
+    .option(
+      "--fail-task",
+      "Mark the current or specified task as failed (non-interactive)",
+    )
+    .option(
+      "--reason <reason>",
+      "Failure reason for --fail-task",
+    )
+    .option(
+      "--detail <detail>",
+      "Detailed failure context for --fail-task",
+    )
     .action(
       async (
         taskId: string | undefined,
         options: {
           dryRun?: boolean;
+          json?: boolean;
           autoCommit?: boolean;
           status?: boolean;
           complete?: boolean;
           completeFeature?: boolean;
           completeWave?: boolean;
+          startOnly?: boolean;
+          heartbeat?: boolean;
+          failTask?: boolean;
+          reason?: string;
+          detail?: string;
         },
       ) => {
         const projectDir = process.cwd();
 
         try {
           if (options.status) {
-            printRunStatus(projectDir);
+            printRunStatus(projectDir, options.json ?? false);
+            return;
+          }
+
+          if (options.heartbeat) {
+            const result = heartbeatTaskNonInteractive(projectDir, taskId);
+            if (options.json) {
+              process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+              if (result.error) process.exit(1);
+              return;
+            }
+            if (result.error) {
+              logger.error(result.error);
+              process.exit(1);
+            }
+            logger.success(`Task ${result.taskId}: heartbeat refreshed`);
+            logger.info(`  Lease: ${result.leaseExpiresAt}`);
+            return;
+          }
+
+          if (options.failTask) {
+            if (!taskId) {
+              logger.error(
+                "Task ID required. Usage: framework run <taskId> --fail-task",
+              );
+              process.exit(1);
+            }
+            const result = await failTaskNonInteractive(
+              projectDir,
+              taskId,
+              options.reason,
+              options.detail,
+            );
+            if (options.json) {
+              process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+              if (result.error) process.exit(1);
+              return;
+            }
+            if (result.error) {
+              logger.error(result.error);
+              process.exit(1);
+            }
+            logger.success(`Task ${taskId}: failed (${result.progress}%)`);
+            if (result.issueLabeled) {
+              logger.info(`  GitHub Issue labeled failed for ${taskId}`);
+            }
             return;
           }
 
@@ -81,6 +157,11 @@ export function registerRunCommand(program: Command): void {
               projectDir,
               taskId,
             );
+            if (options.json) {
+              process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+              if (result.error) process.exit(1);
+              return;
+            }
             if (result.error) {
               logger.error(result.error);
               process.exit(1);
@@ -107,6 +188,11 @@ export function registerRunCommand(program: Command): void {
               projectDir,
               taskId,
             );
+            if (options.json) {
+              process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+              if (result.error) process.exit(1);
+              return;
+            }
             if (result.error) {
               logger.error(result.error);
               process.exit(1);
@@ -140,6 +226,11 @@ export function registerRunCommand(program: Command): void {
               projectDir,
               waveNum,
             );
+            if (options.json) {
+              process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+              if (result.error) process.exit(1);
+              return;
+            }
             if (result.error) {
               logger.error(result.error);
               process.exit(1);
@@ -198,6 +289,28 @@ export function registerRunCommand(program: Command): void {
             process.exit(1);
           }
 
+          if (options.startOnly) {
+            const result = await startTaskNonInteractive(projectDir, taskId);
+            if (options.json) {
+              process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+              if (result.error) process.exit(1);
+              return;
+            }
+            if (result.error) {
+              logger.error(result.error);
+              process.exit(1);
+            }
+            logger.success(`Task ${result.taskId}: started (${result.progress}%)`);
+            if (result.leaseExpiresAt) {
+              logger.info(`  Lease expires: ${result.leaseExpiresAt}`);
+            }
+            if (result.prompt) {
+              logger.info("");
+              logger.info(result.prompt);
+            }
+            return;
+          }
+
           const io = createRunTerminalIO();
           const result = await runTask({
             projectDir,
@@ -206,6 +319,14 @@ export function registerRunCommand(program: Command): void {
             dryRun: options.dryRun,
             autoCommit: options.autoCommit,
           });
+
+          if (options.json) {
+            process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+            if (result.errors.length > 0 || result.status === "failed") {
+              process.exit(1);
+            }
+            return;
+          }
 
           if (result.errors.length > 0) {
             for (const err of result.errors) {
@@ -241,12 +362,35 @@ export function registerRunCommand(program: Command): void {
     );
 }
 
-function printRunStatus(projectDir: string): void {
+function printRunStatus(projectDir: string, asJson = false): void {
   const state = loadRunState(projectDir);
 
   if (!state) {
+    if (asJson) {
+      process.stdout.write(JSON.stringify({ error: "No run state found." }, null, 2) + "\n");
+      return;
+    }
     logger.info(
       "No run state found. Run 'framework run' to start.",
+    );
+    return;
+  }
+
+  const health = getCurrentExecutionHealth(state);
+
+  if (asJson) {
+    process.stdout.write(
+      JSON.stringify(
+        {
+          status: state.status,
+          progress: calculateProgress(state),
+          currentTaskId: state.currentTaskId,
+          execution: health,
+          tasks: state.tasks,
+        },
+        null,
+        2,
+      ) + "\n",
     );
     return;
   }
@@ -299,6 +443,17 @@ function printRunStatus(projectDir: string): void {
     logger.info(
       `  Current: ${state.currentTaskId}`,
     );
+    if (health) {
+      logger.info(
+        `  Execution: ${health.expired ? "EXPIRED" : "HEALTHY"}`,
+      );
+      if (health.reason) {
+        logger.info(`  Stop reason: ${health.reason}`);
+      }
+      if (health.detail) {
+        logger.info(`  Detail: ${health.detail}`);
+      }
+    }
     logger.info("");
   }
 }

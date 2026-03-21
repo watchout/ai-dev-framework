@@ -7,11 +7,14 @@ import {
   type TaskExecution,
   createRunState,
   getNextPendingTask,
+  getTaskExecutionHealth,
   startTask,
   escalateTask,
   resolveEscalation,
   completeTask,
   failTask,
+  areTaskBlockersSatisfied,
+  touchTaskHeartbeat,
   calculateProgress,
   loadRunState,
   saveRunState,
@@ -67,6 +70,10 @@ describe("run-model", () => {
 
       expect(task?.status).toBe("in_progress");
       expect(task?.startedAt).toBeDefined();
+      expect(task?.heartbeatAt).toBeDefined();
+      expect(task?.leaseExpiresAt).toBeDefined();
+      expect(task?.maxRuntimeMin).toBe(25);
+      expect(task?.maxIdleMin).toBe(7);
       expect(state.currentTaskId).toBe("T1");
       expect(state.status).toBe("running");
     });
@@ -170,10 +177,45 @@ describe("run-model", () => {
       state.tasks = [makeTask({ taskId: "T1", status: "in_progress" })];
       state.status = "running";
 
-      failTask(state, "T1");
+      failTask(state, "T1", "manual_fail", "operator");
 
       expect(state.tasks[0].status).toBe("failed");
+      expect(state.tasks[0].stopReason).toBe("manual_fail");
+      expect(state.tasks[0].stopDetails).toBe("operator");
       expect(state.status).toBe("failed");
+    });
+  });
+
+  describe("runtime health", () => {
+    it("detects max runtime timeout", () => {
+      const task = makeTask({
+        taskId: "T1",
+        status: "in_progress",
+        startedAt: new Date(Date.now() - 26 * 60 * 1000).toISOString(),
+        heartbeatAt: new Date().toISOString(),
+        maxRuntimeMin: 25,
+      });
+
+      const health = getTaskExecutionHealth(task);
+      expect(health.expired).toBe(true);
+      expect(health.reason).toBe("max_runtime_exceeded");
+    });
+
+    it("updates heartbeat lease", () => {
+      const state = createRunState();
+      state.tasks = [
+        makeTask({
+          taskId: "T1",
+          status: "in_progress",
+          maxIdleMin: 7,
+        }),
+      ];
+
+      const before = state.tasks[0].leaseExpiresAt;
+      const updated = touchTaskHeartbeat(state, "T1", new Date());
+      expect(updated?.heartbeatAt).toBeDefined();
+      expect(updated?.leaseExpiresAt).toBeDefined();
+      expect(updated?.leaseExpiresAt).not.toBe(before);
     });
   });
 
@@ -313,5 +355,24 @@ describe("getNextTaskBySeq", () => {
       makeTaskWithSeq("T2", "backlog", undefined),
     ];
     expect(getNextTaskBySeq(state)?.taskId).toBe("T1");
+  });
+
+  it("skips blocked backlog tasks", () => {
+    const state = createRunState();
+    state.tasks = [
+      makeTaskWithSeq("T1", "backlog", "1000100010"),
+      {
+        ...makeTaskWithSeq("T2", "backlog", "1000100020"),
+        blockedBy: ["T1"],
+      },
+      makeTaskWithSeq("T3", "backlog", "1000100030"),
+    ];
+
+    expect(areTaskBlockersSatisfied(state, state.tasks[1])).toBe(false);
+    expect(getNextTaskBySeq(state)?.taskId).toBe("T1");
+
+    state.tasks[0].status = "done";
+    expect(areTaskBlockersSatisfied(state, state.tasks[1])).toBe(true);
+    expect(getNextTaskBySeq(state)?.taskId).toBe("T2");
   });
 });
