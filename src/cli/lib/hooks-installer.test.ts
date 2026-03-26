@@ -7,6 +7,8 @@ import {
   installGitPreCommitHook,
   installAllHooks,
   mergeClaudeSettings,
+  classifyPath,
+  hasBlockedFiles,
 } from "./hooks-installer.js";
 
 describe("hooks-installer", () => {
@@ -49,7 +51,8 @@ describe("hooks-installer", () => {
       };
       const result = mergeClaudeSettings(existing);
 
-      expect(result.env).toEqual({ MY_VAR: "value" });
+      expect((result.env as Record<string, string>).MY_VAR).toBe("value");
+      expect((result.env as Record<string, string>).CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS).toBe("1");
       expect(result.mcpServers).toEqual({ filesystem: { command: "node" } });
     });
 
@@ -194,8 +197,9 @@ describe("hooks-installer", () => {
       const settingsPath = path.join(tmpDir, ".claude/settings.json");
       const parsed = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
 
-      // Existing env preserved
-      expect(parsed.env).toEqual({ TEST: "1" });
+      // Existing env preserved + Agent Teams added
+      expect(parsed.env.TEST).toBe("1");
+      expect(parsed.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS).toBe("1");
       // Existing SessionStart preserved
       expect(parsed.hooks.SessionStart).toHaveLength(1);
       // PreToolUse added (gate + skill-tracker)
@@ -347,5 +351,152 @@ describe("hooks-installer", () => {
       const result = installAllHooks(tmpDir);
       expect(result.warnings.length).toBeGreaterThan(0);
     });
+  });
+});
+
+// ─────────────────────────────────────────────
+// Smart Blocking path classification (ADR-009)
+// ─────────────────────────────────────────────
+
+describe("classifyPath (ADR-009 Smart Blocking)", () => {
+  describe("blocked paths (product code)", () => {
+    it.each([
+      "src/index.ts",
+      "src/components/Button.tsx",
+      "app/page.tsx",
+      "server/api/users.ts",
+      "lib/utils.ts",
+      "components/Header.vue",
+      "pages/index.vue",
+      "composables/useAuth.ts",
+      "utils/helpers.ts",
+      "stores/user.ts",
+      "plugins/auth.ts",
+      "scripts/deploy.sh",
+    ])("blocks %s", (filePath) => {
+      expect(classifyPath(filePath)).toBe("block");
+    });
+  });
+
+  describe("allowed paths (Gate preparation)", () => {
+    it.each([
+      "docs/requirements/SSOT-1.md",
+      "docs/design/core/SSOT-2.md",
+      ".framework/gates.json",
+      ".framework/project.json",
+      ".claude/settings.json",
+      ".claude/hooks/pre-code-gate.sh",
+      ".github/workflows/ci.yml",
+      "prisma/schema.prisma",
+      "drizzle/0001_migration.sql",
+      "CLAUDE.md",
+      "README.md",
+      "LICENSE",
+      "package.json",
+      "package-lock.json",
+      "pnpm-lock.yaml",
+      ".env",
+      ".env.local",
+      ".env.production",
+    ])("allows %s", (filePath) => {
+      expect(classifyPath(filePath)).toBe("allow");
+    });
+  });
+
+  describe("unknown paths (allow by default)", () => {
+    it.each([
+      "tsconfig.json",
+      "vitest.config.ts",
+      ".gitignore",
+      "Makefile",
+    ])("ignores %s", (filePath) => {
+      expect(classifyPath(filePath)).toBe("ignore");
+    });
+  });
+});
+
+describe("hasBlockedFiles", () => {
+  it("returns false when all files are allowed", () => {
+    expect(hasBlockedFiles([
+      "docs/SSOT-1.md",
+      ".env.local",
+      "package.json",
+      ".framework/gates.json",
+    ])).toBe(false);
+  });
+
+  it("returns true when any file is blocked", () => {
+    expect(hasBlockedFiles([
+      "docs/SSOT-1.md",
+      "src/index.ts",
+      "package.json",
+    ])).toBe(true);
+  });
+
+  it("returns false for empty list", () => {
+    expect(hasBlockedFiles([])).toBe(false);
+  });
+
+  it("returns true for blocked-only files", () => {
+    expect(hasBlockedFiles([
+      "src/app.ts",
+      "lib/utils.ts",
+    ])).toBe(true);
+  });
+
+  it("returns false for mixed allowed and unknown (no blocked)", () => {
+    expect(hasBlockedFiles([
+      "docs/readme.md",
+      "tsconfig.json",
+      ".gitignore",
+    ])).toBe(false);
+  });
+});
+
+describe("pre-commit hook script content (ADR-009)", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fw-hooks-smart-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("Claude hook script contains smart blocking paths", () => {
+    installClaudeCodeHook(tmpDir);
+    const scriptPath = path.join(tmpDir, ".claude/hooks/pre-code-gate.sh");
+    const content = fs.readFileSync(scriptPath, "utf-8");
+
+    // Verify allowed paths
+    expect(content).toContain("docs/*");
+    expect(content).toContain(".framework/*");
+    expect(content).toContain(".claude/*");
+    expect(content).toContain("prisma/*");
+    expect(content).toContain("drizzle/*");
+    expect(content).toContain("CLAUDE.md");
+    expect(content).toContain(".env");
+
+    // Verify blocked paths
+    expect(content).toContain("src/*");
+    expect(content).toContain("scripts/*");
+
+    // Verify ADR-009 reference
+    expect(content).toContain("ADR-009");
+    expect(content).toContain("Smart Blocking");
+  });
+
+  it("pre-commit hook contains smart blocking logic", () => {
+    fs.mkdirSync(path.join(tmpDir, ".husky"), { recursive: true });
+    installGitPreCommitHook(tmpDir);
+    const hookPath = path.join(tmpDir, ".husky/pre-commit");
+    const content = fs.readFileSync(hookPath, "utf-8");
+
+    expect(content).toContain("Smart Blocking");
+    expect(content).toContain("HAS_BLOCKED_FILES");
+    expect(content).toContain("docs/*");
+    expect(content).toContain("src/*");
+    expect(content).toContain("scripts/*");
   });
 });

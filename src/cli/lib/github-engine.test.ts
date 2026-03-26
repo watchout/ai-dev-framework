@@ -775,10 +775,10 @@ describe("labelTaskIssue", () => {
 describe("listAllIssues", () => {
   it("fetches all issues in a single batch call", async () => {
     restoreExecutor = mockGh((args) => {
-      if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+      if (args[0] === "api" && args[1] === "--paginate") {
         return JSON.stringify([
-          { number: 1, title: "Issue 1", state: "OPEN", labels: [{ name: "bug" }] },
-          { number: 2, title: "Issue 2", state: "CLOSED", labels: [] },
+          { number: 1, title: "Issue 1", state: "open", labels: [{ name: "bug" }] },
+          { number: 2, title: "Issue 2", state: "closed", labels: [] },
         ]);
       }
       return "";
@@ -794,6 +794,72 @@ describe("listAllIssues", () => {
   it("throws on gh CLI failure", async () => {
     restoreExecutor = mockGhWithErrors(() => new Error("network error"));
     await expect(listAllIssues("owner/repo")).rejects.toThrow("network error");
+  });
+
+  it("handles paginated response (concatenated JSON arrays from gh api --paginate)", async () => {
+    // gh api --paginate concatenates JSON arrays: [{...}][{...}]
+    const page1 = Array.from({ length: 100 }, (_, i) => ({
+      number: i + 1,
+      title: `Issue ${i + 1}`,
+      state: "open",
+      labels: [],
+    }));
+    const page2 = Array.from({ length: 100 }, (_, i) => ({
+      number: i + 101,
+      title: `Issue ${i + 101}`,
+      state: "closed",
+      labels: [],
+    }));
+
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "api" && args[1] === "--paginate") {
+        // Simulate concatenated arrays
+        return JSON.stringify(page1) + JSON.stringify(page2);
+      }
+      return "";
+    });
+
+    const issues = await listAllIssues("owner/repo");
+    expect(issues).toHaveLength(200);
+    expect(issues[0].number).toBe(1);
+    expect(issues[199].number).toBe(200);
+  });
+
+  it("handles 500+ issues across multiple pages", async () => {
+    const allItems = Array.from({ length: 600 }, (_, i) => ({
+      number: i + 1,
+      title: `Issue ${i + 1}`,
+      state: i % 3 === 0 ? "closed" : "open",
+      labels: [],
+    }));
+
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "api" && args[1] === "--paginate") {
+        return JSON.stringify(allItems);
+      }
+      return "";
+    });
+
+    const issues = await listAllIssues("owner/repo");
+    expect(issues).toHaveLength(600);
+    expect(issues.filter(i => i.state === "closed")).toHaveLength(200);
+  });
+
+  it("filters out pull requests from REST API response", async () => {
+    restoreExecutor = mockGh((args) => {
+      if (args[0] === "api" && args[1] === "--paginate") {
+        return JSON.stringify([
+          { number: 1, title: "Issue", state: "open", labels: [] },
+          { number: 2, title: "PR", state: "open", labels: [], pull_request: { url: "..." } },
+          { number: 3, title: "Issue 2", state: "closed", labels: [] },
+        ]);
+      }
+      return "";
+    });
+
+    const issues = await listAllIssues("owner/repo");
+    expect(issues).toHaveLength(2);
+    expect(issues.map(i => i.number)).toEqual([1, 3]);
   });
 });
 
@@ -819,11 +885,11 @@ describe("syncStatusFromGitHub", () => {
     saveSyncState(tmpDir, syncState);
 
     restoreExecutor = mockGh((args) => {
-      if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+      if (args[0] === "api" && args[1] === "--paginate") {
         return JSON.stringify([
-          { number: 10, title: "Feature", state: "OPEN", labels: [] },
-          { number: 11, title: "DB Task", state: "CLOSED", labels: [] },
-          { number: 12, title: "API Task", state: "OPEN", labels: [{ name: "failed" }] },
+          { number: 10, title: "Feature", state: "open", labels: [] },
+          { number: 11, title: "DB Task", state: "closed", labels: [] },
+          { number: 12, title: "API Task", state: "open", labels: [{ name: "failed" }] },
         ]);
       }
       return "";
@@ -857,9 +923,9 @@ describe("syncStatusFromGitHub", () => {
     saveSyncState(tmpDir, syncState);
 
     restoreExecutor = mockGh((args) => {
-      if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+      if (args[0] === "api" && args[1] === "--paginate") {
         return JSON.stringify([
-          { number: 11, title: "DB Task", state: "CLOSED", labels: [] },
+          { number: 11, title: "DB Task", state: "closed", labels: [] },
         ]);
       }
       return "";

@@ -403,3 +403,94 @@ describe("generatePlanMarkdown", () => {
     expect(md).toContain("A -> B -> C -> A");
   });
 });
+
+describe("plan regeneration with existing run-state", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fw-plan-regen-"));
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("blocks regeneration when done tasks would be lost (no --force)", async () => {
+    // Create run-state with a done task
+    const runState = {
+      status: "active",
+      tasks: [
+        { taskId: "OLD-FEAT-DB", name: "Old DB task", featureId: "OLD-FEAT", status: "done", seq: "1.1", blockedBy: [], completedAt: "2026-01-01T00:00:00Z" },
+        { taskId: "OLD-FEAT-API", name: "Old API task", featureId: "OLD-FEAT", status: "pending", seq: "1.2", blockedBy: [] },
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/run-state.json"),
+      JSON.stringify(runState, null, 2),
+    );
+
+    const io = createMockIO();
+    // Generate plan with a NEW feature (OLD-FEAT tasks will be missing)
+    const result = await runPlanEngine({
+      projectDir: tmpDir,
+      io,
+      features: [makeFeature({ id: "NEW-FEAT", name: "New Feature" })],
+    });
+
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors[0]).toContain("completed task(s) would be lost");
+    expect(io.output.some((l) => l.includes("OLD-FEAT-DB"))).toBe(true);
+  });
+
+  it("allows regeneration with --force despite lost done tasks", async () => {
+    const runState = {
+      status: "active",
+      tasks: [
+        { taskId: "OLD-FEAT-DB", name: "Old DB task", featureId: "OLD-FEAT", status: "done", seq: "1.1", blockedBy: [], completedAt: "2026-01-01T00:00:00Z" },
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/run-state.json"),
+      JSON.stringify(runState, null, 2),
+    );
+
+    const io = createMockIO();
+    const result = await runPlanEngine({
+      projectDir: tmpDir,
+      io,
+      features: [makeFeature({ id: "NEW-FEAT", name: "New Feature" })],
+      force: true,
+    });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.plan.waves.length).toBeGreaterThan(0);
+    expect(io.output.some((l) => l.includes("--force"))).toBe(true);
+  });
+
+  it("proceeds normally when no done tasks are lost", async () => {
+    const runState = {
+      status: "active",
+      tasks: [
+        { taskId: "FEAT-001-DB", name: "DB task", featureId: "FEAT-001", status: "pending", seq: "1.1", blockedBy: [] },
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/run-state.json"),
+      JSON.stringify(runState, null, 2),
+    );
+
+    const io = createMockIO();
+    const result = await runPlanEngine({
+      projectDir: tmpDir,
+      io,
+      features: [makeFeature({ id: "FEAT-001", name: "Feature 1" })],
+    });
+
+    expect(result.errors).toHaveLength(0);
+    expect(result.plan.waves.length).toBeGreaterThan(0);
+  });
+});

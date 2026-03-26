@@ -25,7 +25,8 @@ export function registerStatusCommand(program: Command): void {
     .command("status")
     .description("Show project progress and status")
     .option("--github", "Fetch live status from GitHub Issues")
-    .action(async (options: { github?: boolean }) => {
+    .option("--json", "Output machine-readable JSON")
+    .action(async (options: { github?: boolean; json?: boolean }) => {
       const projectDir = process.cwd();
 
       try {
@@ -65,13 +66,27 @@ export function registerStatusCommand(program: Command): void {
         if (options.github) {
           const wb = await syncRunStateFromGitHub(projectDir);
           if (wb.updated > 0 || wb.created) {
-            io.print(`  GitHub writeback: ${wb.updated} tasks updated${wb.created ? " (run-state.json created)" : ""}`);
+            if (!options.json) {
+              io.print(`  GitHub writeback: ${wb.updated} tasks updated${wb.created ? " (run-state.json created)" : ""}`);
+            }
             // Re-collect to show updated state
             const refreshed = collectStatus(projectDir);
-            result.tasks = refreshed.tasks;
+            result.currentPhase = refreshed.currentPhase;
+            result.phaseLabel = refreshed.phaseLabel;
             result.overallProgress = refreshed.overallProgress;
+            result.profile = refreshed.profile;
+            result.gates = refreshed.gates;
             result.phases = refreshed.phases;
+            result.documents = refreshed.documents;
+            result.tasks = refreshed.tasks;
+            result.execution = refreshed.execution;
+            result.audits = refreshed.audits;
           }
+        }
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+          return;
         }
 
         printStatus(io, result);

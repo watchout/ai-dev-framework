@@ -45,4 +45,8 @@ coverage/
 # Framework runtime data
 .framework/audits/
 .framework/feedback/
+.framework/remediation/
+
+# Worktrees (parallel execution)
+.worktrees/
 docs/audits/

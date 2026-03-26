@@ -394,8 +394,33 @@ On PR:
 
 On merge to main:
   1. Auto-deploy to staging
-  2. E2E tests
-  3. (Manual approval) Production deploy
+  2. Gate D — Post-Deploy Verification (ADR-009)
+     D-1: ヘルスチェック (/api/health → 200)
+     D-2: SSL/TLS 証明書検証
+     D-3: 主要ページ表示確認
+     D-4: E2Eスモークテスト (L3テスト実行)
+     D-5: コンソールエラー監視
+  3. Gate D PASS → 完了
+     Gate D FAIL → CTO報告 → ロールバック判断
+  4. (Manual approval) Production deploy
+  5. Gate D (Production) — 本番環境でも同一チェック実行
+```
+
+### Gate D 失敗時のフロー
+
+```
+デプロイ完了
+  ↓
+Gate D 実行（D-1〜D-5）
+  ├── 全PASS → デプロイ成功
+  └── いずれかFAIL
+       ↓
+     CTO報告（Telegram経由）
+       ├── 報告内容：失敗チェック項目、エラー詳細、スクリーンショット
+       └── CTO判断：
+            ├── ロールバック → 前バージョンに戻す
+            ├── ホットフィックス → 修正してGate D再実行
+            └── 一時的に許容 → 次回デプロイで対応
 ```
 
 ---

@@ -66,6 +66,20 @@ export interface ModifiedFile {
   action: "created" | "modified" | "deleted";
 }
 
+export type StopReason =
+  | "manual_fail"
+  | "dependency_blocked"
+  | "max_runtime_exceeded"
+  | "max_idle_exceeded"
+  | "acceptance_failed"
+  | "no_changes_detected";
+
+export interface AcceptanceCheck {
+  name: string;
+  passed: boolean;
+  detail: string;
+}
+
 export interface TaskExecution {
   taskId: string;
   featureId: string;
@@ -79,7 +93,14 @@ export interface TaskExecution {
   auditScore?: number;
   escalation?: Escalation;
   startedAt?: string;
+  heartbeatAt?: string;
+  leaseExpiresAt?: string;
+  maxRuntimeMin?: number;
+  maxIdleMin?: number;
   completedAt?: string;
+  stopReason?: StopReason;
+  stopDetails?: string;
+  acceptanceChecks?: AcceptanceCheck[];
   /**
    * Implementation sequence number (WWWFFFFTTT, 10-digit).
    * Populated from plan.json Task.seq at run-state initialization.
@@ -108,6 +129,16 @@ export interface RunState {
   completedAt?: string;
 }
 
+export interface TaskExecutionHealth {
+  taskId: string;
+  expired: boolean;
+  reason?: StopReason;
+  detail?: string;
+}
+
+export const DEFAULT_MAX_RUNTIME_MIN = 25;
+export const DEFAULT_MAX_IDLE_MIN = 7;
+
 // ─────────────────────────────────────────────
 // State Operations
 // ─────────────────────────────────────────────
@@ -126,7 +157,9 @@ export function createRunState(): RunState {
 export function getNextPendingTask(
   state: RunState,
 ): TaskExecution | undefined {
-  return state.tasks.find((t) => t.status === "backlog");
+  return state.tasks.find(
+    (t) => t.status === "backlog" && areTaskBlockersSatisfied(state, t),
+  );
 }
 
 /**
@@ -146,7 +179,9 @@ export function getCurrentTask(
 export function getNextTaskBySeq(
   state: RunState,
 ): TaskExecution | undefined {
-  const backlog = state.tasks.filter((t) => t.status === "backlog");
+  const backlog = state.tasks.filter(
+    (t) => t.status === "backlog" && areTaskBlockersSatisfied(state, t),
+  );
   if (backlog.length === 0) return undefined;
 
   // Sort by seq (lexicographic), fall back to original order if seq absent
@@ -165,8 +200,20 @@ export function startTask(
   const task = state.tasks.find((t) => t.taskId === taskId);
   if (!task) return undefined;
 
+  const now = new Date();
+  const maxRuntimeMin = task.maxRuntimeMin ?? DEFAULT_MAX_RUNTIME_MIN;
+  const maxIdleMin = task.maxIdleMin ?? DEFAULT_MAX_IDLE_MIN;
+
   task.status = "in_progress";
-  task.startedAt = new Date().toISOString();
+  task.startedAt = now.toISOString();
+  task.heartbeatAt = now.toISOString();
+  task.maxRuntimeMin = maxRuntimeMin;
+  task.maxIdleMin = maxIdleMin;
+  task.leaseExpiresAt = new Date(
+    now.getTime() + maxIdleMin * 60 * 1000,
+  ).toISOString();
+  task.stopReason = undefined;
+  task.stopDetails = undefined;
   state.currentTaskId = taskId;
   state.status = "running";
   return task;
@@ -196,6 +243,7 @@ export function resolveEscalation(
   task.escalation.resolvedAt = new Date().toISOString();
   task.escalation.resolution = resolution;
   task.status = "in_progress";
+  touchTaskHeartbeat(state, taskId);
   state.status = "running";
 }
 
@@ -229,13 +277,94 @@ export function completeTask(
 export function failTask(
   state: RunState,
   taskId: string,
+  reason: StopReason = "manual_fail",
+  details?: string,
 ): void {
   const task = state.tasks.find((t) => t.taskId === taskId);
   if (!task) return;
 
   task.status = "failed";
   task.completedAt = new Date().toISOString();
+  task.stopReason = reason;
+  task.stopDetails = details;
   state.status = "failed";
+  if (state.currentTaskId === taskId) {
+    state.currentTaskId = null;
+  }
+}
+
+export function touchTaskHeartbeat(
+  state: RunState,
+  taskId: string,
+  now = new Date(),
+): TaskExecution | undefined {
+  const task = state.tasks.find((t) => t.taskId === taskId);
+  if (!task) return undefined;
+
+  const maxIdleMin = task.maxIdleMin ?? DEFAULT_MAX_IDLE_MIN;
+  task.heartbeatAt = now.toISOString();
+  task.leaseExpiresAt = new Date(
+    now.getTime() + maxIdleMin * 60 * 1000,
+  ).toISOString();
+  return task;
+}
+
+export function areTaskBlockersSatisfied(
+  state: RunState,
+  task: TaskExecution,
+): boolean {
+  if (task.blockedBy.length === 0) return true;
+
+  return task.blockedBy.every((blockedTaskId) => {
+    const blocker = state.tasks.find((t) => t.taskId === blockedTaskId);
+    return blocker?.status === "done";
+  });
+}
+
+export function getTaskExecutionHealth(
+  task: TaskExecution,
+  now = Date.now(),
+): TaskExecutionHealth {
+  const maxRuntimeMin = task.maxRuntimeMin ?? DEFAULT_MAX_RUNTIME_MIN;
+  const maxIdleMin = task.maxIdleMin ?? DEFAULT_MAX_IDLE_MIN;
+
+  if (task.startedAt) {
+    const runtimeMs = now - new Date(task.startedAt).getTime();
+    if (runtimeMs > maxRuntimeMin * 60 * 1000) {
+      return {
+        taskId: task.taskId,
+        expired: true,
+        reason: "max_runtime_exceeded",
+        detail: `Exceeded max runtime of ${maxRuntimeMin} minutes`,
+      };
+    }
+  }
+
+  const heartbeatSource = task.heartbeatAt ?? task.startedAt;
+  if (heartbeatSource) {
+    const idleMs = now - new Date(heartbeatSource).getTime();
+    if (idleMs > maxIdleMin * 60 * 1000) {
+      return {
+        taskId: task.taskId,
+        expired: true,
+        reason: "max_idle_exceeded",
+        detail: `No heartbeat for ${maxIdleMin} minutes`,
+      };
+    }
+  }
+
+  return {
+    taskId: task.taskId,
+    expired: false,
+  };
+}
+
+export function getCurrentExecutionHealth(
+  state: RunState,
+): TaskExecutionHealth | null {
+  const currentTask = state.tasks.find((t) => t.status === "in_progress");
+  if (!currentTask) return null;
+  return getTaskExecutionHealth(currentTask);
 }
 
 // ─────────────────────────────────────────────
@@ -268,10 +397,19 @@ export function saveRunState(
   state: RunState,
 ): void {
   const filePath = path.join(projectDir, RUN_STATE_FILE);
+  const tmpFilePath = filePath + ".tmp";
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  state.updatedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(state, null, 2), "utf-8");
+  try {
+    state.updatedAt = new Date().toISOString();
+    fs.writeFileSync(tmpFilePath, JSON.stringify(state, null, 2), "utf-8");
+    fs.renameSync(tmpFilePath, filePath);
+  } catch (err) {
+    try {
+      fs.rmSync(tmpFilePath, { force: true });
+    } catch { /* ignore cleanup errors */ }
+    throw err;
+  }
 }

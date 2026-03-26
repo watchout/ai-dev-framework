@@ -452,3 +452,22 @@ claude "docs/design/features/project/FEAT-003.md を
 claude "docs/operations/DEPLOYMENT.md に基づいて
        staging環境にデプロイして"
 ```
+
+---
+
+## Self-Improving Rules
+
+このプロジェクトは開発知見を自動蓄積し、CLAUDE.mdを進化させる。
+
+### 知見の蓄積
+- Gate検出結果 → .learnings/LEARNINGS.md にGate実行後に記録
+- 実装中の発見 → .learnings/LEARNINGS.md に手動記録
+- レビューフィードバック → .learnings/LEARNINGS.md に記録
+
+### ルール昇格
+- 同一パターン3回出現 → CLAUDE.mdへの昇格候補
+- /self-improve コマンドで昇格提案を生成
+- CEOの承認後にCLAUDE.mdに反映
+
+### 以下は自動蓄積されたルール（昇格済み）
+<!-- promoted rules will be added here -->

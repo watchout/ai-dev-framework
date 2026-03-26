@@ -201,4 +201,23 @@ describe("installGitHubTemplates", () => {
     expect(dbContent).toContain("Definition of Done");
     expect(dbContent).toContain("Migration file created");
   });
+
+  it("installs ssot-audit workflow", () => {
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+
+    const ssotAuditPath = path.join(tmpDir, ".github/workflows/ssot-audit.yml");
+    expect(fs.existsSync(ssotAuditPath)).toBe(true);
+    expect(result.installed).toContain(".github/workflows/ssot-audit.yml");
+
+    const content = fs.readFileSync(ssotAuditPath, "utf-8");
+    expect(content).toContain("SSOT Audit");
+    expect(content).toContain("SSOT_SCORE_THRESHOLD");
+    expect(content).toContain("docs/**/*.md");
+  });
+
+  it("skips ssot-audit workflow if already exists", () => {
+    installGitHubTemplates(tmpDir, "app", frameworkRoot);
+    const result2 = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+    expect(result2.skipped.some((s) => s.includes("ssot-audit.yml"))).toBe(true);
+  });
 });

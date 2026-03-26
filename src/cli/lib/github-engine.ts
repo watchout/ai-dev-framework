@@ -615,38 +615,59 @@ export async function syncPlanToGitHub(
 // ─────────────────────────────────────────────
 
 /**
- * Fetch all issues from a repo in a single gh CLI call.
- * Uses `gh issue list --state all` to avoid N+1 per-task API calls.
+ * Fetch all issues from a repo with full pagination support.
+ * Uses `gh api --paginate` to handle repos with 500+ issues.
  */
 export async function listAllIssues(
   repo: string,
 ): Promise<GitHubIssue[]> {
+  const [owner, name] = repo.split("/");
+
   const output = await execGh([
-    "issue",
-    "list",
-    "--repo",
-    repo,
-    "--state",
-    "all",
-    "--json",
-    "number,title,state,labels",
-    "--limit",
-    "500",
+    "api",
+    "--paginate",
+    `/repos/${owner}/${name}/issues`,
+    "-q", ".",
+    "--method", "GET",
+    "-f", "state=all",
+    "-f", "per_page=100",
   ]);
 
-  const data = JSON.parse(output) as {
-    number: number;
-    title: string;
-    state: string;
-    labels: { name: string }[];
-  }[];
+  // --paginate concatenates JSON arrays, so parse each line/array and flatten
+  const allIssues: GitHubIssue[] = [];
+  // gh api --paginate outputs concatenated JSON arrays: [{...}][{...}]
+  // We need to handle both formats: single array or concatenated arrays
+  const normalized = "[" + output.replace(/\]\s*\[/g, ",") + "]";
+  // If output is already a proper array, the double-wrap creates [[...]]
+  // so we flatten one level
+  let parsed: unknown[];
+  try {
+    const raw = JSON.parse(normalized);
+    parsed = Array.isArray(raw[0]) ? (raw as unknown[][]).flat() : raw;
+  } catch {
+    // Fallback: try parsing as a single array
+    parsed = JSON.parse(output) as unknown[];
+  }
 
-  return data.map((d) => ({
-    number: d.number,
-    title: d.title,
-    state: d.state === "CLOSED" ? "closed" : "open",
-    labels: d.labels.map((l) => l.name),
-  }));
+  for (const item of parsed) {
+    const d = item as {
+      number: number;
+      title: string;
+      state: string;
+      labels: { name: string }[];
+      pull_request?: unknown;
+    };
+    // REST API /issues endpoint also returns PRs — filter them out
+    if (d.pull_request) continue;
+    allIssues.push({
+      number: d.number,
+      title: d.title,
+      state: d.state === "closed" ? "closed" : "open",
+      labels: (d.labels ?? []).map((l) => l.name),
+    });
+  }
+
+  return allIssues;
 }
 
 /**

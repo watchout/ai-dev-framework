@@ -30,6 +30,8 @@ import { registerBlockCommand } from "./commands/block.js";
 import { registerSyncCommand } from "./commands/sync.js";
 import { registerResequenceCommand } from "./commands/resequence.js";
 import { registerPruneCommand } from "./commands/prune.js";
+import { registerConfigCommand } from "./commands/config.js";
+import { registerImproveCommand } from "./commands/improve.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -83,5 +85,7 @@ registerDeployCommand(program);
 registerSkillCreateCommand(program);
 registerCompactCommand(program);
 registerSessionCommands(program);
+registerConfigCommand(program);
+registerImproveCommand(program);
 
 program.parse();

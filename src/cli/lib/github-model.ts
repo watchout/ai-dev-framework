@@ -135,12 +135,21 @@ export function saveSyncState(
   state: GitHubSyncState,
 ): void {
   const filePath = path.join(projectDir, SYNC_STATE_FILE);
+  const tmpFilePath = filePath + ".tmp";
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  state.syncedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(state, null, 2), "utf-8");
+  try {
+    state.syncedAt = new Date().toISOString();
+    fs.writeFileSync(tmpFilePath, JSON.stringify(state, null, 2), "utf-8");
+    fs.renameSync(tmpFilePath, filePath);
+  } catch (err) {
+    try {
+      fs.rmSync(tmpFilePath, { force: true });
+    } catch { /* ignore cleanup errors */ }
+    throw err;
+  }
 }
 
 export function createSyncState(repo: string): GitHubSyncState {

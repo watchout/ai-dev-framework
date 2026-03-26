@@ -114,6 +114,31 @@ describe("status-engine", () => {
       expect(result.tasks[1].status).toBe("backlog");
     });
 
+    it("collects current execution health", () => {
+      const state = createRunState();
+      state.tasks = [
+        {
+          taskId: "T1",
+          featureId: "F1",
+          taskKind: "api",
+          name: "Task 1",
+          status: "in_progress",
+          blockedBy: [],
+          files: [],
+          startedAt: new Date().toISOString(),
+          heartbeatAt: new Date().toISOString(),
+          maxRuntimeMin: 25,
+          maxIdleMin: 7,
+        },
+      ];
+      state.currentTaskId = "T1";
+      saveRunState(tmpDir, state);
+
+      const result = collectStatus(tmpDir);
+      expect(result.execution?.taskId).toBe("T1");
+      expect(result.execution?.expired).toBe(false);
+    });
+
     it("collects recent audit reports", () => {
       saveAuditReport(tmpDir, {
         mode: "ssot",
@@ -180,6 +205,7 @@ describe("status-engine", () => {
         ],
         documents: [],
         tasks: [],
+        execution: null,
         audits: [],
       };
 
@@ -205,6 +231,7 @@ describe("status-engine", () => {
         ],
         documents: [],
         tasks: [],
+        execution: null,
         audits: [],
       };
 
@@ -232,6 +259,7 @@ describe("status-engine", () => {
           },
         ],
         tasks: [],
+        execution: null,
         audits: [],
       };
 
@@ -255,6 +283,7 @@ describe("status-engine", () => {
           { id: "T1", featureId: "F1", name: "Task 1", status: "done" },
           { id: "T2", featureId: "F1", name: "Task 2", status: "backlog" },
         ],
+        execution: null,
         audits: [],
       };
 
@@ -275,6 +304,7 @@ describe("status-engine", () => {
         phases: [],
         documents: [],
         tasks: [],
+        execution: null,
         audits: [
           {
             mode: "ssot",
@@ -291,6 +321,32 @@ describe("status-engine", () => {
       expect(io.output.some((o) => o.includes("SSOT"))).toBe(true);
       expect(io.output.some((o) => o.includes("97/100"))).toBe(true);
       expect(io.output.some((o) => o.includes("PASS"))).toBe(true);
+    });
+
+    it("prints execution health", () => {
+      const io = createMockIO();
+      const result: StatusResult = {
+        currentPhase: 4,
+        phaseLabel: "Implementation",
+        overallProgress: 60,
+        profile: null,
+        gates: null,
+        phases: [],
+        documents: [],
+        tasks: [],
+        execution: {
+          taskId: "T1",
+          expired: true,
+          reason: "max_idle_exceeded",
+          detail: "No heartbeat for 7 minutes",
+        },
+        audits: [],
+      };
+
+      printStatus(io, result);
+
+      expect(io.output.some((o) => o.includes("Execution:"))).toBe(true);
+      expect(io.output.some((o) => o.includes("max_idle_exceeded"))).toBe(true);
     });
   });
 });

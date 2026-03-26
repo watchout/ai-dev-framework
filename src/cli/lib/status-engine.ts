@@ -16,6 +16,7 @@ import { loadPlan } from "./plan-model.js";
 import {
   loadRunState,
   calculateProgress as calcRunProgress,
+  getCurrentExecutionHealth,
 } from "./run-model.js";
 import { loadAuditReports } from "./audit-model.js";
 import { loadProjectProfile } from "./profile-model.js";
@@ -47,6 +48,14 @@ export interface TaskStatusItem {
   featureId: string;
   name: string;
   status: string;
+  stopReason?: string;
+}
+
+export interface ExecutionStatus {
+  taskId: string;
+  expired: boolean;
+  reason?: string;
+  detail?: string;
 }
 
 export interface AuditSummary {
@@ -88,6 +97,7 @@ export interface StatusResult {
   phases: PhaseInfo[];
   documents: DocumentStatus[];
   tasks: TaskStatusItem[];
+  execution: ExecutionStatus | null;
   audits: AuditSummary[];
 }
 
@@ -124,6 +134,7 @@ export function collectStatus(projectDir: string): StatusResult {
   const currentPhase = phases.find((p) => p.status === "active");
   const documents = collectDocuments(projectDir);
   const tasks = collectTasks(projectDir);
+  const execution = collectExecution(projectDir);
   const audits = collectAudits(projectDir);
   const overallProgress = calculateOverallProgress(
     phases,
@@ -167,6 +178,7 @@ export function collectStatus(projectDir: string): StatusResult {
     phases,
     documents,
     tasks,
+    execution,
     audits,
   };
 }
@@ -262,7 +274,23 @@ function collectTasks(projectDir: string): TaskStatusItem[] {
     featureId: t.featureId,
     name: t.name,
     status: t.status,
+    stopReason: t.stopReason,
   }));
+}
+
+function collectExecution(projectDir: string): ExecutionStatus | null {
+  const runState = loadRunState(projectDir);
+  if (!runState) return null;
+
+  const health = getCurrentExecutionHealth(runState);
+  if (!health) return null;
+
+  return {
+    taskId: health.taskId,
+    expired: health.expired,
+    reason: health.reason,
+    detail: health.detail,
+  };
 }
 
 /**
@@ -412,6 +440,32 @@ export function printStatus(
     io.print("");
   }
 
+  // Gate 1/2/3 status (from reports)
+  const reportsDir = path.join(
+    result.profile ? "." : ".",
+    ".framework/reports",
+  );
+  if (fs.existsSync(reportsDir)) {
+    const reportFiles = fs.readdirSync(reportsDir);
+    const g1 = reportFiles.find((f) => f.startsWith("design-validation"));
+    const g2 = reportFiles.find((f) => f.startsWith("quality-sweep"));
+    const g3 = reportFiles.find((f) => f.startsWith("trial-verdict") || f.startsWith("gate3-verdict"));
+
+    const readVerdict = (filePath: string): string => {
+      try {
+        const content = fs.readFileSync(filePath, "utf-8");
+        const match = content.match(/Verdict:\s*(PASS|BLOCK|SHIP|SHIP_WITH_CONDITIONS)/i);
+        return match ? match[1].toUpperCase() : "?";
+      } catch { return "?"; }
+    };
+
+    io.print("  Quality Gates:");
+    io.print(`    Gate 1 (Design):  ${g1 ? readVerdict(path.join(reportsDir, g1)) : "..."}`);
+    io.print(`    Gate 2 (Quality): ${g2 ? readVerdict(path.join(reportsDir, g2)) : "..."}`);
+    io.print(`    Gate 3 (Release): ${g3 ? readVerdict(path.join(reportsDir, g3)) : "..."}`);
+    io.print("");
+  }
+
   // Overall progress
   io.print(`  Phase: ${result.phaseLabel}`);
   io.print(
@@ -463,6 +517,21 @@ export function printStatus(
       io.print(`    In progress: ${inProgress}`);
     }
     io.print(`    Backlog: ${backlog}`);
+    io.print("");
+  }
+
+  if (result.execution) {
+    io.print("  Execution:");
+    io.print(`    Current task: ${result.execution.taskId}`);
+    io.print(
+      `    Health: ${result.execution.expired ? "EXPIRED" : "HEALTHY"}`,
+    );
+    if (result.execution.reason) {
+      io.print(`    Stop reason: ${result.execution.reason}`);
+    }
+    if (result.execution.detail) {
+      io.print(`    Detail: ${result.execution.detail}`);
+    }
     io.print("");
   }
 
