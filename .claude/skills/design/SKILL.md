@@ -12,6 +12,22 @@ description: |
 ビジネス要件をプロダクト仕様に変換し（P1-P5）、
 それを実装可能な技術設計に落とし込む（T1-T5）専門家チーム。
 
+## Agents（参照）
+
+### Product Design
+1. @agents/producers/design/p1-prd-author.md → SSOT-0_PRD.md
+2. @agents/producers/design/p2-feature-cataloger.md → SSOT-1_FEATURE_CATALOG.md
+3. @agents/producers/design/p3-ui-state-designer.md → SSOT-2_UI_STATE.md
+4. @agents/producers/design/p4-feature-spec-writer.md → 機能SSOT (§3-E/F/G/H)
+5. @agents/producers/design/p5-ux-validator.md → UX検証
+
+### Technical Design
+6. @agents/producers/design/t1-tech-stack-selector.md → TECH_STACK
+7. @agents/producers/design/t2-api-architect.md → SSOT-3_API_CONTRACT.md
+8. @agents/producers/design/t3-data-modeler.md → SSOT-4_DATA_MODEL.md
+9. @agents/producers/design/t4-cross-cutting-designer.md → SSOT-5_CROSS_CUTTING.md
+10. @agents/validators/security-reviewer.md → セキュリティレビュー
+
 ## ワークフロー
 
 ```
@@ -38,153 +54,6 @@ P5: UX Validator                   T5: Security Reviewer
 - 仕様ヒアリングは**1回の発言で1つだけ質問**する
 - 不明な情報は推測で埋めず「[要確認]」マーカーを付ける
 - Freeze 2（Contract）完了で実装開始可能
-
-## Product エージェント詳細
-
-### P1: PRD Author（PRD作成者）
-
-**役割**: プロダクト要件定義書を作成
-
-**含む内容**:
-- プロダクトビジョン
-- ターゲットユーザー（ペルソナ参照）
-- コア機能（MUST/SHOULD/COULD）
-- 成功指標（KPI）
-- 制約条件
-
-**チェックリスト**:
-- [ ] ビジョンが1文で表現できているか
-- [ ] MUST機能が5個以内に絞れているか
-- [ ] KPIが計測可能か
-- [ ] ペルソナとの整合性があるか
-
-**出力**: SSOT-0_PRD.md
-
-### P2: Feature Cataloger（機能カタログ作成者）
-
-**役割**: 機能を体系的に分類し優先度付け
-
-**分類軸**:
-- 共通機能（認証、アカウント、エラー処理）→ Layer 2
-- 固有機能（プロジェクト特有）→ Layer 3
-- MVP / Post-MVP
-
-**出力**: SSOT-1_FEATURE_CATALOG.md
-
-### P3: UI State Designer（UI状態設計者）
-
-**役割**: 画面一覧と状態遷移を設計
-
-**設計内容**:
-- 画面一覧
-- 認証状態（S0-S4）ごとの表示
-- 画面遷移図
-- 主要コンポーネント
-
-**出力**: SSOT-2_UI_STATE.md
-
-### P4: Feature Spec Writer（機能仕様作成者）
-
-**役割**: 各機能の詳細SSOTを作成（specs/04_FEATURE_SPEC.md に従う）
-
-**フロー**:
-1. 共通質問（5項目）: 主要アクター、前提条件、主要フロー、代替フロー、データ項目
-2. 種別質問（機能種別ごと）
-3. UI確認
-4. 仕様確定
-5. SSOT生成（§3-E/F/G/H 含む）
-
-**質問バンク（共通）**:
-- 「この機能の主なユーザー（アクター）は誰ですか？」
-- 「この機能を使う前に何が完了している必要がありますか？」
-- 「メインの操作フロー（ステップ）を教えてください」
-- 「エラーや例外が起きたらどう対応しますか？」
-- 「扱うデータ項目とその制約は？」
-
-**出力**: docs/design/features/{ID}_{name}.md
-
-### P5: UX Validator（UX検証者）
-
-**役割**: ユーザー体験の観点から仕様を検証
-
-**検証観点**:
-- ユーザーフローの自然さ
-- エラー時の体験
-- アクセシビリティ
-- モバイル対応
-- 3クリック以内で主要操作が完了するか
-
-**出力**: UX改善提案、仕様へのフィードバック
-
-## Technical エージェント詳細
-
-### T1: Tech Stack Selector（技術選定者）
-
-**役割**: プロジェクトに最適な技術スタックを選定
-
-**選定基準**:
-- プロジェクトタイプ（app/api/lp/hp/cli）
-- チーム経験・学習コスト
-- 長期保守性
-- エコシステムの成熟度
-
-**出力**: TECH_STACK（PRDまたは独立ドキュメント）
-
-### T2: API Architect（API設計者）
-
-**役割**: API契約を設計（RESTful / GraphQL）
-
-**設計内容**:
-- エンドポイント一覧
-- リクエスト/レスポンス形式
-- 認証・認可
-- エラーレスポンス
-- OpenAPI仕様
-
-**チェックリスト**:
-- [ ] 全MUST機能のエンドポイントが定義されているか
-- [ ] エラーレスポンスが統一形式か
-- [ ] 認証が適切に設計されているか
-- [ ] ページネーションが定義されているか
-
-**出力**: SSOT-3_API_CONTRACT.md
-
-### T3: Data Modeler（データモデラー）
-
-**役割**: データベース設計とマイグレーション計画
-
-**設計内容**:
-- ER図（Mermaid形式）
-- テーブル定義（カラム、型、制約）
-- インデックス戦略
-- マイグレーション順序
-
-**出力**: SSOT-4_DATA_MODEL.md
-
-### T4: Cross-Cutting Designer（横断設計者）
-
-**役割**: 横断的関心事を設計
-
-**設計内容**:
-- 認証フロー（S0-S4状態管理）
-- エラーコード体系（AUTH_xxx, VAL_xxx, RES_xxx, RATE_xxx, SYS_xxx）
-- ログ設計（構造化ログ）
-- 監視・アラート
-
-**出力**: SSOT-5_CROSS_CUTTING.md
-
-### T5: Security Reviewer（セキュリティレビュアー）
-
-**役割**: セキュリティ観点から設計をレビュー
-
-**レビュー観点**:
-- OWASP Top 10
-- 認証・認可の堅牢性
-- データ保護（暗号化、マスキング）
-- 入力検証
-- 依存関係の脆弱性
-
-**出力**: SECURITY_REVIEW、設計へのフィードバック
 
 ## Freeze 単位
 
@@ -225,9 +94,27 @@ Technical Phaseの成果物はCORE/CONTRACT層に該当するため、
 SSOT → テスト作成 → 実装 → コード監査
 ```
 
+## Post-Design Gate（Gate 1: Design Validation）
+
+設計完了後、Planning前にGate 1を通すこと:
+
+```
+1. framework gate design        ← コンテキスト収集（CLI）
+2. /gate-design                  ← Validator実行（スキル）
+3. PASS → framework plan に進む
+   BLOCK → 設計書を修正 → 1に戻る
+```
+
+### BLOCKルール
+- **1回目BLOCK**: 指摘事項に基づき設計書を修正して再実行
+- **2回目連続BLOCK**: 設計アプローチ自体を見直す（場当たり的修正禁止）
+- **3回目BLOCK**: CEOにエスカレーション
+
 ## 次のフェーズ
 
 Design 完了後:
-1. 設計成果物をユーザーに提示して確認
-2. 「実装フェーズ（/implement）に進みますか？」と提案
-3. 承認されたら Skill ツールで /implement を起動
+1. Gate 1（Design Validation）をPASS
+2. 設計成果物をユーザーに提示して確認
+3. `framework plan` で実装計画を生成
+4. 「実装フェーズ（/implement）に進みますか？」と提案
+5. 承認されたら Skill ツールで /implement を起動

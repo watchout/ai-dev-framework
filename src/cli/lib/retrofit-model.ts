@@ -135,10 +135,11 @@ export interface TechPattern {
 }
 
 export const TECH_PATTERNS: TechPattern[] = [
-  // Frameworks
+  // Frameworks (Nuxt3 must come before Next.js/Vue for priority detection)
+  { name: "Nuxt3", category: "framework", packageNames: ["nuxt"], filePatterns: ["nuxt.config.ts", "nuxt.config.js"] },
   { name: "Next.js", category: "framework", packageNames: ["next"] },
   { name: "React", category: "framework", packageNames: ["react"] },
-  { name: "Vue", category: "framework", packageNames: ["vue"] },
+  { name: "Vue3", category: "framework", packageNames: ["vue"], filePatterns: [".vue"] },
   { name: "Express", category: "framework", packageNames: ["express"] },
   { name: "Fastify", category: "framework", packageNames: ["fastify"] },
   { name: "Hono", category: "framework", packageNames: ["hono"] },
@@ -147,7 +148,7 @@ export const TECH_PATTERNS: TechPattern[] = [
   // Database
   { name: "Supabase", category: "database", packageNames: ["@supabase/supabase-js"] },
   { name: "Prisma", category: "database", packageNames: ["prisma", "@prisma/client"] },
-  { name: "Drizzle", category: "database", packageNames: ["drizzle-orm"] },
+  { name: "Drizzle", category: "database", packageNames: ["drizzle-orm"], filePatterns: ["drizzle.config.ts"] },
   // Testing
   { name: "Vitest", category: "testing", packageNames: ["vitest"] },
   { name: "Jest", category: "testing", packageNames: ["jest"] },

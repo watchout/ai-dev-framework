@@ -339,4 +339,52 @@ describe("runRetrofit (output)", () => {
     const hasNextSteps = output.some((line) => line.includes("Next Steps"));
     expect(hasNextSteps).toBe(true);
   });
+
+  it("detects Nuxt3 project and overrides Next.js/React", async () => {
+    // Set up a Nuxt3 project with vue and nuxt in deps (react may appear as transitive)
+    setupProject({
+      withPackageJson: true,
+      packageDeps: { nuxt: "^3.14.0", vue: "^3.5.0", react: "^18.0.0" },
+    });
+    // Add nuxt.config.ts and a .vue file
+    fs.writeFileSync(path.join(tmpDir, "nuxt.config.ts"), "export default defineNuxtConfig({})");
+    fs.mkdirSync(path.join(tmpDir, "pages"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "pages/index.vue"), "<template><div>Hello</div></template>");
+
+    const io = createTestIO();
+    const result = await runRetrofit({
+      projectDir: tmpDir, io, dryRun: false, generateStubs: false,
+    });
+
+    const techNames = result.report.techStack.map((t) => t.name);
+    expect(techNames).toContain("Nuxt3");
+    expect(techNames).toContain("Vue3");
+    expect(techNames).not.toContain("Next.js");
+    expect(techNames).not.toContain("React");
+  });
+
+  it("detects Drizzle from drizzle.config.ts", async () => {
+    setupProject({ withPackageJson: true });
+    fs.writeFileSync(path.join(tmpDir, "drizzle.config.ts"), "export default {}");
+
+    const io = createTestIO();
+    const result = await runRetrofit({
+      projectDir: tmpDir, io, dryRun: false, generateStubs: false,
+    });
+
+    expect(result.report.techStack.some((t) => t.name === "Drizzle")).toBe(true);
+  });
+
+  it("detects Vue3 from .vue files in subdirectories", async () => {
+    setupProject({ withPackageJson: true });
+    fs.mkdirSync(path.join(tmpDir, "components"), { recursive: true });
+    fs.writeFileSync(path.join(tmpDir, "components/Header.vue"), "<template><header/></template>");
+
+    const io = createTestIO();
+    const result = await runRetrofit({
+      projectDir: tmpDir, io, dryRun: false, generateStubs: false,
+    });
+
+    expect(result.report.techStack.some((t) => t.name === "Vue3")).toBe(true);
+  });
 });

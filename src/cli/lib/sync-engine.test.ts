@@ -2,7 +2,7 @@
  * Tests for sync-engine.ts
  * Issue: #16
  */
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -15,6 +15,7 @@ import {
   runSync,
 } from "./sync-engine.js";
 import { type PlanState } from "./plan-model.js";
+import { loadRunState } from "./run-model.js";
 
 let tmpDir: string;
 
@@ -123,5 +124,161 @@ describe("runSync", () => {
     atomicWritePlan(dir, makePlan());
     await runSync({ projectDir: dir });
     expect(fs.existsSync(path.join(dir, ".framework/plan.lock"))).toBe(false);
+  });
+
+  it("updates run-state when gh is available and issues are closed", async () => {
+    const dir = setup();
+    atomicWritePlan(dir, makePlan());
+
+    // Create a run-state with a pending task
+    const runState = {
+      status: "active" as const,
+      currentTaskId: null,
+      tasks: [
+        {
+          taskId: "F001-T001",
+          featureId: "F001",
+          name: "Test task",
+          seq: "1.1",
+          status: "in_progress" as const,
+          blockedBy: [],
+          startedAt: new Date().toISOString(),
+          heartbeatAt: new Date().toISOString(),
+        },
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(
+      path.join(dir, ".framework/run-state.json"),
+      JSON.stringify(runState, null, 2),
+    );
+
+    // Mock github-engine
+    const ghEngine = await import("./github-engine.js");
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(true);
+    const syncSpy = vi.spyOn(ghEngine, "syncStatusFromGitHub").mockResolvedValue({
+      updated: 1,
+      issues: [{ taskId: "F001-T001", issueNumber: 1, status: "closed", labels: [] }],
+      errors: [],
+    });
+
+    try {
+      const result = await runSync({ projectDir: dir });
+      expect(result.ok).toBe(true);
+      expect(result.updated).toBe(1);
+
+      // Verify run-state was updated
+      const updatedState = loadRunState(dir);
+      expect(updatedState?.tasks[0].status).toBe("done");
+    } finally {
+      isGhSpy.mockRestore();
+      syncSpy.mockRestore();
+    }
+  });
+
+  it("returns updated=0 when gh is not available", async () => {
+    const dir = setup();
+    atomicWritePlan(dir, makePlan());
+
+    const ghEngine = await import("./github-engine.js");
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(false);
+
+    try {
+      const result = await runSync({ projectDir: dir });
+      expect(result.ok).toBe(true);
+      expect(result.updated).toBe(0);
+    } finally {
+      isGhSpy.mockRestore();
+    }
+  });
+
+  it("handles reopened issue by reverting done task to in_progress", async () => {
+    const dir = setup();
+    atomicWritePlan(dir, makePlan());
+
+    // Create run-state with a done task
+    const runState = {
+      status: "active" as const,
+      currentTaskId: null,
+      tasks: [
+        {
+          taskId: "F001-T001",
+          featureId: "F001",
+          name: "Task 1",
+          seq: "1.1",
+          status: "done" as const,
+          blockedBy: [],
+          completedAt: "2026-01-01T00:00:00Z",
+        },
+      ],
+      updatedAt: new Date().toISOString(),
+    };
+    fs.writeFileSync(
+      path.join(dir, ".framework/run-state.json"),
+      JSON.stringify(runState, null, 2),
+    );
+
+    const ghEngine = await import("./github-engine.js");
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(true);
+    const syncSpy = vi.spyOn(ghEngine, "syncStatusFromGitHub").mockResolvedValue({
+      updated: 1,
+      issues: [{ taskId: "F001-T001", issueNumber: 1, status: "open", labels: [] }],
+      errors: [],
+    });
+
+    try {
+      const result = await runSync({ projectDir: dir });
+      expect(result.ok).toBe(true);
+      expect(result.updated).toBe(1);
+
+      const updated = loadRunState(dir);
+      expect(updated?.tasks[0].status).toBe("in_progress");
+      expect(updated?.tasks[0].completedAt).toBeUndefined();
+    } finally {
+      isGhSpy.mockRestore();
+      syncSpy.mockRestore();
+    }
+  });
+
+  it("adds warnings when GitHub sync returns errors", async () => {
+    const dir = setup();
+    atomicWritePlan(dir, makePlan());
+
+    const ghEngine = await import("./github-engine.js");
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(true);
+    const syncSpy = vi.spyOn(ghEngine, "syncStatusFromGitHub").mockResolvedValue({
+      updated: 0,
+      issues: [],
+      errors: ["Issue #99 not found"],
+    });
+
+    try {
+      const result = await runSync({ projectDir: dir });
+      expect(result.ok).toBe(true);
+      expect(result.warnings.some((w) => w.includes("Issue #99"))).toBe(true);
+    } finally {
+      isGhSpy.mockRestore();
+      syncSpy.mockRestore();
+    }
+  });
+
+  it("handles syncStatusFromGitHub exception gracefully", async () => {
+    const dir = setup();
+    atomicWritePlan(dir, makePlan());
+
+    const ghEngine = await import("./github-engine.js");
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(true);
+    const syncSpy = vi.spyOn(ghEngine, "syncStatusFromGitHub").mockRejectedValue(
+      new Error("network timeout"),
+    );
+
+    try {
+      const result = await runSync({ projectDir: dir });
+      expect(result.ok).toBe(true);
+      expect(result.warnings.some((w) => w.includes("network timeout"))).toBe(true);
+    } finally {
+      isGhSpy.mockRestore();
+      syncSpy.mockRestore();
+    }
   });
 });

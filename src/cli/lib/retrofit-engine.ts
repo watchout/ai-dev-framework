@@ -26,6 +26,12 @@ import {
   generateSSOTStub,
   generateRetrofitMarkdown,
 } from "./retrofit-model.js";
+import {
+  recommendTestTools,
+  recommendationToConfig,
+  saveTestingConfig,
+  type TestToolRecommendation,
+} from "./testing-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -92,7 +98,13 @@ export async function runRetrofit(
   }
 
   const techFromPkg = detectTechFromPackageJson(packageJson);
-  const techFromFiles = detectTechFromFiles(topLevelFiles);
+
+  // Extend file list with deep scan for specific extensions (.vue)
+  const deepFiles = [...topLevelFiles];
+  if (hasDeepFiles(projectDir, ".vue")) {
+    deepFiles.push("app.vue"); // synthetic entry to trigger .vue pattern match
+  }
+  const techFromFiles = detectTechFromFiles(deepFiles);
 
   // Merge tech detections (avoid duplicates)
   const techNames = new Set(techFromPkg.map((t) => t.name));
@@ -101,8 +113,28 @@ export async function runRetrofit(
     ...techFromFiles.filter((t) => !techNames.has(t.name)),
   ];
 
+  // Nuxt3 overrides Next.js/React: if nuxt.config exists, remove conflicting detections
+  const hasNuxt = techStack.some((t) => t.name === "Nuxt3");
+  if (hasNuxt) {
+    const filtered = techStack.filter((t) => t.name !== "Next.js" && t.name !== "React");
+    techStack.length = 0;
+    techStack.push(...filtered);
+  }
+
+  // Build stack summary for testing recommendation
+  const frameworkTech = techStack.find((t) => t.category === "framework");
+  const dbTech = techStack.find((t) => t.category === "database");
+  const langTech = techStack.find((t) => t.category === "language");
+  const testRec = recommendTestTools({
+    framework: frameworkTech?.name,
+    database: dbTech?.name,
+    language: langTech?.name,
+    profileType: "app", // Retrofit doesn't know profile; default to app
+  });
+
   io.print(`  Found ${directory.topLevelDirs.length} directories`);
   io.print(`  Detected ${techStack.length} technologies`);
+  io.print(`  Test recommendation: L1=${testRec.l1.tool}${testRec.l2 ? ` L2=${testRec.l2.tool}+${testRec.l2.database}` : ""}${testRec.l3 ? ` L3=${testRec.l3.tool}` : ""}`);
 
   // ── Phase 2: Analyze ──
   step++;
@@ -179,6 +211,14 @@ export async function runRetrofit(
       const reportFilename = saveRetrofitReport(projectDir, report);
       io.print(`  Saved: .framework/${reportFilename}`);
       generatedFiles.push(`.framework/${reportFilename}`);
+
+      // Save testing config if project.json exists
+      const projectJsonPath = path.join(projectDir, ".framework/project.json");
+      if (fs.existsSync(projectJsonPath)) {
+        const testConfig = recommendationToConfig(testRec);
+        saveTestingConfig(projectDir, testConfig);
+        io.print("  Saved: testing config to .framework/project.json");
+      }
     }
   } else {
     // Save report even in scan-only mode
@@ -304,6 +344,28 @@ function createEmptyReport(projectDir: string): RetrofitReport {
     gaps: [],
     readiness: { score: 0, maxScore: 100, details: [] },
   };
+}
+
+/**
+ * Check if project contains files with a given extension (shallow recursive scan).
+ */
+function hasDeepFiles(projectDir: string, ext: string): boolean {
+  const scanDirs = ["components", "pages", "layouts", "composables", "app", "src"];
+  for (const dir of scanDirs) {
+    const dirPath = path.join(projectDir, dir);
+    if (!fs.existsSync(dirPath)) continue;
+    try {
+      const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        if (entry.isFile() && entry.name.endsWith(ext)) return true;
+        if (entry.isDirectory()) {
+          const subEntries = fs.readdirSync(path.join(dirPath, entry.name));
+          if (subEntries.some((f) => f.endsWith(ext))) return true;
+        }
+      }
+    } catch { /* ignore */ }
+  }
+  return false;
 }
 
 export { generateRetrofitMarkdown };

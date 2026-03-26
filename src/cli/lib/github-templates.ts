@@ -80,6 +80,18 @@ export function installGitHubTemplates(
     }
   }
 
+  // 1b. SSOT Audit workflow
+  const ssotAuditSrc = path.join(frameworkRoot, "templates/ci/ssot-audit.yml");
+  const ssotAuditDest = path.join(projectDir, ".github/workflows/ssot-audit.yml");
+  if (fs.existsSync(ssotAuditSrc)) {
+    if (!fs.existsSync(ssotAuditDest) || force) {
+      fs.copyFileSync(ssotAuditSrc, ssotAuditDest);
+      installed.push(".github/workflows/ssot-audit.yml");
+    } else {
+      skipped.push(".github/workflows/ssot-audit.yml (exists)");
+    }
+  }
+
   // 2. PR Template
   const prTemplateSrc = path.join(frameworkRoot, "templates/github/PULL_REQUEST_TEMPLATE.md");
   const prTemplateDest = path.join(projectDir, ".github/PULL_REQUEST_TEMPLATE.md");

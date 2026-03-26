@@ -14,6 +14,8 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadPlan, savePlan, type PlanState } from "./plan-model.js";
 import { acquireLock, releaseLock, type AcquireResult } from "./lock-model.js";
+import { syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
+import { loadRunState, saveRunState } from "./run-model.js";
 
 const PLAN_FILE = ".framework/plan.json";
 const PLAN_TMP = ".framework/plan.json.tmp";
@@ -252,13 +254,51 @@ export async function runSync(options: SyncOptions): Promise<SyncEngineResult> {
     // Atomic write (re-saves plan with updatedAt timestamp)
     atomicWritePlan(projectDir, plan);
 
+    // Pull live status from GitHub and update run-state
+    let updated = 0;
+    if (isGhAvailable()) {
+      try {
+        const statusResult = await syncStatusFromGitHub(projectDir);
+        if (statusResult.errors.length > 0) {
+          for (const err of statusResult.errors) {
+            warnings.push(`⚠️  GitHub sync: ${err}`);
+          }
+        }
+
+        // Update run-state.json with GitHub issue statuses
+        const runState = loadRunState(projectDir);
+        if (runState && statusResult.issues.length > 0) {
+          for (const issue of statusResult.issues) {
+            const task = runState.tasks.find((t) => t.taskId === issue.taskId);
+            if (!task) continue;
+
+            if (issue.status === "closed" && task.status !== "done") {
+              task.status = "done";
+              task.completedAt = new Date().toISOString();
+              updated++;
+            } else if (issue.status === "open" && task.status === "done") {
+              task.status = "in_progress";
+              task.completedAt = undefined;
+              updated++;
+            }
+          }
+          if (updated > 0) {
+            saveRunState(projectDir, runState);
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        warnings.push(`⚠️  GitHub status sync failed: ${msg}`);
+      }
+    }
+
     // Mark clean
     markClean(projectDir, commitSha);
 
     return {
       ok: true,
       orphaned,
-      updated: 0, // TODO: integrate with github-engine for live status pull
+      updated,
       warnings,
     };
   } finally {

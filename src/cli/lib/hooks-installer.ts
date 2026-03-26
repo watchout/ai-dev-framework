@@ -16,8 +16,9 @@ const GATE_HOOK_MARKER = "Pre-Code Gate (framework)";
 
 const CLAUDE_HOOK_SCRIPT = `#!/bin/bash
 # Pre-Code Gate hook for Claude Code (PreToolUse)
-# Reads .framework/gates.json and blocks source code edits when gates have not passed.
-# Also requires an active task from \\\`framework run\\\` before allowing edits.
+# Smart Blocking: blocks product code edits when gates not passed,
+# but allows Gate-preparation edits (docs, .env, .framework, etc).
+# ADR-009: Smart Blocking方式
 # Exit 2 = deny (Claude Code convention), Exit 0 = allow
 
 input=$(cat)
@@ -39,18 +40,31 @@ fi
 # Make path relative to project dir
 rel_path="\${file_path#$project_dir/}"
 
-# Check if path is a protected source code path
+# ─── Smart Blocking: path classification ───
+# Always-allowed paths (Gate preparation, config, meta)
 case "$rel_path" in
-  src/*|app/*|server/*|lib/*|components/*|pages/*|composables/*|utils/*|stores/*|plugins/*)
+  docs/*|.framework/*|.claude/*|.github/*|prisma/*|drizzle/*)
+    exit 0
+    ;;
+  CLAUDE.md|README.md|LICENSE|package.json|package-lock.json|pnpm-lock.yaml)
+    exit 0
+    ;;
+  .env|.env.*)
+    exit 0
+    ;;
+esac
+
+# Blocked paths (product code) — require Gate pass
+case "$rel_path" in
+  src/*|app/*|server/*|lib/*|components/*|pages/*|composables/*|utils/*|stores/*|plugins/*|scripts/*)
     ;;
   *)
+    # Unknown path — allow by default
     exit 0
     ;;
 esac
 
 # ─── Skill Warning (soft layer) ───
-# Check if a skill has been activated recently (within 6 hours).
-# If not, print a warning to stderr. Does NOT block (exit 0 continues).
 skill_file="$project_dir/.framework/active-skill.json"
 skill_active=false
 if [ -f "$skill_file" ]; then
@@ -75,7 +89,6 @@ if [ "$skill_active" != "true" ]; then
 fi
 
 # ─── Pre-Code Gate (hard layer) ───
-# Check .framework/gates.json
 gates_file="$project_dir/.framework/gates.json"
 if [ ! -f "$gates_file" ]; then
   echo "[Pre-Code Gate] .framework/gates.json not found. Run 'framework gate check'." >&2
@@ -109,19 +122,16 @@ if [ "$result" != "PASSED" ]; then
   echo "  Gate C (SSOT):        \${gate_c:-error}" >&2
   echo "" >&2
   echo "  Run: framework gate check" >&2
+  echo "  (docs/.env/.framework edits are allowed)" >&2
   echo "=====================================" >&2
   exit 2
 fi
 
 # ─── Active Task Check (hard layer) ───
-# Requires a task started via \\\`framework run\\\` before allowing source edits.
-# Skip: FRAMEWORK_SKIP_TASK_CHECK=1, profile lp/hp
-
 if [ "\${FRAMEWORK_SKIP_TASK_CHECK:-}" = "1" ]; then
   exit 0
 fi
 
-# Single node call: check profile + run-state
 task_check=$(node -e "
   const fs = require('fs');
   try {
@@ -197,9 +207,24 @@ exit 0
 `;
 
 const PRE_COMMIT_BLOCK = `# === ${GATE_HOOK_MARKER} ===
-PROTECTED_STAGED=$(git diff --cached --name-only | grep -E '^(src|app|server|lib|components|pages|composables|utils|stores|plugins)/')
-if [ -n "$PROTECTED_STAGED" ] && command -v framework >/dev/null 2>&1; then
-  framework gate check || { echo "[Pre-Code Gate] COMMIT BLOCKED"; exit 1; }
+# Smart Blocking (ADR-009): block commits with product code changes when gates not passed.
+# Always-allowed: docs/ .env* .framework/ .claude/ .github/ prisma/ drizzle/ CLAUDE.md README.md LICENSE package*.json pnpm-lock.yaml
+# Blocked: src/ app/ server/ lib/ components/ pages/ composables/ utils/ stores/ plugins/ scripts/
+HAS_BLOCKED_FILES=false
+while IFS= read -r staged_file; do
+  case "$staged_file" in
+    docs/*|.framework/*|.claude/*|.github/*|prisma/*|drizzle/*) continue ;;
+    CLAUDE.md|README.md|LICENSE|package.json|package-lock.json|pnpm-lock.yaml) continue ;;
+    .env|.env.*) continue ;;
+    src/*|app/*|server/*|lib/*|components/*|pages/*|composables/*|utils/*|stores/*|plugins/*|scripts/*)
+      HAS_BLOCKED_FILES=true
+      break
+      ;;
+    *) continue ;;
+  esac
+done <<< "$(git diff --cached --name-only)"
+if [ "$HAS_BLOCKED_FILES" = "true" ] && command -v framework >/dev/null 2>&1; then
+  framework gate check || { echo "[Pre-Code Gate] COMMIT BLOCKED — product code requires all gates passed"; exit 1; }
 fi
 # === End ${GATE_HOOK_MARKER} ===
 `;
@@ -262,6 +287,15 @@ export function mergeClaudeSettings(
   existing: Record<string, unknown>,
 ): Record<string, unknown> {
   const result = { ...existing };
+
+  // Ensure Agent Teams env is set (ADR-016)
+  if (!result.env || typeof result.env !== "object") {
+    result.env = {};
+  }
+  const env = result.env as Record<string, string>;
+  if (!env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS) {
+    env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS = "1";
+  }
 
   // Ensure hooks object exists
   if (!result.hooks || typeof result.hooks !== "object") {
@@ -397,17 +431,102 @@ export function installGitPreCommitHook(projectDir: string): {
 }
 
 // ─────────────────────────────────────────────
+// Native Git Hook (.git/hooks/pre-commit)
+// ─────────────────────────────────────────────
+
+export function installNativeGitHook(projectDir: string): {
+  installed: boolean;
+  files: string[];
+  warnings: string[];
+} {
+  const files: string[] = [];
+  const warnings: string[] = [];
+
+  const gitHooksDir = path.join(projectDir, ".git", "hooks");
+  if (!fs.existsSync(path.join(projectDir, ".git"))) {
+    return { installed: false, files, warnings };
+  }
+
+  if (!fs.existsSync(gitHooksDir)) {
+    fs.mkdirSync(gitHooksDir, { recursive: true });
+  }
+
+  const preCommitPath = path.join(gitHooksDir, "pre-commit");
+
+  if (fs.existsSync(preCommitPath)) {
+    const existing = fs.readFileSync(preCommitPath, "utf-8");
+    if (existing.includes(GATE_HOOK_MARKER)) {
+      return { installed: true, files, warnings };
+    }
+
+    // Merge: insert gate block after shebang
+    let newContent: string;
+    if (existing.startsWith("#!/")) {
+      const firstNewline = existing.indexOf("\n");
+      const shebang = existing.substring(0, firstNewline + 1);
+      const rest = existing.substring(firstNewline + 1);
+      newContent = shebang + PRE_COMMIT_BLOCK + "\n" + rest;
+    } else {
+      newContent = "#!/bin/sh\n" + PRE_COMMIT_BLOCK + "\n" + existing;
+    }
+
+    fs.writeFileSync(preCommitPath, newContent, { mode: 0o755 });
+    files.push(".git/hooks/pre-commit (updated)");
+    warnings.push("Existing .git/hooks/pre-commit merged with Pre-Code Gate block.");
+  } else {
+    const content = "#!/bin/sh\n" + PRE_COMMIT_BLOCK;
+    fs.writeFileSync(preCommitPath, content, { mode: 0o755 });
+    files.push(".git/hooks/pre-commit");
+  }
+
+  return { installed: true, files, warnings };
+}
+
+// ─────────────────────────────────────────────
+// Smart Blocking path classification (ADR-009)
+// Exported for testability — mirrors the shell case logic.
+// ─────────────────────────────────────────────
+
+export type PathAction = "allow" | "block" | "ignore";
+
+const ALLOWED_PREFIXES = ["docs/", ".framework/", ".claude/", ".github/", "prisma/", "drizzle/"];
+const ALLOWED_EXACT = ["CLAUDE.md", "README.md", "LICENSE", "package.json", "package-lock.json", "pnpm-lock.yaml"];
+const BLOCKED_PREFIXES = ["src/", "app/", "server/", "lib/", "components/", "pages/", "composables/", "utils/", "stores/", "plugins/", "scripts/"];
+
+export function classifyPath(filePath: string): PathAction {
+  // Always-allowed paths
+  for (const prefix of ALLOWED_PREFIXES) {
+    if (filePath.startsWith(prefix)) return "allow";
+  }
+  if (ALLOWED_EXACT.includes(filePath)) return "allow";
+  if (filePath === ".env" || filePath.startsWith(".env.")) return "allow";
+
+  // Blocked paths (product code)
+  for (const prefix of BLOCKED_PREFIXES) {
+    if (filePath.startsWith(prefix)) return "block";
+  }
+
+  // Unknown — allow by default
+  return "ignore";
+}
+
+export function hasBlockedFiles(files: string[]): boolean {
+  return files.some((f) => classifyPath(f) === "block");
+}
+
+// ─────────────────────────────────────────────
 // Combined Installer
 // ─────────────────────────────────────────────
 
 export function installAllHooks(projectDir: string): HooksInstallResult {
   const claude = installClaudeCodeHook(projectDir);
   const git = installGitPreCommitHook(projectDir);
+  const nativeGit = installNativeGitHook(projectDir);
 
   return {
     claudeHookInstalled: claude.files.length > 0,
-    gitHookInstalled: git.files.length > 0,
-    files: [...claude.files, ...git.files],
-    warnings: [...claude.warnings, ...git.warnings],
+    gitHookInstalled: git.files.length > 0 || nativeGit.installed,
+    files: [...claude.files, ...git.files, ...nativeGit.files],
+    warnings: [...claude.warnings, ...git.warnings, ...nativeGit.warnings],
   };
 }

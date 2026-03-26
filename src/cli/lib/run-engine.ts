@@ -51,6 +51,9 @@ import {
 } from "./plan-model.js";
 import { closeTaskIssue, closeFeatureIssue, labelTaskIssue, syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
 import { loadSyncState } from "./github-model.js";
+import { acquireLock, releaseLock } from "./lock-model.js";
+
+const RUN_LOCK_NAME = "run-state";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -456,6 +459,11 @@ export async function completeTaskNonInteractive(
   projectDir: string,
   taskId: string,
 ): Promise<CompleteResult> {
+  const lockResult = acquireLock(projectDir, "run:complete", undefined, RUN_LOCK_NAME);
+  if (lockResult.ok === false && lockResult.reason === "active") {
+    return { error: `Run state is locked by another process (pid: ${lockResult.data.pid}).`, progress: 0, issueClosed: false };
+  }
+  try {
   // Load or create run state
   let state = loadRunState(projectDir);
   if (!state) {
@@ -516,12 +524,24 @@ export async function completeTaskNonInteractive(
     issueClosed,
     parentClosed,
   };
+  } finally {
+    releaseLock(projectDir, RUN_LOCK_NAME);
+  }
 }
 
 export async function startTaskNonInteractive(
   projectDir: string,
   taskId?: string,
 ): Promise<StartTaskResult> {
+  const lockResult = acquireLock(projectDir, "run:start", undefined, RUN_LOCK_NAME);
+  if (lockResult.ok === false && lockResult.reason === "active") {
+    return {
+      error: `Run state is locked by another process (pid: ${lockResult.data.pid}, command: ${lockResult.data.command}).`,
+      taskId: taskId ?? "",
+      progress: 0,
+    };
+  }
+  try {
   const state = loadOrInitRunState(projectDir);
   if ("error" in state) {
     return {
@@ -610,6 +630,9 @@ export async function startTaskNonInteractive(
     heartbeatAt: task.heartbeatAt,
     leaseExpiresAt: task.leaseExpiresAt,
   };
+  } finally {
+    releaseLock(projectDir, RUN_LOCK_NAME);
+  }
 }
 
 export function heartbeatTaskNonInteractive(

@@ -943,15 +943,15 @@ describe("run-engine", () => {
       // Mock gh CLI: auth succeeds, all issues are closed (batch fetch)
       restoreExecutor = setGhExecutor(async (args: string[]) => {
         if (args[0] === "auth") return "Logged in";
-        if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+        if (args[0] === "api" && args[1] === "--paginate") {
           return JSON.stringify([
-            { number: 1, title: "Feature", state: "OPEN", labels: [] },
-            { number: 10, title: "Task #10", state: "CLOSED", labels: [] },
-            { number: 11, title: "Task #11", state: "CLOSED", labels: [] },
-            { number: 12, title: "Task #12", state: "CLOSED", labels: [] },
-            { number: 13, title: "Task #13", state: "CLOSED", labels: [] },
-            { number: 14, title: "Task #14", state: "CLOSED", labels: [] },
-            { number: 15, title: "Task #15", state: "CLOSED", labels: [] },
+            { number: 1, title: "Feature", state: "open", labels: [] },
+            { number: 10, title: "Task #10", state: "closed", labels: [] },
+            { number: 11, title: "Task #11", state: "closed", labels: [] },
+            { number: 12, title: "Task #12", state: "closed", labels: [] },
+            { number: 13, title: "Task #13", state: "closed", labels: [] },
+            { number: 14, title: "Task #14", state: "closed", labels: [] },
+            { number: 15, title: "Task #15", state: "closed", labels: [] },
           ]);
         }
         return "";
@@ -996,11 +996,11 @@ describe("run-engine", () => {
       // Mock: only TEST is closed, DB is open (batch fetch)
       restoreExecutor = setGhExecutor(async (args: string[]) => {
         if (args[0] === "auth") return "Logged in";
-        if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+        if (args[0] === "api" && args[1] === "--paginate") {
           return JSON.stringify([
-            { number: 1, title: "Feature", state: "OPEN", labels: [] },
-            { number: 10, title: "Task #10", state: "CLOSED", labels: [] },
-            { number: 11, title: "Task #11", state: "OPEN", labels: [] },
+            { number: 1, title: "Feature", state: "open", labels: [] },
+            { number: 10, title: "Task #10", state: "closed", labels: [] },
+            { number: 11, title: "Task #11", state: "open", labels: [] },
           ]);
         }
         return "";
@@ -1042,10 +1042,10 @@ describe("run-engine", () => {
 
       restoreExecutor = setGhExecutor(async (args: string[]) => {
         if (args[0] === "auth") return "Logged in";
-        if (args[0] === "issue" && args[1] === "list" && args.includes("--state")) {
+        if (args[0] === "api" && args[1] === "--paginate") {
           return JSON.stringify([
-            { number: 1, title: "Feature", state: "OPEN", labels: [] },
-            { number: 10, title: "Task #10", state: "CLOSED", labels: [] },
+            { number: 1, title: "Feature", state: "open", labels: [] },
+            { number: 10, title: "Task #10", state: "closed", labels: [] },
           ]);
         }
         return "";

@@ -29,6 +29,11 @@ import {
   saveGateState,
 } from "../lib/gate-model.js";
 import { installAllHooks } from "../lib/hooks-installer.js";
+import {
+  recommendTestTools,
+  recommendationToConfig,
+  saveTestingConfig,
+} from "../lib/testing-model.js";
 import { installGitHubTemplates } from "../lib/github-templates.js";
 import { installMcpJson } from "../lib/mcp-installer.js";
 import { logger } from "../lib/logger.js";
@@ -204,6 +209,11 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const gateState = createGateState();
   saveGateState(projectPath, gateState);
   createdFiles.push(".framework/gates.json");
+
+  // Initialize testing config (ADR-010)
+  const testRec = recommendTestTools({ profileType: profileType });
+  const testConfig = recommendationToConfig(testRec);
+  saveTestingConfig(projectPath, testConfig);
 
   // Step 10: Install Pre-Code Gate hooks
   logger.step(10, totalSteps, "Installing Pre-Code Gate hooks...");

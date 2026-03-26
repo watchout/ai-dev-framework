@@ -12,6 +12,15 @@ description: |
 実装完了後の最終品質ゲート。複数の専門家（R1-R5）がそれぞれの観点から
 レビューし、リリース可否を判定する。SSOT監査とコード監査も統合。
 
+## Agents（参照）
+
+### Review Council Members (Validators)
+1. @agents/validators/r1-ssot-auditor.md → SSOT準拠性監査
+2. @agents/validators/r2-quality-gatekeeper.md → 品質ゲート検証
+3. @agents/validators/r3-security-guardian.md → セキュリティ監査
+4. @agents/validators/r4-ux-advocate.md → UX検証
+5. @agents/validators/r5-performance-analyst.md → パフォーマンス検証
+
 ## ワークフロー
 
 ```
@@ -30,63 +39,6 @@ R5: Performance Analyst      → パフォーマンスを検証
     ├─ ❌ Reject → 修正後再レビュー
     └─ ⛔ Block → 重大問題、合議で解決策検討
 ```
-
-## レビュアー詳細
-
-### R1: SSOT Compliance Auditor（SSOT準拠監査者）
-
-**チェックリスト**:
-- [ ] SSOT-0_PRD.md の MUST 要件が全て実装されている
-- [ ] 機能SSOTの仕様通りに実装されている
-- [ ] SSOTに定義されていない機能が追加されていない
-- [ ] カスタマイズログの変更が反映されている
-- [ ] 追跡マトリクス（Traceability Matrix）が更新されている
-
-**SSOT監査（`framework audit ssot` 相当）**:
-- §3-E/F/G/H の充足率を計算
-- SSOT間の参照整合性を検証
-- [要確認] マーカーが残っていないか確認
-- Gate C を自動再評価
-
-### R2: Quality Gate Keeper（品質ゲートキーパー）
-
-**チェックリスト**:
-- [ ] TypeScript エラー 0件
-- [ ] ESLint エラー 0件（Warning は許容）
-- [ ] Prettier 差分 0件
-- [ ] 単体テスト 全パス（失敗0件、スキップ0件）
-- [ ] 統合テスト 全パス
-- [ ] カバレッジ 80%以上（新規コードは90%以上）
-- [ ] ビルド成功
-
-### R3: Security Guardian（セキュリティガーディアン）
-
-**チェックリスト**:
-- [ ] OWASP Top 10 対策済み
-- [ ] 認証・認可が適切に実装されている
-- [ ] 入力バリデーションが適切
-- [ ] シークレットがハードコードされていない
-- [ ] 依存関係に Critical/High 脆弱性がない
-- [ ] SQLインジェクション、XSS、CSRF 対策済み
-
-### R4: User Experience Advocate（UXアドボケイト）
-
-**チェックリスト**:
-- [ ] ユーザーフローが自然
-- [ ] エラーメッセージがユーザーフレンドリー
-- [ ] ローディング状態が適切に表示される
-- [ ] アクセシビリティ基準を満たしている
-- [ ] モバイル対応が適切
-
-### R5: Performance Analyst（パフォーマンスアナリスト）
-
-**チェックリスト**:
-- [ ] API レスポンスタイム基準以内
-- [ ] ページロード時間基準以内
-- [ ] バンドルサイズ上限以内
-- [ ] Lighthouse スコア基準以上（LP/HP の場合）
-- [ ] メモリリークがない
-- [ ] N+1 クエリがない
 
 ## 最終判定基準
 
@@ -108,35 +60,6 @@ R5: Performance Analyst      → パフォーマンスを検証
 ❌ カバレッジ 80% 未満
 ❌ Critical/High セキュリティ脆弱性がある
 ❌ ビルドが失敗している
-```
-
-## レビュー結果テンプレート
-
-```markdown
-## Review Council 結果
-
-### 対象
-- 機能: [機能ID/名称]
-- PR: [PR番号]
-
-### 各レビュアー判定
-
-| レビュアー | 判定 | コメント |
-|-----------|------|----------|
-| R1: SSOT Compliance | ✅/❌ | - |
-| R2: Quality Gate | ✅/❌ | カバレッジ xx% |
-| R3: Security | ✅/❌ | - |
-| R4: UX | ✅/⚠️ | - |
-| R5: Performance | ✅/⚠️ | - |
-
-### 最終判定: ✅ Approved / ❌ Rejected
-
-### 改善推奨事項（次回対応可）
-- [ ] [項目]
-
-### 次のアクション
-- [ ] main ブランチにマージ
-- [ ] ステージング環境にデプロイ
 ```
 
 ## 合議プロトコル
@@ -174,10 +97,32 @@ R5: Performance Analyst      → パフォーマンスを検証
 
 視点間の緊張があれば、それを明記して解決策を示す。
 
+## 追加コンテキスト: notes/
+
+レビュー対象のタスクに対応する `notes/` ファイルがある場合、実装者の判断理由・申し送り事項を確認すること。技術的判断の妥当性評価に活用する。
+
+## Post-Review Gate（Gate 3: Adversarial Review）
+
+レビュー評議会完了後、リリース前にGate 3を通すこと:
+
+```
+1. framework gate release     ← コンテキスト収集（CLI）
+2. /gate-release               ← 裁判実行（スキル）
+3. SHIP → PR作成・マージ可
+   SHIP_WITH_CONDITIONS → 条件修正後マージ（Gate 3再実行不要）
+   BLOCK → Gate 2から再実行
+```
+
+### 裁判構造
+- **Prosecutor**: リリースを止める理由を全力で探す
+- **Defense**: 各起訴を検証（DISMISS/REDUCE/ACKNOWLEDGE）
+- **Judge**: 起訴状+弁護書のみで判決（SHIP/CONDITIONS/BLOCK）
+
 ## 3層品質保証
 
 ```
-Layer 3: Review Council（本スキル）→ リリース前の最終ゲート
-Layer 2: Implementation Phase      → 実装中のコード監査（I3）
+Layer 4: Gate 3 Adversarial Review → リリース前の最終裁判
+Layer 3: Review Council（本スキル）→ レビュー評議会
+Layer 2: Gate 2 Quality Sweep      → 実装後の品質検証
 Layer 1: CI/CD Pipeline            → 自動化された品質チェック
 ```

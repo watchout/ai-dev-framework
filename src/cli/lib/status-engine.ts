@@ -440,6 +440,32 @@ export function printStatus(
     io.print("");
   }
 
+  // Gate 1/2/3 status (from reports)
+  const reportsDir = path.join(
+    result.profile ? "." : ".",
+    ".framework/reports",
+  );
+  if (fs.existsSync(reportsDir)) {
+    const reportFiles = fs.readdirSync(reportsDir);
+    const g1 = reportFiles.find((f) => f.startsWith("design-validation"));
+    const g2 = reportFiles.find((f) => f.startsWith("quality-sweep"));
+    const g3 = reportFiles.find((f) => f.startsWith("trial-verdict") || f.startsWith("gate3-verdict"));
+
+    const readVerdict = (filePath: string): string => {
+      try {
+        const content = fs.readFileSync(filePath, "utf-8");
+        const match = content.match(/Verdict:\s*(PASS|BLOCK|SHIP|SHIP_WITH_CONDITIONS)/i);
+        return match ? match[1].toUpperCase() : "?";
+      } catch { return "?"; }
+    };
+
+    io.print("  Quality Gates:");
+    io.print(`    Gate 1 (Design):  ${g1 ? readVerdict(path.join(reportsDir, g1)) : "..."}`);
+    io.print(`    Gate 2 (Quality): ${g2 ? readVerdict(path.join(reportsDir, g2)) : "..."}`);
+    io.print(`    Gate 3 (Release): ${g3 ? readVerdict(path.join(reportsDir, g3)) : "..."}`);
+    io.print("");
+  }
+
   // Overall progress
   io.print(`  Phase: ${result.phaseLabel}`);
   io.print(

@@ -1,18 +1,30 @@
-# Skills Index - スキル一覧
+# Skills & Agents Index
 
-> Claude Codeで利用可能なスキル（専門家チーム）の一覧
+> Claude Codeで利用可能なスキル（オーケストレーション）とエージェント（独立定義）の一覧
 
-## スキル構成（5スキル + Agent Teams）
+## ディレクトリ構造
 
 ```
-.claude/skills/
-├── _INDEX.md              ← このファイル
-├── discovery/SKILL.md     ← Discovery & Business Phase（D1-D4, B1-B4）
-├── design/SKILL.md        ← Product & Technical Design（P1-P5, T1-T5）
-├── implement/SKILL.md     ← Implementation Phase（I1-I5）
-├── review/SKILL.md        ← Review & Audit（R1-R5 + 合議）
-├── scan-updates/SKILL.md  ← AI開発エコシステム最新情報収集
-└── agent-teams/           ← Agent Teams運用パターン（実証済み）
+.claude/
+├── skills/                        ← オーケストレーション（実行フロー）
+│   ├── _INDEX.md                  ← このファイル
+│   ├── discovery/SKILL.md         ← Discovery & Business Phase
+│   ├── design/SKILL.md            ← Product & Technical Design
+│   ├── implement/SKILL.md         ← Implementation Phase
+│   ├── review/SKILL.md            ← Review & Audit
+│   ├── scan-updates/SKILL.md      ← AI開発エコシステム最新情報
+│   └── agent-teams/               ← Agent Teams運用パターン
+├── agents/                        ← エージェント定義（独立ファイル）
+│   ├── producers/
+│   │   ├── discovery/             ← D1-D4, B1-B4
+│   │   ├── design/                ← P1-P5, T1-T4
+│   │   └── implementation/        ← I1, I2, I5
+│   ├── validators/                ← I3, I4, R1-R5, T5, Gate validators
+│   └── meta/                      ← ssot-explorer, code-reviewer, visual-tester
+└── gates/                         ← Gate定義
+    ├── design-validation.md       ← Gate 1: 設計検証
+    ├── quality-sweep.md           ← Gate 2: 品質スイープ
+    └── adversarial-review.md      ← Gate 3: 敵対的レビュー
 ```
 
 ## スキル一覧
@@ -23,119 +35,96 @@
 | design | プロダクト設計・技術設計 | 「設計」「design」「仕様」「アーキテクチャ」 |
 | implement | 実装・テスト・品質保証 | 「実装」「implement」「コーディング」 |
 | review | レビュー評議会・監査 | 「レビュー」「review」「監査」「audit」 |
-| scan-updates | AI開発ツール最新情報収集 | 「最新情報」「scan-updates」「アップデート確認」「ツール動向」 |
+| scan-updates | AI開発ツール最新情報収集 | 「最新情報」「scan-updates」「アップデート確認」 |
+
+## エージェント一覧
+
+### Producers（成果物を生成）
+
+| ID | 名前 | フェーズ | ファイル |
+|----|------|----------|----------|
+| D1 | Idea Excavator | discovery | producers/discovery/d1-excavator.md |
+| D2 | Problem Validator | discovery | producers/discovery/d2-validator.md |
+| D3 | User Profiler | discovery | producers/discovery/d3-profiler.md |
+| D4 | Market Scout | discovery | producers/discovery/d4-scout.md |
+| B1 | Value Architect | business | producers/discovery/b1-value-architect.md |
+| B2 | Competitor Analyst | business | producers/discovery/b2-competitor-analyst.md |
+| B3 | Revenue Designer | business | producers/discovery/b3-revenue-designer.md |
+| B4 | Go-to-Market Planner | business | producers/discovery/b4-gtm-planner.md |
+| P1 | PRD Author | design | producers/design/p1-prd-author.md |
+| P2 | Feature Cataloger | design | producers/design/p2-feature-cataloger.md |
+| P3 | UI State Designer | design | producers/design/p3-ui-state-designer.md |
+| P4 | Feature Spec Writer | design | producers/design/p4-feature-spec-writer.md |
+| P5 | UX Validator | design | producers/design/p5-ux-validator.md |
+| T1 | Tech Stack Selector | design | producers/design/t1-tech-stack-selector.md |
+| T2 | API Architect | design | producers/design/t2-api-architect.md |
+| T3 | Data Modeler | design | producers/design/t3-data-modeler.md |
+| T4 | Cross-Cutting Designer | design | producers/design/t4-cross-cutting-designer.md |
+| I1 | Code Implementer | implementation | producers/implementation/i1-code-implementer.md |
+| I2 | Test Writer | implementation | producers/implementation/i2-test-writer.md |
+| I5 | Documentation Writer | implementation | producers/implementation/i5-documentation-writer.md |
+
+### Validators（品質を検証）
+
+| ID | 名前 | フェーズ | ファイル |
+|----|------|----------|----------|
+| T5 | Security Reviewer | design | validators/security-reviewer.md |
+| I3 | Code Auditor | implementation | validators/code-auditor.md |
+| I4 | Integration Validator | implementation | validators/integration-validator.md |
+| R1 | SSOT Compliance Auditor | review | validators/r1-ssot-auditor.md |
+| R2 | Quality Gate Keeper | review | validators/r2-quality-gatekeeper.md |
+| R3 | Security Guardian | review | validators/r3-security-guardian.md |
+| R4 | User Experience Advocate | review | validators/r4-ux-advocate.md |
+| R5 | Performance Analyst | review | validators/r5-performance-analyst.md |
+| — | Feasibility Checker | gate | validators/feasibility-checker.md |
+| — | Coherence Auditor | gate | validators/coherence-auditor.md |
+| — | Gap Detector | gate | validators/gap-detector.md |
+| — | SSOT Drift Detector | gate | validators/ssot-drift-detector.md |
+| — | Security Scanner | gate | validators/security-scanner.md |
+| — | Test Coverage Auditor | gate | validators/test-coverage-auditor.md |
+| — | Perf Profiler | gate | validators/perf-profiler.md |
+| — | Prosecutor | gate | validators/prosecutor.md |
+| — | Defense | gate | validators/defense.md |
+| — | Judge | gate | validators/judge.md |
+
+### Meta（プロセス監視）
+
+| 名前 | ファイル |
+|------|----------|
+| SSOT Explorer | meta/ssot-explorer.md |
+| Code Reviewer | meta/code-reviewer.md |
+| Visual Tester | meta/visual-tester.md |
+
+## Gates
+
+| Gate | 種別 | トリガー | CLI |
+|------|------|----------|-----|
+| Design Validation | parallel | 設計完了後 | framework gate design |
+| Quality Sweep | parallel | 実装完了後 | framework gate quality |
+| Adversarial Review | adversarial | リリース判定 | framework gate release |
 
 ## 開発フロー全体像
 
 ```
-Discovery & Business → Design → Implementation → Review
-       ↓                 ↓           ↓              ↓
-    D1-D4, B1-B4      P1-P5      I1-I5          R1-R5
-                      T1-T5
-       ↓                 ↓           ↓              ↓
-  IDEA_CANVAS       PRD, SSOT    コード実装      最終判定
-  VALUE_PROP        API, DB      テスト          リリース可否
+Discovery & Business → Design → [Gate 1] → Implementation → [Gate 2] → Review → [Gate 3] → Release
+       ↓                 ↓                       ↓                          ↓
+    D1-D4, B1-B4      P1-P5                  I1-I5                      R1-R5
+                       T1-T5
+       ↓                 ↓                       ↓                          ↓
+  IDEA_CANVAS        PRD, SSOT              コード実装                  最終判定
+  VALUE_PROP         API, DB                テスト(L1/L2/L3)           リリース可否
 ```
-
-## 専門家一覧
-
-### Discovery (D1-D4) + Business (B1-B4)
-
-| ID | 名前 | 役割 |
-|----|------|------|
-| D1 | Idea Excavator | アイデアの核心を発掘 |
-| D2 | Problem Validator | 課題の実在性を検証 |
-| D3 | User Profiler | ターゲットユーザーを特定 |
-| D4 | Market Scout | 市場機会を評価 |
-| B1 | Value Architect | 価値提案を設計 |
-| B2 | Competitor Analyst | 競合を分析 |
-| B3 | Revenue Designer | 収益モデルを設計 |
-| B4 | Go-to-Market Planner | 市場投入戦略を策定 |
-
-### Design: Product (P1-P5) + Technical (T1-T5)
-
-| ID | 名前 | 役割 |
-|----|------|------|
-| P1 | PRD Author | PRDを作成 |
-| P2 | Feature Cataloger | 機能カタログを作成 |
-| P3 | UI State Designer | UI状態を設計 |
-| P4 | Feature Spec Writer | 機能仕様を作成 |
-| P5 | UX Validator | UXを検証 |
-| T1 | Tech Stack Selector | 技術スタックを選定 |
-| T2 | API Architect | APIを設計 |
-| T3 | Data Modeler | データモデルを設計 |
-| T4 | Cross-Cutting Designer | 横断設計 |
-| T5 | Security Reviewer | セキュリティをレビュー |
-
-### Implementation (I1-I5)
-
-| ID | 名前 | 役割 |
-|----|------|------|
-| I1 | Code Implementer | コードを実装 |
-| I2 | Test Writer | テストを作成 |
-| I3 | Code Auditor | コードを監査 |
-| I4 | Integration Validator | 統合を検証 |
-| I5 | Documentation Writer | ドキュメントを作成 |
-
-### Review Council (R1-R5)
-
-| ID | 名前 | 役割 |
-|----|------|------|
-| R1 | SSOT Compliance Auditor | SSOT準拠を監査 |
-| R2 | Quality Gate Keeper | 品質を検証 |
-| R3 | Security Guardian | セキュリティを監査 |
-| R4 | User Experience Advocate | UXを検証 |
-| R5 | Performance Analyst | パフォーマンスを検証 |
 
 ## スキルの起動方法
 
-スキルは Skill ツール経由で起動する。以下の2つの方法がある:
-
-### 1. 明示的起動（キーワードで即発動）
-
-ユーザーがフェーズキーワードを発言 → LLM が即座に Skill ツールで起動:
+スキルは Skill ツール経由で起動:
 
 ```
-「ディスカバリーを開始して」→ Skill ツールで /discovery を起動
-「設計を開始して」          → Skill ツールで /design を起動
-「実装を開始して」          → Skill ツールで /implement を起動
-「レビュー評議会を開催して」→ Skill ツールで /review を起動
-「最新情報を確認して」      → Skill ツールで /scan-updates を起動
-```
-
-### 2. 提案起動（タスク指示から提案）
-
-タスク指示に対して LLM が適切なスキルを提案 → ユーザー承認後に Skill ツールで起動:
-
-```
-「DEV-XXXを実装して」→ 「/implement スキルを起動しますか？」→ 承認 → 起動
-「新機能を作って」    → 「/design → /implement の順で進めますか？」→ 承認 → 起動
-```
-
-### フルワークフロー例
-
-```
-/discovery 起動 → 完了 → /design を提案 → 承認 → /design 起動 → 完了 → /implement を提案 → ...
-```
-
-### 個別エージェント実行
-
-```
-「D1を実行」→ Idea Excavator
-「P4を実行」→ Feature Spec Writer
-「I3を実行」→ Code Auditor
-「R1を実行」→ SSOT Compliance Auditor
-```
-
-## 合議の実行
-
-review/SKILL.md に合議プロトコルが統合されている:
-
-```
-「合議して：[議題]」     → 自動で適切な専門家を選定
-「軽量合議：[議題]」     → DETAIL層の決定（2-3名）
-「標準合議：[議題]」     → CONTRACT層の決定（3-4名）
-「重量合議：[議題]」     → CORE層の決定（全専門家）
+「ディスカバリーを開始して」→ /discovery
+「設計を開始して」          → /design
+「実装を開始して」          → /implement
+「レビュー評議会を開催して」→ /review
+「最新情報を確認して」      → /scan-updates
 ```
 
 ## 関連ドキュメント
@@ -143,5 +132,5 @@ review/SKILL.md に合議プロトコルが統合されている:
 - specs/01_DISCOVERY.md: ディスカバリーフロー詳細
 - specs/02_GENERATION_CHAIN.md: 生成チェーン詳細
 - specs/04_FEATURE_SPEC.md: 機能仕様フロー詳細
-- specs/06_CODE_QUALITY.md: コード品質基準
+- specs/06_CODE_QUALITY.md: コード品質基準（Gate D含む）
 - specs/07_AI_PROTOCOL.md: エスカレーション基準

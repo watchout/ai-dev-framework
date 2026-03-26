@@ -143,29 +143,37 @@ export function determineTaskOrderMode(
 }
 
 /**
- * Decompose a feature into standard tasks.
+ * Decompose a feature into tasks.
+ *
+ * If requiredKinds is provided (from layer detection), only those task kinds
+ * are included. Otherwise, all 6 tasks are generated (backward compatible).
  *
  * @param feature The feature to decompose
  * @param orderMode Task ordering mode: "normal" or "tdd"
- *   - normal: Implementation → Code Audit → Test
- *   - tdd: Test → Implementation → Code Audit
+ * @param requiredKinds Optional set of required task kinds (from layer detection)
  */
 export function decomposeFeature(
   feature: Feature,
   orderMode: TaskOrderMode = "normal",
+  requiredKinds?: Set<TaskKind>,
 ): Task[] {
   const taskDefs =
     orderMode === "tdd" ? TASK_DEFINITIONS_TDD : TASK_DEFINITIONS_NORMAL;
 
-  return taskDefs.map((def, idx) => {
+  // Filter to required kinds if provided
+  const filteredDefs = requiredKinds
+    ? taskDefs.filter((def) => requiredKinds.has(def.kind))
+    : taskDefs;
+
+  return filteredDefs.map((def, idx) => {
     const taskId = `${feature.id}-${def.kind.toUpperCase()}`;
     const prevTaskId =
       idx > 0
-        ? `${feature.id}-${taskDefs[idx - 1].kind.toUpperCase()}`
+        ? `${feature.id}-${filteredDefs[idx - 1].kind.toUpperCase()}`
         : undefined;
     const nextTaskId =
-      idx < taskDefs.length - 1
-        ? `${feature.id}-${taskDefs[idx + 1].kind.toUpperCase()}`
+      idx < filteredDefs.length - 1
+        ? `${feature.id}-${filteredDefs[idx + 1].kind.toUpperCase()}`
         : undefined;
 
     return {

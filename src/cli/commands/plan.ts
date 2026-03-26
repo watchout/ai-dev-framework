@@ -19,6 +19,10 @@ import {
 } from "../lib/plan-engine.js";
 import { loadPlan } from "../lib/plan-model.js";
 import {
+  buildTaskDependencyGraph,
+  formatPriorityDisplay,
+} from "../lib/dependency-graph.js";
+import {
   loadGateState,
   createGateState,
   updateGateB,
@@ -53,17 +57,67 @@ export function registerPlanCommand(program: Command): void {
       "--sync",
       "Sync plan to GitHub Issues after generation",
     )
+    .option(
+      "--force",
+      "Force plan regeneration even if done tasks would be lost",
+    )
+    .option(
+      "--force-all",
+      "Generate all 6 tasks per feature (disable adaptive layer detection)",
+    )
+    .option(
+      "--priority",
+      "Show tasks ranked by dependency priority (80/20 analysis)",
+    )
+    .option(
+      "--top <n>",
+      "Number of top priority tasks to show (default: 20% of total, min 3)",
+      (v: string) => parseInt(v, 10),
+    )
     .action(
       async (options: {
         status?: boolean;
         output?: string;
         sync?: boolean;
+        force?: boolean;
+        forceAll?: boolean;
+        priority?: boolean;
+        top?: number;
       }) => {
         const projectDir = process.cwd();
 
         try {
           if (options.status) {
             printPlanStatus(projectDir);
+            return;
+          }
+
+          // --priority: analyze existing plan and show priority ranking
+          if (options.priority) {
+            const existingPlan = loadPlan(projectDir);
+            if (!existingPlan || !existingPlan.tasks || existingPlan.tasks.length === 0) {
+              logger.error(
+                "No plan with tasks found. Run 'framework plan' first.",
+              );
+              process.exit(1);
+            }
+
+            const graph = buildTaskDependencyGraph(existingPlan);
+            if (graph.nodes.length === 0) {
+              logger.info("No tasks to analyze.");
+              return;
+            }
+
+            const totalTasks = existingPlan.tasks.length;
+            const topCount = options.top ?? Math.max(3, Math.ceil(totalTasks * 0.2));
+            const output = formatPriorityDisplay(graph, totalTasks, { top: topCount });
+            logger.info(output);
+
+            if (graph.criticalPath.length === 0 && existingPlan.circularDependencies.length > 0) {
+              logger.warn(
+                "Circular dependencies detected — critical path analysis unavailable.",
+              );
+            }
             return;
           }
 
@@ -83,7 +137,7 @@ export function registerPlanCommand(program: Command): void {
           } else {
             // Generate plan from feature catalog
             const io = createPlanTerminalIO();
-            const result = await runPlanEngine({ projectDir, io });
+            const result = await runPlanEngine({ projectDir, io, force: options.force, forceAll: options.forceAll });
 
             if (result.errors.length > 0) {
               for (const err of result.errors) {

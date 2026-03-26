@@ -74,6 +74,32 @@ export function registerRunCommand(program: Command): void {
       "--detail <detail>",
       "Detailed failure context for --fail-task",
     )
+    .option(
+      "--parallel <tasks...>",
+      "Run multiple tasks in parallel using git worktrees",
+    )
+    .option(
+      "--max-workers <n>",
+      "Max parallel workers (default: 3, max: 5)",
+      "3",
+    )
+    .option(
+      "--auto-fix",
+      "Enable auto-remediation for gate failures",
+    )
+    .option(
+      "--skip-install",
+      "Skip npm install in worktrees",
+    )
+    .option(
+      "--base-branch <branch>",
+      "Base branch for worktrees",
+      "main",
+    )
+    .option(
+      "--cleanup",
+      "Remove all worktrees and release lock",
+    )
     .action(
       async (
         taskId: string | undefined,
@@ -90,11 +116,67 @@ export function registerRunCommand(program: Command): void {
           failTask?: boolean;
           reason?: string;
           detail?: string;
+          parallel?: string[];
+          maxWorkers?: string;
+          autoFix?: boolean;
+          skipInstall?: boolean;
+          baseBranch?: string;
+          cleanup?: boolean;
         },
       ) => {
         const projectDir = process.cwd();
 
         try {
+          // --cleanup: remove all worktrees
+          if (options.cleanup) {
+            const { cleanupWorktrees } = await import("../lib/worktree-manager.js");
+            const cleaned = cleanupWorktrees(projectDir);
+            logger.success(`Cleaned up ${cleaned} worktree(s).`);
+            return;
+          }
+
+          // --parallel: run tasks in parallel worktrees
+          if (options.parallel && options.parallel.length > 0) {
+            const { runParallel, formatParallelStatus, capMaxWorkers } = await import("../lib/worktree-manager.js");
+            const maxWorkers = capMaxWorkers(parseInt(options.maxWorkers ?? "3", 10));
+
+            logger.header("Parallel Run");
+            logger.info(`  Tasks: ${options.parallel.join(", ")}`);
+            logger.info(`  Workers: ${maxWorkers}`);
+            logger.info(`  Base branch: ${options.baseBranch ?? "main"}`);
+            if (options.autoFix) logger.info("  Auto-fix: enabled");
+            if (options.skipInstall) logger.info("  npm install: skipped");
+            logger.info("");
+
+            const result = await runParallel(
+              {
+                tasks: options.parallel,
+                maxWorkers,
+                autoFix: options.autoFix ?? false,
+                skipInstall: options.skipInstall ?? false,
+                baseBranch: options.baseBranch ?? "main",
+              },
+              projectDir,
+              {
+                onSessionUpdate: (session) => {
+                  logger.info(`  [${session.status}] ${session.taskId}${session.error ? `: ${session.error}` : ""}`);
+                },
+                onComplete: (res) => {
+                  logger.info(formatParallelStatus(res.sessions, res.elapsed));
+                  if (res.failed > 0) {
+                    logger.warn(`  ${res.failed} task(s) failed.`);
+                  }
+                  logger.success(`  ${res.succeeded}/${res.sessions.length} tasks completed.`);
+                },
+              },
+            );
+
+            if (result.failed > 0) {
+              process.exit(1);
+            }
+            return;
+          }
+
           if (options.status) {
             printRunStatus(projectDir, options.json ?? false);
             return;

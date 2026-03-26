@@ -397,10 +397,19 @@ export function saveRunState(
   state: RunState,
 ): void {
   const filePath = path.join(projectDir, RUN_STATE_FILE);
+  const tmpFilePath = filePath + ".tmp";
   const dir = path.dirname(filePath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-  state.updatedAt = new Date().toISOString();
-  fs.writeFileSync(filePath, JSON.stringify(state, null, 2), "utf-8");
+  try {
+    state.updatedAt = new Date().toISOString();
+    fs.writeFileSync(tmpFilePath, JSON.stringify(state, null, 2), "utf-8");
+    fs.renameSync(tmpFilePath, filePath);
+  } catch (err) {
+    try {
+      fs.rmSync(tmpFilePath, { force: true });
+    } catch { /* ignore cleanup errors */ }
+    throw err;
+  }
 }

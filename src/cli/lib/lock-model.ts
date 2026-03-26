@@ -1,5 +1,5 @@
 /**
- * .plan.lock — Robust lock file management
+ * .framework/*.lock — Robust lock file management
  *
  * Design: docs/TASK-SEQUENCE-DESIGN.md §7
  * Issue: #17
@@ -10,11 +10,12 @@
  *   2. Lock exists, pid alive → block
  *   3. Lock exists, pid dead → stale, auto-delete + warn
  *   4. Lock exists, age > staleAfterMs → timeout, auto-delete + warn
+ *
+ * Supports multiple named locks (default: "plan").
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const LOCK_FILE = ".framework/plan.lock";
 const DEFAULT_STALE_MS = 300_000; // 5 minutes
 
 export interface LockData {
@@ -30,8 +31,8 @@ export type AcquireResult =
   | { ok: false; reason: "stale_cleared"; data: LockData }
   | { ok: false; reason: "timeout_cleared"; data: LockData };
 
-function lockPath(projectDir: string): string {
-  return path.join(projectDir, LOCK_FILE);
+function lockPath(projectDir: string, lockName = "plan"): string {
+  return path.join(projectDir, `.framework/${lockName}.lock`);
 }
 
 function isPidAlive(pid: number): boolean {
@@ -55,8 +56,9 @@ export function acquireLock(
   projectDir: string,
   command: string,
   staleAfterMs = DEFAULT_STALE_MS,
+  lockName = "plan",
 ): AcquireResult {
-  const lp = lockPath(projectDir);
+  const lp = lockPath(projectDir, lockName);
 
   if (fs.existsSync(lp)) {
     const raw = fs.readFileSync(lp, "utf-8");
@@ -66,7 +68,7 @@ export function acquireLock(
     } catch {
       // Corrupt lock file → remove and continue
       fs.rmSync(lp, { force: true });
-      writeLock(projectDir, command, staleAfterMs);
+      writeLock(projectDir, command, staleAfterMs, lockName);
       return { ok: true };
     }
 
@@ -75,14 +77,14 @@ export function acquireLock(
     // Timeout check
     if (age > (data.staleAfterMs ?? DEFAULT_STALE_MS)) {
       fs.rmSync(lp, { force: true });
-      writeLock(projectDir, command, staleAfterMs);
+      writeLock(projectDir, command, staleAfterMs, lockName);
       return { ok: false, reason: "timeout_cleared", data };
     }
 
     // PID check
     if (!isPidAlive(data.pid)) {
       fs.rmSync(lp, { force: true });
-      writeLock(projectDir, command, staleAfterMs);
+      writeLock(projectDir, command, staleAfterMs, lockName);
       return { ok: false, reason: "stale_cleared", data };
     }
 
@@ -90,15 +92,15 @@ export function acquireLock(
     return { ok: false, reason: "active", data };
   }
 
-  writeLock(projectDir, command, staleAfterMs);
+  writeLock(projectDir, command, staleAfterMs, lockName);
   return { ok: true };
 }
 
 /**
  * Release the lock (only if owned by the current process).
  */
-export function releaseLock(projectDir: string): void {
-  const lp = lockPath(projectDir);
+export function releaseLock(projectDir: string, lockName = "plan"): void {
+  const lp = lockPath(projectDir, lockName);
   if (!fs.existsSync(lp)) return;
 
   try {
@@ -116,8 +118,9 @@ export function releaseLock(projectDir: string): void {
  */
 export function getLockStatus(
   projectDir: string,
+  lockName = "plan",
 ): LockData | null {
-  const lp = lockPath(projectDir);
+  const lp = lockPath(projectDir, lockName);
   if (!fs.existsSync(lp)) return null;
   try {
     return JSON.parse(fs.readFileSync(lp, "utf-8")) as LockData;
@@ -130,8 +133,9 @@ function writeLock(
   projectDir: string,
   command: string,
   staleAfterMs: number,
+  lockName = "plan",
 ): void {
-  const lp = lockPath(projectDir);
+  const lp = lockPath(projectDir, lockName);
   const dir = path.dirname(lp);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 

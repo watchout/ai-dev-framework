@@ -75,6 +75,25 @@ describe("detectTechFromPackageJson", () => {
     const result = detectTechFromPackageJson(pkg);
     expect(result.some((t) => t.name === "Tailwind CSS")).toBe(true);
   });
+
+  it("detects Nuxt3 from dependencies", () => {
+    const pkg = { dependencies: { nuxt: "^3.14.0", vue: "^3.5.0" } };
+    const result = detectTechFromPackageJson(pkg);
+    expect(result.some((t) => t.name === "Nuxt3")).toBe(true);
+    expect(result.some((t) => t.name === "Vue3")).toBe(true);
+  });
+
+  it("detects Vue3 from dependencies", () => {
+    const pkg = { dependencies: { vue: "^3.5.0" } };
+    const result = detectTechFromPackageJson(pkg);
+    expect(result.some((t) => t.name === "Vue3")).toBe(true);
+  });
+
+  it("detects Drizzle from dependencies", () => {
+    const pkg = { dependencies: { "drizzle-orm": "^0.30.0" } };
+    const result = detectTechFromPackageJson(pkg);
+    expect(result.some((t) => t.name === "Drizzle")).toBe(true);
+  });
 });
 
 // ─────────────────────────────────────────────
@@ -98,6 +117,30 @@ describe("detectTechFromFiles", () => {
     const files = ["README.md", "LICENSE"];
     const result = detectTechFromFiles(files);
     expect(result).toEqual([]);
+  });
+
+  it("detects Nuxt3 from nuxt.config.ts", () => {
+    const files = ["nuxt.config.ts", "package.json"];
+    const result = detectTechFromFiles(files);
+    expect(result.some((t) => t.name === "Nuxt3")).toBe(true);
+  });
+
+  it("detects Nuxt3 from nuxt.config.js", () => {
+    const files = ["nuxt.config.js"];
+    const result = detectTechFromFiles(files);
+    expect(result.some((t) => t.name === "Nuxt3")).toBe(true);
+  });
+
+  it("detects Vue3 from .vue files", () => {
+    const files = ["App.vue", "package.json"];
+    const result = detectTechFromFiles(files);
+    expect(result.some((t) => t.name === "Vue3")).toBe(true);
+  });
+
+  it("detects Drizzle from drizzle.config.ts", () => {
+    const files = ["drizzle.config.ts", "package.json"];
+    const result = detectTechFromFiles(files);
+    expect(result.some((t) => t.name === "Drizzle")).toBe(true);
   });
 });
 

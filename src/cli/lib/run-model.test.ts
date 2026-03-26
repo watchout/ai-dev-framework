@@ -376,3 +376,79 @@ describe("getNextTaskBySeq", () => {
     expect(getNextTaskBySeq(state)?.taskId).toBe("T2");
   });
 });
+
+// ─────────────────────────────────────────────
+// Atomic write regression (P0-2)
+// ─────────────────────────────────────────────
+
+describe("saveRunState atomic write", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "run-model-atomic-"));
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("does not leave .tmp file after successful write", () => {
+    const state = createRunState();
+    saveRunState(tmpDir, state);
+
+    const statePath = path.join(tmpDir, ".framework/run-state.json");
+    const tmpPath = statePath + ".tmp";
+    expect(fs.existsSync(statePath)).toBe(true);
+    expect(fs.existsSync(tmpPath)).toBe(false);
+  });
+
+  it("round-trips state correctly through save/load", () => {
+    const state = createRunState();
+    state.tasks.push({
+      taskId: "TEST-001",
+      featureId: "FEAT-001",
+      name: "Test task",
+      seq: "1.1",
+      status: "in_progress",
+      blockedBy: [],
+      startedAt: new Date().toISOString(),
+      heartbeatAt: new Date().toISOString(),
+    } as TaskExecution);
+    saveRunState(tmpDir, state);
+
+    const loaded = loadRunState(tmpDir);
+    expect(loaded).not.toBeNull();
+    expect(loaded!.tasks).toHaveLength(1);
+    expect(loaded!.tasks[0].taskId).toBe("TEST-001");
+    expect(loaded!.tasks[0].status).toBe("in_progress");
+  });
+
+  it("updates updatedAt timestamp on each save", () => {
+    const state = createRunState();
+    saveRunState(tmpDir, state);
+    const loaded1 = loadRunState(tmpDir);
+
+    // Save again
+    saveRunState(tmpDir, state);
+    const loaded2 = loadRunState(tmpDir);
+
+    expect(loaded1!.updatedAt).toBeTruthy();
+    expect(loaded2!.updatedAt).toBeTruthy();
+    // Second save should have equal or later timestamp
+    expect(new Date(loaded2!.updatedAt).getTime()).toBeGreaterThanOrEqual(
+      new Date(loaded1!.updatedAt).getTime(),
+    );
+  });
+
+  it("creates .framework directory if missing", () => {
+    const freshDir = fs.mkdtempSync(path.join(os.tmpdir(), "run-nodir-"));
+    try {
+      const state = createRunState();
+      saveRunState(freshDir, state);
+      expect(fs.existsSync(path.join(freshDir, ".framework/run-state.json"))).toBe(true);
+    } finally {
+      fs.rmSync(freshDir, { recursive: true, force: true });
+    }
+  });
+});

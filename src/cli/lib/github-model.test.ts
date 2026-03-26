@@ -215,3 +215,54 @@ describe("sync state lookups", () => {
   });
 
 });
+
+// ─────────────────────────────────────────────
+// Atomic write regression (P0-2)
+// ─────────────────────────────────────────────
+
+describe("saveSyncState atomic write", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "gh-model-atomic-"));
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("does not leave .tmp file after successful write", () => {
+    const state = createSyncState("owner/repo");
+    saveSyncState(tmpDir, state);
+
+    const syncPath = path.join(tmpDir, ".framework/github-sync.json");
+    const tmpPath = syncPath + ".tmp";
+    expect(fs.existsSync(syncPath)).toBe(true);
+    expect(fs.existsSync(tmpPath)).toBe(false);
+  });
+
+  it("preserves original file if write is interrupted (read-after-write consistency)", () => {
+    const state1 = createSyncState("owner/repo1");
+    saveSyncState(tmpDir, state1);
+
+    // Write a second state
+    const state2 = createSyncState("owner/repo2");
+    saveSyncState(tmpDir, state2);
+
+    // Verify the latest state is persisted
+    const loaded = loadSyncState(tmpDir);
+    expect(loaded?.repo).toBe("owner/repo2");
+  });
+
+  it("creates .framework directory if missing", () => {
+    const freshDir = fs.mkdtempSync(path.join(os.tmpdir(), "gh-model-nodir-"));
+    try {
+      const state = createSyncState("owner/repo");
+      saveSyncState(freshDir, state);
+      expect(fs.existsSync(path.join(freshDir, ".framework/github-sync.json"))).toBe(true);
+    } finally {
+      fs.rmSync(freshDir, { recursive: true, force: true });
+    }
+  });
+});

@@ -28,6 +28,9 @@ import {
   loadPlan,
 } from "./plan-model.js";
 import { loadProfileType } from "./profile-model.js";
+import { loadRunState } from "./run-model.js";
+import { detectLayersFromFile, generateTaskList, type LayerDetectionResult } from "./layer-detector.js";
+import type { TaskKind } from "./plan-model.js";
 
 export interface PlanIO {
   print(message: string): void;
@@ -40,6 +43,10 @@ export interface PlanOptions {
   features?: Feature[];
   /** Override profile type for task order mode (for testing) */
   profileType?: string;
+  /** Force overwrite even if done tasks would be lost */
+  force?: boolean;
+  /** Force all 6 tasks for every feature (disable adaptive decomposition) */
+  forceAll?: boolean;
 }
 
 export interface PlanResult {
@@ -173,19 +180,94 @@ export async function runPlanEngine(
   // Resolve SSOT file paths for each feature
   resolveSsotFiles(projectDir, waves);
 
-  // Decompose all features into tasks (profile-aware, single source of truth)
+  // Decompose all features into tasks (profile-aware, layer-adaptive)
   const profileType = options.profileType ?? loadProfileType(projectDir) ?? "app";
   const allTasks: Task[] = [];
+  const layerDetections: LayerDetectionResult[] = [];
+
   for (const wave of waves) {
     for (const feature of wave.features) {
       const orderMode = determineTaskOrderMode(profileType, feature.type);
-      const tasks = decomposeFeature(feature, orderMode);
+
+      let requiredKinds: Set<TaskKind> | undefined;
+
+      if (!options.forceAll) {
+        // Adaptive decomposition: detect layers from SSOT
+        const ssotPath = feature.ssotFile
+          ? path.join(projectDir, feature.ssotFile)
+          : "";
+        const detection = ssotPath
+          ? detectLayersFromFile(ssotPath, feature.id)
+          : { featureId: feature.id, layers: ["DB" as const, "API" as const, "UI" as const], confidence: "medium" as const, reasons: ["SSOTファイル未設定: フルセット適用"] };
+
+        layerDetections.push(detection);
+
+        const taskList = generateTaskList(detection.layers);
+        requiredKinds = new Set(
+          taskList.filter((t) => t.required).map((t) => t.type.toLowerCase() as TaskKind),
+        );
+
+        // Log layer detection
+        const skipped = taskList.filter((t) => !t.required);
+        if (skipped.length > 0) {
+          io.print(`\n  Feature: ${feature.id} (${feature.name})`);
+          io.print(`    Detected layers: ${detection.layers.join(" + ")} (${detection.confidence})`);
+          for (const s of skipped) {
+            io.print(`    ${s.type.padEnd(12)} skipped (${s.reason})`);
+          }
+        }
+      }
+
+      const tasks = decomposeFeature(feature, orderMode, requiredKinds);
       allTasks.push(...tasks);
     }
   }
 
   // Assign WWWFFFFTTT sequence numbers to all tasks
   assignSeqNumbers(waves, allTasks);
+
+  // ── Run-state consistency check ──
+  // If run-state.json exists, check for done tasks that would be lost
+  const existingRunState = loadRunState(projectDir);
+  if (existingRunState) {
+    const newTaskIds = new Set(allTasks.map((t) => t.id));
+    const doneTasks = existingRunState.tasks.filter((t) => t.status === "done");
+    const lostDoneTasks = doneTasks.filter((t) => !newTaskIds.has(t.taskId));
+
+    if (lostDoneTasks.length > 0) {
+      io.print("\n  WARNING: Run-state inconsistency detected:");
+      io.print(`  ${lostDoneTasks.length} completed task(s) not in new plan:`);
+      for (const t of lostDoneTasks) {
+        io.print(`    - ${t.taskId}: ${t.name}`);
+      }
+
+      if (!options.force) {
+        io.print("");
+        io.print("  Use --force to overwrite, or resolve manually.");
+        errors.push(
+          `${lostDoneTasks.length} completed task(s) would be lost. Use --force to override.`,
+        );
+        return { plan: createEmptyPlan(), errors };
+      }
+
+      io.print("  --force: overwriting despite lost tasks.");
+    }
+
+    // Report new/changed tasks
+    const existingTaskIds = new Set(existingRunState.tasks.map((t) => t.taskId));
+    const newTasks = allTasks.filter((t) => !existingTaskIds.has(t.id));
+    const removedTasks = existingRunState.tasks.filter((t) => !newTaskIds.has(t.taskId) && t.status !== "done");
+
+    if (newTasks.length > 0 || removedTasks.length > 0) {
+      io.print("\n  Plan diff:");
+      if (newTasks.length > 0) {
+        io.print(`    +${newTasks.length} new task(s)`);
+      }
+      if (removedTasks.length > 0) {
+        io.print(`    -${removedTasks.length} removed task(s)`);
+      }
+    }
+  }
 
   // Save plan state
   const plan: PlanState = {
