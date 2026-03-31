@@ -15,6 +15,8 @@ import {
   completeFeatureNonInteractive,
   completeWaveNonInteractive,
   syncRunStateFromGitHub,
+  getNextTaskProposal,
+  formatNextTaskProposal,
 } from "./run-engine.js";
 import { type PlanState, type Task, decomposeFeature, savePlan } from "./plan-model.js";
 import { saveRunState, createRunState, loadRunState } from "./run-model.js";
@@ -1058,6 +1060,80 @@ describe("run-engine", () => {
       const updated = loadRunState(tmpDir);
       const task = updated?.tasks.find((t) => t.taskId === "AUTH-001-TEST");
       expect(task?.completedAt).toBe("2026-01-01T00:00:00.000Z");
+    });
+  });
+
+  describe("getNextTaskProposal", () => {
+    it("returns the next pending task as a proposal", () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "Create schema", status: "done", blockedBy: [], files: [] },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "Create endpoint", status: "backlog", blockedBy: [], files: [], seq: "001001002" },
+        { taskId: "F1-UI", featureId: "F1", taskKind: "ui", name: "Create component", status: "backlog", blockedBy: ["F1-API"], files: [], seq: "001001003" },
+      ];
+
+      const proposal = getNextTaskProposal(state);
+      expect(proposal).toBeDefined();
+      expect(proposal!.taskId).toBe("F1-API");
+      expect(proposal!.featureId).toBe("F1");
+      expect(proposal!.taskKind).toBe("api");
+      expect(proposal!.name).toBe("Create endpoint");
+    });
+
+    it("returns undefined when no tasks are available", () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "Create schema", status: "done", blockedBy: [], files: [] },
+      ];
+
+      const proposal = getNextTaskProposal(state);
+      expect(proposal).toBeUndefined();
+    });
+
+    it("skips blocked tasks", () => {
+      const state = createRunState();
+      state.tasks = [
+        { taskId: "F1-DB", featureId: "F1", taskKind: "db", name: "Create schema", status: "backlog", blockedBy: [], files: [], seq: "001001001" },
+        { taskId: "F1-API", featureId: "F1", taskKind: "api", name: "Create endpoint", status: "backlog", blockedBy: ["F1-DB"], files: [], seq: "001001002" },
+      ];
+
+      const proposal = getNextTaskProposal(state);
+      expect(proposal).toBeDefined();
+      expect(proposal!.taskId).toBe("F1-DB");
+    });
+  });
+
+  describe("formatNextTaskProposal", () => {
+    it("formats proposal with [提案] tag", () => {
+      const proposal = {
+        taskId: "AUTH-001-API",
+        featureId: "AUTH-001",
+        taskKind: "api",
+        name: "Create auth endpoint",
+        blockedBy: [],
+      };
+
+      const output = formatNextTaskProposal(proposal, 25, 8, 2);
+      expect(output).toContain("[提案]");
+      expect(output).toContain("AUTH-001-API");
+      expect(output).toContain("Create auth endpoint");
+      expect(output).toContain("AUTH-001");
+      expect(output).toContain("api");
+      expect(output).toContain("2/8 (25%)");
+      expect(output).toContain("framework run AUTH-001-API --start-only");
+    });
+
+    it("includes blockedBy when present", () => {
+      const proposal = {
+        taskId: "F1-UI",
+        featureId: "F1",
+        taskKind: "ui",
+        name: "Create component",
+        blockedBy: ["F1-API", "F1-DB"],
+      };
+
+      const output = formatNextTaskProposal(proposal, 50, 4, 2);
+      expect(output).toContain("F1-API, F1-DB");
     });
   });
 });
