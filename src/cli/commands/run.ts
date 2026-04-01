@@ -17,6 +17,7 @@ import {
   heartbeatTaskNonInteractive,
   failTaskNonInteractive,
   syncRunStateFromGitHub,
+  formatNextTaskProposal,
 } from "../lib/run-engine.js";
 import {
   loadRunState,
@@ -254,6 +255,13 @@ export function registerRunCommand(program: Command): void {
             }
             if (result.parentClosed) {
               logger.info(`  GitHub parent Issue closed (all feature tasks done)`);
+            }
+            if (result.nextProposal) {
+              logger.info("");
+              logger.info(formatNextTaskProposal(result.nextProposal, result.progress, result.totalTasks, result.doneTasks));
+            } else if (result.progress === 100) {
+              logger.info("");
+              logger.info("[提案] 全タスク完了。framework audit code でコード監査を実行してください。");
             }
             return;
           }

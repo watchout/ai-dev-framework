@@ -72,6 +72,14 @@ export interface RunOptions {
   autoCommit?: boolean;
 }
 
+export interface NextTaskProposal {
+  taskId: string;
+  featureId: string;
+  taskKind: string;
+  name: string;
+  blockedBy: string[];
+}
+
 export interface RunResult {
   taskId: string;
   status: "completed" | "escalated" | "failed" | "dry_run";
@@ -79,6 +87,7 @@ export interface RunResult {
   auditScore?: number;
   escalation?: Escalation;
   errors: string[];
+  nextProposal?: NextTaskProposal;
 }
 
 export function createRunTerminalIO(): RunIO {
@@ -405,12 +414,23 @@ export async function runTask(
   io.print(`  Progress: ${doneCount}/${state.tasks.length} tasks (${progress}%)`);
   io.print("");
 
+  // Next task proposal
+  const nextProposal = getNextTaskProposal(state);
+  if (nextProposal) {
+    io.print(formatNextTaskProposal(nextProposal, progress, state.tasks.length, doneCount));
+    io.print("");
+  } else if (progress === 100) {
+    io.print("[提案] 全タスク完了。framework audit code でコード監査を実行してください。");
+    io.print("");
+  }
+
   return {
     taskId: task.taskId,
     status: "completed",
     files,
     auditScore,
     errors,
+    nextProposal,
   };
 }
 
@@ -421,8 +441,11 @@ export async function runTask(
 export interface CompleteResult {
   error?: string;
   progress: number;
+  totalTasks: number;
+  doneTasks: number;
   issueClosed: boolean;
   parentClosed?: boolean;
+  nextProposal?: NextTaskProposal;
 }
 
 export interface StartTaskResult {
@@ -461,7 +484,7 @@ export async function completeTaskNonInteractive(
 ): Promise<CompleteResult> {
   const lockResult = acquireLock(projectDir, "run:complete", undefined, RUN_LOCK_NAME);
   if (lockResult.ok === false && lockResult.reason === "active") {
-    return { error: `Run state is locked by another process (pid: ${lockResult.data.pid}).`, progress: 0, issueClosed: false };
+    return { error: `Run state is locked by another process (pid: ${lockResult.data.pid}).`, progress: 0, totalTasks: 0, doneTasks: 0, issueClosed: false };
   }
   try {
   // Load or create run state
@@ -469,7 +492,7 @@ export async function completeTaskNonInteractive(
   if (!state) {
     const plan = loadPlan(projectDir);
     if (!plan || plan.waves.length === 0) {
-      return { error: "No plan found. Run 'framework plan' first.", progress: 0, issueClosed: false };
+      return { error: "No plan found. Run 'framework plan' first.", progress: 0, totalTasks: 0, doneTasks: 0, issueClosed: false };
     }
     state = initRunStateFromPlan(plan);
     saveRunState(projectDir, state);
@@ -477,10 +500,11 @@ export async function completeTaskNonInteractive(
 
   const task = state.tasks.find((t) => t.taskId === taskId);
   if (!task) {
-    return { error: `Task not found: ${taskId}`, progress: 0, issueClosed: false };
+    return { error: `Task not found: ${taskId}`, progress: 0, totalTasks: state.tasks.length, doneTasks: 0, issueClosed: false };
   }
   if (task.status === "done") {
-    return { error: `Task already completed: ${taskId}`, progress: calculateProgress(state), issueClosed: false };
+    const done = state.tasks.filter((t) => t.status === "done").length;
+    return { error: `Task already completed: ${taskId}`, progress: calculateProgress(state), totalTasks: state.tasks.length, doneTasks: done, issueClosed: false };
   }
 
   // Detect modified files and complete
@@ -492,9 +516,12 @@ export async function completeTaskNonInteractive(
     task.stopDetails = validation.detail;
     touchTaskHeartbeat(state, task.taskId);
     saveRunState(projectDir, state);
+    const done = state.tasks.filter((t) => t.status === "done").length;
     return {
       error: validation.detail,
       progress: calculateProgress(state),
+      totalTasks: state.tasks.length,
+      doneTasks: done,
       issueClosed: false,
     };
   }
@@ -519,10 +546,17 @@ export async function completeTaskNonInteractive(
     // Silently ignore
   }
 
+  // Get next task proposal
+  const nextProposal = getNextTaskProposal(state);
+  const doneTasks = state.tasks.filter((t) => t.status === "done").length;
+
   return {
     progress: calculateProgress(state),
+    totalTasks: state.tasks.length,
+    doneTasks,
     issueClosed,
     parentClosed,
+    nextProposal,
   };
   } finally {
     releaseLock(projectDir, RUN_LOCK_NAME);
@@ -979,6 +1013,52 @@ function loadOrInitRunState(
   state = initRunStateFromPlan(plan);
   saveRunState(projectDir, state);
   return state;
+}
+
+// ─────────────────────────────────────────────
+// Next Task Proposal
+// ─────────────────────────────────────────────
+
+/**
+ * Get the next pending task as a proposal.
+ * Returns undefined if no tasks are available.
+ */
+export function getNextTaskProposal(
+  state: RunState,
+): NextTaskProposal | undefined {
+  const next = getNextTaskBySeq(state);
+  if (!next) return undefined;
+
+  return {
+    taskId: next.taskId,
+    featureId: next.featureId,
+    taskKind: next.taskKind,
+    name: next.name,
+    blockedBy: next.blockedBy,
+  };
+}
+
+/**
+ * Format a next-task proposal as a [提案] tagged string for Discord/CLI output.
+ */
+export function formatNextTaskProposal(
+  proposal: NextTaskProposal,
+  progress: number,
+  totalTasks: number,
+  doneTasks: number,
+): string {
+  const lines: string[] = [];
+  lines.push(`[提案] 次のタスク実行`);
+  lines.push(`  タスク: ${proposal.taskId}`);
+  lines.push(`  名前: ${proposal.name}`);
+  lines.push(`  機能: ${proposal.featureId}`);
+  lines.push(`  種別: ${proposal.taskKind}`);
+  if (proposal.blockedBy.length > 0) {
+    lines.push(`  依存: ${proposal.blockedBy.join(", ")}`);
+  }
+  lines.push(`  進捗: ${doneTasks}/${totalTasks} (${progress}%)`);
+  lines.push(`  実行: framework run ${proposal.taskId} --start-only`);
+  return lines.join("\n");
 }
 
 // ─────────────────────────────────────────────
