@@ -13,7 +13,10 @@ templates/skills/
 ├── discovery/SKILL.md     ← Discovery & Business Phase（D1-D4, B1-B4）
 ├── design/SKILL.md        ← Product & Technical Design（P1-P5, T1-T5）
 ├── implement/SKILL.md     ← Implementation Phase（I1-I5）
-└── review/SKILL.md        ← Review & Audit（R1-R5 + 合議プロトコル）
+├── review/SKILL.md        ← Review & Audit（R1-R5 + 合議プロトコル）
+├── gate-design/SKILL.md   ← Gate 1: Design Validation
+├── gate-quality/SKILL.md  ← Gate 2: Quality Sweep
+└── gate-release/SKILL.md  ← Gate 3: Adversarial Review
 ```
 
 ## スキル一覧
@@ -24,6 +27,9 @@ templates/skills/
 | design | product + technical | P1-P5, T1-T5 | 「設計」「仕様」「アーキテクチャ」 |
 | implement | implementation | I1-I5 | 「実装」「コーディング」「テスト」 |
 | review | review-council + deliberation + code-audit + ssot-audit | R1-R5 | 「レビュー」「監査」「audit」 |
+| gate-design | Gate 1: Design Validation | 3 Validators | 「gate-design」「設計ゲート」 |
+| gate-quality | Gate 2: Quality Sweep | 4 Validators | 「gate-quality」「品質ゲート」 |
+| gate-release | Gate 3: Adversarial Review | Prosecutor/Defense/Judge | 「gate-release」「リリースゲート」 |
 
 ## 開発フロー
 
