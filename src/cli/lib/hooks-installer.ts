@@ -272,6 +272,15 @@ export function installClaudeCodeHook(projectDir: string): {
     files.push(".claude/hooks/framework-runner.sh");
   }
 
+  // 2d. Copy post-task.sh from templates
+  const postTaskSrcPath = path.resolve(__dirname, "../../../templates/hooks/post-task.sh");
+  if (fs.existsSync(postTaskSrcPath)) {
+    const postTaskDestPath = path.join(hooksDir, "post-task.sh");
+    fs.copyFileSync(postTaskSrcPath, postTaskDestPath);
+    fs.chmodSync(postTaskDestPath, 0o755);
+    files.push(".claude/hooks/post-task.sh");
+  }
+
   // 3. Merge into .claude/settings.json
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
   let existing: Record<string, unknown> = {};
@@ -412,6 +421,39 @@ export function mergeClaudeSettings(
   }
 
   hooks.SessionStart = sessionStart;
+
+  // ─── PostToolUse: post-task.sh (next task proposal after task completion) ───
+  let postToolUse = hooks.PostToolUse;
+  if (!Array.isArray(postToolUse)) {
+    postToolUse = [];
+  }
+
+  const hasPostTask = (postToolUse as Array<Record<string, unknown>>).some(
+    (entry) => {
+      const entryHooks = entry.hooks;
+      if (!Array.isArray(entryHooks)) return false;
+      return entryHooks.some(
+        (h: Record<string, unknown>) =>
+          typeof h.command === "string" &&
+          h.command.includes("post-task"),
+      );
+    },
+  );
+
+  if (!hasPostTask) {
+    (postToolUse as unknown[]).push({
+      matcher: "Bash(gh issue close *)|Bash(gh pr create *)|Bash(gh pr merge *)",
+      hooks: [
+        {
+          type: "command",
+          command:
+            'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/post-task.sh" 2>/dev/null || true',
+        },
+      ],
+    });
+  }
+
+  hooks.PostToolUse = postToolUse;
 
   return result;
 }
