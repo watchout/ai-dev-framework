@@ -212,6 +212,16 @@ export function registerRetrofitCommand(program: Command): void {
               }
             }
 
+            // Install channel-routing.json if not present (ADR-033)
+            const channelRoutingSrc = path.join(frameworkRootForGates, "templates/channel-routing.json");
+            if (fs.existsSync(channelRoutingSrc)) {
+              const channelRoutingDest = path.join(projectDir, "channel-routing.json");
+              if (!fs.existsSync(channelRoutingDest)) {
+                fs.copyFileSync(channelRoutingSrc, channelRoutingDest);
+                logger.success("Installed channel-routing.json (ADR-033: channel routing enforcement)");
+              }
+            }
+
             // Add deprecation notice to goals.json if it exists
             const goalsPath = path.join(projectDir, ".framework/goals.json");
             if (fs.existsSync(goalsPath)) {

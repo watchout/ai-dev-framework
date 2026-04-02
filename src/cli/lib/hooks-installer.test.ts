@@ -72,8 +72,8 @@ describe("hooks-installer", () => {
 
       expect(hooks.SessionStart).toBeDefined();
       const sessionStart = hooks.SessionStart as Array<unknown>;
-      // Existing hook preserved + framework-runner added
-      expect(sessionStart).toHaveLength(2);
+      // Existing hook preserved + framework-runner + channel-routing added
+      expect(sessionStart).toHaveLength(3);
       // First entry is the existing one
       expect((sessionStart[0] as Record<string, unknown>).matcher).toBe("startup");
 
@@ -203,8 +203,8 @@ describe("hooks-installer", () => {
       // Existing env preserved + Agent Teams added
       expect(parsed.env.TEST).toBe("1");
       expect(parsed.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS).toBe("1");
-      // Existing SessionStart preserved + framework-runner added
-      expect(parsed.hooks.SessionStart).toHaveLength(2);
+      // Existing SessionStart preserved + framework-runner + channel-routing added
+      expect(parsed.hooks.SessionStart).toHaveLength(3);
       // PreToolUse added (gate + skill-tracker)
       expect(parsed.hooks.PreToolUse).toHaveLength(2);
     });

@@ -281,6 +281,15 @@ export function installClaudeCodeHook(projectDir: string): {
     files.push(".claude/hooks/post-task.sh");
   }
 
+  // 2e. Copy channel-routing.sh from templates (ADR-033)
+  const channelRoutingSrcPath = path.resolve(__dirname, "../../../templates/hooks/channel-routing.sh");
+  if (fs.existsSync(channelRoutingSrcPath)) {
+    const channelRoutingDestPath = path.join(hooksDir, "channel-routing.sh");
+    fs.copyFileSync(channelRoutingSrcPath, channelRoutingDestPath);
+    fs.chmodSync(channelRoutingDestPath, 0o755);
+    files.push(".claude/hooks/channel-routing.sh");
+  }
+
   // 3. Merge into .claude/settings.json
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
   let existing: Record<string, unknown> = {};
@@ -415,6 +424,32 @@ export function mergeClaudeSettings(
           type: "command",
           command:
             'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/framework-runner.sh" 2>/dev/null || true',
+        },
+      ],
+    });
+  }
+
+  // Channel routing hook (ADR-033)
+  const hasChannelRouting = (sessionStart as Array<Record<string, unknown>>).some(
+    (entry) => {
+      const entryHooks = entry.hooks;
+      if (!Array.isArray(entryHooks)) return false;
+      return entryHooks.some(
+        (h: Record<string, unknown>) =>
+          typeof h.command === "string" &&
+          h.command.includes("channel-routing"),
+      );
+    },
+  );
+
+  if (!hasChannelRouting) {
+    (sessionStart as unknown[]).push({
+      matcher: "",
+      hooks: [
+        {
+          type: "command",
+          command:
+            'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/channel-routing.sh" 2>/dev/null || true',
         },
       ],
     });
