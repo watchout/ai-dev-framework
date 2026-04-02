@@ -86,6 +86,29 @@
 
 ---
 
+## 起動時アクション（SessionStart 自動実行）
+
+```
+Bot起動時に以下が自動実行される（SessionStart hook）:
+
+1. framework-runner.sh が実行される
+2. gh issue list --assignee @me --state open で未完了Issue取得
+3. autonomy.json の issueLabels で自律レベル判定
+4. 結果がコンテキストに注入される
+
+起動後の行動:
+  autonomous タスクあり → 即座に着手。SSOT確認 → ブランチ作成 → 実装 → PR → 報告
+  notify タスクあり     → CTOに[提案]送信。5分待機後に着手
+  approval タスクあり   → CTOに[承認依頼]送信。承認まで待機
+  タスクなし            → アイドル。次の指示を待機
+
+タスク完了時:
+  gh issue close / gh pr create / gh pr merge 実行後、
+  post-task.sh が自動実行され、次タスクを提案する。
+```
+
+---
+
 ## 🔒 Pre-Code Gate（CLI で構造的に強制）
 
 ```
