@@ -263,6 +263,15 @@ export function installClaudeCodeHook(projectDir: string): {
   fs.writeFileSync(skillTrackerPath, SKILL_TRACKER_SCRIPT, { mode: 0o755 });
   files.push(".claude/hooks/skill-tracker.sh");
 
+  // 2c. Copy framework-runner.sh from templates
+  const runnerTemplatePath = path.resolve(__dirname, "../../../templates/hooks/framework-runner.sh");
+  const runnerDestPath = path.join(hooksDir, "framework-runner.sh");
+  if (fs.existsSync(runnerTemplatePath)) {
+    fs.copyFileSync(runnerTemplatePath, runnerDestPath);
+    fs.chmodSync(runnerDestPath, 0o755);
+    files.push(".claude/hooks/framework-runner.sh");
+  }
+
   // 3. Merge into .claude/settings.json
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
   let existing: Record<string, unknown> = {};
@@ -370,6 +379,40 @@ export function mergeClaudeSettings(
   }
 
   hooks.PreToolUse = preToolUse;
+
+  // SessionStart: framework-runner (task auto-fetch on bot startup)
+  let sessionStart = hooks.SessionStart;
+  if (!Array.isArray(sessionStart)) {
+    sessionStart = [];
+  }
+
+  const hasRunner = (sessionStart as Array<Record<string, unknown>>).some(
+    (entry) => {
+      const entryHooks = entry.hooks;
+      if (!Array.isArray(entryHooks)) return false;
+      return entryHooks.some(
+        (h: Record<string, unknown>) =>
+          typeof h.command === "string" &&
+          h.command.includes("framework-runner"),
+      );
+    },
+  );
+
+  if (!hasRunner) {
+    (sessionStart as unknown[]).push({
+      matcher: "",
+      hooks: [
+        {
+          type: "command",
+          command:
+            'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/framework-runner.sh" 2>/dev/null || true',
+        },
+      ],
+    });
+  }
+
+  hooks.SessionStart = sessionStart;
+
   return result;
 }
 
