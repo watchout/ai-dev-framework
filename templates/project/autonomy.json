@@ -1,0 +1,80 @@
+{
+  "version": "2.0.0",
+  "description": "Dev Botの自律レベル定義。タスク種別ごとにCTO承認が必要かを制御する",
+  "taskSource": {
+    "primary": "github_issues",
+    "command": "gh issue list --assignee @me --state open --json number,title,labels,body",
+    "cronIntervalMinutes": 10,
+    "fallback": "goals.json"
+  },
+  "levels": {
+    "autonomous": {
+      "description": "自律実行可能。完了後に[報告:完了]のみ送信",
+      "actions": [
+        "bug_fix",
+        "test",
+        "refactoring",
+        "lint_fix",
+        "typo_fix",
+        "documentation_update",
+        "ci_fix"
+      ],
+      "issueLabels": ["bug", "fix", "test", "refactoring", "docs", "lint", "typo", "ci"]
+    },
+    "notify_then_proceed": {
+      "description": "CTOに[提案]を送信し、5分以内に[却下]がなければ着手",
+      "actions": [
+        "feature_implementation",
+        "ui_component",
+        "api_endpoint",
+        "test_coverage_improvement",
+        "dependency_update_minor"
+      ],
+      "issueLabels": ["feature", "enhancement", "ui", "api"],
+      "timeoutMinutes": 5
+    },
+    "approval_required": {
+      "description": "CTO承認を待ってから着手。[承認依頼]で依頼",
+      "actions": [
+        "db_schema_change",
+        "api_contract_change",
+        "security_related",
+        "new_external_dependency",
+        "deployment",
+        "env_config_change",
+        "billing_feature",
+        "dependency_update_major",
+        "architecture_change"
+      ],
+      "issueLabels": ["db-change", "security", "breaking", "deploy", "billing", "architecture"]
+    }
+  },
+  "taskSelection": {
+    "description": "アイドル時のタスク自律選択ルール",
+    "cronHeartbeatMinutes": 10,
+    "selectionOrder": [
+      "priority_label",
+      "blocking_dependencies",
+      "issue_age"
+    ],
+    "priorityLabels": {
+      "P0": 0,
+      "P1": 1,
+      "P2": 2
+    },
+    "maxConcurrentTasks": 1,
+    "idleAction": "check_github_issues"
+  },
+  "escalationRules": {
+    "maxConsecutiveErrors": 5,
+    "maxRetries": 3,
+    "onError": "stop_and_report",
+    "onAmbiguity": "ask_cto"
+  },
+  "branchPolicy": {
+    "mainBranch": "main",
+    "directCommitToMain": false,
+    "branchNamingPattern": "feature/{description}",
+    "requirePR": true
+  }
+}

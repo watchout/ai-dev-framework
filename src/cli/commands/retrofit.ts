@@ -187,6 +187,30 @@ export function registerRetrofitCommand(program: Command): void {
             if (gateScriptsCopied > 0) {
               logger.success(`Installed ${gateScriptsCopied} gate scripts (scripts/gates/)`);
             }
+
+            // Install gate-checks.yml workflow
+            const gateWorkflowSrc = path.join(frameworkRootForGates, "templates/ci/gate-checks.yml");
+            if (fs.existsSync(gateWorkflowSrc)) {
+              const workflowDir = path.join(projectDir, ".github/workflows");
+              const workflowDest = path.join(workflowDir, "gate-checks.yml");
+              if (!fs.existsSync(workflowDest)) {
+                if (!fs.existsSync(workflowDir)) {
+                  fs.mkdirSync(workflowDir, { recursive: true });
+                }
+                fs.copyFileSync(gateWorkflowSrc, workflowDest);
+                logger.success("Installed gate-checks.yml workflow");
+              }
+            }
+
+            // Install autonomy.json template
+            const autonomySrc = path.join(frameworkRootForGates, "templates/project/autonomy.json");
+            if (fs.existsSync(autonomySrc)) {
+              const autonomyDest = path.join(projectDir, ".framework/autonomy.json");
+              if (!fs.existsSync(autonomyDest)) {
+                fs.copyFileSync(autonomySrc, autonomyDest);
+                logger.success("Installed autonomy.json (Dev Bot autonomous task selection)");
+              }
+            }
           }
 
           // Install GitHub templates (.github/) if not present

@@ -306,6 +306,69 @@ Step 5: セッション終了時にユーザーへ報告
 
 ---
 
+## 10b. Dev Bot 自律タスク選択
+
+### 概要
+
+Dev Bot はアイドル時に GitHub Issues から自律的にタスクを取得し、autonomy level に基づいて着手判断を行う。
+
+### タスク取得（cron ハートビート）
+
+```
+間隔: 10分ごと
+コマンド: gh issue list --assignee @me --state open --json number,title,labels,body
+設定: .framework/autonomy.json
+```
+
+### 自律選択フロー
+
+```
+1. cron ハートビート発火（10分間隔）
+2. 現在のタスク状態を確認
+   - 実行中タスクあり → スキップ
+   - アイドル → 3へ
+3. GitHub Issues から open issues を取得
+4. Issue の labels から autonomy level を判定
+5. 優先度で並び替え（P0 > P1 > P2 > ラベルなし）
+6. autonomy level に基づいて行動:
+
+   autonomous:
+     → 即座に着手
+     → SSOT整合チェック → ブランチ作成 → 実装 → PR作成
+     → [報告:完了] を送信
+
+   notify_then_proceed:
+     → CTO に [提案] を送信（タスク内容 + 自律レベル）
+     → 5分以内に [却下] がなければ着手
+     → 完了後 [報告:完了]
+
+   approval_required:
+     → CTO に [承認依頼] を送信
+     → [承認] を受信するまで待機
+     → 承認後着手
+```
+
+### autonomy.json
+
+`.framework/autonomy.json` に自律レベル定義を配置する。
+
+| キー | 説明 |
+|------|------|
+| `taskSource.primary` | `github_issues`（SSOT） |
+| `taskSource.cronIntervalMinutes` | ハートビート間隔（デフォルト: 10） |
+| `levels.autonomous.issueLabels` | 自律実行可能な Issue ラベル |
+| `levels.notify_then_proceed.issueLabels` | 提案後着手の Issue ラベル |
+| `levels.approval_required.issueLabels` | 承認必須の Issue ラベル |
+| `taskSelection.selectionOrder` | タスク選択の優先基準 |
+
+### goals.json との関係
+
+- `goals.json` の backlog は廃止
+- `goals.json` を残す場合は GitHub Issues のローカルキャッシュとしてのみ利用
+- タスクの正規ソースは常に GitHub Issues
+
+---
+
 ## 11. Strategic Compact（コンテキスト管理）
 
 ### 情報の優先順位
