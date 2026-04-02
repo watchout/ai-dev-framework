@@ -88,6 +88,13 @@ export interface GateStatusInfo {
   updatedAt: string;
 }
 
+export interface StalenessWarning {
+  source: string;
+  message: string;
+  lastUpdated: string;
+  ageHours: number;
+}
+
 export interface StatusResult {
   currentPhase: number;
   phaseLabel: string;
@@ -99,6 +106,7 @@ export interface StatusResult {
   tasks: TaskStatusItem[];
   execution: ExecutionStatus | null;
   audits: AuditSummary[];
+  stalenessWarnings: StalenessWarning[];
 }
 
 export interface StatusIO {
@@ -169,6 +177,8 @@ export function collectStatus(projectDir: string): StatusResult {
       }
     : null;
 
+  const stalenessWarnings = detectStaleness(projectDir);
+
   return {
     currentPhase: currentPhase?.number ?? 0,
     phaseLabel: currentPhase?.label ?? "Not started",
@@ -180,6 +190,7 @@ export function collectStatus(projectDir: string): StatusResult {
     tasks,
     execution,
     audits,
+    stalenessWarnings,
   };
 }
 
@@ -400,6 +411,92 @@ function calculateTaskProgress(tasks: TaskStatusItem[]): number {
 }
 
 // ─────────────────────────────────────────────
+// Staleness Detection
+// ─────────────────────────────────────────────
+
+const STALENESS_THRESHOLDS = {
+  activeSessionHours: 24,
+  stalledGenerationHours: 4,
+  idleRunHours: 2,
+};
+
+function detectStaleness(projectDir: string): StalenessWarning[] {
+  const warnings: StalenessWarning[] = [];
+  const now = Date.now();
+
+  // Check discover-session.json
+  const discoverPath = path.join(projectDir, ".framework/discover-session.json");
+  if (fs.existsSync(discoverPath)) {
+    try {
+      const session = JSON.parse(fs.readFileSync(discoverPath, "utf-8"));
+      if (session.status !== "completed" && session.updatedAt) {
+        const ageMs = now - new Date(session.updatedAt).getTime();
+        const ageHours = ageMs / (1000 * 60 * 60);
+        if (ageHours > STALENESS_THRESHOLDS.activeSessionHours) {
+          warnings.push({
+            source: "discover-session.json",
+            message: `Discovery session "${session.status}" but not updated for ${Math.round(ageHours)}h. Consider resuming or completing.`,
+            lastUpdated: session.updatedAt,
+            ageHours: Math.round(ageHours),
+          });
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  // Check generation-state.json
+  const genPath = path.join(projectDir, ".framework/generation-state.json");
+  if (fs.existsSync(genPath)) {
+    try {
+      const gen = loadGenerationState(projectDir);
+      if (gen && gen.status !== "completed" && gen.status !== "idle") {
+        const updatedAt = gen.updatedAt ?? gen.startedAt;
+        if (updatedAt) {
+          const ageMs = now - new Date(updatedAt).getTime();
+          const ageHours = ageMs / (1000 * 60 * 60);
+          if (ageHours > STALENESS_THRESHOLDS.stalledGenerationHours) {
+            const stalledDocs = gen.documents
+              .filter((d: { status: string }) => d.status === "generating")
+              .map((d: { path: string }) => path.basename(d.path));
+            const extra = stalledDocs.length > 0
+              ? ` Stalled documents: ${stalledDocs.join(", ")}.`
+              : "";
+            warnings.push({
+              source: "generation-state.json",
+              message: `Generation "${gen.status}" but not updated for ${Math.round(ageHours)}h.${extra}`,
+              lastUpdated: updatedAt,
+              ageHours: Math.round(ageHours),
+            });
+          }
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  // Check run-state.json
+  const runPath = path.join(projectDir, ".framework/run-state.json");
+  if (fs.existsSync(runPath)) {
+    try {
+      const run = loadRunState(projectDir);
+      if (run && run.status === "running" && run.updatedAt) {
+        const ageMs = now - new Date(run.updatedAt).getTime();
+        const ageHours = ageMs / (1000 * 60 * 60);
+        if (ageHours > STALENESS_THRESHOLDS.idleRunHours) {
+          warnings.push({
+            source: "run-state.json",
+            message: `Run state "running" but not updated for ${Math.round(ageHours)}h. Task may be stalled.`,
+            lastUpdated: run.updatedAt,
+            ageHours: Math.round(ageHours),
+          });
+        }
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  return warnings;
+}
+
+// ─────────────────────────────────────────────
 // Display
 // ─────────────────────────────────────────────
 
@@ -531,6 +628,15 @@ export function printStatus(
     }
     if (result.execution.detail) {
       io.print(`    Detail: ${result.execution.detail}`);
+    }
+    io.print("");
+  }
+
+  // Staleness warnings
+  if (result.stalenessWarnings.length > 0) {
+    io.print("  Staleness Warnings:");
+    for (const w of result.stalenessWarnings) {
+      io.print(`    ⚠ [${w.source}] ${w.message}`);
     }
     io.print("");
   }
