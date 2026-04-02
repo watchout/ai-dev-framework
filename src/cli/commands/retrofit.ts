@@ -166,6 +166,29 @@ export function registerRetrofitCommand(program: Command): void {
             }
           }
 
+          // Install gate scripts (scripts/gates/)
+          if (!options.dryRun) {
+            const frameworkRootForGates = path.resolve(__dirname, "../../../..");
+            const GATE_SCRIPTS = ["gate-quality.sh", "gate-release.sh"];
+            const gatesDir = path.join(projectDir, "scripts/gates");
+            let gateScriptsCopied = 0;
+            for (const script of GATE_SCRIPTS) {
+              const srcPath = path.join(frameworkRootForGates, "templates/hooks", script);
+              if (fs.existsSync(srcPath)) {
+                if (!fs.existsSync(gatesDir)) {
+                  fs.mkdirSync(gatesDir, { recursive: true });
+                }
+                const destPath = path.join(gatesDir, script);
+                fs.copyFileSync(srcPath, destPath);
+                fs.chmodSync(destPath, 0o755);
+                gateScriptsCopied++;
+              }
+            }
+            if (gateScriptsCopied > 0) {
+              logger.success(`Installed ${gateScriptsCopied} gate scripts (scripts/gates/)`);
+            }
+          }
+
           // Install GitHub templates (.github/) if not present
           if (!options.dryRun) {
             const profileType = loadProfileType(projectDir) ?? "app";

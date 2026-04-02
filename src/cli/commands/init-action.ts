@@ -168,7 +168,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
 
   // Step 8: Copy skill templates (.claude/skills/)
   logger.step(8, totalSteps, "Installing skill templates...");
-  const SKILL_DIRS = ["discovery", "design", "implement", "review", "scan-updates"];
+  const SKILL_DIRS = ["discovery", "design", "implement", "review", "scan-updates", "gate-design", "gate-quality", "gate-release"];
   const frameworkRoot = options.frameworkSourceDir
     ? options.frameworkSourceDir
     : path.join(projectPath, ".framework/tmp");
@@ -227,6 +227,27 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   }
   if (hooksResult.gitHookInstalled) {
     logger.success("Git pre-commit hook installed");
+  }
+
+  // Step 10b: Install gate scripts (scripts/gates/)
+  const GATE_SCRIPTS = ["gate-quality.sh", "gate-release.sh"];
+  const gatesDir = path.join(projectPath, "scripts/gates");
+  let gateScriptsCopied = 0;
+  for (const script of GATE_SCRIPTS) {
+    const srcPath = path.join(frameworkRoot, "templates/hooks", script);
+    if (fs.existsSync(srcPath)) {
+      if (!fs.existsSync(gatesDir)) {
+        fs.mkdirSync(gatesDir, { recursive: true });
+      }
+      const destPath = path.join(gatesDir, script);
+      fs.copyFileSync(srcPath, destPath);
+      fs.chmodSync(destPath, 0o755);
+      createdFiles.push(`scripts/gates/${script}`);
+      gateScriptsCopied++;
+    }
+  }
+  if (gateScriptsCopied > 0) {
+    logger.success(`Installed ${gateScriptsCopied} gate scripts`);
   }
 
   // Step 11: Install GitHub templates (.github/)
