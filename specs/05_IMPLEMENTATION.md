@@ -317,6 +317,36 @@ Backlog -> Todo -> In Progress -> In Review -> Done
                        +-- Claude Code Web: async execution -> auto PR -> In Review
 ```
 
+### GitHub Issues as Task Management SSOT
+
+GitHub Issues は Dev Bot のタスク管理における Single Source of Truth（SSOT）である。
+
+**原則:**
+- `goals.json` の backlog は廃止。GitHub Issues がタスクの正規ソース
+- `goals.json` は残す場合、GitHub Issues のローカルキャッシュとしてのみ扱う
+- Dev Bot は cron で `gh issue list --assignee @me --state open` を実行してタスクを自律取得
+- 取得した Issue から SSOT 整合チェック → 着手 → PR 作成 → 完了報告
+
+**Dev Bot タスク取得フロー:**
+
+```
+cron (10分間隔)
+  → gh issue list --assignee @me --state open --json number,title,labels,body
+  → Issue の labels から autonomy level を判定
+  → autonomous: そのまま着手 → PR → [報告:完了]
+  → notify_then_proceed: CTO に [提案] → 5分待機 → 着手
+  → approval_required: CTO に [承認依頼] → 承認待ち
+```
+
+**Issue → タスク変換:**
+
+| Issue Label | Autonomy Level |
+|------------|---------------|
+| `bug`, `fix` | autonomous |
+| `test`, `refactoring`, `docs` | autonomous |
+| `feature`, `enhancement` | notify_then_proceed |
+| `db-change`, `security`, `breaking` | approval_required |
+
 ---
 
 ## Part 4: Branch Strategy & Git Workflow

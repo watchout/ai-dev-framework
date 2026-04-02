@@ -1,0 +1,45 @@
+name: Gate Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [develop]
+
+jobs:
+  gate-quality:
+    name: Gate Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run gate-quality
+        run: bash scripts/gates/gate-quality.sh
+
+  gate-release:
+    name: Gate Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    needs: gate-quality
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run gate-release
+        env:
+          STG_API_URL: ${{ vars.STG_API_URL }}
+          STG_APP_URL: ${{ vars.STG_APP_URL }}
+        run: |
+          if [ -z "$STG_API_URL" ]; then
+            echo "STG_API_URL not configured. Skipping gate-release."
+            echo "Set it in GitHub repo Settings > Variables > Actions."
+            exit 0
+          fi
+          bash scripts/gates/gate-release.sh
