@@ -370,6 +370,40 @@ export function mergeClaudeSettings(
   }
 
   hooks.PreToolUse = preToolUse;
+
+  // ─── SessionStart: framework-runner (task auto-fetch on bot startup) ───
+  let sessionStart = hooks.SessionStart;
+  if (!Array.isArray(sessionStart)) {
+    sessionStart = [];
+  }
+
+  const hasRunner = (sessionStart as Array<Record<string, unknown>>).some(
+    (entry) => {
+      const entryHooks = entry.hooks;
+      if (!Array.isArray(entryHooks)) return false;
+      return entryHooks.some(
+        (h: Record<string, unknown>) =>
+          typeof h.command === "string" &&
+          h.command.includes("framework-runner"),
+      );
+    },
+  );
+
+  if (!hasRunner) {
+    (sessionStart as unknown[]).push({
+      matcher: "",
+      hooks: [
+        {
+          type: "command",
+          command:
+            'bash "$CLAUDE_PROJECT_DIR/.claude/hooks/framework-runner.sh" 2>/dev/null || true',
+        },
+      ],
+    });
+  }
+
+  hooks.SessionStart = sessionStart;
+
   return result;
 }
 
