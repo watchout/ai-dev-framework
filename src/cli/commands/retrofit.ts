@@ -211,6 +211,26 @@ export function registerRetrofitCommand(program: Command): void {
                 logger.success("Installed autonomy.json (Dev Bot autonomous task selection)");
               }
             }
+
+            // Add deprecation notice to goals.json if it exists
+            const goalsPath = path.join(projectDir, ".framework/goals.json");
+            if (fs.existsSync(goalsPath)) {
+              try {
+                const goals = JSON.parse(fs.readFileSync(goalsPath, "utf-8"));
+                if (!goals._deprecated) {
+                  goals._deprecated = {
+                    notice: "goals.json is deprecated as task SSOT. Use GitHub Issues instead.",
+                    readOnly: true,
+                    migratedAt: new Date().toISOString(),
+                    ssot: "github_issues",
+                  };
+                  fs.writeFileSync(goalsPath, JSON.stringify(goals, null, 2) + "\n");
+                  logger.success("Added deprecation notice to goals.json (GitHub Issues is now SSOT)");
+                }
+              } catch {
+                // goals.json parse error — skip
+              }
+            }
           }
 
           // Install GitHub templates (.github/) if not present
