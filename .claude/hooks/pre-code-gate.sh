@@ -8,7 +8,7 @@
 input=$(cat)
 tool=$(echo "$input" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{console.log(JSON.parse(d).tool_name||'')}catch{console.log('')}})")
 
-project_dir="\${CLAUDE_PROJECT_DIR:-.}"
+project_dir="${CLAUDE_PROJECT_DIR:-.}"
 
 # Extract file path based on tool type
 file_path=""
@@ -22,7 +22,7 @@ if [ -z "$file_path" ]; then
 fi
 
 # Make path relative to project dir
-rel_path="\${file_path#$project_dir/}"
+rel_path="${file_path#$project_dir/}"
 
 # ─── Smart Blocking: path classification ───
 # Always-allowed paths (Gate preparation, config, meta)
@@ -101,9 +101,9 @@ if [ "$result" != "PASSED" ]; then
   echo "=====================================" >&2
   echo "  PRE-CODE GATE: EDIT BLOCKED" >&2
   echo "=====================================" >&2
-  echo "  Gate A (Environment): \${gate_a:-error}" >&2
-  echo "  Gate B (Planning):    \${gate_b:-error}" >&2
-  echo "  Gate C (SSOT):        \${gate_c:-error}" >&2
+  echo "  Gate A (Environment): ${gate_a:-error}" >&2
+  echo "  Gate B (Planning):    ${gate_b:-error}" >&2
+  echo "  Gate C (SSOT):        ${gate_c:-error}" >&2
   echo "" >&2
   echo "  Run: framework gate check" >&2
   echo "  (docs/.env/.framework edits are allowed)" >&2
@@ -112,7 +112,7 @@ if [ "$result" != "PASSED" ]; then
 fi
 
 # ─── Active Task Check (hard layer) ───
-if [ "\${FRAMEWORK_SKIP_TASK_CHECK:-}" = "1" ]; then
+if [ "${FRAMEWORK_SKIP_TASK_CHECK:-}" = "1" ]; then
   exit 0
 fi
 

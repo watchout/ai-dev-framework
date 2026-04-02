@@ -207,6 +207,7 @@ describe("status-engine", () => {
         tasks: [],
         execution: null,
         audits: [],
+        stalenessWarnings: [],
       };
 
       printStatus(io, result);
@@ -233,6 +234,7 @@ describe("status-engine", () => {
         tasks: [],
         execution: null,
         audits: [],
+        stalenessWarnings: [],
       };
 
       printStatus(io, result);
@@ -261,6 +263,7 @@ describe("status-engine", () => {
         tasks: [],
         execution: null,
         audits: [],
+        stalenessWarnings: [],
       };
 
       printStatus(io, result);
@@ -285,6 +288,7 @@ describe("status-engine", () => {
         ],
         execution: null,
         audits: [],
+        stalenessWarnings: [],
       };
 
       printStatus(io, result);
@@ -314,6 +318,7 @@ describe("status-engine", () => {
             date: "2026-02-03",
           },
         ],
+        stalenessWarnings: [],
       };
 
       printStatus(io, result);
@@ -341,6 +346,7 @@ describe("status-engine", () => {
           detail: "No heartbeat for 7 minutes",
         },
         audits: [],
+        stalenessWarnings: [],
       };
 
       printStatus(io, result);
