@@ -322,10 +322,25 @@ Backlog -> Todo -> In Progress -> In Review -> Done
 GitHub Issues は Dev Bot のタスク管理における Single Source of Truth（SSOT）である。
 
 **原則:**
-- `goals.json` の backlog は廃止。GitHub Issues がタスクの正規ソース
-- `goals.json` は残す場合、GitHub Issues のローカルキャッシュとしてのみ扱う
-- Dev Bot は cron で `gh issue list --assignee @me --state open` を実行してタスクを自律取得
+- GitHub Issues がタスクの唯一の正規ソース（SSOT）
+- Dev Bot は `gh issue list --assignee @me --state open` でタスクを自律取得
 - 取得した Issue から SSOT 整合チェック → 着手 → PR 作成 → 完了報告
+- `framework-runner.sh` は GitHub Issues のみ参照する（goals.json は参照しない）
+
+**goals.json の扱い（deprecated）:**
+
+| 項目 | 定義 |
+|------|------|
+| ステータス | **deprecated**（読み取り専用キャッシュ） |
+| 正規ソース | GitHub Issues |
+| goals.json の役割 | GitHub Issues のローカルキャッシュ（read-only） |
+| 書き込み | 禁止。GitHub Issues 側を更新すること |
+| 参照 | `framework status` の表示用にのみ使用可 |
+| 新規プロジェクト | goals.json は作成しない。GitHub Issues を直接使用 |
+
+> **移行ルール:** 既存プロジェクトの goals.json は削除不要。ただし backlog の追加・更新は
+> GitHub Issues で行い、goals.json は更新しない。`framework retrofit` 実行時に
+> deprecation notice が自動追記される。
 
 **Dev Bot タスク取得フロー:**
 
