@@ -263,6 +263,15 @@ export function installClaudeCodeHook(projectDir: string): {
   fs.writeFileSync(skillTrackerPath, SKILL_TRACKER_SCRIPT, { mode: 0o755 });
   files.push(".claude/hooks/skill-tracker.sh");
 
+  // 2c. Copy framework-runner.sh from templates
+  const runnerSrcPath = path.resolve(__dirname, "../../../templates/hooks/framework-runner.sh");
+  if (fs.existsSync(runnerSrcPath)) {
+    const runnerDestPath = path.join(hooksDir, "framework-runner.sh");
+    fs.copyFileSync(runnerSrcPath, runnerDestPath);
+    fs.chmodSync(runnerDestPath, 0o755);
+    files.push(".claude/hooks/framework-runner.sh");
+  }
+
   // 3. Merge into .claude/settings.json
   const settingsPath = path.join(projectDir, ".claude", "settings.json");
   let existing: Record<string, unknown> = {};
