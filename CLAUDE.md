@@ -67,6 +67,8 @@ ai-dev-framework/
 | `framework generate` | SSOT自動生成 |
 | `framework plan` | 実装計画作成（Gate B 自動pass） |
 | `framework plan --sync` | 実装計画 → GitHub Issues/Projects 同期 |
+| `framework ingest [path]` | 設計書取り込み → SSOT自動生成 |
+| `framework ingest --approve` | 生成SSOT承認 → plan.json統合 |
 | `framework gate check\|status\|reset\|scaffold` | Pre-Code Gate 管理 |
 | `framework audit ssot\|code` | 品質監査（Gate C 自動更新） |
 | `framework run` | タスク実行（全Gate通過必須、完了時に Issue 自動close） |
@@ -322,6 +324,10 @@ compaction後、最初のアクションとして：
 - [指示] を受けたら .claude/discord-state.md に記録してから着手
 - [報告] を送る前に .claude/discord-state.md を更新
 - セッション再起動しても .claude/discord-state.md から復帰可能にする
+
+## 共有チャンネル発言ルール
+- 自分の専用プロダクトチャンネルでは全メッセージに対応する
+- その他の共有チャンネルでは基本静観。メンションまたはリプライされた時のみ回答する
 
 ## Discord Bot間通信ルール（ADR-018準拠）
 
