@@ -33,6 +33,8 @@ import { registerPruneCommand } from "./commands/prune.js";
 import { registerConfigCommand } from "./commands/config.js";
 import { registerImproveCommand } from "./commands/improve.js";
 import { registerIngestCommand } from "./commands/ingest.js";
+import { registerModifyCommand } from "./commands/modify.js";
+import { registerCoherenceCommand } from "./commands/coherence.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -65,8 +67,10 @@ registerResequenceCommand(program);
 registerPruneCommand(program);
 registerStatusCommand(program);
 
-// Design ingest
+// Design ingest & modification
 registerIngestCommand(program);
+registerModifyCommand(program);
+registerCoherenceCommand(program);
 
 // Project management
 registerRetrofitCommand(program);
