@@ -134,6 +134,11 @@ interface SSOTFile {
 
 const CORE_SECTIONS = ["§2", "§7"];
 
+/** Confidence >= 0.8: auto-select */
+export const CONFIDENCE_THRESHOLD_HIGH = 0.8;
+/** Confidence 0.5-0.8: include with review warning */
+export const CONFIDENCE_THRESHOLD_LOW = 0.5;
+
 /**
  * Scan docs/design/features/ for SSOT files and parse their sections.
  */
@@ -422,22 +427,48 @@ export async function runModify(options: ModifyOptions): Promise<ModifyResult> {
       continue;
     }
 
+    // Apply confidence threshold filtering
+    // >= 0.8: auto-select, 0.5-0.8: include with warning, < 0.5: reject
+    const highConfidence = aiResult.matches.filter((m) => m.confidence >= CONFIDENCE_THRESHOLD_HIGH);
+    const mediumConfidence = aiResult.matches.filter(
+      (m) => m.confidence >= CONFIDENCE_THRESHOLD_LOW && m.confidence < CONFIDENCE_THRESHOLD_HIGH,
+    );
+    const lowConfidence = aiResult.matches.filter((m) => m.confidence < CONFIDENCE_THRESHOLD_LOW);
+
+    // Log confidence-based filtering
+    for (const m of lowConfidence) {
+      io.printProgress("SKIP", `${m.featureId} — confidence ${m.confidence.toFixed(2)} < ${CONFIDENCE_THRESHOLD_LOW} (below threshold)`);
+    }
+    for (const m of mediumConfidence) {
+      io.printProgress("WARN", `${m.featureId} — confidence ${m.confidence.toFixed(2)} (medium: manual review recommended)`);
+    }
+
+    // Use high + medium confidence matches; reject low confidence
+    const acceptedMatches = [...highConfidence, ...mediumConfidence];
+
+    if (acceptedMatches.length === 0) {
+      errors.push(
+        `No matching SSOT found with sufficient confidence (threshold: ${CONFIDENCE_THRESHOLD_LOW}). Consider using 'framework ingest' for new features.`,
+      );
+      continue;
+    }
+
     // Create modification record
     const record: ModificationRecord = {
       id: generateModifyId(state),
       sourcePath: filePath,
-      targetSSOTs: aiResult.matches.map((m) => m.featureId),
-      affectedSections: aiResult.matches.flatMap((m) => m.affectedSections),
+      targetSSOTs: acceptedMatches.map((m) => m.featureId),
+      affectedSections: acceptedMatches.flatMap((m) => m.affectedSections),
       status: "review",
       diffs: [],
-      coreLayerChanged: aiResult.matches.some((m) => m.coreLayerChanged),
+      coreLayerChanged: acceptedMatches.some((m) => m.coreLayerChanged),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
-    // Build diffs
-    for (const match of aiResult.matches) {
-      io.printProgress("MATCH", `${match.featureId} — confidence: ${match.confidence.toFixed(2)}`);
+    // Build diffs from accepted matches only
+    for (const match of acceptedMatches) {
+      io.printProgress("MATCH", `${match.featureId} — confidence: ${match.confidence.toFixed(2)}${match.confidence < CONFIDENCE_THRESHOLD_HIGH ? " (needs review)" : ""}`);
       io.printProgress("SECTIONS", match.affectedSections.join(", "));
 
       const ssot = ssots.find((s) => s.featureId === match.featureId);

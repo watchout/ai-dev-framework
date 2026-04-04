@@ -128,6 +128,44 @@ const MOCK_CORE_CHANGE_RESPONSE = JSON.stringify({
   ],
 });
 
+// Mock AI response with low confidence (below 0.5 threshold)
+const MOCK_LOW_CONFIDENCE_RESPONSE = JSON.stringify({
+  matches: [
+    {
+      featureId: "FEAT-101",
+      confidence: 0.3,
+      affectedSections: ["§5"],
+      coreLayerChanged: false,
+      diffs: [
+        {
+          section: "§5",
+          reason: "low confidence match",
+          updatedContent: "## §5 Updated",
+        },
+      ],
+    },
+  ],
+});
+
+// Mock AI response with medium confidence (0.5-0.8)
+const MOCK_MEDIUM_CONFIDENCE_RESPONSE = JSON.stringify({
+  matches: [
+    {
+      featureId: "FEAT-101",
+      confidence: 0.65,
+      affectedSections: ["§5"],
+      coreLayerChanged: false,
+      diffs: [
+        {
+          section: "§5",
+          reason: "medium confidence match",
+          updatedContent: "## §5 Updated with medium confidence",
+        },
+      ],
+    },
+  ],
+});
+
 describe("modify-engine", () => {
   let tmpDir: string;
   let restoreRunner: () => void;
@@ -353,6 +391,49 @@ describe("modify-engine", () => {
       });
 
       expect(result.errors.some((e) => e.includes("File too large"))).toBe(true);
+    });
+
+    it("should reject matches with confidence below 0.5", async () => {
+      restoreRunner();
+      restoreRunner = setModifyClaudeRunner(async () => MOCK_LOW_CONFIDENCE_RESPONSE);
+
+      fs.writeFileSync(
+        path.join(tmpDir, "docs/inbox/low-conf.md"),
+        "# 修正指示\n曖昧な修正指示",
+      );
+      const io = createMockIO();
+
+      const result = await runModify({
+        projectDir: tmpDir,
+        inputPath: path.join(tmpDir, "docs/inbox/low-conf.md"),
+        io,
+      });
+
+      expect(result.modifications).toHaveLength(0);
+      expect(result.errors.some((e) => e.includes("sufficient confidence"))).toBe(true);
+      expect(io.lines.some((l) => l.includes("SKIP") && l.includes("below threshold"))).toBe(true);
+    });
+
+    it("should accept medium confidence matches with review warning", async () => {
+      restoreRunner();
+      restoreRunner = setModifyClaudeRunner(async () => MOCK_MEDIUM_CONFIDENCE_RESPONSE);
+
+      fs.writeFileSync(
+        path.join(tmpDir, "docs/inbox/medium-conf.md"),
+        "# 修正指示\nAPI変更",
+      );
+      const io = createMockIO();
+
+      const result = await runModify({
+        projectDir: tmpDir,
+        inputPath: path.join(tmpDir, "docs/inbox/medium-conf.md"),
+        io,
+      });
+
+      expect(result.errors).toHaveLength(0);
+      expect(result.modifications).toHaveLength(1);
+      expect(io.lines.some((l) => l.includes("WARN") && l.includes("manual review"))).toBe(true);
+      expect(io.lines.some((l) => l.includes("needs review"))).toBe(true);
     });
   });
 
