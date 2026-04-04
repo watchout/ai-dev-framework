@@ -69,6 +69,10 @@ ai-dev-framework/
 | `framework plan --sync` | 実装計画 → GitHub Issues/Projects 同期 |
 | `framework ingest [path]` | 設計書取り込み → SSOT自動生成 |
 | `framework ingest --approve` | 生成SSOT承認 → plan.json統合 |
+| `framework modify [path]` | 修正指示 → 差分SSOT更新 |
+| `framework modify --approve [id]` | レビュー済み修正の承認・適用 |
+| `framework coherence` | SSOT-実装 整合性チェック（静的解析） |
+| `framework coherence --auto-fix` | 不一致検出時に自動修正指示を生成 |
 | `framework gate check\|status\|reset\|scaffold` | Pre-Code Gate 管理 |
 | `framework audit ssot\|code` | 品質監査（Gate C 自動更新） |
 | `framework run` | タスク実行（全Gate通過必須、完了時に Issue 自動close） |
