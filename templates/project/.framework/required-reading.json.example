@@ -1,0 +1,18 @@
+{
+  "task": "Example task — replace with your own",
+  "files": [
+    {
+      "path": "docs/design/SSOT-0_PRD.md",
+      "type": "local",
+      "sections": ["Overview", "Goals"],
+      "reason": "Product requirements"
+    },
+    {
+      "path": "remote:path/to/external-spec.md",
+      "type": "remote",
+      "command": "rclone cat",
+      "sections": ["Key section"],
+      "reason": "External design doc pulled from shared storage"
+    }
+  ]
+}
