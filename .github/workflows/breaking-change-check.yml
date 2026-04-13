@@ -14,13 +14,13 @@ jobs:
 
       - name: Detect breaking changes
         id: detect
+        continue-on-error: true
         run: |
-          # Compare against the PR base ref (not always 'main' literal).
           BASE="${{ github.event.pull_request.base.ref }}"
           bash scripts/detect-breaking-changes.sh "origin/${BASE}"
 
-      - name: Require breaking-change-verified label
-        if: failure() && steps.detect.outcome == 'failure'
+      - name: Enforce breaking-change-verified label
+        if: steps.detect.outcome == 'failure'
         uses: actions/github-script@v7
         with:
           script: |
@@ -32,5 +32,8 @@ jobs:
                 "'breaking-change-verified' label before merge."
               );
             } else {
-              core.info("Breaking change patterns detected but verification label present — allowing.");
+              core.info(
+                "Breaking change patterns detected but 'breaking-change-verified' " +
+                "label is present — verification confirmed by reviewer."
+              );
             }
