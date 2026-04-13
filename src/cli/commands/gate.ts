@@ -28,7 +28,15 @@ import {
   type SSOTGateEntry,
 } from "../lib/gate-model.js";
 import { scaffoldGateCsections } from "../lib/gate-scaffold.js";
-import { loadProjectProfile } from "../lib/profile-model.js";
+import {
+  loadProjectProfile,
+  PROFILE_TYPES,
+  isValidProfileType,
+  type ProfileType,
+} from "../lib/profile-model.js";
+
+const PROFILE_HELP = `Project profile (${PROFILE_TYPES.join("|")}). Overrides .framework/project.json. Affects Gate A requirements.`;
+const PROFILE_VALID_LIST = PROFILE_TYPES.join(", ");
 import { logger } from "../lib/logger.js";
 import {
   runGateDVerify,
@@ -49,32 +57,18 @@ export function registerGateCommand(program: Command): void {
   gate
     .command("check")
     .description("Run all gate checks (A, B, C)")
-    .option(
-      "--profile <type>",
-      "Project profile (app|api|mcp-server|cli|library|lp|hp). Overrides .framework/project.json. Affects Gate A requirements.",
-    )
+    .option("--profile <type>", PROFILE_HELP)
     .action(async (options: { profile?: string }) => {
       const projectDir = process.cwd();
 
       try {
-        const { isValidProfileType } = await import(
-          "../lib/profile-model.js"
-        );
         if (options.profile && !isValidProfileType(options.profile)) {
           logger.error(
-            `Invalid --profile value: "${options.profile}". Valid: app, api, mcp-server, cli, library, lp, hp.`,
+            `Invalid --profile value: "${options.profile}". Valid: ${PROFILE_VALID_LIST}.`,
           );
           process.exit(1);
         }
-        const profile = options.profile as
-          | "app"
-          | "api"
-          | "mcp-server"
-          | "cli"
-          | "library"
-          | "lp"
-          | "hp"
-          | undefined;
+        const profile = options.profile as ProfileType | undefined;
 
         const io = createGateTerminalIO();
 
@@ -119,32 +113,15 @@ export function registerGateCommand(program: Command): void {
   gate
     .command("check-a")
     .description("Run Gate A only (environment readiness)")
-    .option(
-      "--profile <type>",
-      "Project profile (app|api|mcp-server|cli|library|lp|hp). Overrides .framework/project.json.",
-    )
+    .option("--profile <type>", PROFILE_HELP)
     .action(async (options: { profile?: string }) => {
-      const { isValidProfileType } = await import(
-        "../lib/profile-model.js"
-      );
       if (options.profile && !isValidProfileType(options.profile)) {
         logger.error(
-          `Invalid --profile value: "${options.profile}". Valid: app, api, mcp-server, cli, library, lp, hp.`,
+          `Invalid --profile value: "${options.profile}". Valid: ${PROFILE_VALID_LIST}.`,
         );
         process.exit(1);
       }
-      runSingleGateCheck(
-        "A",
-        options.profile as
-          | "app"
-          | "api"
-          | "mcp-server"
-          | "cli"
-          | "library"
-          | "lp"
-          | "hp"
-          | undefined,
-      );
+      runSingleGateCheck("A", options.profile as ProfileType | undefined);
     });
 
   // framework gate check-b
@@ -833,7 +810,7 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
 
 function runSingleGateCheck(
   gateId: "A" | "B" | "C",
-  profile?: "app" | "api" | "mcp-server" | "cli" | "library" | "lp" | "hp",
+  profile?: ProfileType,
 ): void {
   const projectDir = process.cwd();
 
