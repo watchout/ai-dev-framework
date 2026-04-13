@@ -22,11 +22,24 @@ import {
 
 function createTestRepo(): string {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "fw-wt-test-"));
-  execSync("git init", { cwd: dir, stdio: ["pipe", "pipe", "pipe"] });
+  // Force initial branch name to "main" regardless of the host git config.
+  // Older git versions don't support -b on init, so we fall back to renaming.
+  try {
+    execSync("git init -b main", { cwd: dir, stdio: ["pipe", "pipe", "pipe"] });
+  } catch {
+    execSync("git init", { cwd: dir, stdio: ["pipe", "pipe", "pipe"] });
+  }
   execSync("git config user.email 'test@test.com'", { cwd: dir, stdio: ["pipe", "pipe", "pipe"] });
   execSync("git config user.name 'Test'", { cwd: dir, stdio: ["pipe", "pipe", "pipe"] });
   fs.writeFileSync(path.join(dir, "README.md"), "# Test", "utf-8");
   execSync("git add . && git commit -m 'init'", { cwd: dir, stdio: ["pipe", "pipe", "pipe"] });
+  // After the first commit, if HEAD is not on "main", rename it so tests
+  // that reference "main" as the base branch succeed on CI hosts where
+  // git defaults to "master".
+  const current = execSync("git branch --show-current", { cwd: dir, encoding: "utf-8" }).trim();
+  if (current && current !== "main") {
+    execSync(`git branch -m ${current} main`, { cwd: dir, stdio: ["pipe", "pipe", "pipe"] });
+  }
   return dir;
 }
 

@@ -408,13 +408,15 @@ describe("saveRunState atomic write", () => {
     state.tasks.push({
       taskId: "TEST-001",
       featureId: "FEAT-001",
+      taskKind: "test",
       name: "Test task",
       seq: "1.1",
       status: "in_progress",
       blockedBy: [],
+      files: [],
       startedAt: new Date().toISOString(),
       heartbeatAt: new Date().toISOString(),
-    } as TaskExecution);
+    });
     saveRunState(tmpDir, state);
 
     const loaded = loadRunState(tmpDir);

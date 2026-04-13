@@ -3,10 +3,10 @@
  * CRUD、変数埋め込み、バージョン管理、API実装
  */
 
-export { PromptManager } from './manager';
-export { PromptRenderer } from './renderer';
-export { InMemoryStorage, type StorageAdapter } from './storage';
-export { createPromptRouter } from './api';
+export { PromptManager } from './manager.js';
+export { PromptRenderer } from './renderer.js';
+export { InMemoryStorage, type StorageAdapter } from './storage.js';
+export { createPromptRouter } from './api.js';
 export type {
   PromptTemplate,
   Variable,
@@ -20,4 +20,4 @@ export type {
   ApiErrorResponse,
   ValidationResult,
   ValidationError,
-} from './types';
+} from './types.js';

@@ -256,7 +256,7 @@ export async function runSync(options: SyncOptions): Promise<SyncEngineResult> {
 
     // Pull live status from GitHub and update run-state
     let updated = 0;
-    if (isGhAvailable()) {
+    if (await isGhAvailable()) {
       try {
         const statusResult = await syncStatusFromGitHub(projectDir);
         if (statusResult.errors.length > 0) {
