@@ -46,6 +46,7 @@ coverage/
 .framework/audits/
 .framework/feedback/
 .framework/remediation/
+.framework/preflight/
 
 # Worktrees (parallel execution)
 .worktrees/
