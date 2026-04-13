@@ -26,7 +26,11 @@ import {
   saveGateState,
 } from "./gate-model.js";
 import { loadPlan } from "./plan-model.js";
-import type { ProfileType } from "./profile-model.js";
+import {
+  GATE_A_REQUIREMENTS,
+  loadProfileType,
+  type ProfileType,
+} from "./profile-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -50,12 +54,27 @@ export function createGateTerminalIO(): GateIO {
 
 /**
  * Check development environment readiness.
- * Verifies file existence for environment prerequisites.
+ *
+ * Profile-aware: the GATE_A_REQUIREMENTS table (profile-model.ts)
+ * declares which infrastructure checks apply to a given profile.
+ * Skipped checks emit an informational "skipped" entry that passes
+ * without requiring the file/directory to exist.
+ *
+ * Profile resolution order:
+ *   1. Explicit `profile` argument (e.g., CLI --profile flag)
+ *   2. `.framework/project.json` profileType
+ *   3. Default: "app" (backward-compat with pre-profile behavior)
  */
-export function checkGateA(projectDir: string): GateCheck[] {
+export function checkGateA(
+  projectDir: string,
+  profile?: ProfileType,
+): GateCheck[] {
+  const effectiveProfile: ProfileType =
+    profile ?? loadProfileType(projectDir) ?? "app";
+  const reqs = GATE_A_REQUIREMENTS[effectiveProfile];
   const checks: GateCheck[] = [];
 
-  // Check package.json
+  // package.json — required for ALL profiles (Node.js project assumption)
   checks.push(checkFileExists(
     projectDir,
     "package.json",
@@ -63,7 +82,7 @@ export function checkGateA(projectDir: string): GateCheck[] {
     "package.json not found. Run 'npm init' or create package.json.",
   ));
 
-  // Check node_modules
+  // node_modules — required for ALL profiles
   checks.push(checkDirExists(
     projectDir,
     "node_modules",
@@ -71,45 +90,93 @@ export function checkGateA(projectDir: string): GateCheck[] {
     "node_modules/ not found. Run 'npm install' or 'pnpm install'.",
   ));
 
-  // Check .env or .env.example
-  const hasEnv = fs.existsSync(path.join(projectDir, ".env"));
-  const hasEnvExample = fs.existsSync(path.join(projectDir, ".env.example"));
-  checks.push({
-    name: "Environment config (.env or .env.example)",
-    passed: hasEnv || hasEnvExample,
-    message: hasEnv || hasEnvExample
-      ? "Environment config found"
-      : ".env or .env.example not found. Create environment config.",
-  });
+  // .env / .env.example — conditional on profile
+  if (reqs.envExample) {
+    const hasEnv = fs.existsSync(path.join(projectDir, ".env"));
+    const hasEnvExample = fs.existsSync(path.join(projectDir, ".env.example"));
+    checks.push({
+      name: "Environment config (.env or .env.example)",
+      passed: hasEnv || hasEnvExample,
+      message: hasEnv || hasEnvExample
+        ? "Environment config found"
+        : ".env or .env.example not found. Create environment config.",
+    });
+  } else {
+    checks.push({
+      name: "Environment config (.env or .env.example)",
+      passed: true,
+      message: `Skipped for profile '${effectiveProfile}' (no environment variables expected)`,
+    });
+  }
 
-  // Check docker-compose.yml (optional but flagged)
-  const hasDockerCompose =
-    fs.existsSync(path.join(projectDir, "docker-compose.yml")) ||
-    fs.existsSync(path.join(projectDir, "docker-compose.yaml")) ||
-    fs.existsSync(path.join(projectDir, "compose.yml")) ||
-    fs.existsSync(path.join(projectDir, "compose.yaml"));
-  checks.push({
-    name: "Docker Compose config",
-    passed: hasDockerCompose,
-    message: hasDockerCompose
-      ? "Docker Compose config found"
-      : "docker-compose.yml not found. DB/Redis may not be available.",
-  });
+  // docker-compose — conditional on profile
+  if (reqs.dockerCompose) {
+    const hasDockerCompose =
+      fs.existsSync(path.join(projectDir, "docker-compose.yml")) ||
+      fs.existsSync(path.join(projectDir, "docker-compose.yaml")) ||
+      fs.existsSync(path.join(projectDir, "compose.yml")) ||
+      fs.existsSync(path.join(projectDir, "compose.yaml"));
+    checks.push({
+      name: "Docker Compose config",
+      passed: hasDockerCompose,
+      message: hasDockerCompose
+        ? "Docker Compose config found"
+        : "docker-compose.yml not found. DB/Redis may not be available.",
+    });
+  } else {
+    checks.push({
+      name: "Docker Compose config",
+      passed: true,
+      message: `Skipped for profile '${effectiveProfile}' (no local infra services required)`,
+    });
+  }
 
-  // Check CI config
-  const hasCIConfig =
-    fs.existsSync(path.join(projectDir, ".github/workflows")) ||
-    fs.existsSync(path.join(projectDir, ".github/workflows/ci.yml")) ||
-    fs.existsSync(path.join(projectDir, ".github/workflows/ci.yaml"));
-  checks.push({
-    name: "CI configuration (.github/workflows/)",
-    passed: hasCIConfig,
-    message: hasCIConfig
-      ? "CI configuration found"
-      : ".github/workflows/ not found. Run 'framework ci' to set up CI.",
-  });
+  // DB migration — conditional on profile. Accepts any of the common layouts.
+  if (reqs.dbMigration) {
+    const hasMigrations =
+      fs.existsSync(path.join(projectDir, "prisma/migrations")) ||
+      fs.existsSync(path.join(projectDir, "migrations")) ||
+      fs.existsSync(path.join(projectDir, "db/migrations")) ||
+      fs.existsSync(path.join(projectDir, "supabase/migrations")) ||
+      fs.existsSync(path.join(projectDir, "drizzle"));
+    checks.push({
+      name: "Database migrations directory",
+      passed: hasMigrations,
+      message: hasMigrations
+        ? "Migrations directory found"
+        : "No migrations directory found (prisma/migrations, migrations/, db/migrations/, supabase/migrations/, or drizzle/).",
+    });
+  } else {
+    checks.push({
+      name: "Database migrations directory",
+      passed: true,
+      message: `Skipped for profile '${effectiveProfile}' (no database expected)`,
+    });
+  }
 
-  // Check .framework/ directory
+  // CI config — required for ALL profiles per CEO-approved matrix
+  if (reqs.ciConfig) {
+    const hasCIConfig =
+      fs.existsSync(path.join(projectDir, ".github/workflows")) ||
+      fs.existsSync(path.join(projectDir, ".github/workflows/ci.yml")) ||
+      fs.existsSync(path.join(projectDir, ".github/workflows/ci.yaml"));
+    checks.push({
+      name: "CI configuration (.github/workflows/)",
+      passed: hasCIConfig,
+      message: hasCIConfig
+        ? "CI configuration found"
+        : ".github/workflows/ not found. Run 'framework ci' to set up CI.",
+    });
+  } else {
+    // Reserved for future profiles; no current profile skips CI.
+    checks.push({
+      name: "CI configuration (.github/workflows/)",
+      passed: true,
+      message: `Skipped for profile '${effectiveProfile}'`,
+    });
+  }
+
+  // .framework/ directory — required for ALL profiles
   checks.push(checkDirExists(
     projectDir,
     ".framework",
@@ -219,21 +286,6 @@ function getRequiredSections(profileType?: ProfileType) {
 }
 
 /**
- * Load the project's profile type from .framework/project.json
- */
-function loadProfileType(projectDir: string): ProfileType | undefined {
-  const projectJsonPath = path.join(projectDir, ".framework/project.json");
-  if (!fs.existsSync(projectJsonPath)) return undefined;
-  try {
-    const raw = fs.readFileSync(projectJsonPath, "utf-8");
-    const data = JSON.parse(raw);
-    return data.profileType as ProfileType | undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
  * Check SSOT files for §3-E/F/G/H completeness.
  *
  * v4.0 improvements:
@@ -273,7 +325,7 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
     return checks;
   }
 
-  const requiredSections = getRequiredSections(profileType);
+  const requiredSections = getRequiredSections(profileType ?? undefined);
 
   // Find SSOT files in known locations
   const ssotPaths = findSSOTFiles(projectDir);
@@ -334,12 +386,13 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
 export function checkAllGates(
   projectDir: string,
   io?: GateIO,
+  profile?: ProfileType,
 ): AllGatesResult {
   let state = loadGateState(projectDir) ?? createGateState();
 
   // Gate A
   io?.print("\n  [1/3] Gate A: Environment check...");
-  const checksA = checkGateA(projectDir);
+  const checksA = checkGateA(projectDir, profile);
   updateGateA(state, checksA);
   printChecks(io, checksA);
 
@@ -368,13 +421,14 @@ export function checkSingleGate(
   projectDir: string,
   gateId: "A" | "B" | "C",
   io?: GateIO,
+  profile?: ProfileType,
 ): AllGatesResult {
   let state = loadGateState(projectDir) ?? createGateState();
 
   switch (gateId) {
     case "A": {
       io?.print("\n  Gate A: Environment check...");
-      const checks = checkGateA(projectDir);
+      const checks = checkGateA(projectDir, profile);
       updateGateA(state, checks);
       printChecks(io, checks);
       break;

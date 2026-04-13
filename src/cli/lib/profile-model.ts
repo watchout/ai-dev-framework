@@ -2,12 +2,14 @@
  * Project type profiles - defines project-type-specific configurations
  * Based on: templates/profiles/*.json from ai-dev-framework
  *
- * 5 project types:
+ * 7 project types:
  * - app: Full-stack application
  * - lp: Landing page
  * - hp: Homepage / Corporate site
  * - api: API / Backend service
  * - cli: CLI tool
+ * - mcp-server: MCP (Model Context Protocol) server
+ * - library: Reusable library / SDK / package
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -16,9 +18,53 @@ import * as path from "node:path";
 // Types
 // ─────────────────────────────────────────────
 
-export type ProfileType = "app" | "lp" | "hp" | "api" | "cli";
+export type ProfileType =
+  | "app"
+  | "lp"
+  | "hp"
+  | "api"
+  | "cli"
+  | "mcp-server"
+  | "library";
 
-export const PROFILE_TYPES: ProfileType[] = ["app", "lp", "hp", "api", "cli"];
+export const PROFILE_TYPES: ProfileType[] = [
+  "app",
+  "lp",
+  "hp",
+  "api",
+  "cli",
+  "mcp-server",
+  "library",
+];
+
+/**
+ * Gate A per-profile requirements matrix (CEO approved 2026-04-13).
+ *
+ * For each profile, declares whether a given Gate A infrastructure
+ * check is required. `false` means the check is skipped (emits an
+ * informational "skipped" entry rather than failing).
+ *
+ * lp/hp retain app-equivalent behavior for backward compatibility —
+ * the CEO-approved table only covers the 5 primary profiles; lp/hp
+ * are preserved with the previous (app-like) requirements.
+ */
+export interface GateARequirements {
+  dockerCompose: boolean;
+  dbMigration: boolean;
+  ciConfig: boolean;
+  envExample: boolean;
+}
+
+export const GATE_A_REQUIREMENTS: Record<ProfileType, GateARequirements> = {
+  app: { dockerCompose: true, dbMigration: true, ciConfig: true, envExample: true },
+  api: { dockerCompose: true, dbMigration: true, ciConfig: true, envExample: true },
+  "mcp-server": { dockerCompose: false, dbMigration: false, ciConfig: true, envExample: true },
+  cli: { dockerCompose: false, dbMigration: false, ciConfig: true, envExample: false },
+  library: { dockerCompose: false, dbMigration: false, ciConfig: true, envExample: false },
+  // Backward-compat: preserve prior Gate A behavior for lp/hp (treat like app).
+  lp: { dockerCompose: true, dbMigration: true, ciConfig: true, envExample: true },
+  hp: { dockerCompose: true, dbMigration: true, ciConfig: true, envExample: true },
+};
 
 export interface TechStackConfig {
   frontend: string | null;
@@ -310,6 +356,94 @@ const PROFILES: Record<ProfileType, ProjectProfile> = {
       hosting: "npm registry",
       testing: "Vitest",
       cli_framework: "Commander.js or oclif",
+    },
+  },
+  "mcp-server": {
+    id: "mcp-server",
+    name: "MCP Server",
+    description: "Model Context Protocol server (stdio or HTTP transport)",
+    enabledSsot: ["SSOT-0_PRD", "SSOT-3_API_CONTRACT"],
+    enabledAudit: ["code", "test"],
+    discoveryStages: [1, 2, 3],
+    freezeRequired: [1, 2, 3],
+    marketing: "none",
+    requiredTemplates: [
+      "docs/requirements/SSOT-0_PRD.md",
+      "docs/design/core/SSOT-3_API_CONTRACT.md",
+      "docs/standards/TECH_STACK.md",
+      "docs/standards/CODING_STANDARDS.md",
+      "docs/standards/TESTING_STANDARDS.md",
+    ],
+    skipTemplates: [
+      "SSOT-1_FEATURE_CATALOG",
+      "SSOT-2_UI_STATE",
+      "SSOT-4_DATA_MODEL",
+      "docs/design/features/common/",
+      "docs/marketing/",
+      "docs/growth/",
+      "docs/operations/",
+      "public/",
+    ],
+    directories: [
+      "docs/requirements",
+      "docs/design/core",
+      "docs/standards",
+      "docs/notes",
+      "docs/ssot",
+      "src",
+      "tests",
+    ],
+    defaultTechStack: {
+      frontend: null,
+      backend: "Node.js (TypeScript) MCP SDK",
+      database: null,
+      auth: null,
+      hosting: "stdio / npm registry",
+      testing: "Vitest",
+    },
+  },
+  library: {
+    id: "library",
+    name: "Library / SDK",
+    description: "再利用可能ライブラリ・SDK・パッケージ",
+    enabledSsot: ["SSOT-0_PRD", "SSOT-3_API_CONTRACT"],
+    enabledAudit: ["code", "test"],
+    discoveryStages: [1, 2, 3],
+    freezeRequired: [1, 2, 3],
+    marketing: "none",
+    requiredTemplates: [
+      "docs/requirements/SSOT-0_PRD.md",
+      "docs/design/core/SSOT-3_API_CONTRACT.md",
+      "docs/standards/TECH_STACK.md",
+      "docs/standards/CODING_STANDARDS.md",
+      "docs/standards/TESTING_STANDARDS.md",
+    ],
+    skipTemplates: [
+      "SSOT-1_FEATURE_CATALOG",
+      "SSOT-2_UI_STATE",
+      "SSOT-4_DATA_MODEL",
+      "docs/design/features/common/",
+      "docs/marketing/",
+      "docs/growth/",
+      "docs/operations/",
+      "public/",
+    ],
+    directories: [
+      "docs/requirements",
+      "docs/design/core",
+      "docs/standards",
+      "docs/notes",
+      "docs/ssot",
+      "src",
+      "tests",
+    ],
+    defaultTechStack: {
+      frontend: null,
+      backend: "TypeScript",
+      database: null,
+      auth: null,
+      hosting: "npm registry",
+      testing: "Vitest",
     },
   },
 };

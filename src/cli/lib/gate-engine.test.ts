@@ -574,4 +574,151 @@ describe("gate-engine", () => {
       expect(loaded!.gateA.status).toBe("pending");
     });
   });
+
+  describe("checkGateA profile support (CEO-approved matrix)", () => {
+    function writeBasicProject(dir: string) {
+      fs.writeFileSync(path.join(dir, "package.json"), "{}", "utf-8");
+      fs.mkdirSync(path.join(dir, "node_modules"), { recursive: true });
+      fs.mkdirSync(path.join(dir, ".framework"), { recursive: true });
+      fs.mkdirSync(path.join(dir, ".github/workflows"), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, ".github/workflows/ci.yml"),
+        "name: ci",
+        "utf-8",
+      );
+    }
+
+    it("mcp-server profile: skips docker-compose + DB migration, requires .env.example", () => {
+      writeBasicProject(tmpDir);
+      // no docker-compose, no migrations, but has .env.example
+      fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
+
+      const checks = checkGateA(tmpDir, "mcp-server");
+      const docker = checks.find((c) => c.name === "Docker Compose config");
+      const db = checks.find((c) =>
+        c.name === "Database migrations directory",
+      );
+      const envExample = checks.find((c) =>
+        c.name === "Environment config (.env or .env.example)",
+      );
+      expect(docker?.passed).toBe(true);
+      expect(docker?.message).toMatch(/Skipped for profile 'mcp-server'/);
+      expect(db?.passed).toBe(true);
+      expect(db?.message).toMatch(/Skipped for profile 'mcp-server'/);
+      expect(envExample?.passed).toBe(true);
+      expect(envExample?.message).toBe("Environment config found");
+    });
+
+    it("cli profile: skips docker-compose, DB migration, AND .env.example", () => {
+      writeBasicProject(tmpDir);
+      // No infra files at all.
+
+      const checks = checkGateA(tmpDir, "cli");
+      const docker = checks.find((c) => c.name === "Docker Compose config");
+      const db = checks.find((c) =>
+        c.name === "Database migrations directory",
+      );
+      const envExample = checks.find((c) =>
+        c.name === "Environment config (.env or .env.example)",
+      );
+      expect(docker?.passed).toBe(true);
+      expect(db?.passed).toBe(true);
+      expect(envExample?.passed).toBe(true);
+      expect(envExample?.message).toMatch(/Skipped for profile 'cli'/);
+    });
+
+    it("library profile: mirrors cli (same skip set)", () => {
+      writeBasicProject(tmpDir);
+      const checks = checkGateA(tmpDir, "library");
+      const docker = checks.find((c) => c.name === "Docker Compose config");
+      const envExample = checks.find((c) =>
+        c.name === "Environment config (.env or .env.example)",
+      );
+      expect(docker?.passed).toBe(true);
+      expect(envExample?.passed).toBe(true);
+    });
+
+    it("api profile: docker-compose + DB migration required (fails when absent)", () => {
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
+
+      const checks = checkGateA(tmpDir, "api");
+      const docker = checks.find((c) => c.name === "Docker Compose config");
+      const db = checks.find((c) =>
+        c.name === "Database migrations directory",
+      );
+      expect(docker?.passed).toBe(false);
+      expect(db?.passed).toBe(false);
+    });
+
+    it("api profile: passes when docker-compose + migrations exist", () => {
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
+      fs.writeFileSync(
+        path.join(tmpDir, "docker-compose.yml"),
+        "version: '3'\n",
+        "utf-8",
+      );
+      fs.mkdirSync(path.join(tmpDir, "prisma/migrations"), { recursive: true });
+
+      const checks = checkGateA(tmpDir, "api");
+      const failed = checks.filter((c) => !c.passed);
+      expect(failed).toHaveLength(0);
+    });
+
+    it("app profile (default): behaves like explicit 'app' when no profile given", () => {
+      writeBasicProject(tmpDir);
+      const checksDefault = checkGateA(tmpDir);
+      const checksApp = checkGateA(tmpDir, "app");
+      // Both should yield the same pass/fail pattern.
+      expect(checksDefault.map((c) => c.passed)).toEqual(
+        checksApp.map((c) => c.passed),
+      );
+    });
+
+    it("reads profile from .framework/project.json when not explicitly passed", () => {
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(
+        path.join(tmpDir, ".framework/project.json"),
+        JSON.stringify({ profileType: "mcp-server" }),
+        "utf-8",
+      );
+      const checks = checkGateA(tmpDir); // no explicit profile
+      const docker = checks.find((c) => c.name === "Docker Compose config");
+      expect(docker?.passed).toBe(true);
+      expect(docker?.message).toMatch(/Skipped for profile 'mcp-server'/);
+    });
+
+    it("explicit --profile argument overrides project.json", () => {
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(
+        path.join(tmpDir, ".framework/project.json"),
+        JSON.stringify({ profileType: "app" }), // would require docker-compose
+        "utf-8",
+      );
+      const checks = checkGateA(tmpDir, "cli"); // explicit override
+      const docker = checks.find((c) => c.name === "Docker Compose config");
+      expect(docker?.passed).toBe(true);
+      expect(docker?.message).toMatch(/Skipped for profile 'cli'/);
+    });
+
+    it("accepts various migrations directory layouts", () => {
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
+      fs.writeFileSync(
+        path.join(tmpDir, "docker-compose.yml"),
+        "",
+        "utf-8",
+      );
+      // supabase/migrations instead of prisma/migrations
+      fs.mkdirSync(path.join(tmpDir, "supabase/migrations"), {
+        recursive: true,
+      });
+      const checks = checkGateA(tmpDir, "api");
+      const db = checks.find((c) =>
+        c.name === "Database migrations directory",
+      );
+      expect(db?.passed).toBe(true);
+    });
+  });
 });
