@@ -719,6 +719,26 @@ describe("gate-engine", () => {
       expect(docker?.message).toMatch(/Skipped for profile 'cli'/);
     });
 
+    it("WARNING checks are visible in print output (not silent pass)", async () => {
+      // Regression guard for codex-auditor PR #54 cycle 2 finding:
+      // printChecks was hiding passed:true messages, making the DB
+      // migration WARNING effectively silent in `framework gate check`.
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
+      fs.writeFileSync(path.join(tmpDir, "docker-compose.yml"), "", "utf-8");
+      // No migrations dir → DB migration check should emit WARNING
+
+      const output: string[] = [];
+      const io = { print: (line: string) => output.push(line) };
+      checkSingleGate(tmpDir, "A", io, "api");
+
+      const joined = output.join("\n");
+      expect(joined).toMatch(/⚠️/);
+      expect(joined).toMatch(/Database migrations directory/);
+      expect(joined).toMatch(/WARNING/);
+      expect(joined).toMatch(/non-blocking/);
+    });
+
     it("accepts various migrations directory layouts", () => {
       writeBasicProject(tmpDir);
       fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");

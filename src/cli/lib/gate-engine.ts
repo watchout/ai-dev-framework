@@ -684,9 +684,11 @@ function isSectionEmpty(content: string, sectionId: string): boolean {
 function printChecks(io: GateIO | undefined, checks: GateCheck[]): void {
   if (!io) return;
   for (const check of checks) {
-    const icon = check.passed ? "  ✅" : "  ❌";
+    const isWarning =
+      check.passed && check.message.startsWith("WARNING");
+    const icon = !check.passed ? "  ❌" : isWarning ? "  ⚠️ " : "  ✅";
     io.print(`${icon} ${check.name}`);
-    if (!check.passed) {
+    if (!check.passed || isWarning) {
       io.print(`     → ${check.message}`);
     }
   }
