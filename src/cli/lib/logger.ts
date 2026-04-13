@@ -13,13 +13,26 @@ function colorize(color: keyof typeof COLORS, text: string): string {
   return `${COLORS[color]}${text}${COLORS.reset}`;
 }
 
+// When structured output (e.g., --output json) is active, all informational
+// logs must go to stderr so stdout stays reserved for machine-readable output.
+let stdoutSink: NodeJS.WritableStream = process.stdout;
+
+/** Redirect human-readable logs to stderr. Returns a restore fn. */
+export function redirectInfoToStderr(): () => void {
+  const prev = stdoutSink;
+  stdoutSink = process.stderr;
+  return () => {
+    stdoutSink = prev;
+  };
+}
+
 export const logger = {
   info(message: string): void {
-    process.stdout.write(`${message}\n`);
+    stdoutSink.write(`${message}\n`);
   },
 
   success(message: string): void {
-    process.stdout.write(`${colorize("green", "+")} ${message}\n`);
+    stdoutSink.write(`${colorize("green", "+")} ${message}\n`);
   },
 
   warn(message: string): void {
@@ -33,22 +46,22 @@ export const logger = {
   },
 
   step(current: number, total: number, message: string): void {
-    process.stdout.write(
+    stdoutSink.write(
       `${colorize("dim", `[${current}/${total}]`)} ${message}\n`,
     );
   },
 
   header(message: string): void {
-    process.stdout.write(`\n${colorize("bold", message)}\n`);
+    stdoutSink.write(`\n${colorize("bold", message)}\n`);
   },
 
   dim(message: string): void {
-    process.stdout.write(`${colorize("dim", message)}\n`);
+    stdoutSink.write(`${colorize("dim", message)}\n`);
   },
 
   tree(lines: string[]): void {
     for (const line of lines) {
-      process.stdout.write(`  ${line}\n`);
+      stdoutSink.write(`  ${line}\n`);
     }
   },
 };

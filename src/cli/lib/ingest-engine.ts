@@ -14,7 +14,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { spawn, execFileSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import {
   type IngestState,
   type IngestDocument,
@@ -126,38 +126,31 @@ async function defaultClaudeRunner(
   prompt: string,
   timeoutMs: number,
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const proc = spawn("claude", ["-p", prompt, "--output-format", "json"], {
-      timeout: timeoutMs,
-      stdio: ["pipe", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1",
-      },
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    proc.stdout.on("data", (data: Buffer) => { stdout += data.toString(); });
-    proc.stderr.on("data", (data: Buffer) => { stderr += data.toString(); });
-
-    proc.on("close", (code) => {
-      if (code === 0 || stdout.length > 0) {
-        // Extract the result text from JSON output format
-        try {
-          const parsed = JSON.parse(stdout) as { result?: string };
-          resolve(parsed.result ?? stdout);
-        } catch {
-          resolve(stdout);
-        }
-      } else {
-        reject(new Error(`Claude exited with code ${code}: ${stderr.slice(0, 500)}`));
-      }
-    });
-
-    proc.on("error", reject);
+  const { getProvider, loadProviderConfig, spawnProvider } = await import(
+    "./llm-provider.js"
+  );
+  const config = loadProviderConfig(process.cwd());
+  const provider = getProvider("ingestion", config);
+  const result = await spawnProvider(provider, prompt, {
+    outputFormat: "json",
+    experimentalAgentTeams: true,
+    timeoutMs,
   });
+  if (result.code !== 0 && result.stdout.length === 0) {
+    throw new Error(
+      `Provider "${provider.name}" exited with code ${result.code}: ${result.stderr.slice(0, 500)}`,
+    );
+  }
+  // Claude's --output-format json wraps result in {result: "..."}; codex doesn't.
+  if (provider.name === "claude") {
+    try {
+      const parsed = JSON.parse(result.stdout) as { result?: string };
+      return parsed.result ?? result.stdout;
+    } catch {
+      return result.stdout;
+    }
+  }
+  return result.stdout;
 }
 
 export function setClaudeRunner(runner: ClaudeRunner): () => void {

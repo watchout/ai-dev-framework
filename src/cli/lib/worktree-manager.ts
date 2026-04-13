@@ -6,7 +6,12 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { execSync, spawn, type ChildProcess } from "node:child_process";
+import { execSync, type ChildProcess } from "node:child_process";
+import {
+  createProviderProcess,
+  getProvider,
+  loadProviderConfig,
+} from "./llm-provider.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -437,15 +442,11 @@ async function runTaskInWorktree(
   const prompt = `Implement task: ${session.taskId}. Follow the implementation plan in .framework/plan.json. Run tests after implementation.`;
 
   return new Promise<void>((resolve, reject) => {
-    const child: ChildProcess = spawn(
-      "claude",
-      ["-p", prompt],
-      {
-        cwd: session.worktreePath,
-        stdio: ["pipe", "pipe", "pipe"],
-        env: { ...process.env },
-      },
-    );
+    const providerConfig = loadProviderConfig(session.worktreePath);
+    const provider = getProvider("worktree", providerConfig);
+    const child: ChildProcess = createProviderProcess(provider, prompt, {
+      cwd: session.worktreePath,
+    });
 
     session.pid = child.pid;
     let timedOut = false;

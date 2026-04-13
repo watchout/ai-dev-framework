@@ -10,7 +10,12 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { execSync, type ExecSyncOptions } from "node:child_process";
+import { execSync } from "node:child_process";
+import {
+  executeWithProvider,
+  getProvider,
+  loadProviderConfig,
+} from "./llm-provider.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -216,21 +221,14 @@ export async function executeRemediation(
     // Ignore diff errors
   }
 
-  // Execute remediation via claude -p
-  const execOpts: ExecSyncOptions = {
-    cwd: projectDir,
-    encoding: "utf-8" as const,
-    timeout: timeout * 1000,
-    maxBuffer: 10 * 1024 * 1024,
-    stdio: ["pipe", "pipe", "pipe"],
-  };
-
+  // Execute remediation via configured LLM provider
   try {
-    const promptContent = instruction.instruction.replace(/'/g, "'\\''");
-    execSync(
-      `claude -p '${promptContent}'`,
-      execOpts,
-    );
+    const providerConfig = loadProviderConfig(projectDir);
+    const provider = getProvider("remediation", providerConfig);
+    await executeWithProvider(provider, instruction.instruction, {
+      cwd: projectDir,
+      timeoutMs: timeout * 1000,
+    });
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     if (errMsg.includes("TIMEOUT") || errMsg.includes("timed out")) {

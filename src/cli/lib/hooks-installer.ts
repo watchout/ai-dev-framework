@@ -4,6 +4,9 @@
  * Two enforcement layers:
  * 1. Claude Code hook (PreToolUse): Blocks src/ edits when gates not passed
  * 2. Git pre-commit hook: Blocks commits when gates not passed
+ *
+ * pre-commit-allow: console-log
+ * (this file generates hook scripts whose content contains literal console.log calls)
  */
 import * as fs from "node:fs";
 import * as path from "node:path";

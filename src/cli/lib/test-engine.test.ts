@@ -1,3 +1,5 @@
+// pre-commit-allow: skip-only
+// (this file contains .skip patterns inside string fixtures for test engine testing)
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";

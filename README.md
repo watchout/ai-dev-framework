@@ -20,6 +20,32 @@ AI駆動の開発フレームワーク。曖昧なプロダクトアイデアか
 ### 前提条件
 - Node.js 18+
 - npm
+- Claude Code CLI (`claude`) **or** Codex CLI (`codex`) — at least one LLM provider required
+
+### LLMプロバイダー設定
+
+`.framework/config.json` の `provider` セクションで切り替えます:
+
+```json
+{
+  "provider": {
+    "default": "claude",
+    "remediation": "claude",
+    "validation": "claude",
+    "ingestion": "claude",
+    "worktree": "claude"
+  }
+}
+```
+
+- `default`: 全般デフォルト
+- `remediation`: 自動修正（Gate BLOCK後）
+- `validation`: Validator実行（Gate 2）
+- `ingestion`: 設計書取り込み（`framework ingest`）
+- `worktree`: 並列タスク実行
+
+設定ファイルがない場合、`claude` → `codex` の優先順で自動検出します。
+利用可能なプロバイダー: `claude`, `codex`。
 
 ### インストール
 ```bash

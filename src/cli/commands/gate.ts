@@ -47,6 +47,11 @@ import {
   runQualitySweep,
   formatSweepOutput,
 } from "../lib/gate-quality-engine.js";
+import {
+  qualitySweepToJSON,
+  buildGateContextJSON,
+} from "../lib/gate-json-output.js";
+import { loadProviderConfig } from "../lib/llm-provider.js";
 
 export function registerGateCommand(program: Command): void {
   const gate = program
@@ -458,9 +463,16 @@ ${contextBody}
     .option("--branch <branch>", "Branch to diff against", "main")
     .option("--auto-fix", "Auto-remediate BLOCK findings (opt-in)")
     .option("--max-retries <n>", "Max auto-fix retries (default: 2, hard limit: 3)", "2")
+    .option("--output <format>", "Output format (text|json). When json, stdout=JSON, stderr=logs.", "text")
     .action(
-      async (options: { branch: string; autoFix?: boolean; maxRetries?: string }) => {
+      async (options: { branch: string; autoFix?: boolean; maxRetries?: string; output?: string }) => {
         const projectDir = process.cwd();
+        const jsonMode = options.output === "json";
+        let restoreLogger: (() => void) | undefined;
+        if (jsonMode) {
+          const { redirectInfoToStderr } = await import("../lib/logger.js");
+          restoreLogger = redirectInfoToStderr();
+        }
 
         logger.header("Gate 3 — Adversarial Review Context Collection");
         logger.info("");
@@ -585,6 +597,23 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
             logger.info("  After BLOCK verdict, auto-remediation will execute.");
           }
           logger.info("");
+
+          if (jsonMode) {
+            // Context-collection phase emits GateContextJSON (NO verdict field).
+            // The actual Ship/Block verdict is produced later by the
+            // /gate-release skill, which should emit a separate GateResultJSON.
+            // Emitting a fake "SHIP" here would be dishonest and could be
+            // misread by machine consumers as a real green-light decision.
+            const providerConfig = loadProviderConfig(projectDir);
+            const json = buildGateContextJSON({
+              gate: "release",
+              provider: providerConfig.default,
+              contextPath: ".framework/gate-context/adversarial-review.md",
+              meta: { nextStep: "/gate-release skill (trial structure)" },
+            });
+            process.stdout.write(JSON.stringify(json, null, 2) + "\n");
+            restoreLogger?.();
+          }
         } catch (error) {
           if (error instanceof Error) {
             logger.error(`Gate release error: ${error.message}`);
@@ -606,9 +635,16 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
     .option("--context-only", "Only collect context, skip validator execution")
     .option("--auto-fix", "Auto-remediate BLOCK findings (opt-in)")
     .option("--max-retries <n>", "Max auto-fix retries (default: 2, hard limit: 3)", "2")
+    .option("--output <format>", "Output format (text|json). When json, stdout=JSON, stderr=logs.", "text")
     .action(
-      async (options: { branch: string; phase: string; full?: boolean; sequential?: boolean; timeout?: string; contextOnly?: boolean; autoFix?: boolean; maxRetries?: string }) => {
+      async (options: { branch: string; phase: string; full?: boolean; sequential?: boolean; timeout?: string; contextOnly?: boolean; autoFix?: boolean; maxRetries?: string; output?: string }) => {
         const projectDir = process.cwd();
+        const jsonMode = options.output === "json";
+        let restoreLogger: (() => void) | undefined;
+        if (jsonMode) {
+          const { redirectInfoToStderr } = await import("../lib/logger.js");
+          restoreLogger = redirectInfoToStderr();
+        }
 
         logger.header("Gate 2 — Quality Sweep Context Collection");
         logger.info("");
@@ -734,6 +770,15 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
             timeoutMs: parseInt(options.timeout ?? "120", 10) * 1000,
             warningThreshold,
           });
+
+          if (jsonMode) {
+            const providerConfig = loadProviderConfig(projectDir);
+            const json = qualitySweepToJSON(sweepResult, providerConfig.default);
+            process.stdout.write(JSON.stringify(json, null, 2) + "\n");
+            restoreLogger?.();
+            if (sweepResult.verdict === "BLOCK") process.exit(1);
+            return;
+          }
 
           // Display results
           const output = formatSweepOutput(sweepResult);
