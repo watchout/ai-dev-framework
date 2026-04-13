@@ -19,18 +19,22 @@ import {
 } from "./gate-model.js";
 
 function makeCheck(overrides?: Partial<GateCheck>): GateCheck {
+  const passed = overrides?.passed ?? true;
   return {
     name: "test-check",
-    passed: true,
+    passed,
+    status: passed ? "pass" : "fail",
     message: "Check passed",
     ...overrides,
   };
 }
 
 function makeSSOTCheck(overrides?: Partial<SSOTCheck>): SSOTCheck {
+  const passed = overrides?.passed ?? true;
   return {
     name: "test-ssot-check",
-    passed: true,
+    passed,
+    status: passed ? "pass" : "fail",
     message: "SSOT check passed",
     filePath: "docs/feature.md",
     missingSections: [],

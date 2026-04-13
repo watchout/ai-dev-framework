@@ -24,6 +24,10 @@ import {
   buildAllGatesResult,
   loadGateState,
   saveGateState,
+  passCheck,
+  failCheck,
+  warnCheck,
+  skipCheck,
 } from "./gate-model.js";
 import { loadPlan } from "./plan-model.js";
 import {
@@ -94,19 +98,25 @@ export function checkGateA(
   if (reqs.envExample) {
     const hasEnv = fs.existsSync(path.join(projectDir, ".env"));
     const hasEnvExample = fs.existsSync(path.join(projectDir, ".env.example"));
-    checks.push({
-      name: "Environment config (.env or .env.example)",
-      passed: hasEnv || hasEnvExample,
-      message: hasEnv || hasEnvExample
-        ? "Environment config found"
-        : ".env or .env.example not found. Create environment config.",
-    });
+    const ok = hasEnv || hasEnvExample;
+    checks.push(
+      ok
+        ? passCheck(
+            "Environment config (.env or .env.example)",
+            "Environment config found",
+          )
+        : failCheck(
+            "Environment config (.env or .env.example)",
+            ".env or .env.example not found. Create environment config.",
+          ),
+    );
   } else {
-    checks.push({
-      name: "Environment config (.env or .env.example)",
-      passed: true,
-      message: `Skipped for profile '${effectiveProfile}' (no environment variables expected)`,
-    });
+    checks.push(
+      skipCheck(
+        "Environment config (.env or .env.example)",
+        `Skipped for profile '${effectiveProfile}' (no environment variables expected)`,
+      ),
+    );
   }
 
   // docker-compose — conditional on profile
@@ -116,19 +126,21 @@ export function checkGateA(
       fs.existsSync(path.join(projectDir, "docker-compose.yaml")) ||
       fs.existsSync(path.join(projectDir, "compose.yml")) ||
       fs.existsSync(path.join(projectDir, "compose.yaml"));
-    checks.push({
-      name: "Docker Compose config",
-      passed: hasDockerCompose,
-      message: hasDockerCompose
-        ? "Docker Compose config found"
-        : "docker-compose.yml not found. DB/Redis may not be available.",
-    });
+    checks.push(
+      hasDockerCompose
+        ? passCheck("Docker Compose config", "Docker Compose config found")
+        : failCheck(
+            "Docker Compose config",
+            "docker-compose.yml not found. DB/Redis may not be available.",
+          ),
+    );
   } else {
-    checks.push({
-      name: "Docker Compose config",
-      passed: true,
-      message: `Skipped for profile '${effectiveProfile}' (no local infra services required)`,
-    });
+    checks.push(
+      skipCheck(
+        "Docker Compose config",
+        `Skipped for profile '${effectiveProfile}' (no local infra services required)`,
+      ),
+    );
   }
 
   // DB migration — conditional on profile. Accepts any of the common layouts.
@@ -148,19 +160,24 @@ export function checkGateA(
       fs.existsSync(path.join(projectDir, "db/migrations")) ||
       fs.existsSync(path.join(projectDir, "supabase/migrations")) ||
       fs.existsSync(path.join(projectDir, "drizzle"));
-    checks.push({
-      name: "Database migrations directory",
-      passed: true,
-      message: hasMigrations
-        ? "Migrations directory found"
-        : "WARNING: No migrations directory found (prisma/migrations, migrations/, db/migrations/, supabase/migrations/, or drizzle/). Consider adding one. (non-blocking pending framework-wide audit)",
-    });
+    checks.push(
+      hasMigrations
+        ? passCheck(
+            "Database migrations directory",
+            "Migrations directory found",
+          )
+        : warnCheck(
+            "Database migrations directory",
+            "WARNING: No migrations directory found (prisma/migrations, migrations/, db/migrations/, supabase/migrations/, or drizzle/). Consider adding one. (non-blocking pending framework-wide audit)",
+          ),
+    );
   } else {
-    checks.push({
-      name: "Database migrations directory",
-      passed: true,
-      message: `Skipped for profile '${effectiveProfile}' (no database expected)`,
-    });
+    checks.push(
+      skipCheck(
+        "Database migrations directory",
+        `Skipped for profile '${effectiveProfile}' (no database expected)`,
+      ),
+    );
   }
 
   // CI config — required for ALL profiles per CEO-approved matrix
@@ -169,20 +186,25 @@ export function checkGateA(
       fs.existsSync(path.join(projectDir, ".github/workflows")) ||
       fs.existsSync(path.join(projectDir, ".github/workflows/ci.yml")) ||
       fs.existsSync(path.join(projectDir, ".github/workflows/ci.yaml"));
-    checks.push({
-      name: "CI configuration (.github/workflows/)",
-      passed: hasCIConfig,
-      message: hasCIConfig
-        ? "CI configuration found"
-        : ".github/workflows/ not found. Run 'framework ci' to set up CI.",
-    });
+    checks.push(
+      hasCIConfig
+        ? passCheck(
+            "CI configuration (.github/workflows/)",
+            "CI configuration found",
+          )
+        : failCheck(
+            "CI configuration (.github/workflows/)",
+            ".github/workflows/ not found. Run 'framework ci' to set up CI.",
+          ),
+    );
   } else {
     // Reserved for future profiles; no current profile skips CI.
-    checks.push({
-      name: "CI configuration (.github/workflows/)",
-      passed: true,
-      message: `Skipped for profile '${effectiveProfile}'`,
-    });
+    checks.push(
+      skipCheck(
+        "CI configuration (.github/workflows/)",
+        `Skipped for profile '${effectiveProfile}'`,
+      ),
+    );
   }
 
   // .framework/ directory — required for ALL profiles
@@ -208,13 +230,17 @@ export function checkGateB(projectDir: string): GateCheck[] {
 
   // Check .framework/plan.json exists
   const plan = loadPlan(projectDir);
-  checks.push({
-    name: "Implementation plan (.framework/plan.json)",
-    passed: plan !== null,
-    message: plan !== null
-      ? `Plan found: ${plan.waves.length} waves, status=${plan.status}`
-      : "No plan found. Run 'framework plan' to generate.",
-  });
+  checks.push(
+    plan !== null
+      ? passCheck(
+          "Implementation plan (.framework/plan.json)",
+          `Plan found: ${plan.waves.length} waves, status=${plan.status}`,
+        )
+      : failCheck(
+          "Implementation plan (.framework/plan.json)",
+          "No plan found. Run 'framework plan' to generate.",
+        ),
+  );
 
   // Check plan has waves/features
   if (plan) {
@@ -222,34 +248,43 @@ export function checkGateB(projectDir: string): GateCheck[] {
       (sum, w) => sum + w.features.length,
       0,
     );
-    checks.push({
-      name: "Plan contains features",
-      passed: totalFeatures > 0,
-      message: totalFeatures > 0
-        ? `${totalFeatures} features across ${plan.waves.length} waves`
-        : "Plan has no features. Re-run 'framework plan'.",
-    });
+    checks.push(
+      totalFeatures > 0
+        ? passCheck(
+            "Plan contains features",
+            `${totalFeatures} features across ${plan.waves.length} waves`,
+          )
+        : failCheck(
+            "Plan contains features",
+            "Plan has no features. Re-run 'framework plan'.",
+          ),
+    );
   } else {
-    checks.push({
-      name: "Plan contains features",
-      passed: false,
-      message: "Cannot check features — no plan exists.",
-    });
+    checks.push(
+      failCheck(
+        "Plan contains features",
+        "Cannot check features — no plan exists.",
+      ),
+    );
   }
 
   // Check .framework/project.json exists (profile configured)
   const hasProject = fs.existsSync(
     path.join(projectDir, ".framework/project.json"),
   );
-  checks.push({
-    name: "Project profile configured (.framework/project.json)",
-    passed: hasProject,
-    message: hasProject
-      ? "Project profile found"
-      : "No project profile. Run 'framework retrofit' again to generate .framework/project.json.",
-  });
+  checks.push(
+    hasProject
+      ? passCheck(
+          "Project profile configured (.framework/project.json)",
+          "Project profile found",
+        )
+      : failCheck(
+          "Project profile configured (.framework/project.json)",
+          "No project profile. Run 'framework retrofit' again to generate .framework/project.json.",
+        ),
+  );
 
-  // Check GitHub Issues sync (informational — does not fail Gate B)
+  // Check GitHub Issues sync (advisory — does not fail Gate B)
   const syncState = loadSyncState(projectDir);
   if (syncState && plan) {
     const totalFeatures = plan.waves.reduce(
@@ -257,13 +292,17 @@ export function checkGateB(projectDir: string): GateCheck[] {
       0,
     );
     const syncedFeatures = syncState.featureIssues.length;
-    checks.push({
-      name: "GitHub Issues synced (informational)",
-      passed: true, // Always passes — informational only
-      message: syncedFeatures >= totalFeatures
-        ? `All ${syncedFeatures} features synced to GitHub Issues`
-        : `${syncedFeatures}/${totalFeatures} features synced. Run 'framework plan --sync' to sync remaining.`,
-    });
+    checks.push(
+      syncedFeatures >= totalFeatures
+        ? passCheck(
+            "GitHub Issues synced (informational)",
+            `All ${syncedFeatures} features synced to GitHub Issues`,
+          )
+        : warnCheck(
+            "GitHub Issues synced (informational)",
+            `${syncedFeatures}/${totalFeatures} features synced. Run 'framework plan --sync' to sync remaining.`,
+          ),
+    );
   }
 
   return checks;
@@ -313,6 +352,7 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
     checks.push({
       name: "Gate C (profile: " + profileType + ")",
       passed: true,
+      status: "pass",
       message: `Profile '${profileType}' does not require feature spec completeness. Gate C auto-passed.`,
       filePath: "",
       missingSections: [],
@@ -327,6 +367,7 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
     checks.push({
       name: "Gate C (new-format SSOT-0~5)",
       passed: true,
+      status: "pass",
       message: `New-format SSOT detected (${newFormatFiles.length} files: ${fileList.join(", ")}). Gate C auto-passed.`,
       filePath: "",
       missingSections: [],
@@ -343,6 +384,7 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
     checks.push({
       name: "SSOT files found",
       passed: false,
+      status: "fail",
       message: "No SSOT feature spec files found in docs/. Create feature specifications first.",
       filePath: "",
       missingSections: [],
@@ -374,6 +416,7 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
     checks.push({
       name: `${relativePath}`,
       passed,
+      status: passed ? "pass" : "fail",
       message: passed
         ? `${relativePath}: All required sections present`
         : `${relativePath}: Missing ${missingSections.join(", ")}`,
@@ -473,11 +516,9 @@ function checkFileExists(
   failMessage: string,
 ): GateCheck {
   const exists = fs.existsSync(path.join(projectDir, relativePath));
-  return {
-    name,
-    passed: exists,
-    message: exists ? `${name}: found` : failMessage,
-  };
+  return exists
+    ? passCheck(name, `${name}: found`)
+    : failCheck(name, failMessage);
 }
 
 function checkDirExists(
@@ -488,11 +529,9 @@ function checkDirExists(
 ): GateCheck {
   const dirPath = path.join(projectDir, relativePath);
   const exists = fs.existsSync(dirPath) && fs.statSync(dirPath).isDirectory();
-  return {
-    name,
-    passed: exists,
-    message: exists ? `${name}: found` : failMessage,
-  };
+  return exists
+    ? passCheck(name, `${name}: found`)
+    : failCheck(name, failMessage);
 }
 
 /** Pattern matching new-format SSOT file names (SSOT-0 through SSOT-5) */
@@ -684,12 +723,25 @@ function isSectionEmpty(content: string, sectionId: string): boolean {
 function printChecks(io: GateIO | undefined, checks: GateCheck[]): void {
   if (!io) return;
   for (const check of checks) {
-    const isWarning =
-      check.passed && check.message.startsWith("WARNING");
-    const icon = !check.passed ? "  ❌" : isWarning ? "  ⚠️ " : "  ✅";
+    const icon = iconFor(check.status);
     io.print(`${icon} ${check.name}`);
-    if (!check.passed || isWarning) {
+    // Surface reason for anything that isn't a clean pass, so warnings
+    // and skip reasons are visible (not silent).
+    if (check.status !== "pass") {
       io.print(`     → ${check.message}`);
     }
+  }
+}
+
+function iconFor(status: GateCheck["status"]): string {
+  switch (status) {
+    case "fail":
+      return "  ❌";
+    case "warning":
+      return "  ⚠️ ";
+    case "skip":
+      return "  ⏭️ ";
+    case "pass":
+      return "  ✅";
   }
 }

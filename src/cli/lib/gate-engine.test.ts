@@ -719,6 +719,92 @@ describe("gate-engine", () => {
       expect(docker?.message).toMatch(/Skipped for profile 'cli'/);
     });
 
+    it("DB migration emits status=warning (data-layer, not just string prefix)", () => {
+      // Regression guard for codex-auditor PR #54 cycle 3 finding:
+      // WARNING must be represented as a structured enum on the check,
+      // not only as a message prefix. This lets JSON consumers /
+      // gate-state aggregators distinguish warnings from clean passes.
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
+      fs.writeFileSync(path.join(tmpDir, "docker-compose.yml"), "", "utf-8");
+      // No migrations dir
+
+      const checks = checkGateA(tmpDir, "api");
+      const db = checks.find(
+        (c) => c.name === "Database migrations directory",
+      );
+      expect(db?.passed).toBe(true);
+      expect(db?.status).toBe("warning");
+    });
+
+    it("DB migration emits status=pass when migrations exist", () => {
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
+      fs.writeFileSync(path.join(tmpDir, "docker-compose.yml"), "", "utf-8");
+      fs.mkdirSync(path.join(tmpDir, "prisma/migrations"), { recursive: true });
+
+      const checks = checkGateA(tmpDir, "api");
+      const db = checks.find(
+        (c) => c.name === "Database migrations directory",
+      );
+      expect(db?.status).toBe("pass");
+    });
+
+    it("persisted gates.json retains per-check status enum", () => {
+      writeBasicProject(tmpDir);
+      fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
+      fs.writeFileSync(path.join(tmpDir, "docker-compose.yml"), "", "utf-8");
+      // No migrations → warning
+
+      checkSingleGate(tmpDir, "A", undefined, "api");
+      const loaded = loadGateState(tmpDir);
+      const db = loaded!.gateA.checks.find(
+        (c) => c.name === "Database migrations directory",
+      );
+      expect(db?.status).toBe("warning");
+      // Gate A itself is still "passed" — warnings are non-blocking
+      expect(loaded!.gateA.status).toBe("passed");
+    });
+
+    it("failing check emits status=fail", () => {
+      // No package.json → fail
+      const checks = checkGateA(tmpDir);
+      const pkg = checks.find((c) => c.name === "package.json exists");
+      expect(pkg?.passed).toBe(false);
+      expect(pkg?.status).toBe("fail");
+    });
+
+    it("profile-skipped checks emit status=skip (data-layer), not silent pass", () => {
+      // Regression guard for codex-auditor PR #54 cycle 4 finding:
+      // "Skipped for profile ..." entries were previously emitted as
+      // status=pass, leaving skip indistinguishable from a real pass
+      // in any state consumer that isn't the print formatter.
+      writeBasicProject(tmpDir);
+      const checks = checkGateA(tmpDir, "cli");
+      const docker = checks.find((c) => c.name === "Docker Compose config");
+      const db = checks.find(
+        (c) => c.name === "Database migrations directory",
+      );
+      const envCfg = checks.find(
+        (c) => c.name === "Environment config (.env or .env.example)",
+      );
+      expect(docker?.status).toBe("skip");
+      expect(db?.status).toBe("skip");
+      expect(envCfg?.status).toBe("skip");
+    });
+
+    it("skipped checks are visible in print output with reason", () => {
+      // Companion to cycle 4 finding: the CLI MUST surface skip reasons,
+      // otherwise the PR-body claim "skipped entry is emitted" is a lie.
+      writeBasicProject(tmpDir);
+      const output: string[] = [];
+      const io = { print: (line: string) => output.push(line) };
+      checkSingleGate(tmpDir, "A", io, "cli");
+      const joined = output.join("\n");
+      expect(joined).toMatch(/⏭️/);
+      expect(joined).toMatch(/Skipped for profile 'cli'/);
+    });
+
     it("WARNING checks are visible in print output (not silent pass)", async () => {
       // Regression guard for codex-auditor PR #54 cycle 2 finding:
       // printChecks was hiding passed:true messages, making the DB

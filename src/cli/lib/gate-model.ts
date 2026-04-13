@@ -19,10 +19,56 @@ import * as path from "node:path";
 export type GateId = "A" | "B" | "C";
 export type GateStatus = "passed" | "failed" | "pending";
 
+/**
+ * Per-check status. Distinct from `GateStatus` (which aggregates a whole gate).
+ *
+ * Four kinds — this is the SSOT for check severity across engine, state, and display:
+ *
+ * - "pass":    check succeeded
+ * - "warning": advisory; does NOT fail the gate (e.g. missing DB migrations,
+ *              per CEO 2026-04-13 directive — non-blocking pending audit)
+ * - "skip":    check is not applicable to the active profile; not an evaluation
+ *              result. Emitted with a human-readable reason for observability.
+ * - "fail":    blocks the gate
+ *
+ * `passed` is retained as a boolean convenience mirror:
+ *   passed === (status !== "fail")
+ * Warning / skip carry `passed: true` so gate aggregation (areAllGatesPassed /
+ * updateGateA/B/C) stays non-blocking, while the status enum lets display,
+ * persistence, and downstream aggregators distinguish each kind without
+ * parsing message strings.
+ */
+export type CheckStatus = "pass" | "warning" | "skip" | "fail";
+
 export interface GateCheck {
   name: string;
   passed: boolean;
+  status: CheckStatus;
   message: string;
+}
+
+export function passCheck(name: string, message: string): GateCheck {
+  return { name, passed: true, status: "pass", message };
+}
+
+export function failCheck(name: string, message: string): GateCheck {
+  return { name, passed: false, status: "fail", message };
+}
+
+export function warnCheck(name: string, message: string): GateCheck {
+  return { name, passed: true, status: "warning", message };
+}
+
+export function skipCheck(name: string, reason: string): GateCheck {
+  return { name, passed: true, status: "skip", message: reason };
+}
+
+export function isWarning(check: GateCheck): boolean {
+  return check.status === "warning";
+}
+
+export function isSkipped(check: GateCheck): boolean {
+  return check.status === "skip";
 }
 
 export interface SSOTCheck extends GateCheck {
