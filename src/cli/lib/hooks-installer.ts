@@ -7,6 +7,11 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+
+// ESM __dirname shim (this module runs as ESM under NodeNext).
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ─────────────────────────────────────────────
 // Constants
