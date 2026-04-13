@@ -21,9 +21,17 @@ describe("profile-model", () => {
   // ─────────────────────────────────────────────
 
   describe("PROFILE_TYPES", () => {
-    it("contains exactly 5 types", () => {
-      expect(PROFILE_TYPES).toHaveLength(5);
-      expect(PROFILE_TYPES).toEqual(["app", "lp", "hp", "api", "cli"]);
+    it("contains exactly 7 types", () => {
+      expect(PROFILE_TYPES).toHaveLength(7);
+      expect(PROFILE_TYPES).toEqual([
+        "app",
+        "lp",
+        "hp",
+        "api",
+        "cli",
+        "mcp-server",
+        "library",
+      ]);
     });
   });
 

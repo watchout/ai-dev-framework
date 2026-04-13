@@ -28,7 +28,15 @@ import {
   type SSOTGateEntry,
 } from "../lib/gate-model.js";
 import { scaffoldGateCsections } from "../lib/gate-scaffold.js";
-import { loadProjectProfile } from "../lib/profile-model.js";
+import {
+  loadProjectProfile,
+  PROFILE_TYPES,
+  isValidProfileType,
+  type ProfileType,
+} from "../lib/profile-model.js";
+
+const PROFILE_HELP = `Project profile (${PROFILE_TYPES.join("|")}). Overrides .framework/project.json. Affects Gate A requirements.`;
+const PROFILE_VALID_LIST = PROFILE_TYPES.join(", ");
 import { logger } from "../lib/logger.js";
 import {
   runGateDVerify,
@@ -49,10 +57,19 @@ export function registerGateCommand(program: Command): void {
   gate
     .command("check")
     .description("Run all gate checks (A, B, C)")
-    .action(async () => {
+    .option("--profile <type>", PROFILE_HELP)
+    .action(async (options: { profile?: string }) => {
       const projectDir = process.cwd();
 
       try {
+        if (options.profile && !isValidProfileType(options.profile)) {
+          logger.error(
+            `Invalid --profile value: "${options.profile}". Valid: ${PROFILE_VALID_LIST}.`,
+          );
+          process.exit(1);
+        }
+        const profile = options.profile as ProfileType | undefined;
+
         const io = createGateTerminalIO();
 
         io.print("");
@@ -60,7 +77,7 @@ export function registerGateCommand(program: Command): void {
         io.print("  PRE-CODE GATE CHECK");
         io.print("━".repeat(42));
 
-        const result = checkAllGates(projectDir, io);
+        const result = checkAllGates(projectDir, io, profile);
 
         io.print("");
         io.print("━".repeat(42));
@@ -96,8 +113,15 @@ export function registerGateCommand(program: Command): void {
   gate
     .command("check-a")
     .description("Run Gate A only (environment readiness)")
-    .action(async () => {
-      runSingleGateCheck("A");
+    .option("--profile <type>", PROFILE_HELP)
+    .action(async (options: { profile?: string }) => {
+      if (options.profile && !isValidProfileType(options.profile)) {
+        logger.error(
+          `Invalid --profile value: "${options.profile}". Valid: ${PROFILE_VALID_LIST}.`,
+        );
+        process.exit(1);
+      }
+      runSingleGateCheck("A", options.profile as ProfileType | undefined);
     });
 
   // framework gate check-b
@@ -784,7 +808,10 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
 // Helpers
 // ─────────────────────────────────────────────
 
-function runSingleGateCheck(gateId: "A" | "B" | "C"): void {
+function runSingleGateCheck(
+  gateId: "A" | "B" | "C",
+  profile?: ProfileType,
+): void {
   const projectDir = process.cwd();
 
   try {
@@ -800,7 +827,7 @@ function runSingleGateCheck(gateId: "A" | "B" | "C"): void {
     io.print(`  GATE ${gateId}: ${gateLabels[gateId]}`);
     io.print("━".repeat(42));
 
-    const result = checkSingleGate(projectDir, gateId, io);
+    const result = checkSingleGate(projectDir, gateId, io, profile);
     io.print("");
 
     const gateEntry =

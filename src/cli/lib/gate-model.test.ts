@@ -19,18 +19,22 @@ import {
 } from "./gate-model.js";
 
 function makeCheck(overrides?: Partial<GateCheck>): GateCheck {
+  const passed = overrides?.passed ?? true;
   return {
     name: "test-check",
-    passed: true,
+    passed,
+    status: passed ? "pass" : "fail",
     message: "Check passed",
     ...overrides,
   };
 }
 
 function makeSSOTCheck(overrides?: Partial<SSOTCheck>): SSOTCheck {
+  const passed = overrides?.passed ?? true;
   return {
     name: "test-ssot-check",
-    passed: true,
+    passed,
+    status: passed ? "pass" : "fail",
     message: "SSOT check passed",
     filePath: "docs/feature.md",
     missingSections: [],
@@ -243,6 +247,36 @@ describe("gate-model", () => {
       expect(loaded!.gateA.status).toBe("passed");
       expect(loaded!.gateB.status).toBe("failed");
       expect(loaded!.gateC.status).toBe("pending");
+    });
+
+    it("migrates legacy gates.json without per-check status", () => {
+      // Regression guard for codex-auditor PR #54 cycle 5:
+      // Pre-CheckStatus gates.json stored only `passed`. loadGateState must
+      // synthesize `status` so downstream consumers can safely switch on it.
+      const frameworkDir = path.join(tmpDir, ".framework");
+      fs.mkdirSync(frameworkDir, { recursive: true });
+      const legacy = {
+        gateA: {
+          status: "failed",
+          checkedAt: "2024-01-01",
+          checks: [
+            { name: "pkg", passed: true, message: "found" },
+            { name: "env", passed: false, message: "missing" },
+          ],
+        },
+        gateB: { status: "pending", checks: [], checkedAt: "2024-01-01" },
+        gateC: { status: "pending", checks: [], checkedAt: "2024-01-01" },
+        updatedAt: "2024-01-01",
+      };
+      fs.writeFileSync(
+        path.join(frameworkDir, "gates.json"),
+        JSON.stringify(legacy),
+        "utf-8",
+      );
+
+      const loaded = loadGateState(tmpDir)!;
+      expect(loaded.gateA.checks[0].status).toBe("pass");
+      expect(loaded.gateA.checks[1].status).toBe("fail");
     });
 
     it("returns null when no state file", () => {
