@@ -132,6 +132,15 @@ export function checkGateA(
   }
 
   // DB migration — conditional on profile. Accepts any of the common layouts.
+  //
+  // Policy (CEO 2026-04-13 directive): for profiles where DB is expected
+  // (app/api/lp/hp), a missing migrations directory emits a **WARNING only**
+  // (passed: true) rather than failing Gate A. Rationale: existing adopter
+  // repos (hotel-kanri, haishin-puls-hub, etc.) have not been verified to
+  // conform to the canonical layouts; failing them unannounced is the same
+  // class of breaking change as PR #164 (S2-A fallback removal). The check
+  // will be promoted to required in a follow-up PR after all adopters are
+  // audited and migrated.
   if (reqs.dbMigration) {
     const hasMigrations =
       fs.existsSync(path.join(projectDir, "prisma/migrations")) ||
@@ -141,10 +150,10 @@ export function checkGateA(
       fs.existsSync(path.join(projectDir, "drizzle"));
     checks.push({
       name: "Database migrations directory",
-      passed: hasMigrations,
+      passed: true,
       message: hasMigrations
         ? "Migrations directory found"
-        : "No migrations directory found (prisma/migrations, migrations/, db/migrations/, supabase/migrations/, or drizzle/).",
+        : "WARNING: No migrations directory found (prisma/migrations, migrations/, db/migrations/, supabase/migrations/, or drizzle/). Consider adding one. (non-blocking pending framework-wide audit)",
     });
   } else {
     checks.push({

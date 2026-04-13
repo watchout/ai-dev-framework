@@ -23,12 +23,26 @@ describe("gate-engine", () => {
   });
 
   describe("checkGateA", () => {
-    it("fails when no files exist", () => {
+    it("fails when no files exist (except DB migration which is WARNING-only)", () => {
       const checks = checkGateA(tmpDir);
       expect(checks.length).toBeGreaterThan(0);
-      const passed = checks.filter((c) => c.passed);
-      // Nothing should pass in an empty directory
-      expect(passed.length).toBe(0);
+      // Hard-required checks must fail
+      const pkg = checks.find((c) => c.name === "package.json exists");
+      const nodeModules = checks.find(
+        (c) => c.name === "Dependencies installed (node_modules/)",
+      );
+      const envCfg = checks.find(
+        (c) => c.name === "Environment config (.env or .env.example)",
+      );
+      expect(pkg?.passed).toBe(false);
+      expect(nodeModules?.passed).toBe(false);
+      expect(envCfg?.passed).toBe(false);
+      // DB migration passes with WARNING per CEO 2026-04-13 directive
+      const db = checks.find(
+        (c) => c.name === "Database migrations directory",
+      );
+      expect(db?.passed).toBe(true);
+      expect(db?.message).toMatch(/WARNING/);
     });
 
     it("passes package.json check when file exists", () => {
@@ -638,7 +652,7 @@ describe("gate-engine", () => {
       expect(envExample?.passed).toBe(true);
     });
 
-    it("api profile: docker-compose + DB migration required (fails when absent)", () => {
+    it("api profile: docker-compose required (fails when absent), DB migration warns only (non-blocking)", () => {
       writeBasicProject(tmpDir);
       fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
 
@@ -648,7 +662,10 @@ describe("gate-engine", () => {
         c.name === "Database migrations directory",
       );
       expect(docker?.passed).toBe(false);
-      expect(db?.passed).toBe(false);
+      // CEO 2026-04-13 directive: DB migration missing is WARNING, not failure.
+      expect(db?.passed).toBe(true);
+      expect(db?.message).toMatch(/WARNING/);
+      expect(db?.message).toMatch(/non-blocking/);
     });
 
     it("api profile: passes when docker-compose + migrations exist", () => {
