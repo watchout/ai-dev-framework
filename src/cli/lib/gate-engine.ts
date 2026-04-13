@@ -739,7 +739,7 @@ function iconFor(status: GateCheck["status"]): string {
       return "  ❌";
     case "warning":
       return "  ⚠️ ";
-    case "skip":
+    case "skipped":
       return "  ⏭️ ";
     case "pass":
       return "  ✅";

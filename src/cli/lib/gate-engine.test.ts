@@ -788,9 +788,9 @@ describe("gate-engine", () => {
       const envCfg = checks.find(
         (c) => c.name === "Environment config (.env or .env.example)",
       );
-      expect(docker?.status).toBe("skip");
-      expect(db?.status).toBe("skip");
-      expect(envCfg?.status).toBe("skip");
+      expect(docker?.status).toBe("skipped");
+      expect(db?.status).toBe("skipped");
+      expect(envCfg?.status).toBe("skipped");
     });
 
     it("skipped checks are visible in print output with reason", () => {

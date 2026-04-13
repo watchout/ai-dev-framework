@@ -27,18 +27,18 @@ export type GateStatus = "passed" | "failed" | "pending";
  * - "pass":    check succeeded
  * - "warning": advisory; does NOT fail the gate (e.g. missing DB migrations,
  *              per CEO 2026-04-13 directive — non-blocking pending audit)
- * - "skip":    check is not applicable to the active profile; not an evaluation
+ * - "skipped": check is not applicable to the active profile; not an evaluation
  *              result. Emitted with a human-readable reason for observability.
  * - "fail":    blocks the gate
  *
  * `passed` is retained as a boolean convenience mirror:
  *   passed === (status !== "fail")
- * Warning / skip carry `passed: true` so gate aggregation (areAllGatesPassed /
+ * Warning / skipped carry `passed: true` so gate aggregation (areAllGatesPassed /
  * updateGateA/B/C) stays non-blocking, while the status enum lets display,
  * persistence, and downstream aggregators distinguish each kind without
  * parsing message strings.
  */
-export type CheckStatus = "pass" | "warning" | "skip" | "fail";
+export type CheckStatus = "pass" | "warning" | "skipped" | "fail";
 
 export interface GateCheck {
   name: string;
@@ -60,7 +60,7 @@ export function warnCheck(name: string, message: string): GateCheck {
 }
 
 export function skipCheck(name: string, reason: string): GateCheck {
-  return { name, passed: true, status: "skip", message: reason };
+  return { name, passed: true, status: "skipped", message: reason };
 }
 
 export function isWarning(check: GateCheck): boolean {
@@ -68,7 +68,7 @@ export function isWarning(check: GateCheck): boolean {
 }
 
 export function isSkipped(check: GateCheck): boolean {
-  return check.status === "skip";
+  return check.status === "skipped";
 }
 
 export interface SSOTCheck extends GateCheck {
@@ -233,9 +233,26 @@ export function loadGateState(
 
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(raw) as GateState;
+    const parsed = JSON.parse(raw) as GateState;
+    // Backward-compat: pre-CheckStatus gates.json stored only `passed`.
+    // Synthesize `status` for any legacy entry so downstream consumers
+    // (print, aggregators, dashboards) can switch on the enum safely.
+    // Old data never encoded warning/skipped, so pass↔fail mirror is sound.
+    migrateLegacyChecks(parsed.gateA?.checks);
+    migrateLegacyChecks(parsed.gateB?.checks);
+    migrateLegacyChecks(parsed.gateC?.checks);
+    return parsed;
   } catch {
     return null;
+  }
+}
+
+function migrateLegacyChecks(checks: GateCheck[] | undefined): void {
+  if (!checks) return;
+  for (const c of checks) {
+    if (c.status === undefined) {
+      c.status = c.passed ? "pass" : "fail";
+    }
   }
 }
 
