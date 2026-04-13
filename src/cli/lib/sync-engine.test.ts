@@ -155,7 +155,7 @@ describe("runSync", () => {
 
     // Mock github-engine
     const ghEngine = await import("./github-engine.js");
-    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(true);
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockResolvedValue(true);
     const syncSpy = vi.spyOn(ghEngine, "syncStatusFromGitHub").mockResolvedValue({
       updated: 1,
       issues: [{ taskId: "F001-T001", issueNumber: 1, status: "closed", labels: [] }],
@@ -181,7 +181,7 @@ describe("runSync", () => {
     atomicWritePlan(dir, makePlan());
 
     const ghEngine = await import("./github-engine.js");
-    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(false);
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockResolvedValue(false);
 
     try {
       const result = await runSync({ projectDir: dir });
@@ -219,7 +219,7 @@ describe("runSync", () => {
     );
 
     const ghEngine = await import("./github-engine.js");
-    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(true);
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockResolvedValue(true);
     const syncSpy = vi.spyOn(ghEngine, "syncStatusFromGitHub").mockResolvedValue({
       updated: 1,
       issues: [{ taskId: "F001-T001", issueNumber: 1, status: "open", labels: [] }],
@@ -245,7 +245,7 @@ describe("runSync", () => {
     atomicWritePlan(dir, makePlan());
 
     const ghEngine = await import("./github-engine.js");
-    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(true);
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockResolvedValue(true);
     const syncSpy = vi.spyOn(ghEngine, "syncStatusFromGitHub").mockResolvedValue({
       updated: 0,
       issues: [],
@@ -267,7 +267,7 @@ describe("runSync", () => {
     atomicWritePlan(dir, makePlan());
 
     const ghEngine = await import("./github-engine.js");
-    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockReturnValue(true);
+    const isGhSpy = vi.spyOn(ghEngine, "isGhAvailable").mockResolvedValue(true);
     const syncSpy = vi.spyOn(ghEngine, "syncStatusFromGitHub").mockRejectedValue(
       new Error("network timeout"),
     );
