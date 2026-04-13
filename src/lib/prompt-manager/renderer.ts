@@ -2,7 +2,7 @@
  * プロンプト変数埋め込みエンジン
  */
 
-import { Variable, RenderRequest, RenderResult, ValidationResult, ValidationError } from './types';
+import { Variable, RenderRequest, RenderResult, ValidationResult, ValidationError } from './types.js';
 
 export class PromptRenderer {
   /**
@@ -16,7 +16,7 @@ export class PromptRenderer {
     // バリデーション
     const validation = this.validateVariables(variables, templateVariables);
     if (!validation.valid) {
-      throw new Error(`Variable validation failed: ${validation.errors.map((e) => e.message).join(', ')}`);
+      throw new Error(`Variable validation failed: ${validation.errors.map((e: ValidationError) => e.message).join(', ')}`);
     }
 
     let rendered = content;

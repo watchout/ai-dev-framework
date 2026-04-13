@@ -11,9 +11,9 @@ import {
   RenderRequest,
   RenderResult,
   VersionInfo,
-} from './types';
-import { StorageAdapter, InMemoryStorage } from './storage';
-import { PromptRenderer } from './renderer';
+} from './types.js';
+import { StorageAdapter, InMemoryStorage } from './storage.js';
+import { PromptRenderer } from './renderer.js';
 
 export class PromptManager {
   private storage: StorageAdapter;
@@ -35,7 +35,7 @@ export class PromptManager {
     const variables =
       request.variables.length > 0
         ? request.variables
-        : extractedVariables.map((name) => ({
+        : extractedVariables.map((name: string) => ({
             name,
             type: 'string' as const,
             description: `Auto-extracted variable: ${name}`,
@@ -135,7 +135,7 @@ export class PromptManager {
    */
   async rollback(id: string, version: string, rolledBackBy: string): Promise<PromptTemplate> {
     const versionInfo = (await this.storage.getVersions(id)).find(
-      (v) => v.version === version,
+      (v: VersionInfo) => v.version === version,
     );
     if (!versionInfo) {
       throw new Error(`Version ${version} not found`);

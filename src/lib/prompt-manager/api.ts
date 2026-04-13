@@ -16,8 +16,8 @@ import {
   CreatePromptRequest,
   UpdatePromptRequest,
   RenderRequest,
-} from './types';
-import { PromptManager } from './manager';
+} from './types.js';
+import { PromptManager } from './manager.js';
 
 export function createPromptRouter(manager: PromptManager): any {
   // ExpressRouter の作成（実装時は express.Router()）

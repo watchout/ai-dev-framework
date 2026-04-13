@@ -2,7 +2,7 @@
  * プロンプトテンプレートストレージレイヤー
  */
 
-import { PromptTemplate, VersionInfo, PromptFilter } from './types';
+import { PromptTemplate, VersionInfo, PromptFilter } from './types.js';
 
 export interface StorageAdapter {
   create(template: PromptTemplate): Promise<PromptTemplate>;
@@ -83,7 +83,7 @@ export class InMemoryStorage implements StorageAdapter {
       }
       if (filter.tags && filter.tags.length > 0) {
         templates = templates.filter((t) =>
-          filter.tags!.some((tag) => t.tags.includes(tag)),
+          filter.tags!.some((tag: string) => t.tags.includes(tag)),
         );
       }
       if (filter.category) {
