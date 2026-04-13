@@ -7,6 +7,9 @@ import * as path from "node:path";
 import * as os from "node:os";
 import {
   parseValidatorOutput,
+  parseValidatorOutputStrict,
+  validateOutputSchema,
+  runValidatorWithRetry,
   runQualitySweep,
   formatSweepOutput,
   setValidatorRunner,
@@ -104,7 +107,7 @@ describe("runQualitySweep", () => {
 
   it("returns PASS when all validators report zero critical and warning <= threshold", async () => {
     restoreRunner = setValidatorRunner(async () => {
-      return "### Summary\n- Critical: 0\n- Warning: 1\n- Info: 2\n";
+      return "### Summary\n- Status: PASS\n- Critical: 0\n- Warning: 1\n- Info: 2\n";
     });
 
     const result = await runQualitySweep(tmpDir, { sequential: true });
@@ -119,9 +122,9 @@ describe("runQualitySweep", () => {
     restoreRunner = setValidatorRunner(async () => {
       callCount++;
       if (callCount === 2) {
-        return "### Summary\n- Critical: 1\n- Warning: 0\n\n#### CRITICAL\n- [SEC-001] Bad thing\n";
+        return "### Summary\n- Status: BLOCK\n- Critical: 1\n- Warning: 0\n\n#### CRITICAL\n- [SEC-001] Bad thing\n";
       }
-      return "### Summary\n- Critical: 0\n- Warning: 0\n";
+      return "### Summary\n- Status: PASS\n- Critical: 0\n- Warning: 0\n";
     });
 
     const result = await runQualitySweep(tmpDir, { sequential: true });
@@ -131,7 +134,7 @@ describe("runQualitySweep", () => {
 
   it("returns BLOCK when total warnings exceed threshold", async () => {
     restoreRunner = setValidatorRunner(async () => {
-      return "### Summary\n- Critical: 0\n- Warning: 2\n";
+      return "### Summary\n- Status: PASS\n- Critical: 0\n- Warning: 2\n";
     });
 
     const result = await runQualitySweep(tmpDir, { warningThreshold: 5, sequential: true });
@@ -141,7 +144,7 @@ describe("runQualitySweep", () => {
 
   it("PASS at exactly warning threshold", async () => {
     restoreRunner = setValidatorRunner(async () => {
-      return "### Summary\n- Critical: 0\n- Warning: 1\n";
+      return "### Summary\n- Status: PASS\n- Critical: 0\n- Warning: 1\n";
     });
 
     // 1 × 4 = 4, threshold = 5 → PASS
@@ -152,7 +155,7 @@ describe("runQualitySweep", () => {
 
   it("BLOCK at warning threshold + 1", async () => {
     restoreRunner = setValidatorRunner(async () => {
-      return "### Summary\n- Critical: 0\n- Warning: 2\n";
+      return "### Summary\n- Status: PASS\n- Critical: 0\n- Warning: 2\n";
     });
 
     // 2 × 4 = 8 > 5 → BLOCK
@@ -172,7 +175,7 @@ describe("runQualitySweep", () => {
 
   it("saves individual reports to .framework/reports/", async () => {
     restoreRunner = setValidatorRunner(async () => {
-      return "### Summary\n- Critical: 0\n- Warning: 0\n";
+      return "### Summary\n- Status: PASS\n- Critical: 0\n- Warning: 0\n";
     });
 
     await runQualitySweep(tmpDir, { sequential: true });
@@ -182,7 +185,7 @@ describe("runQualitySweep", () => {
 
   it("saves integrated report", async () => {
     restoreRunner = setValidatorRunner(async () => {
-      return "### Summary\n- Critical: 0\n- Warning: 0\n";
+      return "### Summary\n- Status: PASS\n- Critical: 0\n- Warning: 0\n";
     });
 
     await runQualitySweep(tmpDir, { sequential: true });
@@ -194,7 +197,7 @@ describe("runQualitySweep", () => {
     const starts: number[] = [];
     restoreRunner = setValidatorRunner(async () => {
       starts.push(Date.now());
-      return "### Summary\n- Critical: 0\n- Warning: 0\n";
+      return "### Summary\n- Status: PASS\n- Critical: 0\n- Warning: 0\n";
     });
 
     await runQualitySweep(tmpDir); // parallel by default
@@ -256,5 +259,159 @@ describe("formatSweepOutput", () => {
     const output = formatSweepOutput(result);
     expect(output).toContain("BLOCK");
     expect(output).toContain("SEC-001");
+  });
+});
+
+// ─────────────────────────────────────────────
+// §6.1 Schema validation + retry (改修A)
+// ─────────────────────────────────────────────
+
+describe("validateOutputSchema", () => {
+  it("accepts valid schema", () => {
+    expect(
+      validateOutputSchema({ critical: 0, warning: 0, status: "PASS" }),
+    ).toBe(true);
+    expect(
+      validateOutputSchema({ critical: 3, warning: 1, status: "BLOCK" }),
+    ).toBe(true);
+  });
+
+  it("rejects invalid status value", () => {
+    expect(
+      validateOutputSchema({ critical: 0, warning: 0, status: "OK" }),
+    ).toBe(false);
+  });
+
+  it("rejects non-numeric critical/warning", () => {
+    expect(
+      validateOutputSchema({ critical: "0", warning: 0, status: "PASS" }),
+    ).toBe(false);
+    expect(
+      validateOutputSchema({ critical: 0, warning: null, status: "PASS" }),
+    ).toBe(false);
+  });
+
+  it("rejects null / non-object input", () => {
+    expect(validateOutputSchema(null)).toBe(false);
+    expect(validateOutputSchema("string")).toBe(false);
+    expect(validateOutputSchema(undefined)).toBe(false);
+  });
+});
+
+describe("parseValidatorOutputStrict", () => {
+  it("returns parsed object when all §6.1 fields present", () => {
+    const output = `### Summary
+- Status: PASS
+- Critical: 0
+- Warning: 2
+- Info: 1
+`;
+    const result = parseValidatorOutputStrict(output);
+    expect(result).not.toBeNull();
+    expect(result?.status).toBe("PASS");
+    expect(result?.critical).toBe(0);
+    expect(result?.warning).toBe(2);
+  });
+
+  it("returns null when Status missing", () => {
+    const output = `### Summary
+- Critical: 0
+- Warning: 2
+`;
+    expect(parseValidatorOutputStrict(output)).toBeNull();
+  });
+
+  it("returns null for empty output", () => {
+    expect(parseValidatorOutputStrict("")).toBeNull();
+    expect(parseValidatorOutputStrict("   ")).toBeNull();
+  });
+});
+
+describe("runValidatorWithRetry", () => {
+  afterEach(() => {
+    // Ensure runner is restored even if test throws
+  });
+
+  it("succeeds on first attempt when output is valid", async () => {
+    const restore = setValidatorRunner(async () => `### Summary
+- Status: PASS
+- Critical: 0
+- Warning: 1
+`);
+    try {
+      const result = await runValidatorWithRetry(
+        { id: "x", name: "X", fullPrompt: "p" },
+        5000,
+      );
+      expect(result.attempts).toBe(1);
+      expect(result.parsed?.status).toBe("PASS");
+    } finally {
+      restore();
+    }
+  });
+
+  it("retries once and succeeds when first output is malformed", async () => {
+    let call = 0;
+    const restore = setValidatorRunner(async () => {
+      call++;
+      if (call === 1) return "garbage without schema";
+      return `### Summary
+- Status: BLOCK
+- Critical: 2
+- Warning: 0
+`;
+    });
+    try {
+      const result = await runValidatorWithRetry(
+        { id: "x", name: "X", fullPrompt: "p" },
+        5000,
+      );
+      expect(result.attempts).toBe(2);
+      expect(result.parsed?.status).toBe("BLOCK");
+      expect(result.parsed?.critical).toBe(2);
+    } finally {
+      restore();
+    }
+  });
+
+  it("returns parsed=null after 2 failed attempts", async () => {
+    const restore = setValidatorRunner(async () => "still garbage");
+    try {
+      const result = await runValidatorWithRetry(
+        { id: "x", name: "X", fullPrompt: "p" },
+        5000,
+      );
+      expect(result.attempts).toBe(2);
+      expect(result.parsed).toBeNull();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("runQualitySweep with schema validation", () => {
+  it("emits CRITICAL SCHEMA-001 finding when validator output invalid twice", async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "gate2-schema-"));
+    const contextDir = path.join(tmpDir, ".framework/gate-context");
+    fs.mkdirSync(contextDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(contextDir, "quality-sweep.md"),
+      "# Quality Sweep Context\n## Branch\ntest\n",
+    );
+    const restore = setValidatorRunner(async () => "unparseable output");
+    try {
+      const result = await runQualitySweep(tmpDir, {
+        sequential: true,
+        warningThreshold: 5,
+      });
+      expect(result.verdict).toBe("BLOCK");
+      const hasSchemaFinding = result.validators.some((v) =>
+        v.criticalFindings.some((f) => f.includes("SCHEMA-001")),
+      );
+      expect(hasSchemaFinding).toBe(true);
+    } finally {
+      restore();
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

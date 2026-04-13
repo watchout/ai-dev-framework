@@ -1,0 +1,9 @@
+{
+  "provider": {
+    "default": "claude",
+    "remediation": "claude",
+    "validation": "claude",
+    "ingestion": "claude",
+    "worktree": "claude"
+  }
+}

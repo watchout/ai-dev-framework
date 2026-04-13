@@ -4,9 +4,17 @@
  * ADR-016 Phase B-3: Run 4 validators in parallel,
  * parse results, auto-aggregate, and verdict.
  */
-import { spawn } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  executeWithProvider,
+  getProvider,
+  loadProviderConfig,
+} from "./llm-provider.js";
+import {
+  checkTests,
+  formatTestQualityReport,
+} from "./test-quality-checker.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -44,6 +52,65 @@ export const VALIDATORS = [
 // ─────────────────────────────────────────────
 // Report Parser
 // ─────────────────────────────────────────────
+
+export interface ParsedValidatorOutput {
+  critical: number;
+  warning: number;
+  info: number;
+  criticalFindings: string[];
+  warningFindings: string[];
+  status?: "PASS" | "BLOCK";
+}
+
+/**
+ * Validate that a parsed validator output matches the schema from
+ * docs/specs/06_CODE_QUALITY.md §6.1 (監査レポートテンプレート):
+ *   - Status: PASS | BLOCK
+ *   - Critical: number
+ *   - Warning: number
+ */
+export function validateOutputSchema(parsed: unknown): boolean {
+  if (!parsed || typeof parsed !== "object") return false;
+  const p = parsed as Record<string, unknown>;
+  if (typeof p.critical !== "number") return false;
+  if (typeof p.warning !== "number") return false;
+  if (p.status !== "PASS" && p.status !== "BLOCK") return false;
+  return true;
+}
+
+/**
+ * Parse validator output. Returns null if schema validation fails
+ * (caller should retry with format instruction before giving up).
+ */
+export function parseValidatorOutputStrict(
+  output: string,
+): ParsedValidatorOutput | null {
+  if (!output || output.trim().length === 0) return null;
+
+  const critMatch = output.match(/[Cc]ritical:\s*(\d+)/);
+  const warnMatch = output.match(/[Ww]arning:\s*(\d+)/);
+  const infoMatch = output.match(/[Ii]nfo:\s*(\d+)/);
+  const statusMatch = output.match(/[Ss]tatus:\s*(PASS|BLOCK)/);
+
+  if (!critMatch || !warnMatch || !statusMatch) return null;
+
+  const critical = parseInt(critMatch[1], 10);
+  const warning = parseInt(warnMatch[1], 10);
+  const info = infoMatch ? parseInt(infoMatch[1], 10) : 0;
+  const status = statusMatch[1] as "PASS" | "BLOCK";
+
+  const parsed: ParsedValidatorOutput = {
+    critical,
+    warning,
+    info,
+    status,
+    criticalFindings: extractFindings(output, "CRITICAL"),
+    warningFindings: extractFindings(output, "WARNING"),
+  };
+
+  if (!validateOutputSchema(parsed)) return null;
+  return parsed;
+}
 
 export function parseValidatorOutput(output: string): {
   critical: number;
@@ -132,35 +199,12 @@ async function defaultRunner(
   prompt: string,
   timeoutMs: number,
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
-    // Each validator runs as an independent Claude session (Agent Teams mode).
-    // The validator can use Read/Grep tools to actively examine code.
-    const proc = spawn("claude", ["-p", prompt, "--allowedTools", "Read,Grep,Glob,Bash"], {
-      timeout: timeoutMs,
-      stdio: ["pipe", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1",
-      },
-    });
-
-    let stdout = "";
-    let stderr = "";
-
-    proc.stdout.on("data", (data: Buffer) => { stdout += data.toString(); });
-    proc.stderr.on("data", (data: Buffer) => { stderr += data.toString(); });
-
-    proc.on("close", (code) => {
-      if (code === 0 || stdout.length > 0) {
-        resolve(stdout);
-      } else {
-        reject(new Error(`Validator exited with code ${code}: ${stderr.slice(0, 200)}`));
-      }
-    });
-
-    proc.on("error", (err) => {
-      reject(err);
-    });
+  const config = loadProviderConfig(process.cwd());
+  const provider = getProvider("validation", config);
+  return executeWithProvider(provider, prompt, {
+    allowedTools: ["Read", "Grep", "Glob", "Bash"],
+    experimentalAgentTeams: true,
+    timeoutMs,
   });
 }
 
@@ -191,7 +235,23 @@ export async function runQualitySweep(
   if (!fs.existsSync(contextPath)) {
     throw new Error("No quality sweep context found. Run 'framework gate quality' first to collect context.");
   }
-  const context = fs.readFileSync(contextPath, "utf-8");
+  let context = fs.readFileSync(contextPath, "utf-8");
+
+  // Deterministic test-quality pre-check (改修B).
+  // Results are appended to context so test-coverage-auditor can incorporate them.
+  try {
+    const testQualityResult = checkTests(projectDir);
+    const reportsDir = path.join(projectDir, ".framework/reports");
+    if (!fs.existsSync(reportsDir)) fs.mkdirSync(reportsDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(reportsDir, "gate2-test-quality-deterministic.md"),
+      formatTestQualityReport(testQualityResult),
+      "utf-8",
+    );
+    context += `\n\n## Deterministic Test Quality Pre-check\n\n${formatTestQualityReport(testQualityResult)}\n`;
+  } catch {
+    // Pre-check is best-effort; failures should not block the sweep.
+  }
 
   // Read validator prompts
   const validatorPrompts = VALIDATORS.map((v) => {
@@ -298,19 +358,91 @@ ${context}
   return sweepResult;
 }
 
+/**
+ * Run validator with schema validation + one retry.
+ *
+ * Flow (per directive improvement A):
+ *   1. Initial run → parseValidatorOutputStrict → validateOutputSchema
+ *   2. If schema invalid → retry once with explicit §6.1 format instruction
+ *   3. If still invalid → emit CRITICAL "Validator output format invalid"
+ */
+export async function runValidatorWithRetry(
+  task: { id: string; name: string; fullPrompt: string },
+  timeoutMs: number,
+): Promise<{ output: string; parsed: ParsedValidatorOutput | null; attempts: number }> {
+  const output1 = await _runner(task.id, task.fullPrompt, timeoutMs);
+  const parsed1 = parseValidatorOutputStrict(output1);
+  if (parsed1) return { output: output1, parsed: parsed1, attempts: 1 };
+
+  const retryPrompt = `${task.fullPrompt}
+
+---
+
+**IMPORTANT: Output format requirement (§6.1 of 06_CODE_QUALITY)**
+
+Your previous response did not match the required schema. You MUST output EXACTLY the following section (case-sensitive keys):
+
+## ${task.name} Report
+
+### Summary
+- Status: PASS | BLOCK
+- Critical: <integer>
+- Warning: <integer>
+- Info: <integer>
+
+### Findings
+
+#### CRITICAL
+- [ID] description
+
+#### WARNING
+- [ID] description
+
+Status MUST be either "PASS" or "BLOCK". Critical and Warning MUST be integers.`;
+
+  const output2 = await _runner(task.id, retryPrompt, timeoutMs);
+  const parsed2 = parseValidatorOutputStrict(output2);
+  return {
+    output: `${output1}\n\n---\nRETRY OUTPUT:\n${output2}`,
+    parsed: parsed2,
+    attempts: 2,
+  };
+}
+
 async function executeValidator(
   task: { id: string; name: string; fullPrompt: string },
   timeoutMs: number,
 ): Promise<ValidatorResult> {
   const start = Date.now();
   try {
-    const output = await _runner(task.id, task.fullPrompt, timeoutMs);
-    const parsed = parseValidatorOutput(output);
+    const { output, parsed, attempts } = await runValidatorWithRetry(task, timeoutMs);
+
+    if (parsed) {
+      return {
+        name: task.name,
+        critical: parsed.critical,
+        warning: parsed.warning,
+        info: parsed.info,
+        criticalFindings: parsed.criticalFindings,
+        warningFindings: parsed.warningFindings,
+        rawOutput: output,
+        elapsedMs: Date.now() - start,
+      };
+    }
+
+    // Schema validation failed after retry → CRITICAL per directive
     return {
       name: task.name,
-      ...parsed,
+      critical: 1,
+      warning: 0,
+      info: 0,
+      criticalFindings: [
+        `[SCHEMA-001] Validator output format invalid after ${attempts} attempts (§6.1 schema violation: missing Status/Critical/Warning)`,
+      ],
+      warningFindings: [],
       rawOutput: output,
       elapsedMs: Date.now() - start,
+      error: "schema_validation_failed",
     };
   } catch (err) {
     return {

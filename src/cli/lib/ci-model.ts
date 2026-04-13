@@ -4,6 +4,9 @@
  *
  * Six CI stages: lint, unit-test, integration-test, build, e2e, security
  * All required stages must pass for "ready" verdict.
+ *
+ * pre-commit-allow: console-log
+ * (this file reports on detected console.log usage and contains literal strings describing them)
  */
 import * as fs from "node:fs";
 import * as path from "node:path";

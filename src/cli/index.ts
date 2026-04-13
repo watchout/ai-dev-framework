@@ -33,6 +33,7 @@ import { registerPruneCommand } from "./commands/prune.js";
 import { registerConfigCommand } from "./commands/config.js";
 import { registerImproveCommand } from "./commands/improve.js";
 import { registerIngestCommand } from "./commands/ingest.js";
+import { registerCheckCommand } from "./commands/check.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -67,6 +68,9 @@ registerStatusCommand(program);
 
 // Design ingest
 registerIngestCommand(program);
+
+// Deterministic pre-checks
+registerCheckCommand(program);
 
 // Project management
 registerRetrofitCommand(program);
