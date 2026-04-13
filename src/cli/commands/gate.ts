@@ -41,7 +41,7 @@ import {
 } from "../lib/gate-quality-engine.js";
 import {
   qualitySweepToJSON,
-  gate3VerdictToJSON,
+  buildGateContextJSON,
 } from "../lib/gate-json-output.js";
 import { loadProviderConfig } from "../lib/llm-provider.js";
 
@@ -575,19 +575,18 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
           logger.info("");
 
           if (jsonMode) {
+            // Context-collection phase emits GateContextJSON (NO verdict field).
+            // The actual Ship/Block verdict is produced later by the
+            // /gate-release skill, which should emit a separate GateResultJSON.
+            // Emitting a fake "SHIP" here would be dishonest and could be
+            // misread by machine consumers as a real green-light decision.
             const providerConfig = loadProviderConfig(projectDir);
-            const json = gate3VerdictToJSON({
-              verdict: "SHIP",
+            const json = buildGateContextJSON({
+              gate: "release",
               provider: providerConfig.default,
-              elapsedMs: 0,
-              rawReport: "Context collected. Actual verdict is emitted by /gate-release skill.",
-            });
-            // Override gate so consumers can distinguish "context-only" from real verdict.
-            json.meta = {
-              ...(json.meta ?? {}),
-              status: "context-collected",
               contextPath: ".framework/gate-context/adversarial-review.md",
-            };
+              meta: { nextStep: "/gate-release skill (trial structure)" },
+            });
             process.stdout.write(JSON.stringify(json, null, 2) + "\n");
             restoreLogger?.();
           }

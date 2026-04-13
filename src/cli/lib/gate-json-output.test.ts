@@ -3,6 +3,7 @@ import {
   parseFindingString,
   qualitySweepToJSON,
   gate3VerdictToJSON,
+  buildGateContextJSON,
 } from "./gate-json-output.js";
 import type { QualitySweepResult } from "./gate-quality-engine.js";
 
@@ -119,5 +120,37 @@ describe("gate3VerdictToJSON", () => {
     expect(json.verdict).toBe("SHIP_WITH_CONDITIONS");
     expect(json.validators[0].name).toBe("Prosecutor");
     expect((json.meta?.conditions as string[]).length).toBe(2);
+  });
+});
+
+describe("buildGateContextJSON (honesty-by-construction)", () => {
+  it("omits the verdict field entirely so consumers cannot misread context as a verdict", () => {
+    const json = buildGateContextJSON({
+      gate: "release",
+      provider: "claude",
+      contextPath: ".framework/gate-context/adversarial-review.md",
+    });
+    expect(json.gate).toBe("release");
+    expect(json.stage).toBe("context-collected");
+    expect(json.provider).toBe("claude");
+    expect(json.contextPath).toBe(
+      ".framework/gate-context/adversarial-review.md",
+    );
+    // Critical: no `verdict` field at all.
+    expect("verdict" in json).toBe(false);
+  });
+
+  it("includes a timestamp and round-trips through JSON.stringify/parse", () => {
+    const json = buildGateContextJSON({
+      gate: "quality",
+      provider: "codex",
+      contextPath: ".framework/gate-context/quality-sweep.md",
+      meta: { nextStep: "run validators" },
+    });
+    const parsed = JSON.parse(JSON.stringify(json));
+    expect(parsed.stage).toBe("context-collected");
+    expect(new Date(parsed.timestamp).toString()).not.toBe("Invalid Date");
+    expect(parsed.meta.nextStep).toBe("run validators");
+    expect("verdict" in parsed).toBe(false);
   });
 });

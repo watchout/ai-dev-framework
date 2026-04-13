@@ -48,6 +48,41 @@ export interface GateResultJSON {
   meta?: Record<string, unknown>;
 }
 
+/**
+ * Emitted when `framework gate release --output json` (or similar
+ * context-collection command) runs BEFORE an actual verdict is rendered
+ * by the downstream skill. DELIBERATELY omits `verdict` so machine
+ * consumers cannot misread a preparation step as a SHIP decision.
+ *
+ * Honest-by-construction: the verdict arrives in a separate
+ * GateResultJSON after the /gate-release skill produces its
+ * Prosecutor → Defense → Judge output.
+ */
+export interface GateContextJSON {
+  gate: "design" | "quality" | "release";
+  stage: "context-collected";
+  timestamp: string;
+  provider: string;
+  contextPath: string;
+  meta?: Record<string, unknown>;
+}
+
+export function buildGateContextJSON(input: {
+  gate: "design" | "quality" | "release";
+  provider: string;
+  contextPath: string;
+  meta?: Record<string, unknown>;
+}): GateContextJSON {
+  return {
+    gate: input.gate,
+    stage: "context-collected",
+    timestamp: new Date().toISOString(),
+    provider: input.provider,
+    contextPath: input.contextPath,
+    meta: input.meta,
+  };
+}
+
 // ─────────────────────────────────────────────
 // Finding parsing
 // ─────────────────────────────────────────────
