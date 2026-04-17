@@ -122,16 +122,17 @@ export async function runTask(
   // Load or create run state
   let state = loadRunState(projectDir);
   if (!state) {
-    // Try local plan.json first (backward compat), then GitHub Issues
-    let plan = loadPlan(projectDir);
+    // Primary: GitHub Issues (SSOT, #61)
+    let plan = null;
+    try {
+      const { loadPlanFromGitHub } = await import("./state-reader.js");
+      plan = await loadPlanFromGitHub();
+    } catch {
+      // state-reader not available — try local fallback
+    }
+    // Fallback: local plan.json (legacy)
     if (!plan || plan.waves.length === 0) {
-      // Try loading from GitHub Issues (new SSOT, #61)
-      try {
-        const { loadPlanFromGitHub } = await import("./state-reader.js");
-        plan = await loadPlanFromGitHub();
-      } catch {
-        // state-reader not available — fall through to error
-      }
+      plan = loadPlan(projectDir);
     }
     if (!plan || plan.waves.length === 0) {
       errors.push(
