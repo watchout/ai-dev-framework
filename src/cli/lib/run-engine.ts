@@ -122,10 +122,20 @@ export async function runTask(
   // Load or create run state
   let state = loadRunState(projectDir);
   if (!state) {
-    const plan = loadPlan(projectDir);
+    // Try local plan.json first (backward compat), then GitHub Issues
+    let plan = loadPlan(projectDir);
+    if (!plan || plan.waves.length === 0) {
+      // Try loading from GitHub Issues (new SSOT, #61)
+      try {
+        const { loadPlanFromGitHub } = await import("./state-reader.js");
+        plan = await loadPlanFromGitHub();
+      } catch {
+        // state-reader not available — fall through to error
+      }
+    }
     if (!plan || plan.waves.length === 0) {
       errors.push(
-        "No implementation plan found. Run 'framework plan' first.",
+        "No implementation plan found. Run 'framework plan --sync' first.",
       );
       return {
         taskId: "",

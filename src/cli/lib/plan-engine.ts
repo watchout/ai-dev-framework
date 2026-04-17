@@ -269,7 +269,7 @@ export async function runPlanEngine(
     }
   }
 
-  // Save plan state
+  // Save plan state (local file — deprecated, use --sync for GitHub Issues)
   const plan: PlanState = {
     status: "generated",
     generatedAt: new Date().toISOString(),
@@ -279,6 +279,9 @@ export async function runPlanEngine(
     circularDependencies: cycles,
   };
   savePlan(projectDir, plan);
+  console.warn(
+    "[deprecated] plan.json written locally. Run 'framework plan --sync' to create GitHub Issues (SSOT). See #61.",
+  );
 
   return { plan, errors };
 }
