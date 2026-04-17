@@ -17,9 +17,13 @@ function runHook(
   envOverrides?: Record<string, string>,
 ): { exitCode: number; stderr: string } {
   const input = JSON.stringify(toolInput);
+  const mockBinDir = path.join(tmpDir, "bin");
   const env = {
     ...process.env,
     CLAUDE_PROJECT_DIR: tmpDir,
+    PATH: fs.existsSync(mockBinDir)
+      ? `${mockBinDir}:${process.env.PATH}`
+      : process.env.PATH,
     ...envOverrides,
   };
 
@@ -53,36 +57,23 @@ function writeGatesPassed(): void {
   );
 }
 
-/** Helper: write run-state.json with an active task */
-function writeRunStateWithActiveTask(taskId: string): void {
-  const dir = path.join(tmpDir, ".framework");
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(
-    path.join(dir, "run-state.json"),
-    JSON.stringify({
-      status: "running",
-      currentTaskId: taskId,
-      tasks: [{ taskId, status: "in_progress" }],
-      startedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }),
-  );
+/** Helper: create a mock gh script that returns specified Issues */
+function setupMockGh(issues: { number: number; title: string }[]): void {
+  const binDir = path.join(tmpDir, "bin");
+  fs.mkdirSync(binDir, { recursive: true });
+  const script = `#!/bin/bash\necho '${JSON.stringify(issues)}'`;
+  const ghPath = path.join(binDir, "gh");
+  fs.writeFileSync(ghPath, script, { mode: 0o755 });
 }
 
-/** Helper: write run-state.json with no active task */
+/** Helper: simulate active task via mock gh (returns in-progress Issue) */
+function writeRunStateWithActiveTask(taskId: string): void {
+  setupMockGh([{ number: 1, title: `[${taskId}] Active Task` }]);
+}
+
+/** Helper: simulate no active task via mock gh (returns empty list) */
 function writeRunStateIdle(): void {
-  const dir = path.join(tmpDir, ".framework");
-  fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(
-    path.join(dir, "run-state.json"),
-    JSON.stringify({
-      status: "idle",
-      currentTaskId: null,
-      tasks: [{ taskId: "FEAT-001-DB", status: "done" }],
-      startedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }),
-  );
+  setupMockGh([]);
 }
 
 /** Helper: write project.json with profile type */
@@ -163,7 +154,7 @@ describe("pre-code-gate.sh hook", () => {
     const result = runHook(editSrcInput);
     expect(result.exitCode).toBe(2);
     expect(result.stderr).toContain("ACTIVE TASK REQUIRED");
-    expect(result.stderr).toContain("framework run");
+    expect(result.stderr).toContain("gh issue edit");
   });
 
   it("allows when gates passed AND task in_progress", () => {
@@ -202,40 +193,20 @@ describe("pre-code-gate.sh hook", () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it("detects active task via currentTaskId only", () => {
+  it("detects active task via GitHub Issue label", () => {
     writeGatesPassed();
-    const dir = path.join(tmpDir, ".framework");
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(
-      path.join(dir, "run-state.json"),
-      JSON.stringify({
-        status: "running",
-        currentTaskId: "FEAT-002-API",
-        tasks: [],
-      }),
-    );
+    setupMockGh([{ number: 42, title: "[FEAT-002-API] API Implementation" }]);
 
     const result = runHook(editSrcInput);
     expect(result.exitCode).toBe(0);
   });
 
-  it("detects active task via task status only", () => {
+  it("blocks when gh returns empty issue list", () => {
     writeGatesPassed();
-    const dir = path.join(tmpDir, ".framework");
-    fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(
-      path.join(dir, "run-state.json"),
-      JSON.stringify({
-        status: "running",
-        currentTaskId: null,
-        tasks: [
-          { taskId: "FEAT-001-DB", status: "done" },
-          { taskId: "FEAT-001-API", status: "in_progress" },
-        ],
-      }),
-    );
+    setupMockGh([]);
 
     const result = runHook(editSrcInput);
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode).toBe(2);
+    expect(result.stderr).toContain("ACTIVE TASK REQUIRED");
   });
 });
