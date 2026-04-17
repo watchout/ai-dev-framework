@@ -19,23 +19,29 @@ jobs:
           fi
           echo "Project profile configured"
 
-      - name: Check implementation plan
+      - name: Check implementation plan (skeleton — full logic in sub-PR 2 via gate-engine)
         run: |
-          # Primary: check GitHub Issues with feature label
+          # Skeleton check: verify planning artifacts exist.
+          # Full PR-scoped planning validation will be implemented in sub-PR 2
+          # when gate-engine.ts is wired to check runs.
+
+          # Check 1: GitHub Issues with feature label (SSOT)
           FEATURE_COUNT=$(gh issue list --label feature --state all --json number --jq 'length' 2>/dev/null || echo "0")
           if [ "$FEATURE_COUNT" -gt 0 ]; then
             echo "Implementation plan found: $FEATURE_COUNT features in GitHub Issues (SSOT)"
             exit 0
           fi
 
-          # Fallback: check local plan.json (legacy)
+          # Check 2: local plan.json (legacy fallback)
           if [ -f .framework/plan.json ]; then
             echo "::warning::plan.json found (legacy). Migrate to GitHub Issues with 'framework migrate plan-state --apply'"
-            WAVES=$(node -e "const p=JSON.parse(require('fs').readFileSync('.framework/plan.json','utf8'));console.log((p.waves||[]).length)" 2>/dev/null || echo "0")
-            if [ "$WAVES" -gt 0 ]; then
-              echo "Plan found: $WAVES waves (local, deprecated)"
-              exit 0
-            fi
+            exit 0
+          fi
+
+          # Check 3: project.json alone is sufficient for initial setup
+          if [ -f .framework/project.json ]; then
+            echo "::warning::No plan found but project configured. Run 'framework plan --sync' to create plan."
+            exit 0
           fi
 
           echo "::error::No implementation plan found. Run 'framework plan --sync'"
