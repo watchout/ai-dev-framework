@@ -383,6 +383,7 @@ export function calculateProgress(state: RunState): number {
 
 const RUN_STATE_FILE = ".framework/run-state.json";
 
+/** @deprecated Use loadRunStateFromGitHub() from state-reader.ts instead. See #61. */
 export function loadRunState(
   projectDir: string,
 ): RunState | null {
