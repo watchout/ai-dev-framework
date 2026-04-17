@@ -404,6 +404,7 @@ export function assignSeqNumbers(waves: Wave[], tasks: Task[]): void {
 const PLAN_FILE = ".framework/plan.json";
 const PLAN_TMP = ".framework/plan.json.tmp";
 
+/** @deprecated Use loadPlanFromGitHub() from state-reader.ts instead. See #61. */
 export function loadPlan(projectDir: string): PlanState | null {
   const filePath = path.join(projectDir, PLAN_FILE);
   if (!fs.existsSync(filePath)) return null;
