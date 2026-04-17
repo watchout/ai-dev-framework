@@ -1,0 +1,53 @@
+name: "Gate B: Planning"
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  gate-b:
+    name: Gate B — Planning Completeness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check .framework/project.json
+        run: |
+          if [ ! -f .framework/project.json ]; then
+            echo "::error::.framework/project.json not found. Run 'framework init' or 'framework retrofit'"
+            exit 1
+          fi
+          echo "Project profile configured"
+
+      - name: Check implementation plan (skeleton — full logic in sub-PR 2 via gate-engine)
+        run: |
+          # Skeleton check: verify planning artifacts exist.
+          # Full PR-scoped planning validation will be implemented in sub-PR 2
+          # when gate-engine.ts is wired to check runs.
+
+          # Check 1: GitHub Issues with feature label (SSOT)
+          FEATURE_COUNT=$(gh issue list --label feature --state all --json number --jq 'length' 2>/dev/null || echo "0")
+          if [ "$FEATURE_COUNT" -gt 0 ]; then
+            echo "Implementation plan found: $FEATURE_COUNT features in GitHub Issues (SSOT)"
+            exit 0
+          fi
+
+          # Check 2: local plan.json (legacy fallback)
+          if [ -f .framework/plan.json ]; then
+            echo "::warning::plan.json found (legacy). Migrate to GitHub Issues with 'framework migrate plan-state --apply'"
+            exit 0
+          fi
+
+          # Check 3: project.json alone is sufficient for initial setup
+          if [ -f .framework/project.json ]; then
+            echo "::warning::No plan found but project configured. Run 'framework plan --sync' to create plan."
+            exit 0
+          fi
+
+          echo "::error::No implementation plan found. Run 'framework plan --sync'"
+          exit 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Gate B summary
+        run: echo "Gate B (Planning) — PASSED"

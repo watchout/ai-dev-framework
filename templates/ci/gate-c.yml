@@ -1,0 +1,121 @@
+name: "Gate C: SSOT"
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  gate-c:
+    name: Gate C — SSOT Completeness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            npm install -g pnpm && pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          else
+            npm ci
+          fi
+
+      - name: Detect project profile
+        id: profile
+        run: |
+          if [ -f .framework/project.json ]; then
+            PROFILE=$(node -e "const p=JSON.parse(require('fs').readFileSync('.framework/project.json','utf8'));console.log(p.profileType||p.type||'app')")
+            echo "type=$PROFILE" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=app" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check SSOT completeness
+        run: |
+          PROFILE="${{ steps.profile.outputs.type }}"
+
+          # Auto-pass for lp/hp profiles
+          if [ "$PROFILE" = "lp" ] || [ "$PROFILE" = "hp" ]; then
+            echo "Gate C auto-pass for profile: $PROFILE"
+            exit 0
+          fi
+
+          # Check for SSOT documents
+          SSOT_DIRS="docs/design/features docs/common-features docs/project-features docs/ssot docs/specs"
+          SSOT_COUNT=0
+          for dir in $SSOT_DIRS; do
+            if [ -d "$dir" ]; then
+              COUNT=$(find "$dir" -name "*.md" -size +10c 2>/dev/null | wc -l | tr -d ' ')
+              SSOT_COUNT=$((SSOT_COUNT + COUNT))
+            fi
+          done
+
+          # Check new-format SSOT files
+          NEW_SSOT=0
+          for f in docs/SSOT-*.md docs/ssot/SSOT-*.md; do
+            if [ -f "$f" ]; then
+              LINES=$(wc -l < "$f" | tr -d ' ')
+              if [ "$LINES" -ge 10 ]; then
+                NEW_SSOT=$((NEW_SSOT + 1))
+              fi
+            fi
+          done
+
+          if [ "$SSOT_COUNT" -gt 0 ] || [ "$NEW_SSOT" -gt 0 ]; then
+            echo "SSOT documents found: $SSOT_COUNT feature specs + $NEW_SSOT SSOT files"
+          else
+            echo "::error::No SSOT documents found. Create feature specs in docs/design/features/"
+            exit 1
+          fi
+
+          # Section checks — required sections per profile (matches gate-engine.ts)
+          FAIL=0
+          SECTIONS_APP="§3-E §3-F §3-G §3-H"
+          SECTIONS_API_CLI="§3-E §3-G §3-H"
+          PATTERNS_E="§3-E|I/O Examples|Input.*Output"
+          PATTERNS_F="§3-F|Boundary|境界値"
+          PATTERNS_G="§3-G|Exception|例外|Error"
+          PATTERNS_H="§3-H|Gherkin|Given.*When.*Then"
+
+          if [ "$PROFILE" = "app" ]; then
+            REQUIRED_SECTIONS="$SECTIONS_APP"
+          elif [ "$PROFILE" = "api" ] || [ "$PROFILE" = "cli" ]; then
+            REQUIRED_SECTIONS="$SECTIONS_API_CLI"
+          else
+            REQUIRED_SECTIONS=""
+          fi
+
+          if [ -n "$REQUIRED_SECTIONS" ]; then
+            for dir in docs/design/features docs/common-features docs/project-features; do
+              if [ -d "$dir" ]; then
+                while IFS= read -r spec; do
+                  for section in $REQUIRED_SECTIONS; do
+                    case "$section" in
+                      "§3-E") PATTERN="$PATTERNS_E" ;;
+                      "§3-F") PATTERN="$PATTERNS_F" ;;
+                      "§3-G") PATTERN="$PATTERNS_G" ;;
+                      "§3-H") PATTERN="$PATTERNS_H" ;;
+                    esac
+                    if ! grep -qE "$PATTERN" "$spec" 2>/dev/null; then
+                      echo "::error::$spec missing required section $section"
+                      FAIL=1
+                    fi
+                  done
+                done < <(find "$dir" -name "*.md" -size +10c 2>/dev/null)
+              fi
+            done
+          fi
+
+          if [ "$FAIL" -eq 1 ]; then
+            echo "::error::Gate C failed: required SSOT sections missing"
+            exit 1
+          fi
+
+      - name: Gate C summary
+        run: echo "Gate C (SSOT Completeness) — PASSED"

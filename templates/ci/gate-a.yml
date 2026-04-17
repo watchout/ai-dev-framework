@@ -1,0 +1,58 @@
+name: "Gate A: Environment"
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  gate-a:
+    name: Gate A — Environment Readiness
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check package.json exists
+        run: test -f package.json || (echo "::error::package.json not found" && exit 1)
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            npm install -g pnpm && pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          else
+            npm ci
+          fi
+
+      - name: Verify node_modules
+        run: test -d node_modules || (echo "::error::node_modules not found after npm ci" && exit 1)
+
+      - name: Check .framework/ directory
+        run: test -d .framework || (echo "::error::.framework/ not found. Run 'framework init' or 'framework retrofit'" && exit 1)
+
+      - name: Check CI configuration
+        run: test -d .github/workflows || (echo "::error::.github/workflows/ not found" && exit 1)
+
+      - name: Check environment file
+        run: |
+          if [ -f .env ] || [ -f .env.example ]; then
+            echo "Environment file found"
+          else
+            echo "::warning::No .env or .env.example found (may be expected for cli/library profiles)"
+          fi
+
+      - name: Check database migrations (warning only)
+        run: |
+          if [ -d prisma/migrations ] || [ -d migrations ] || [ -d db/migrations ] || [ -d supabase/migrations ] || [ -d drizzle ]; then
+            echo "Migrations directory found"
+          else
+            echo "::warning::No migrations directory found (non-blocking pending audit)"
+          fi
+
+      - name: Gate A summary
+        run: echo "Gate A (Environment) — PASSED"
