@@ -28,6 +28,10 @@ Discovery     Business       Product          Technical       Planning       Dev
 
 ### Agent Skills (recommended)
 
+> **v1.1.0 Note**: Deliberation / review-council は framework 強制ではなく、
+> project governance として任意に適用するプラクティスです。
+> framework の enforcement は決定論的スクリプトのみ (09_ENFORCEMENT.md)。
+
 | Step | Skill | Notes |
 |------|-------|-------|
 | 0 | `framework-discovery` | Deliberation built-in |
@@ -35,7 +39,7 @@ Discovery     Business       Product          Technical       Planning       Dev
 | 2 | `framework-product` + `framework-feature-spec` | Feature Spec has Deliberation |
 | 3 | `framework-technical` | Deliberation built-in |
 | 4 | `framework-implement` + `framework-code-audit` | |
-| Any | `framework-review-council` | Multi-perspective review at phase end |
+| Any | `framework-review-council` | Multi-perspective review at phase end (optional) |
 
 ---
 
@@ -155,7 +159,7 @@ Pre-check: load `docs/knowledge/` before starting hearing if it exists.
 
 ## Step 1: Business (Who/What/Why)
 
-> Skill: `framework-business` | Review: `framework-review-council`
+> Skill: `framework-business` | Review: `framework-review-council` (optional, not framework-enforced)
 
 ### Dependency Chain
 
@@ -222,7 +226,7 @@ All 4 documents confirmed. Go/No-Go: Problem real? Solution valid? Differentiabl
 
 ## Step 2: Product (What/How)
 
-> Skill: `framework-product` -> `framework-feature-spec` | Review: `framework-review-council`
+> Skill: `framework-product` -> `framework-feature-spec` | Review: `framework-review-council` (optional, not framework-enforced)
 
 ### Dependency Chain
 
@@ -318,7 +322,7 @@ PRD 90%; FEATURE_CATALOG all IDs assigned; UI_STATE with screen list and transit
 
 ## Step 3: Technical (How to Build)
 
-> Skill: `framework-technical` | Review: `framework-review-council`
+> Skill: `framework-technical` | Review: `framework-review-council` (optional, not framework-enforced)
 
 ### Dependency Chain
 

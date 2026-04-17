@@ -242,7 +242,11 @@ Too small -> merge into adjacent task:
 
 ---
 
-## Part 3: GitHub Projects & Issues
+## Part 3: GitHub Projects & Issues (#61)
+
+> **v1.1.0 改訂**: plan.json / run-state.json 依存を廃止。
+> GitHub Issues が Dev Bot のタスク管理 SSOT。詳細は本セクション末尾の
+> 「GitHub Issues as Task Management SSOT」を参照。
 
 ### Board Structure
 
@@ -446,26 +450,26 @@ On merge to main:
      D-4: E2Eスモークテスト (L3テスト実行)
      D-5: コンソールエラー監視
   3. Gate D PASS → 完了
-     Gate D FAIL → CTO報告 → ロールバック判断
+     Gate D FAIL → 決定論的エスカレーション (06_CODE_QUALITY §4.7)
   4. (Manual approval) Production deploy
   5. Gate D (Production) — 本番環境でも同一チェック実行
 ```
 
-### Gate D 失敗時のフロー
+### Gate D 失敗時のフロー (#62)
+
+> **v1.1.0 改訂**: CTO 判断による 3 択を廃止。決定論的エスカレーションポリシーに移行。
+> 詳細は 06_CODE_QUALITY §4.7 を参照。
 
 ```
 デプロイ完了
   ↓
 Gate D 実行（D-1〜D-5）
-  ├── 全PASS → デプロイ成功
-  └── いずれかFAIL
-       ↓
-     CTO報告（Telegram経由）
-       ├── 報告内容：失敗チェック項目、エラー詳細、スクリーンショット
-       └── CTO判断：
-            ├── ロールバック → 前バージョンに戻す
-            ├── ホットフィックス → 修正してGate D再実行
-            └── 一時的に許容 → 次回デプロイで対応
+  ├── 全 PASS → デプロイ成功
+  └── いずれか FAIL → 決定論的エスカレーション:
+       ├── Critical (D-1/D-2) → auto-rollback
+       ├── High (D-3) → alert + 15min grace → auto-rollback
+       ├── Medium (D-4) → follow-up Issue 作成
+       └── Low (D-5) → log only
 ```
 
 ---
