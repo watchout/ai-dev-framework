@@ -231,6 +231,26 @@ describe("analyzeMigration", () => {
     expect(report.toCreate).toHaveLength(3);
   });
 
+  it("handles legacy schema (features[] without waves[])", () => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-migrate-"));
+    const frameworkDir = path.join(tmpDir, ".framework");
+    fs.mkdirSync(frameworkDir, { recursive: true });
+    fs.writeFileSync(
+      path.join(frameworkDir, "plan.json"),
+      JSON.stringify({
+        version: "1.0.0",
+        features: [{ id: "F-001", name: "Test", status: "done" }],
+      }),
+    );
+
+    const report = analyzeMigration(tmpDir);
+    expect(report.planFile.exists).toBe(true);
+    expect(report.planFile.featureCount).toBe(1);
+    expect(report.toSkip).toHaveLength(1);
+    expect(report.toSkip[0].reason).toContain("incompatible schema");
+    expect(report.errors).toHaveLength(0);
+  });
+
   it("handles malformed plan.json gracefully", () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-migrate-"));
     const frameworkDir = path.join(tmpDir, ".framework");

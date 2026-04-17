@@ -180,8 +180,25 @@ export function analyzeMigration(projectDir: string, alreadyMigrated: string[] =
       const raw = fs.readFileSync(planPath, "utf-8");
       const plan = JSON.parse(raw) as PlanState;
 
-      const features = plan.waves.flatMap((w) => w.features);
+      // Handle legacy schema (features[] instead of waves[].features[])
+      const legacyPlan = plan as unknown as { features?: unknown[] };
+      const features = plan.waves
+        ? plan.waves.flatMap((w) => w.features)
+        : [];
       const tasks = plan.tasks ?? [];
+
+      if (!plan.waves && legacyPlan.features) {
+        report.planFile.featureCount = legacyPlan.features.length;
+        report.planFile.taskCount = 0;
+        report.planFile.isEmpty = legacyPlan.features.length === 0;
+        report.toSkip.push({
+          type: "feature",
+          id: "*",
+          title: "Legacy schema (features[] without waves[])",
+          reason: "incompatible schema — manual migration required",
+        });
+        return report;
+      }
       report.planFile.featureCount = features.length;
       report.planFile.taskCount = tasks.length;
       report.planFile.isEmpty = isPlanEmpty(plan);
