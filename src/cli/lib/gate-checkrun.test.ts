@@ -17,11 +17,12 @@ describe("loadGateStatusFromCheckRuns", () => {
       return runs.join("\n");
     });
 
-    const state = await loadGateStatusFromCheckRuns("abc123");
-    expect(state).not.toBeNull();
-    expect(state!.gateA.status).toBe("passed");
-    expect(state!.gateB.status).toBe("passed");
-    expect(state!.gateC.status).toBe("passed");
+    const result = await loadGateStatusFromCheckRuns("abc123");
+    expect(result.state).not.toBeNull();
+    expect(result.state!.gateA.status).toBe("passed");
+    expect(result.state!.gateB.status).toBe("passed");
+    expect(result.state!.gateC.status).toBe("passed");
+    expect(result.error).toBeUndefined();
   });
 
   it("returns failed state when a gate fails", async () => {
@@ -33,11 +34,25 @@ describe("loadGateStatusFromCheckRuns", () => {
       ].join("\n");
     });
 
-    const state = await loadGateStatusFromCheckRuns("abc123");
-    expect(state).not.toBeNull();
-    expect(state!.gateA.status).toBe("passed");
-    expect(state!.gateB.status).toBe("failed");
-    expect(state!.gateC.status).toBe("passed");
+    const result = await loadGateStatusFromCheckRuns("abc123");
+    expect(result.state).not.toBeNull();
+    expect(result.state!.gateA.status).toBe("passed");
+    expect(result.state!.gateB.status).toBe("failed");
+    expect(result.state!.gateC.status).toBe("passed");
+  });
+
+  it("maps cancelled/timed_out to failed (not pending)", async () => {
+    restoreGh = setGhExecutor(async () => {
+      return JSON.stringify({
+        name: GATE_WORKFLOW_NAMES.A,
+        status: "completed",
+        conclusion: "cancelled",
+      });
+    });
+
+    const result = await loadGateStatusFromCheckRuns("abc123");
+    expect(result.state).not.toBeNull();
+    expect(result.state!.gateA.status).toBe("failed");
   });
 
   it("returns pending when check run is in progress", async () => {
@@ -49,29 +64,27 @@ describe("loadGateStatusFromCheckRuns", () => {
       });
     });
 
-    const state = await loadGateStatusFromCheckRuns("abc123");
-    expect(state).not.toBeNull();
-    expect(state!.gateA.status).toBe("pending");
-    expect(state!.gateB.status).toBe("pending");
-    expect(state!.gateC.status).toBe("pending");
+    const result = await loadGateStatusFromCheckRuns("abc123");
+    expect(result.state).not.toBeNull();
+    expect(result.state!.gateA.status).toBe("pending");
   });
 
-  it("returns pending for gates without check runs", async () => {
+  it("returns no_check_runs error for empty results", async () => {
     restoreGh = setGhExecutor(async () => "");
 
-    const state = await loadGateStatusFromCheckRuns("abc123");
-    expect(state).not.toBeNull();
-    expect(state!.gateA.status).toBe("pending");
-    expect(state!.gateB.status).toBe("pending");
-    expect(state!.gateC.status).toBe("pending");
+    const result = await loadGateStatusFromCheckRuns("abc123");
+    expect(result.state).toBeNull();
+    expect(result.error).toBe("no_check_runs");
   });
 
-  it("returns null on gh CLI error", async () => {
+  it("returns gh_error on gh CLI failure", async () => {
     restoreGh = setGhExecutor(async () => {
       throw new Error("gh: not authenticated");
     });
 
-    const state = await loadGateStatusFromCheckRuns("abc123");
-    expect(state).toBeNull();
+    const result = await loadGateStatusFromCheckRuns("abc123");
+    expect(result.state).toBeNull();
+    expect(result.error).toBe("gh_error");
+    expect(result.errorMessage).toContain("not authenticated");
   });
 });

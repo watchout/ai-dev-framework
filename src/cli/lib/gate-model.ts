@@ -287,25 +287,44 @@ const GATE_WORKFLOW_NAMES: Record<GateId, string> = {
 
 function checkRunToGateStatus(conclusion: string | null): GateStatus {
   if (conclusion === "success") return "passed";
-  if (conclusion === "failure") return "failed";
-  return "pending";
+  if (conclusion === null) return "pending";
+  // failure, cancelled, timed_out, startup_failure, action_required, stale
+  return "failed";
+}
+
+export interface CheckRunLoadResult {
+  state: GateState | null;
+  error?: "gh_error" | "no_check_runs";
+  errorMessage?: string;
 }
 
 export async function loadGateStatusFromCheckRuns(
   ref?: string,
-): Promise<GateState | null> {
+): Promise<CheckRunLoadResult> {
   const { execGh } = await import("./github-engine.js");
 
   const targetRef = ref ?? "HEAD";
+  let output: string;
   try {
-    const output = await execGh([
+    output = await execGh([
       "api",
       `repos/{owner}/{repo}/commits/${targetRef}/check-runs`,
       "--jq",
       ".check_runs[] | {name, status, conclusion}",
     ]);
+  } catch (e) {
+    return {
+      state: null,
+      error: "gh_error",
+      errorMessage: e instanceof Error ? e.message : String(e),
+    };
+  }
 
+  try {
     const lines = output.trim().split("\n").filter(Boolean);
+    if (lines.length === 0) {
+      return { state: null, error: "no_check_runs" };
+    }
     const checkRuns: CheckRunResult[] = lines.map((line) =>
       JSON.parse(line) as CheckRunResult,
     );
@@ -343,9 +362,13 @@ export async function loadGateStatusFromCheckRuns(
     }
 
     state.updatedAt = now;
-    return state;
-  } catch {
-    return null;
+    return { state };
+  } catch (e) {
+    return {
+      state: null,
+      error: "gh_error",
+      errorMessage: e instanceof Error ? e.message : String(e),
+    };
   }
 }
 

@@ -158,13 +158,18 @@ export function registerGateCommand(program: Command): void {
       let state: GateState | null;
 
       if (options.checkRuns) {
-        state = await loadGateStatusFromCheckRuns(options.ref);
-        if (!state) {
-          logger.info(
-            "No check runs found. Ensure Gate A/B/C workflows are configured.",
-          );
+        const result = await loadGateStatusFromCheckRuns(options.ref);
+        if (!result.state) {
+          if (result.error === "gh_error") {
+            logger.error(`gh CLI error: ${result.errorMessage ?? "unknown"}`);
+            logger.info("Check gh auth status and network connectivity.");
+          } else if (result.error === "no_check_runs") {
+            logger.info("No check runs found for this commit.");
+            logger.info("Ensure Gate A/B/C workflows (.github/workflows/gate-a/b/c.yml) are configured.");
+          }
           return;
         }
+        state = result.state;
         logger.header("Pre-Code Gate Status (from GitHub Actions check runs)");
       } else {
         state = loadGateState(projectDir);
