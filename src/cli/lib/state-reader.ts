@@ -97,7 +97,12 @@ function extractNameFromTitle(title: string): string {
 // ─────────────────────────────────────────────
 
 export async function loadPlanFromGitHub(): Promise<PlanState | null> {
-  const featureIssues = await listFeatures();
+  let featureIssues: TaskIssue[];
+  try {
+    featureIssues = await listFeatures();
+  } catch {
+    return null;
+  }
   if (featureIssues.length === 0) return null;
 
   const features = featureIssues.map(issueToFeature);
@@ -130,14 +135,22 @@ export interface RunStateFromGitHub {
 }
 
 export async function loadRunStateFromGitHub(): Promise<RunStateFromGitHub> {
-  const activeTask = await getActiveTask();
-  const openIssues = await listMyOpenIssues();
+  try {
+    const activeTask = await getActiveTask();
+    const openIssues = await listMyOpenIssues();
 
-  return {
-    hasActiveTask: activeTask !== null,
-    activeTask,
-    openIssueCount: openIssues.length,
-  };
+    return {
+      hasActiveTask: activeTask !== null,
+      activeTask,
+      openIssueCount: openIssues.length,
+    };
+  } catch {
+    return {
+      hasActiveTask: false,
+      activeTask: null,
+      openIssueCount: 0,
+    };
+  }
 }
 
 // ─────────────────────────────────────────────

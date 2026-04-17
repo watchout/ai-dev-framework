@@ -223,6 +223,38 @@ describe("loadRunStateFromGitHub", () => {
 });
 
 // ─────────────────────────────────────────────
+// gh failure tests (facade error surface)
+// ─────────────────────────────────────────────
+
+describe("facade gh failure handling", () => {
+  let restoreGh: () => void;
+
+  afterEach(() => {
+    if (restoreGh) restoreGh();
+  });
+
+  it("loadPlanFromGitHub returns null on gh CLI error", async () => {
+    restoreGh = setGhExecutor(async () => {
+      throw new Error("gh: auth required");
+    });
+
+    const plan = await loadPlanFromGitHub();
+    expect(plan).toBeNull();
+  });
+
+  it("loadRunStateFromGitHub returns empty state on gh CLI error", async () => {
+    restoreGh = setGhExecutor(async () => {
+      throw new Error("gh: network timeout");
+    });
+
+    const state = await loadRunStateFromGitHub();
+    expect(state.hasActiveTask).toBe(false);
+    expect(state.activeTask).toBeNull();
+    expect(state.openIssueCount).toBe(0);
+  });
+});
+
+// ─────────────────────────────────────────────
 // Deprecation warning tests
 // ─────────────────────────────────────────────
 
