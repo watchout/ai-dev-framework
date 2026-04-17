@@ -64,12 +64,18 @@ All bypass paths must be:
 
 ### Bypass Paths Requiring Token
 
-| Bypass Action | Without Token | With Token |
-|---|---|---|
-| `--no-verify` (git commit) | exit 2, blocked | allowed + logged |
-| `gate reset` | exit 2, blocked | allowed + logged |
-| `SKIP_GATE_*` env vars | ignored | allowed + logged |
-| `framework exit` | exit 2, blocked | allowed + logged |
+| Bypass Action | Enforcement Point | Without Token | With Token |
+|---|---|---|---|
+| `--no-verify` (git commit) | **CI** (server-side) | CI detects → merge blocked | allowed + logged |
+| `gate reset` | local hook | exit 2, blocked | allowed + logged |
+| `SKIP_GATE_*` env vars | local hook + CI | CI detects → merge blocked | allowed + logged |
+| `framework exit` | local hook | exit 2, blocked | allowed + logged |
+
+> **Important**: `--no-verify` skips local hooks entirely, so local hooks cannot intercept it.
+> Instead, a CI workflow (`bypass-detection.yml`) detects `--no-verify` commits by checking
+> for missing hook signatures (e.g., gate check results not present in commit metadata).
+> This CI check is configured as a **required status check** on protected branches,
+> preventing merge of bypass commits without token validation.
 
 ### Audit Log Format
 
@@ -127,7 +133,7 @@ Each hook, on invocation:
 GitHub Actions workflow (`integrity-check.yml`):
 - Runs on schedule (e.g., daily) and on PR
 - Compares all hook files against integrity baseline
-- Integrity failure → blocks new PR creation
+- Integrity failure → blocks PR merge (configured as required status check)
 - Reports discrepancies as check run annotations
 
 ---
@@ -218,13 +224,53 @@ Long sessions degrade rule adherence. Mitigation:
 
 "Dev bot claims to have read the spec" is unverifiable without deterministic proof.
 
-### 3-Layer Verification
+### 3-Layer Verification (Deterministic Scoring Schema)
 
-| Layer | Method | What It Proves |
-|---|---|---|
-| 1. File hash | SHA-256 of spec file matches expected | Correct file was accessed |
-| 2. Grounding text | Bot must cite specific values from the spec (not summaries) | Content was actually parsed |
-| 3. Challenge Q&A | Bot answers factual questions derivable only from the spec | Comprehension, not just access |
+Each layer has a deterministic pass/fail criterion — no LLM judgment in scoring.
+
+| Layer | Method | Pass Criterion (deterministic) | What It Proves |
+|---|---|---|---|
+| 1. File hash | SHA-256 of spec file | `sha256(file) === expected_hash` (exact match) | Correct file was accessed |
+| 2. Grounding text | Extract specific values from spec | Exact string match against spec content (e.g., "§3 FR-001 threshold = 80%") | Content was actually parsed |
+| 3. Challenge Q&A | Answer factual questions | Answer matches pre-computed answer key (exact or regex match) | Comprehension, not just access |
+
+### Layer 2: Grounding Schema
+
+```json
+{
+  "specFile": "docs/specs/06_CODE_QUALITY.md",
+  "groundingQuestions": [
+    {
+      "question": "What is the L1 coverage threshold in §3.5?",
+      "expectedAnswer": "80%",
+      "matchType": "contains"
+    },
+    {
+      "question": "How many categories are in the quality checklist §1.2?",
+      "expectedAnswer": "6",
+      "matchType": "exact"
+    }
+  ]
+}
+```
+
+### Layer 3: Challenge Schema
+
+```json
+{
+  "challenges": [
+    {
+      "question": "If D-1 (Health Check) fails after deploy, what is the automatic action?",
+      "answerKey": "auto-rollback",
+      "matchType": "contains",
+      "sourceSection": "06_CODE_QUALITY §4.7"
+    }
+  ]
+}
+```
+
+Grounding questions and challenge answer keys are **pre-generated from spec content**
+and stored alongside the spec. They update automatically when spec file hash changes.
 
 ### Implementation
 
@@ -232,11 +278,12 @@ Long sessions degrade rule adherence. Mitigation:
 Before task execution:
   1. Identify required specs (from Issue body or SSOT references)
   2. For each spec:
-     a. Verify file hash matches (Layer 1)
-     b. Request grounding: "What is the value of X in §Y?" (Layer 2)
-     c. Challenge: "If condition Z occurs, what does the spec prescribe?" (Layer 3)
+     a. Layer 1: sha256(file) === expected_hash (deterministic)
+     b. Layer 2: Extract values → exact/regex match against answer key (deterministic)
+     c. Layer 3: Answer challenge → match against pre-computed answer key (deterministic)
   3. All layers pass → proceed
   4. Any layer fails → block task, report to lead
+  Scoring: 3/3 pass = PASS, anything less = FAIL. No partial credit.
 ```
 
 ### As PR Check Run

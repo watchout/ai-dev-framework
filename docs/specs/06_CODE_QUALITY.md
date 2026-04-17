@@ -66,7 +66,7 @@ v1.0.0 で定義していた 8 カテゴリ × 配点方式のスコアリング
 ## 2. 2-Step Review Model (#66)
 
 > **v1.1.0 改訂**: Role A/B の AI 反復レビューループを廃止。
-> 静的解析 pass + human/bot PR review (1回) に移行。
+> 静的解析 pass + human/bot PR review (route 別 reviewer 構成) に移行。
 
 ### 2.1 基本思想
 
@@ -78,10 +78,11 @@ v1.0.0 で定義していた 8 カテゴリ × 配点方式のスコアリング
     - §1 のチェックリスト全 PASS 確認
     - スクリプトによる自動検証 (CI)
 
-  Step 2: External Reviewer (1名)
-    - Lead bot または auditor が自動アサイン
-    - route label (diff 特性から自動分類) で reviewer を決定
-    - SSOT 準拠性 + 影響分析を確認
+  Step 2: External Review (route label で reviewer 数・構成を決定)
+    - route:fast-merge → lead-bot 1名
+    - route:audit-required → lead-bot + auditor
+    - route:ceo-approval → lead-bot + auditor + CEO
+    - route label は diff 特性から route-classifier スクリプトが自動分類
 ```
 
 ### 2.2 Route Classification
