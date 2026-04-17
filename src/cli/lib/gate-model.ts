@@ -268,3 +268,85 @@ export function saveGateState(
   state.updatedAt = new Date().toISOString();
   fs.writeFileSync(filePath, JSON.stringify(state, null, 2), "utf-8");
 }
+
+// ─────────────────────────────────────────────
+// Check Runs API (#62 sub-PR 2/4)
+// ─────────────────────────────────────────────
+
+interface CheckRunResult {
+  name: string;
+  status: string;
+  conclusion: string | null;
+}
+
+const GATE_WORKFLOW_NAMES: Record<GateId, string> = {
+  A: "Gate A — Environment Readiness",
+  B: "Gate B — Planning Completeness",
+  C: "Gate C — SSOT Completeness",
+};
+
+function checkRunToGateStatus(conclusion: string | null): GateStatus {
+  if (conclusion === "success") return "passed";
+  if (conclusion === "failure") return "failed";
+  return "pending";
+}
+
+export async function loadGateStatusFromCheckRuns(
+  ref?: string,
+): Promise<GateState | null> {
+  const { execGh } = await import("./github-engine.js");
+
+  const targetRef = ref ?? "HEAD";
+  try {
+    const output = await execGh([
+      "api",
+      `repos/{owner}/{repo}/commits/${targetRef}/check-runs`,
+      "--jq",
+      ".check_runs[] | {name, status, conclusion}",
+    ]);
+
+    const lines = output.trim().split("\n").filter(Boolean);
+    const checkRuns: CheckRunResult[] = lines.map((line) =>
+      JSON.parse(line) as CheckRunResult,
+    );
+
+    const now = new Date().toISOString();
+    const state = createGateState();
+
+    for (const [gateId, workflowName] of Object.entries(GATE_WORKFLOW_NAMES)) {
+      const run = checkRuns.find((r) => r.name === workflowName);
+      const status = run ? checkRunToGateStatus(run.conclusion) : "pending";
+      const checks: GateCheck[] = run
+        ? [
+            {
+              name: workflowName,
+              passed: status === "passed",
+              status: status === "passed" ? "pass" : status === "failed" ? "fail" : "skipped",
+              message: run.conclusion
+                ? `Check run: ${run.conclusion}`
+                : `Check run: ${run.status}`,
+            },
+          ]
+        : [];
+
+      switch (gateId as GateId) {
+        case "A":
+          state.gateA = { status, checks, checkedAt: now };
+          break;
+        case "B":
+          state.gateB = { status, checks, checkedAt: now };
+          break;
+        case "C":
+          state.gateC = { status, checks: checks as SSOTCheck[], checkedAt: now };
+          break;
+      }
+    }
+
+    state.updatedAt = now;
+    return state;
+  } catch {
+    return null;
+  }
+}
+
+export { GATE_WORKFLOW_NAMES };
