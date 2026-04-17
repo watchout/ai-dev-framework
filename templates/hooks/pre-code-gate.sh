@@ -118,6 +118,7 @@ fi
 
 task_check=$(node -e "
   const fs = require('fs');
+  const { execSync } = require('child_process');
   try {
     const pf = '$project_dir/.framework/project.json';
     if (fs.existsSync(pf)) {
@@ -125,6 +126,13 @@ task_check=$(node -e "
       const pt = p.profileType || p.type || '';
       if (pt === 'lp' || pt === 'hp') { console.log('SKIP'); process.exit(0); }
     }
+    // Primary: check GitHub Issues for active task (#61)
+    try {
+      const out = execSync('gh issue list --assignee @me --label status:in-progress --state open --json number,title --limit 1', { timeout: 5000, encoding: 'utf8', stdio: ['pipe','pipe','pipe'] });
+      const issues = JSON.parse(out);
+      if (issues.length > 0) { console.log('ACTIVE:' + issues[0].title); process.exit(0); }
+    } catch { /* gh not available or error — fall through to local */ }
+    // Fallback: local run-state.json (deprecated, #61)
     const rf = '$project_dir/.framework/run-state.json';
     if (!fs.existsSync(rf)) { console.log('NO_STATE'); process.exit(0); }
     const s = JSON.parse(fs.readFileSync(rf, 'utf8'));
@@ -146,7 +154,8 @@ case "$task_check" in
     echo "  ACTIVE TASK REQUIRED" >&2
     echo "=====================================" >&2
     echo "  Gates passed, but no task is in progress." >&2
-    echo "  Start a task first:" >&2
+    echo "  Start a task via GitHub Issue or local command:" >&2
+    echo "    gh issue edit <num> --add-label status:in-progress" >&2
     echo "    framework run <taskId>" >&2
     echo "" >&2
     echo "  Emergency bypass:" >&2
