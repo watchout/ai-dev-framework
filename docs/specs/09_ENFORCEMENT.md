@@ -1,0 +1,268 @@
+# 09_ENFORCEMENT.md - Deterministic Enforcement Mechanisms
+
+> **New in v1.1.0** (epic #60: LLM judgment dependency → deterministic script control)
+>
+> Consolidates all enforcement mechanisms that the framework applies via
+> scripts, hooks, CI workflows, and deterministic policy — NOT via LLM judgment.
+>
+> **Principle**: The framework enforces rules through code that can be audited,
+> tested, and reproduced. LLM-based review chains are project governance
+> concerns, not framework enforcement.
+
+---
+
+## 1. Framework Mode State Machine (#63)
+
+### States
+
+```
+          init / retrofit
+               │
+               ▼
+  ┌──────────────────────┐
+  │   active             │
+  │   (repo topic:       │
+  │    framework-managed) │
+  └──────┬───────────────┘
+         │  exit (CEO token required)
+         ▼
+  ┌──────────────────────┐
+  │   inactive           │
+  │   (topic removed)    │
+  └──────────────────────┘
+```
+
+### Activation
+
+- `framework init` / `framework retrofit` adds the `framework-managed` repo topic
+- All local hooks check for this topic at invocation time
+- Topic present → hooks enforce gates; topic absent → hooks are passthrough no-ops
+
+### Exit
+
+- `framework exit` command requires `FRAMEWORK_BYPASS` CEO secret token
+- Removes `framework-managed` topic
+- Logs exit event to audit log (§2)
+- All hooks become no-ops immediately
+
+### Mode Lock
+
+- While `active`, the mode cannot change without the CEO token
+- Prevents accidental deactivation by dev bots
+- Mode transitions are recorded in the bypass audit log (§2)
+
+---
+
+## 2. Bypass Audit Log (#65)
+
+### Principle
+
+All bypass paths must be:
+1. **Authenticated** — require `FRAMEWORK_BYPASS` CEO secret token
+2. **Logged** — auto-append to immutable audit record
+3. **Verifiable** — any reviewer can enumerate all bypasses
+
+### Bypass Paths Requiring Token
+
+| Bypass Action | Without Token | With Token |
+|---|---|---|
+| `--no-verify` (git commit) | exit 2, blocked | allowed + logged |
+| `gate reset` | exit 2, blocked | allowed + logged |
+| `SKIP_GATE_*` env vars | ignored | allowed + logged |
+| `framework exit` | exit 2, blocked | allowed + logged |
+
+### Audit Log Format
+
+Each bypass auto-appends to a dedicated `audit-log` GitHub Issue:
+
+```
+## Bypass Record
+
+- **Timestamp**: ISO 8601
+- **Actor**: git user.name / bot identity
+- **Action**: --no-verify | gate reset | SKIP_GATE_A | framework exit
+- **Reason**: (provided by actor, required)
+- **Token validation**: PASS (hash prefix match)
+```
+
+### Token Validation
+
+- Token is validated via `gh api` against repository secret
+- Only hash-prefix comparison — the full token never appears in logs
+- Invalid token → exit 2, no bypass, no log entry
+
+---
+
+## 3. Hook & Settings Integrity (#67)
+
+### Integrity Baseline
+
+At `framework init` / `framework retrofit`:
+1. Compute SHA-256 hash of each hook file (`pre-commit`, `pre-code-gate.sh`, etc.)
+2. Compute SHA-256 hash of `.claude/settings.json` hook configuration
+3. Store in `.framework/integrity.json`
+
+```json
+{
+  "version": 1,
+  "baselineAt": "2026-04-15T00:00:00Z",
+  "files": {
+    ".husky/pre-commit": "sha256:abc123...",
+    ".claude/hooks/pre-code-gate.sh": "sha256:def456...",
+    ".claude/settings.json": "sha256:789abc..."
+  }
+}
+```
+
+### Runtime Self-Verification
+
+Each hook, on invocation:
+1. Computes its own SHA-256
+2. Compares against `.framework/integrity.json`
+3. Mismatch → **auto-restore** canonical version from template + log to audit Issue
+4. Missing integrity file → warn but proceed (backward compatibility)
+
+### Scheduled CI Verification
+
+GitHub Actions workflow (`integrity-check.yml`):
+- Runs on schedule (e.g., daily) and on PR
+- Compares all hook files against integrity baseline
+- Integrity failure → blocks new PR creation
+- Reports discrepancies as check run annotations
+
+---
+
+## 4. Pre-Tool-Call Gateway / AEGIS (#68)
+
+### Concept
+
+An interceptor layer (via MCP tool middleware or Claude Code hooks) that applies
+deterministic policy to every tool call **before** execution.
+
+### Policy Engine
+
+```
+Tool call received
+  │
+  ├── Policy lookup (tool name + context)
+  │   │
+  │   ├── ALLOW → proceed to tool execution
+  │   ├── BLOCK → reject with reason, log
+  │   └── PENDING → queue for approval
+  │
+  └── Audit log append (all outcomes)
+```
+
+### Deterministic Policies (Examples)
+
+| Policy | Trigger | Outcome |
+|---|---|---|
+| No Edit without Read | `Edit` tool called, no prior `Read` of same file in session | BLOCK |
+| No file write outside project | `Write` tool path outside project root | BLOCK |
+| No Edit on unassigned Issue | No open Issue assigned to current bot | BLOCK |
+| Sensitive path protection | Edit to `.env`, credentials, secrets | BLOCK |
+
+### Audit Trail
+
+- Every tool call (allow, block, pending) is logged with:
+  - Timestamp, tool name, parameters (sanitized), outcome, policy matched
+- Log is append-only and tamper-evident (signed hash chain)
+- Stored in `.framework/tool-audit.jsonl`
+
+---
+
+## 5. Session Lifecycle (#69)
+
+### 1-Task-1-Session Principle
+
+```
+Session start
+  │
+  ├── Exactly 1 GitHub Issue assigned
+  │   │
+  │   ├── Work on that Issue only
+  │   ├── Issue closes → session auto-terminates
+  │   └── Scope creep detected → warn + block
+  │
+  └── No Issue assigned
+      └── Enter idle mode (framework-runner.sh picks next)
+```
+
+### Compaction Rule Re-Injection
+
+When Claude Code triggers compaction (context window management):
+1. **Always re-inject**: CLAUDE.md rules, current Issue acceptance criteria
+2. **Re-inject on demand**: SSOT sections referenced by current task
+3. **Drop**: intermediate outputs, debug logs, prior attempts
+
+### Drift Detection
+
+| Signal | Threshold | Action |
+|---|---|---|
+| Session duration | > N minutes (configurable) | Trigger drift verification |
+| Files touched outside Issue scope | >= 1 | Warn, require justification |
+| Compaction count | >= 3 in session | Re-inject full rule set |
+
+### Attention Decay Mitigation (Rhea Pattern)
+
+Long sessions degrade rule adherence. Mitigation:
+- **Instructional memory** (rules, constraints) is re-injected at checkpoints
+- **Episodic memory** (task progress, decisions) is summarized
+- Checkpoint interval: every N tool calls or M minutes
+
+---
+
+## 6. Read-Receipt Enforcement (#64)
+
+### Problem
+
+"Dev bot claims to have read the spec" is unverifiable without deterministic proof.
+
+### 3-Layer Verification
+
+| Layer | Method | What It Proves |
+|---|---|---|
+| 1. File hash | SHA-256 of spec file matches expected | Correct file was accessed |
+| 2. Grounding text | Bot must cite specific values from the spec (not summaries) | Content was actually parsed |
+| 3. Challenge Q&A | Bot answers factual questions derivable only from the spec | Comprehension, not just access |
+
+### Implementation
+
+```
+Before task execution:
+  1. Identify required specs (from Issue body or SSOT references)
+  2. For each spec:
+     a. Verify file hash matches (Layer 1)
+     b. Request grounding: "What is the value of X in §Y?" (Layer 2)
+     c. Challenge: "If condition Z occurs, what does the spec prescribe?" (Layer 3)
+  3. All layers pass → proceed
+  4. Any layer fails → block task, report to lead
+```
+
+### As PR Check Run
+
+- `read-receipts` check run on PR
+- Verifies that the PR author (bot) has valid read receipts for all referenced specs
+- Receipts stored in `.framework/read-receipts/` as signed JSON
+- Receipts expire when spec file hash changes (forces re-read)
+
+---
+
+## Cross-Reference to Other Specs
+
+| Section | Related Spec | Relationship |
+|---|---|---|
+| §1 Framework Mode | 05_IMPLEMENTATION §3 (GitHub Issues SSOT) | Mode determines whether hooks enforce |
+| §2 Bypass Audit | 06_CODE_QUALITY §4.7 (Gate D) | Bypass of gates is logged |
+| §3 Hook Integrity | 06_CODE_QUALITY §4 (CI Pipeline) | Integrity check runs in CI |
+| §4 AEGIS Gateway | 07_AI_PROTOCOL §4 (SSOT Layer Matrix) | Gateway enforces layer rules deterministically |
+| §5 Session Lifecycle | 07_AI_PROTOCOL §10b (Dev Bot Autonomy) | Session boundary tied to Issue lifecycle |
+| §6 Read Receipts | 07_AI_PROTOCOL §4 (Layer Matrix) | Replaces "判断できない → 停止" with verifiable reads |
+
+---
+
+## Change History
+
+| Date | Change |
+|------|--------|
+| 2026-04-17 | v1.1.0 — New spec created. Consolidates enforcement mechanisms from epic #60 (LLM → deterministic control) |

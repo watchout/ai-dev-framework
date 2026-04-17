@@ -84,7 +84,11 @@ SSOT更新時は §1 変更履歴に記録する:
 
 ---
 
-## 4. 止まるか進むか: SSOT層別判定マトリクス
+## 4. 止まるか進むか: SSOT層別判定マトリクス (#64)
+
+> **v1.1.0 改訂**: LLM の裁量判断 ("判断できない → 停止") を決定論的ルールに補強。
+> Layer 自動検出 + read-receipt enforcement (09_ENFORCEMENT §6) により、
+> "読んだつもり" ではなく検証可能な読了を前提とする。
 
 ### 4.1 判定フロー
 
@@ -100,7 +104,8 @@ SSOT更新時は §1 変更履歴に記録する:
   │   └── 影響が小さい? → デフォルト案で進む
   │   └── いずれも Decision Backlog に記録
   │
-  └── 判断できない → 停止して質問
+  └── 判断できない → read-receipt 検証 (09_ENFORCEMENT §6) で grounding 確認後、
+      明示ルールに該当しなければ停止して質問
 ```
 
 ### 4.2 整合性マトリクス
@@ -168,32 +173,48 @@ Step 5: セッション終了時にユーザーへ報告
 
 ## 6. Decision Backlog フォーマット
 
-保存先: `docs/ssot/DECISION_BACKLOG.md`
+> **v1.1.0 改訂**: Markdown テンプレートから JSON 構造化データに移行。
+> スクリプトによる自動管理 (期限超過アラート、ステータス集計) を可能にする。
 
-```markdown
-# Decision Backlog
+### 保存先
 
-## 未決定
+**推奨**: `.framework/decisions.json` (構造化、スクリプト参照可能)
+**代替**: `docs/ssot/DECISION_BACKLOG.md` (後方互換)
 
-### DB-001: エラーリトライ回数
-- 発見日: YYYY-MM-DD
-- トリガー: T1（SSOT未記載）
-- SSOT層: DETAIL
-- デフォルト案: 3回（一般的なデフォルト値）
-- 他の選択肢: a) 5回（耐障害性重視） b) 1回（即時失敗）
-- 副作用: リトライ回数が多いとレスポンス遅延の可能性
-- 決定期限: Sprint N 終了まで
-- コードマーカー: `// DECISION: DB-001`
-- 関連ファイル: src/lib/api-client.ts:42
+### JSON フォーマット
 
-## 決定済み
-
-### DB-000: セッション有効期限
-- 決定日: YYYY-MM-DD
-- 決定: 24時間
-- 理由: ユーザーヒアリングの結果
-- 反映: SSOT §7 に追記済み、コードマーカー削除済み
+```json
+{
+  "version": 1,
+  "decisions": [
+    {
+      "id": "DB-001",
+      "title": "エラーリトライ回数",
+      "status": "pending",
+      "discoveredAt": "2026-04-17",
+      "trigger": "T1",
+      "ssotLayer": "DETAIL",
+      "defaultChoice": "3回（一般的なデフォルト値）",
+      "alternatives": ["5回（耐障害性重視）", "1回（即時失敗）"],
+      "sideEffects": "リトライ回数が多いとレスポンス遅延の可能性",
+      "deadline": "Sprint N 終了まで",
+      "codeMarker": "// DECISION: DB-001",
+      "relatedFiles": ["src/lib/api-client.ts:42"],
+      "resolvedAt": null,
+      "resolution": null,
+      "reason": null
+    }
+  ]
+}
 ```
+
+### ステータス
+
+| status | 意味 |
+|---|---|
+| `pending` | 未決定 (デフォルト案で実装中) |
+| `resolved` | 決定済み (SSOT 反映済み、コードマーカー削除済み) |
+| `expired` | 期限超過 (自動アラート対象) |
 
 ---
 
@@ -306,66 +327,66 @@ Step 5: セッション終了時にユーザーへ報告
 
 ---
 
-## 10b. Dev Bot 自律タスク選択
+## 10b. Dev Bot 自律タスク選択 (#61)
+
+> **v1.1.0 改訂**: CTO 承認ループ (notify_then_proceed 5分待ち) を廃止。
+> GitHub label ベースの決定論的ポリシーに移行。
+> Session lifecycle (09_ENFORCEMENT §5) とは別の concern — 本セクションは autonomy policy。
 
 ### 概要
 
-Dev Bot はアイドル時に GitHub Issues から自律的にタスクを取得し、autonomy level に基づいて着手判断を行う。
+Dev Bot はアイドル時に GitHub Issues から自律的にタスクを取得し、**Issue label に基づく決定論的ポリシー** で着手判断を行う。
 
-### タスク取得（cron ハートビート）
+### タスク取得
 
 ```
-間隔: 10分ごと
+トリガー: session 開始時 (framework-runner.sh) + cron ハートビート
 コマンド: gh issue list --assignee @me --state open --json number,title,labels,body
-設定: .framework/autonomy.json
 ```
 
-### 自律選択フロー
+### 決定論的自律選択フロー
 
 ```
-1. cron ハートビート発火（10分間隔）
+1. Session 開始 or cron ハートビート発火
 2. 現在のタスク状態を確認
-   - 実行中タスクあり → スキップ
+   - 実行中タスクあり → スキップ (1-task-1-session: 09_ENFORCEMENT §5)
    - アイドル → 3へ
 3. GitHub Issues から open issues を取得
-4. Issue の labels から autonomy level を判定
+4. Issue の labels から autonomy level を **決定論的に** 判定 (下表)
 5. 優先度で並び替え（P0 > P1 > P2 > ラベルなし）
 6. autonomy level に基づいて行動:
 
    autonomous:
-     → 即座に着手
-     → SSOT整合チェック → ブランチ作成 → 実装 → PR作成
+     → 即座に着手 (人間の判断を介さない)
+     → Read-receipt 検証 (09_ENFORCEMENT §6) → ブランチ作成 → 実装 → PR作成
      → [報告:完了] を送信
 
-   notify_then_proceed:
-     → CTO に [提案] を送信（タスク内容 + 自律レベル）
-     → 5分以内に [却下] がなければ着手
-     → 完了後 [報告:完了]
-
    approval_required:
-     → CTO に [承認依頼] を送信
+     → lead/CTO に [承認依頼] を送信
      → [承認] を受信するまで待機
      → 承認後着手
 ```
 
-### autonomy.json
+### Label → Autonomy Level マッピング（決定論的）
 
-`.framework/autonomy.json` に自律レベル定義を配置する。
+| Issue Label | Autonomy Level | 根拠 |
+|---|---|---|
+| `P0`, `bug`, `fix` | **autonomous** | 緊急度が高く即時対応が必要 |
+| `test`, `refactoring`, `docs` | **autonomous** | 既存動作に影響しない |
+| `feature`, `enhancement` | **approval_required** | 新規機能は scope 確認が必要 |
+| `db-change`, `security`, `breaking` | **approval_required** | 影響が大きく人間判断が必須 |
+| ラベルなし | **approval_required** | 不明な場合は保守側に倒す |
 
-| キー | 説明 |
-|------|------|
-| `taskSource.primary` | `github_issues`（SSOT） |
-| `taskSource.cronIntervalMinutes` | ハートビート間隔（デフォルト: 10） |
-| `levels.autonomous.issueLabels` | 自律実行可能な Issue ラベル |
-| `levels.notify_then_proceed.issueLabels` | 提案後着手の Issue ラベル |
-| `levels.approval_required.issueLabels` | 承認必須の Issue ラベル |
-| `taskSelection.selectionOrder` | タスク選択の優先基準 |
+> **v1.0.0 との差分**: `notify_then_proceed` (5分待ち → 自動着手) は廃止。
+> 判断を要するものは明示的に `approval_required` とし、不要なものは `autonomous` にする。
+> 中間の「通知して待つ」は決定論的でないため削除。
 
 ### goals.json との関係
 
-- `goals.json` の backlog は廃止
-- `goals.json` を残す場合は GitHub Issues のローカルキャッシュとしてのみ利用
-- タスクの正規ソースは常に GitHub Issues
+- `goals.json` の backlog は **deprecated**
+- タスクの正規ソースは常に **GitHub Issues**
+- `goals.json` を残す場合は GitHub Issues のローカルキャッシュ (read-only) としてのみ利用
+- `framework-runner.sh` は GitHub Issues のみ参照する
 
 ---
 
@@ -396,3 +417,4 @@ CT4: セッション長時間経過時（コンテキスト使用量が高い場
 | 日付 | 変更内容 |
 |------|---------|
 | - | 21_AI_ESCALATION.md から統合・圧縮して作成 |
+| 2026-04-17 | v1.1.0 — epic #60 方針反映: §4 LLM裁量→read-receipt + 決定論ルール (#64)、§6 Markdown→JSON構造化、§10b CTO承認ループ→label決定論ポリシー (#61) |

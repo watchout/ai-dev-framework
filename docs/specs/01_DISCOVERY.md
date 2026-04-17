@@ -24,6 +24,10 @@ OUTPUT:  Initial document set auto-generated
 **Agent Skill**: `framework-discovery` auto-runs this flow with Deliberation Protocol.
 Details: `templates/skills/discovery/SKILL.md`
 
+> **v1.1.0 Note**: Deliberation Protocol (multi-perspective review) は framework が強制する
+> メカニズムではなく、project governance として任意に適用するプラクティスです。
+> framework の enforcement は決定論的スクリプト (09_ENFORCEMENT.md) のみです。
+
 ---
 
 ## Execution Rules
@@ -238,6 +242,9 @@ Marketing:    [parallel/later/none]
 ---
 
 ## Stage 5.5: Deliberation (Multi-perspective Verification)
+
+> **v1.1.0 Note**: Review chain (Deliberation) は framework 強制ではありません。
+> Project governance として任意に適用してください。(09_ENFORCEMENT.md 参照)
 
 **Purpose**: Before generating documents, 3 experts verify the summary from multiple angles.
 

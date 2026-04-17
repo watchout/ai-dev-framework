@@ -6,6 +6,10 @@
 > AI-driven hearing, IEEE/ISO-compliant SSOT generation, and quality audit.
 >
 > Agent Skill: `framework-feature-spec` (Deliberation Protocol built-in)
+>
+> **v1.1.0 Note**: Deliberation Protocol (multi-perspective review) は framework 強制ではなく、
+> project governance として任意に適用するプラクティスです。
+> framework の enforcement は決定論的スクリプトのみ (09_ENFORCEMENT.md)。
 
 ---
 
@@ -198,6 +202,9 @@ Example:
 ---
 
 ## 7.5. Deliberation (Multi-Perspective Review)
+
+> **v1.1.0 Note**: Review chain (Deliberation) は framework 強制ではありません。
+> Project governance として任意に適用してください。(09_ENFORCEMENT.md 参照)
 
 Three experts review hearing results before SSOT generation:
 
