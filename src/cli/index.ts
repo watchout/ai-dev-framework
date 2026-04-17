@@ -34,6 +34,7 @@ import { registerConfigCommand } from "./commands/config.js";
 import { registerImproveCommand } from "./commands/improve.js";
 import { registerIngestCommand } from "./commands/ingest.js";
 import { registerCheckCommand } from "./commands/check.js";
+import { registerMigrateCommand } from "./commands/migrate.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -95,5 +96,6 @@ registerCompactCommand(program);
 registerSessionCommands(program);
 registerConfigCommand(program);
 registerImproveCommand(program);
+registerMigrateCommand(program);
 
 program.parse();
