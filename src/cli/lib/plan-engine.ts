@@ -279,9 +279,6 @@ export async function runPlanEngine(
     circularDependencies: cycles,
   };
   savePlan(projectDir, plan);
-  console.warn(
-    "[deprecated] plan.json written locally. Run 'framework plan --sync' to create GitHub Issues (SSOT). See #61.",
-  );
 
   return { plan, errors };
 }
