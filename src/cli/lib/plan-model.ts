@@ -420,6 +420,10 @@ export function loadPlan(projectDir: string): PlanState | null {
 /**
  * Save plan.json with atomic write (tmp + rename) to prevent corruption on crash.
  * Uses the same pattern as sync-engine.ts atomicWritePlan().
+ *
+ * @deprecated Local plan.json is being replaced by GitHub Issues as SSOT.
+ * Use `framework plan --sync` to create GitHub Issues. See #61.
+ * Local file is still written for backward compatibility during transition.
  */
 export function savePlan(projectDir: string, plan: PlanState): void {
   const planFilePath = path.join(projectDir, PLAN_FILE);

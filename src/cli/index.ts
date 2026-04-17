@@ -35,6 +35,8 @@ import { registerImproveCommand } from "./commands/improve.js";
 import { registerIngestCommand } from "./commands/ingest.js";
 import { registerCheckCommand } from "./commands/check.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
+import { setWriteThrough, type RunState } from "./lib/run-model.js";
+import { syncTaskStatusToGitHub, resolveIssueNumber } from "./lib/state-writer.js";
 
 // Read version from package.json
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -97,5 +99,28 @@ registerSessionCommands(program);
 registerConfigCommand(program);
 registerImproveCommand(program);
 registerMigrateCommand(program);
+
+// Connect write-through hook: sync RunState transitions to GitHub Issues (#61)
+setWriteThrough((state: RunState, prev: RunState | null) => {
+  if (!prev) return;
+  for (const task of state.tasks) {
+    const prevTask = prev.tasks.find((t) => t.taskId === task.taskId);
+    const oldStatus = prevTask?.status ?? "backlog";
+    if (oldStatus === task.status) continue;
+
+    resolveIssueNumber(task.taskId).then((issueNumber) => {
+      if (!issueNumber) return;
+      return syncTaskStatusToGitHub({
+        taskId: task.taskId,
+        issueNumber,
+        oldStatus,
+        newStatus: task.status,
+        reason: task.stopDetails ?? task.stopReason,
+      });
+    }).catch(() => {
+      // best-effort
+    });
+  }
+});
 
 program.parse();
