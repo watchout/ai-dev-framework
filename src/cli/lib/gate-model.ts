@@ -268,3 +268,108 @@ export function saveGateState(
   state.updatedAt = new Date().toISOString();
   fs.writeFileSync(filePath, JSON.stringify(state, null, 2), "utf-8");
 }
+
+// ─────────────────────────────────────────────
+// Check Runs API (#62 sub-PR 2/4)
+// ─────────────────────────────────────────────
+
+interface CheckRunResult {
+  name: string;
+  status: string;
+  conclusion: string | null;
+}
+
+const GATE_WORKFLOW_NAMES: Record<GateId, string> = {
+  A: "Gate A — Environment Readiness",
+  B: "Gate B — Planning Completeness",
+  C: "Gate C — SSOT Completeness",
+};
+
+function checkRunToGateStatus(conclusion: string | null): GateStatus {
+  if (conclusion === "success") return "passed";
+  if (conclusion === null) return "pending";
+  // failure, cancelled, timed_out, startup_failure, action_required, stale
+  return "failed";
+}
+
+export interface CheckRunLoadResult {
+  state: GateState | null;
+  error?: "gh_error" | "no_check_runs";
+  errorMessage?: string;
+}
+
+export async function loadGateStatusFromCheckRuns(
+  ref?: string,
+): Promise<CheckRunLoadResult> {
+  const { execGh } = await import("./github-engine.js");
+
+  const targetRef = ref ?? "HEAD";
+  let output: string;
+  try {
+    output = await execGh([
+      "api",
+      `repos/{owner}/{repo}/commits/${targetRef}/check-runs`,
+      "--jq",
+      ".check_runs[] | {name, status, conclusion}",
+    ]);
+  } catch (e) {
+    return {
+      state: null,
+      error: "gh_error",
+      errorMessage: e instanceof Error ? e.message : String(e),
+    };
+  }
+
+  try {
+    const lines = output.trim().split("\n").filter(Boolean);
+    if (lines.length === 0) {
+      return { state: null, error: "no_check_runs" };
+    }
+    const checkRuns: CheckRunResult[] = lines.map((line) =>
+      JSON.parse(line) as CheckRunResult,
+    );
+
+    const now = new Date().toISOString();
+    const state = createGateState();
+
+    for (const [gateId, workflowName] of Object.entries(GATE_WORKFLOW_NAMES)) {
+      const run = checkRuns.find((r) => r.name === workflowName);
+      const status = run ? checkRunToGateStatus(run.conclusion) : "pending";
+      const checks: GateCheck[] = run
+        ? [
+            {
+              name: workflowName,
+              passed: status === "passed",
+              status: status === "passed" ? "pass" : status === "failed" ? "fail" : "skipped",
+              message: run.conclusion
+                ? `Check run: ${run.conclusion}`
+                : `Check run: ${run.status}`,
+            },
+          ]
+        : [];
+
+      switch (gateId as GateId) {
+        case "A":
+          state.gateA = { status, checks, checkedAt: now };
+          break;
+        case "B":
+          state.gateB = { status, checks, checkedAt: now };
+          break;
+        case "C":
+          state.gateC = { status, checks: checks as SSOTCheck[], checkedAt: now };
+          break;
+      }
+    }
+
+    state.updatedAt = now;
+    return { state };
+  } catch (e) {
+    return {
+      state: null,
+      error: "gh_error",
+      errorMessage: e instanceof Error ? e.message : String(e),
+    };
+  }
+}
+
+export { GATE_WORKFLOW_NAMES };

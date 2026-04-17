@@ -20,6 +20,7 @@ import {
 } from "../lib/gate-engine.js";
 import {
   loadGateState,
+  loadGateStatusFromCheckRuns,
   saveGateState,
   createGateState,
   resetGateState,
@@ -149,19 +150,38 @@ export function registerGateCommand(program: Command): void {
   gate
     .command("status")
     .description("Show current gate state")
-    .action(async () => {
+    .option("--check-runs", "Read gate status from GitHub Actions check runs instead of local gates.json")
+    .option("--ref <ref>", "Git ref for check runs (default: HEAD)")
+    .action(async (options: { checkRuns?: boolean; ref?: string }) => {
       const projectDir = process.cwd();
 
-      const state = loadGateState(projectDir);
+      let state: GateState | null;
 
-      if (!state) {
-        logger.info(
-          "No gate state found. Run 'framework gate check' first.",
-        );
-        return;
+      if (options.checkRuns) {
+        const result = await loadGateStatusFromCheckRuns(options.ref);
+        if (!result.state) {
+          if (result.error === "gh_error") {
+            logger.error(`gh CLI error: ${result.errorMessage ?? "unknown"}`);
+            logger.info("Check gh auth status and network connectivity.");
+          } else if (result.error === "no_check_runs") {
+            logger.info("No check runs found for this commit.");
+            logger.info("Ensure Gate A/B/C workflows (.github/workflows/gate-a/b/c.yml) are configured.");
+          }
+          return;
+        }
+        state = result.state;
+        logger.header("Pre-Code Gate Status (from GitHub Actions check runs)");
+      } else {
+        state = loadGateState(projectDir);
+        if (!state) {
+          logger.info(
+            "No gate state found. Run 'framework gate check' or use --check-runs.",
+          );
+          return;
+        }
+        logger.header("Pre-Code Gate Status");
       }
 
-      logger.header("Pre-Code Gate Status");
       logger.info("");
       printGateSummary(state.gateA, state.gateB, state.gateC);
       logger.info(`  Last updated: ${state.updatedAt}`);
