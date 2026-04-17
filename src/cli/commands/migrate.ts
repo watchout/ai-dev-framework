@@ -11,6 +11,7 @@ import type { Command } from "commander";
 import {
   analyzeMigration,
   executeMigration,
+  findAlreadyMigrated,
   formatDryRunReport,
   formatApplyResult,
 } from "../lib/migrate-engine.js";
@@ -24,7 +25,7 @@ export function registerMigrateCommand(program: Command): void {
   migrate
     .command("plan-state")
     .description(
-      "Migrate .framework/plan.json and run-state.json to GitHub Issues",
+      "Migrate .framework/plan.json features/tasks to GitHub Issues (run-state.json is backed up only)",
     )
     .option("--apply", "Execute migration (default: dry-run)")
     .option("--force", "Allow migration even if plan.json is empty/template-only")
@@ -32,7 +33,9 @@ export function registerMigrateCommand(program: Command): void {
       async (options: { apply?: boolean; force?: boolean }) => {
         const projectDir = process.cwd();
 
-        const report = analyzeMigration(projectDir);
+        // Check for already-migrated Issues (idempotent: skip duplicates)
+        const alreadyMigrated = await findAlreadyMigrated();
+        const report = analyzeMigration(projectDir, alreadyMigrated);
 
         if (!options.apply) {
           console.log(formatDryRunReport(report));

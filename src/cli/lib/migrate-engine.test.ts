@@ -10,6 +10,7 @@ import {
   type MigrationReport,
   type MigrationResult,
 } from "./migrate-engine.js";
+// findAlreadyMigrated is tested implicitly through command integration
 import type { PlanState } from "./plan-model.js";
 import { setGhExecutor } from "./github-engine.js";
 
@@ -219,6 +220,17 @@ describe("analyzeMigration", () => {
     expect(report.toCreate).toHaveLength(0);
   });
 
+  it("detects already-migrated Issues and skips them", () => {
+    const dir = setupProjectDir(makePlan());
+    const alreadyMigrated = ["[FEAT-001] User Login"];
+    const report = analyzeMigration(dir, alreadyMigrated);
+
+    expect(report.alreadyMigrated).toHaveLength(1);
+    expect(report.alreadyMigrated[0]).toBe("[FEAT-001] User Login");
+    // FEAT-001 skipped, FEAT-002 + 2 tasks created
+    expect(report.toCreate).toHaveLength(3);
+  });
+
   it("handles malformed plan.json gracefully", () => {
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-migrate-"));
     const frameworkDir = path.join(tmpDir, ".framework");
@@ -314,7 +326,7 @@ describe("executeMigration", () => {
     expect(ghCalls).toHaveLength(0);
   });
 
-  it("handles gh CLI errors gracefully", async () => {
+  it("handles gh CLI errors: aborts on first error", async () => {
     restoreGh();
     restoreGh = setGhExecutor(async () => {
       throw new Error("gh: not authenticated");
@@ -324,8 +336,31 @@ describe("executeMigration", () => {
     const report = analyzeMigration(dir);
     const result = await executeMigration(dir, report);
 
-    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.length).toBe(1);
     expect(result.errors[0]).toContain("not authenticated");
+    // Should not have created any Issues after the error
+    expect(result.created).toHaveLength(0);
+  });
+
+  it("does NOT backup files when errors occur (retryable)", async () => {
+    restoreGh();
+    restoreGh = setGhExecutor(async () => {
+      throw new Error("gh: rate limited");
+    });
+
+    const dir = setupProjectDir(makePlan(), makeRunState());
+    const report = analyzeMigration(dir);
+    const result = await executeMigration(dir, report);
+
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.backedUp).toHaveLength(0);
+    // Original files still exist (not renamed)
+    expect(
+      fs.existsSync(path.join(dir, ".framework/plan.json")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(dir, ".framework/run-state.json")),
+    ).toBe(true);
   });
 
   it("does nothing when plan.json does not exist", async () => {
@@ -354,6 +389,7 @@ describe("formatDryRunReport", () => {
       toSkip: [
         { type: "feature", id: "FEAT-EX", title: "Example", reason: "scaffold boilerplate" },
       ],
+      alreadyMigrated: [],
       errors: [],
     };
 
@@ -370,6 +406,7 @@ describe("formatDryRunReport", () => {
       runStateFile: { exists: false, isEmpty: true, taskCount: 0 },
       toCreate: [],
       toSkip: [],
+      alreadyMigrated: [],
       errors: [],
     };
 

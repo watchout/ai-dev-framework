@@ -28,6 +28,7 @@ export interface MigrationReport {
   runStateFile: { exists: boolean; isEmpty: boolean; taskCount: number };
   toCreate: MigrationItem[];
   toSkip: MigrationItem[];
+  alreadyMigrated: string[];
   errors: string[];
 }
 
@@ -141,12 +142,34 @@ function isPlanEmpty(plan: PlanState): boolean {
 // Analysis (dry-run)
 // ─────────────────────────────────────────────
 
-export function analyzeMigration(projectDir: string): MigrationReport {
+export async function findAlreadyMigrated(): Promise<string[]> {
+  try {
+    const output = await execGh([
+      "issue",
+      "list",
+      "--label",
+      LABEL_MIGRATED,
+      "--state",
+      "all",
+      "--json",
+      "title",
+      "--limit",
+      "500",
+    ]);
+    const issues = JSON.parse(output) as { title: string }[];
+    return issues.map((i) => i.title);
+  } catch {
+    return [];
+  }
+}
+
+export function analyzeMigration(projectDir: string, alreadyMigrated: string[] = []): MigrationReport {
   const report: MigrationReport = {
     planFile: { exists: false, isEmpty: true, featureCount: 0, taskCount: 0 },
     runStateFile: { exists: false, isEmpty: true, taskCount: 0 },
     toCreate: [],
     toSkip: [],
+    alreadyMigrated: [],
     errors: [],
   };
 
@@ -164,7 +187,10 @@ export function analyzeMigration(projectDir: string): MigrationReport {
       report.planFile.isEmpty = isPlanEmpty(plan);
 
       for (const feature of features) {
-        if (isBoilerplateFeature(feature)) {
+        const issueTitle = `[${feature.id}] ${feature.name}`;
+        if (alreadyMigrated.includes(issueTitle)) {
+          report.alreadyMigrated.push(issueTitle);
+        } else if (isBoilerplateFeature(feature)) {
           report.toSkip.push({
             type: "feature",
             id: feature.id,
@@ -181,22 +207,27 @@ export function analyzeMigration(projectDir: string): MigrationReport {
       }
 
       for (const task of tasks) {
-        const parentSkipped = report.toSkip.some(
-          (s) => s.type === "feature" && s.id === task.featureId,
-        );
-        if (parentSkipped) {
-          report.toSkip.push({
-            type: "task",
-            id: task.id,
-            title: task.name,
-            reason: "parent feature is boilerplate",
-          });
+        const issueTitle = `[${task.id}] ${task.name}`;
+        if (alreadyMigrated.includes(issueTitle)) {
+          report.alreadyMigrated.push(issueTitle);
         } else {
-          report.toCreate.push({
-            type: "task",
-            id: task.id,
-            title: task.name,
-          });
+          const parentSkipped = report.toSkip.some(
+            (s) => s.type === "feature" && s.id === task.featureId,
+          );
+          if (parentSkipped) {
+            report.toSkip.push({
+              type: "task",
+              id: task.id,
+              title: task.name,
+              reason: "parent feature is boilerplate",
+            });
+          } else {
+            report.toCreate.push({
+              type: "task",
+              id: task.id,
+              title: task.name,
+            });
+          }
         }
       }
     } catch (e) {
@@ -326,16 +357,20 @@ export async function executeMigration(
       result.errors.push(
         `Failed to create Issue for ${item.type} ${item.id}: ${e instanceof Error ? e.message : String(e)}`,
       );
+      // Abort on first error — partial migration is not retryable if we continue
+      break;
     }
   }
 
-  // Backup local files (rename to .bak, do not delete)
-  for (const relPath of [PLAN_FILE, RUN_STATE_FILE]) {
-    const fullPath = path.join(projectDir, relPath);
-    if (fs.existsSync(fullPath)) {
-      const bakPath = `${fullPath}.bak`;
-      fs.renameSync(fullPath, bakPath);
-      result.backedUp.push(relPath);
+  // Backup local files only if zero errors (BLOCKER: partial failure → no rename, keep retryable)
+  if (result.errors.length === 0) {
+    for (const relPath of [PLAN_FILE, RUN_STATE_FILE]) {
+      const fullPath = path.join(projectDir, relPath);
+      if (fs.existsSync(fullPath)) {
+        const bakPath = `${fullPath}.bak`;
+        fs.renameSync(fullPath, bakPath);
+        result.backedUp.push(relPath);
+      }
     }
   }
 
@@ -361,6 +396,16 @@ export function formatDryRunReport(report: MigrationReport): string {
   if (report.runStateFile.exists) {
     lines.push(`  Tasks: ${report.runStateFile.taskCount}`);
     lines.push(`  Empty: ${report.runStateFile.isEmpty ? "yes" : "no"}`);
+    lines.push(`  Note: run-state.json tracks execution state, not task definitions.`);
+    lines.push(`  It maps to Issue labels (status:in-progress etc.) in sub-PR 3+.`);
+    lines.push(`  This migration handles plan.json only. run-state.json is backed up.`);
+  }
+
+  if (report.alreadyMigrated.length > 0) {
+    lines.push(`\nAlready migrated (${report.alreadyMigrated.length} Issues exist, will skip):`);
+    for (const title of report.alreadyMigrated) {
+      lines.push(`  = ${title}`);
+    }
   }
 
   if (report.toCreate.length > 0) {
