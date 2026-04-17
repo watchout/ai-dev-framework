@@ -5,7 +5,11 @@ import {
   batchSyncToGitHub,
   clearIssueNumberCache,
 } from "./state-writer.js";
+import { setWriteThrough, clearWriteThroughState, saveRunState } from "./run-model.js";
 import { setGhExecutor } from "./github-engine.js";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import * as os from "node:os";
 
 describe("syncTaskStatusToGitHub", () => {
   let ghCalls: string[][] = [];
@@ -64,24 +68,38 @@ describe("syncTaskStatusToGitHub", () => {
   });
 
   it("skips non-meaningful transitions (backlog, auditing, review)", async () => {
-    await syncTaskStatusToGitHub({
+    const result = await syncTaskStatusToGitHub({
       taskId: "FEAT-001-DB",
       issueNumber: 100,
       oldStatus: "backlog",
       newStatus: "auditing",
     });
 
+    expect(result).toBe(false);
+    expect(ghCalls).toHaveLength(0);
+  });
+
+  it("skips when oldStatus === newStatus (no-op guard)", async () => {
+    const result = await syncTaskStatusToGitHub({
+      taskId: "FEAT-001-DB",
+      issueNumber: 100,
+      oldStatus: "in_progress",
+      newStatus: "in_progress",
+    });
+
+    expect(result).toBe(false);
     expect(ghCalls).toHaveLength(0);
   });
 
   it("skips when issueNumber is null", async () => {
-    await syncTaskStatusToGitHub({
+    const result = await syncTaskStatusToGitHub({
       taskId: "FEAT-001-DB",
       issueNumber: null,
       oldStatus: "backlog",
       newStatus: "in_progress",
     });
 
+    expect(result).toBe(false);
     expect(ghCalls).toHaveLength(0);
   });
 
@@ -91,14 +109,13 @@ describe("syncTaskStatusToGitHub", () => {
       throw new Error("gh: rate limited");
     });
 
-    await expect(
-      syncTaskStatusToGitHub({
-        taskId: "FEAT-001-DB",
-        issueNumber: 100,
-        oldStatus: "backlog",
-        newStatus: "in_progress",
-      }),
-    ).resolves.toBeUndefined();
+    const result = await syncTaskStatusToGitHub({
+      taskId: "FEAT-001-DB",
+      issueNumber: 100,
+      oldStatus: "backlog",
+      newStatus: "in_progress",
+    });
+    expect(result).toBe(false);
   });
 });
 
@@ -191,5 +208,74 @@ describe("batchSyncToGitHub", () => {
 
     expect(result.synced).toBe(0);
     expect(result.failed).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────
+// Integration: write-through hook async safety
+// ─────────────────────────────────────────────
+
+describe("write-through hook async safety", () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-wt-"));
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+    clearWriteThroughState();
+  });
+
+  afterEach(() => {
+    setWriteThrough(null);
+    clearWriteThroughState();
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it("saveRunState does not throw when hook throws", () => {
+    setWriteThrough(() => {
+      throw new Error("hook exploded");
+    });
+
+    const state = {
+      status: "running" as const,
+      currentTaskId: "T-1",
+      tasks: [],
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Should not throw — fire-and-forget catches errors
+    expect(() => saveRunState(tmpDir, state)).not.toThrow();
+
+    // Local file should still be written
+    expect(
+      fs.existsSync(path.join(tmpDir, ".framework/run-state.json")),
+    ).toBe(true);
+  });
+
+  it("hook receives prev state on second call", async () => {
+    const hookCalls: { state: unknown; prev: unknown }[] = [];
+    setWriteThrough((state, prev) => {
+      hookCalls.push({ state, prev });
+    });
+
+    const state1 = {
+      status: "running" as const,
+      currentTaskId: "T-1",
+      tasks: [],
+      startedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    saveRunState(tmpDir, state1);
+
+    const state2 = { ...state1, status: "completed" as const };
+    saveRunState(tmpDir, state2);
+
+    // Wait for fire-and-forget promises to resolve
+    await new Promise((r) => setTimeout(r, 50));
+
+    expect(hookCalls).toHaveLength(2);
+    expect(hookCalls[0].prev).toBeNull();
+    expect(hookCalls[1].prev).not.toBeNull();
   });
 });

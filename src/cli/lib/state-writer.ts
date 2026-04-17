@@ -43,9 +43,10 @@ const MEANINGFUL_TRANSITIONS: TaskExecutionStatus[] = [
 
 export async function syncTaskStatusToGitHub(
   transition: StatusTransition,
-): Promise<void> {
-  if (!transition.issueNumber) return;
-  if (!MEANINGFUL_TRANSITIONS.includes(transition.newStatus)) return;
+): Promise<boolean> {
+  if (!transition.issueNumber) return false;
+  if (!MEANINGFUL_TRANSITIONS.includes(transition.newStatus)) return false;
+  if (transition.oldStatus === transition.newStatus) return false;
 
   try {
     switch (transition.newStatus) {
@@ -62,12 +63,12 @@ export async function syncTaskStatusToGitHub(
         await markBlocked(transition.issueNumber, transition.reason ?? "Waiting for input");
         break;
     }
+    return true;
   } catch {
-    // Write-through is best-effort: local write always succeeds,
-    // GitHub sync failure is logged but doesn't block execution.
     console.warn(
       `[state-writer] Failed to sync task ${transition.taskId} (#${transition.issueNumber}) to GitHub. Local state is authoritative.`,
     );
+    return false;
   }
 }
 
@@ -135,16 +136,16 @@ export async function batchSyncToGitHub(
       continue;
     }
 
-    try {
-      await syncTaskStatusToGitHub({
-        taskId: task.taskId,
-        issueNumber,
-        oldStatus: "backlog",
-        newStatus: task.status,
-        reason: task.reason,
-      });
+    const ok = await syncTaskStatusToGitHub({
+      taskId: task.taskId,
+      issueNumber,
+      oldStatus: "backlog",
+      newStatus: task.status,
+      reason: task.reason,
+    });
+    if (ok) {
       synced++;
-    } catch {
+    } else {
       failed++;
     }
   }

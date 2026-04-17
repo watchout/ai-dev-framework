@@ -385,14 +385,20 @@ const RUN_STATE_FILE = ".framework/run-state.json";
 
 // ─────────────────────────────────────────────
 // Write-through hook (#61 sub-PR 4/7)
+// Hook registration only. Actual connection to state-writer.ts
+// happens in sub-PR 5 (hook rewrite / CLI init).
 // ─────────────────────────────────────────────
 
 type WriteThrough = (state: RunState, prev: RunState | null) => void;
 let _writeThrough: WriteThrough | null = null;
-let _prevState: RunState | null = null;
+const _prevStates = new Map<string, RunState>();
 
 export function setWriteThrough(hook: WriteThrough | null): void {
   _writeThrough = hook;
+}
+
+export function clearWriteThroughState(): void {
+  _prevStates.clear();
 }
 
 /** @deprecated Use loadRunStateFromGitHub() from state-reader.ts instead. See #61. */
@@ -427,10 +433,16 @@ export function saveRunState(
   }
 
   // Fire-and-forget: sync meaningful state transitions to GitHub Issues (#61)
+  // Connection to state-writer.ts happens in sub-PR 5 via setWriteThrough().
+  const prevState = _prevStates.get(projectDir) ?? null;
   if (_writeThrough) {
-    try {
-      _writeThrough(state, _prevState);
-    } catch { /* write-through is best-effort */ }
+    const hook = _writeThrough;
+    const stateCopy = JSON.parse(JSON.stringify(state)) as RunState;
+    Promise.resolve()
+      .then(() => hook(stateCopy, prevState))
+      .catch(() => {
+        // Write-through is best-effort: local write already succeeded
+      });
   }
-  _prevState = JSON.parse(JSON.stringify(state)) as RunState;
+  _prevStates.set(projectDir, JSON.parse(JSON.stringify(state)) as RunState);
 }
