@@ -483,12 +483,33 @@ Gate Dのステータスは `.framework/gates.json` に他のGateと同様に管
 
 #### Gateシステム全体像
 
+> **v1.1.0 改訂** (#62): Gate A/B/C は GitHub Actions check runs で管理。
+> `.framework/gates.json` は local cache (pre-commit hook 用) で、SSOT ではない。
+
 | Gate | 目的 | 実行タイミング | 強制方法 |
 |---|---|---|---|
-| A（Environment） | 環境が壊れた状態でコードを書かせない | pre-commit / CI | スマートブロッキング |
-| B（Planning） | 計画なしに場当たり的な実装をさせない | pre-commit / CI | スマートブロッキング |
-| C（SSOT） | 仕様未承認のままコードを書かせない | pre-commit / CI | スマートブロッキング |
+| A（Environment） | 環境が壊れた状態でコードを書かせない | **PR check run** + pre-commit hook | `gate-a.yml` + branch protection |
+| B（Planning） | 計画なしに場当たり的な実装をさせない | **PR check run** + pre-commit hook | `gate-b.yml` + branch protection |
+| C（SSOT） | 仕様未承認のままコードを書かせない | **PR check run** + pre-commit hook | `gate-c.yml` + branch protection |
 | D（Post-Deploy） | デプロイされた環境の動作を検証 | デプロイ後 | CI デプロイジョブ |
+
+#### Branch Protection 設定手順 (adopter 向け)
+
+Gate A/B/C を PR merge の必須条件にするには:
+
+```
+1. GitHub repo Settings → Branches → Branch protection rules
+2. main ブランチのルールを編集 (または新規作成)
+3. "Require status checks to pass before merging" を有効化
+4. 以下の check を required に追加:
+   - "Gate A — Environment Readiness"
+   - "Gate B — Planning Completeness"
+   - "Gate C — SSOT Completeness"
+5. Save changes
+```
+
+> **Note**: `framework gate reset` は廃止されました (#62)。
+> Gate の再実行は新しいコミットの push、または GitHub Actions の workflow re-run で行います。
 
 ---
 

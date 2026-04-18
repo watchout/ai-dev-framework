@@ -205,10 +205,9 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   fs.writeFileSync(statePath, generateProjectState(config), "utf-8");
   createdFiles.push(".framework/project.json");
 
-  // Initialize gate state (all pending)
-  const gateState = createGateState();
-  saveGateState(projectPath, gateState);
-  createdFiles.push(".framework/gates.json");
+  // Gate state: managed by GitHub Actions check runs (#62)
+  // Local gates.json is created on-demand by `framework gate check` (local cache for hooks).
+  // No longer auto-created at init time.
 
   // Initialize testing config (ADR-010)
   const testRec = recommendTestTools({ profileType: profileType });
