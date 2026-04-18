@@ -103,15 +103,14 @@ export function registerRetrofitCommand(program: Command): void {
             process.exit(1);
           }
 
-          // Initialize gate state if not exists
+          // Gate state: managed by GitHub Actions check runs (#62)
+          // Local gates.json created on-demand by `framework gate check`.
           if (!options.dryRun && !loadGateState(projectDir)) {
-            const gateState = createGateState();
-            saveGateState(projectDir, gateState);
-            logger.success(
-              "Initialized Pre-Code Gate state (.framework/gates.json)",
+            logger.info(
+              "  Gate state: managed by GitHub Actions (gate-a/b/c.yml).",
             );
             logger.info(
-              "  Run 'framework gate check' to evaluate gate status.",
+              "  Run 'framework gate check' for local cache if needed.",
             );
           }
 

@@ -205,27 +205,20 @@ export function registerGateCommand(program: Command): void {
       }
     });
 
-  // framework gate reset (deprecated — gates are now managed by GitHub Actions check runs)
+  // framework gate reset — removed (#62)
   gate
     .command("reset")
-    .description("Reset all gates to pending (deprecated: use GitHub Actions re-run instead)")
+    .description("(Removed) Gates are managed by GitHub Actions check runs")
     .action(async () => {
-      const projectDir = process.cwd();
-
-      console.warn(
-        "[deprecated] 'framework gate reset' resets local gates.json only. " +
-        "Gates are now managed by GitHub Actions check runs. " +
-        "To re-run gates, push a new commit or re-run workflows in GitHub. See #62.",
-      );
-
-      let state = loadGateState(projectDir);
-      if (!state) {
-        state = createGateState();
-      }
-      resetGateState(state);
-      saveGateState(projectDir, state);
-
-      logger.success("All gates reset to pending (local only).");
+      logger.error("'framework gate reset' has been removed.");
+      logger.info("");
+      logger.info("Gates are now managed by GitHub Actions check runs.");
+      logger.info("To re-run gate checks:");
+      logger.info("  1. Push a new commit, or");
+      logger.info("  2. Re-run workflows in GitHub Actions");
+      logger.info("");
+      logger.info("See: .github/workflows/gate-a.yml, gate-b.yml, gate-c.yml");
+      process.exit(1);
       logger.info(
         "Run 'framework gate check' to re-evaluate.",
       );
