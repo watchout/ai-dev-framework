@@ -21,7 +21,7 @@ project_dir="${CLAUDE_PROJECT_DIR:-.}"
 # Bypass: if FRAMEWORK_BYPASS token is set, skip mode check entirely
 if [ -n "${FRAMEWORK_BYPASS:-}" ]; then
   # Bypass is allowed but logged (09_ENFORCEMENT §2 handles audit logging)
-  return 0 2>/dev/null || exit 0
+  exit 0
 fi
 
 # Check framework-managed topic via gh API (5s timeout)
@@ -44,7 +44,7 @@ framework_active=$(node -e "
 
 if [ "$framework_active" = "inactive" ]; then
   # Framework not active — hooks are passthrough no-ops
-  return 0 2>/dev/null || exit 0
+  exit 0
 fi
 
 # Framework is active — continue with hook enforcement

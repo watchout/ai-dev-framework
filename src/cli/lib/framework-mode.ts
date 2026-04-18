@@ -41,36 +41,22 @@ export async function getFrameworkMode(): Promise<FrameworkMode> {
 // Write state
 // ─────────────────────────────────────────────
 
-async function getRepoTopics(): Promise<string[]> {
-  const output = await execGh([
-    "api",
-    "repos/{owner}/{repo}",
-    "--jq",
-    ".topics",
-  ]);
-  return JSON.parse(output) as string[];
-}
-
 export async function activateFrameworkMode(): Promise<{
   ok: boolean;
   alreadyActive: boolean;
   error?: string;
 }> {
   try {
-    const topics = await getRepoTopics();
-    if (topics.includes(FRAMEWORK_TOPIC)) {
+    const mode = await getFrameworkMode();
+    if (mode === "active") {
       return { ok: true, alreadyActive: true };
     }
 
-    const newTopics = [...topics, FRAMEWORK_TOPIC];
     await execGh([
-      "api",
-      "repos/{owner}/{repo}",
-      "--method",
-      "PUT",
-      "--field",
-      `names=${JSON.stringify(newTopics)}`,
-      "--silent",
+      "repo",
+      "edit",
+      "--add-topic",
+      FRAMEWORK_TOPIC,
     ]);
     return { ok: true, alreadyActive: false };
   } catch (e) {
@@ -98,20 +84,16 @@ export async function deactivateFrameworkMode(
   }
 
   try {
-    const topics = await getRepoTopics();
-    if (!topics.includes(FRAMEWORK_TOPIC)) {
+    const mode = await getFrameworkMode();
+    if (mode === "inactive") {
       return { ok: true }; // Already inactive
     }
 
-    const newTopics = topics.filter((t) => t !== FRAMEWORK_TOPIC);
     await execGh([
-      "api",
-      "repos/{owner}/{repo}",
-      "--method",
-      "PUT",
-      "--field",
-      `names=${JSON.stringify(newTopics)}`,
-      "--silent",
+      "repo",
+      "edit",
+      "--remove-topic",
+      FRAMEWORK_TOPIC,
     ]);
     return { ok: true };
   } catch (e) {
