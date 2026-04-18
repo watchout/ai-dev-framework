@@ -22,6 +22,7 @@ import { loadAuditReports } from "./audit-model.js";
 import { loadProjectProfile } from "./profile-model.js";
 import {
   loadGateState,
+  loadGateStatusFromCheckRuns,
   type GateStatus,
 } from "./gate-model.js";
 import {
@@ -137,7 +138,7 @@ const PHASES: { number: number; label: string }[] = [
 // Status Aggregation
 // ─────────────────────────────────────────────
 
-export function collectStatus(projectDir: string): StatusResult {
+export async function collectStatus(projectDir: string): Promise<StatusResult> {
   const phases = detectPhases(projectDir);
   const currentPhase = phases.find((p) => p.status === "active");
   const documents = collectDocuments(projectDir);
@@ -162,8 +163,9 @@ export function collectStatus(projectDir: string): StatusResult {
       }
     : null;
 
-  // Load gate state
-  const gateState = loadGateState(projectDir);
+  // Load gate state: try check runs first, fallback to local gates.json (#62)
+  const checkRunResult = await loadGateStatusFromCheckRuns();
+  const gateState = checkRunResult.state ?? loadGateState(projectDir);
   const gates: GateStatusInfo | null = gateState
     ? {
         gateA: gateState.gateA.status,

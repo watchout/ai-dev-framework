@@ -40,15 +40,15 @@ describe("status-engine", () => {
   });
 
   describe("collectStatus", () => {
-    it("returns zeroed status for fresh project", () => {
-      const result = collectStatus(tmpDir);
+    it("returns zeroed status for fresh project", async () => {
+      const result = await collectStatus(tmpDir);
       expect(result.overallProgress).toBe(0);
       expect(result.documents).toHaveLength(0);
       expect(result.tasks).toHaveLength(0);
       expect(result.audits).toHaveLength(0);
     });
 
-    it("detects discover phase", () => {
+    it("detects discover phase", async () => {
       const sessionPath = path.join(
         tmpDir,
         ".framework/discover-session.json",
@@ -59,12 +59,12 @@ describe("status-engine", () => {
         "utf-8",
       );
 
-      const result = collectStatus(tmpDir);
+      const result = await collectStatus(tmpDir);
       const discovery = result.phases.find((p) => p.label === "Discovery");
       expect(discovery?.status).toBe("active");
     });
 
-    it("detects completed discover phase", () => {
+    it("detects completed discover phase", async () => {
       const sessionPath = path.join(
         tmpDir,
         ".framework/discover-session.json",
@@ -75,18 +75,18 @@ describe("status-engine", () => {
         "utf-8",
       );
 
-      const result = collectStatus(tmpDir);
+      const result = await collectStatus(tmpDir);
       const discovery = result.phases.find((p) => p.label === "Discovery");
       expect(discovery?.status).toBe("completed");
     });
 
-    it("collects document statuses from generation state", () => {
+    it("collects document statuses from generation state", async () => {
       const genState = createGenerationState();
       markDocumentGenerated(genState, "docs/idea/IDEA_CANVAS.md", 80);
       markDocumentGenerated(genState, "docs/idea/USER_PERSONA.md", 50);
       saveGenerationState(tmpDir, genState);
 
-      const result = collectStatus(tmpDir);
+      const result = await collectStatus(tmpDir);
       expect(result.documents.length).toBeGreaterThan(0);
       const canvas = result.documents.find(
         (d) => d.path === "docs/idea/IDEA_CANVAS.md",
@@ -94,7 +94,7 @@ describe("status-engine", () => {
       expect(canvas?.completeness).toBe(80);
     });
 
-    it("collects tasks from run state", () => {
+    it("collects tasks from run state", async () => {
       const state = createRunState();
       state.tasks = [
         {
@@ -108,13 +108,13 @@ describe("status-engine", () => {
       ];
       saveRunState(tmpDir, state);
 
-      const result = collectStatus(tmpDir);
+      const result = await collectStatus(tmpDir);
       expect(result.tasks).toHaveLength(2);
       expect(result.tasks[0].status).toBe("done");
       expect(result.tasks[1].status).toBe("backlog");
     });
 
-    it("collects current execution health", () => {
+    it("collects current execution health", async () => {
       const state = createRunState();
       state.tasks = [
         {
@@ -134,12 +134,12 @@ describe("status-engine", () => {
       state.currentTaskId = "T1";
       saveRunState(tmpDir, state);
 
-      const result = collectStatus(tmpDir);
+      const result = await collectStatus(tmpDir);
       expect(result.execution?.taskId).toBe("T1");
       expect(result.execution?.expired).toBe(false);
     });
 
-    it("collects recent audit reports", () => {
+    it("collects recent audit reports", async () => {
       saveAuditReport(tmpDir, {
         mode: "ssot",
         target: {
@@ -156,13 +156,13 @@ describe("status-engine", () => {
         findings: [],
       });
 
-      const result = collectStatus(tmpDir);
+      const result = await collectStatus(tmpDir);
       expect(result.audits).toHaveLength(1);
       expect(result.audits[0].score).toBe(97);
       expect(result.audits[0].verdict).toBe("pass");
     });
 
-    it("calculates overall progress", () => {
+    it("calculates overall progress", async () => {
       // Add completed discover
       fs.writeFileSync(
         path.join(tmpDir, ".framework/discover-session.json"),
@@ -185,7 +185,7 @@ describe("status-engine", () => {
         circularDependencies: [],
       });
 
-      const result = collectStatus(tmpDir);
+      const result = await collectStatus(tmpDir);
       expect(result.overallProgress).toBeGreaterThan(0);
     });
   });
