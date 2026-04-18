@@ -161,6 +161,7 @@ export function updateGateC(
   };
 }
 
+/** @deprecated Gate reset is not applicable with check runs. See #62. */
 export function resetGateState(state: GateState): void {
   const now = new Date().toISOString();
   state.gateA = { status: "pending", checks: [], checkedAt: now };
@@ -225,6 +226,7 @@ export function buildAllGatesResult(state: GateState): AllGatesResult {
 
 const GATE_STATE_FILE = ".framework/gates.json";
 
+/** @deprecated Use loadGateStatusFromCheckRuns() for GitHub Actions check runs. See #62. */
 export function loadGateState(
   projectDir: string,
 ): GateState | null {
@@ -256,6 +258,7 @@ function migrateLegacyChecks(checks: GateCheck[] | undefined): void {
   }
 }
 
+/** @deprecated Gate state is now managed by GitHub Actions check runs. See #62. */
 export function saveGateState(
   projectDir: string,
   state: GateState,

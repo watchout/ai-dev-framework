@@ -172,14 +172,21 @@ export function registerGateCommand(program: Command): void {
         state = result.state;
         logger.header("Pre-Code Gate Status (from GitHub Actions check runs)");
       } else {
-        state = loadGateState(projectDir);
-        if (!state) {
-          logger.info(
-            "No gate state found. Run 'framework gate check' or use --check-runs.",
-          );
-          return;
+        // Default: try check runs first, fallback to local gates.json (#62)
+        const autoResult = await loadGateStatusFromCheckRuns();
+        if (autoResult.state) {
+          state = autoResult.state;
+          logger.header("Pre-Code Gate Status (from GitHub Actions)");
+        } else {
+          state = loadGateState(projectDir);
+          if (!state) {
+            logger.info(
+              "No gate state found. Run 'framework gate check' or configure Gate workflows.",
+            );
+            return;
+          }
+          logger.header("Pre-Code Gate Status (from local gates.json, deprecated)");
         }
-        logger.header("Pre-Code Gate Status");
       }
 
       logger.info("");
@@ -198,12 +205,18 @@ export function registerGateCommand(program: Command): void {
       }
     });
 
-  // framework gate reset
+  // framework gate reset (deprecated — gates are now managed by GitHub Actions check runs)
   gate
     .command("reset")
-    .description("Reset all gates to pending")
+    .description("Reset all gates to pending (deprecated: use GitHub Actions re-run instead)")
     .action(async () => {
       const projectDir = process.cwd();
+
+      console.warn(
+        "[deprecated] 'framework gate reset' resets local gates.json only. " +
+        "Gates are now managed by GitHub Actions check runs. " +
+        "To re-run gates, push a new commit or re-run workflows in GitHub. See #62.",
+      );
 
       let state = loadGateState(projectDir);
       if (!state) {
@@ -212,7 +225,7 @@ export function registerGateCommand(program: Command): void {
       resetGateState(state);
       saveGateState(projectDir, state);
 
-      logger.success("All gates reset to pending.");
+      logger.success("All gates reset to pending (local only).");
       logger.info(
         "Run 'framework gate check' to re-evaluate.",
       );

@@ -48,7 +48,7 @@ export function registerStatusCommand(program: Command): void {
         }
 
         const io = createStatusTerminalIO();
-        const result = collectStatus(projectDir);
+        const result = await collectStatus(projectDir);
 
         // Enrich tasks from GitHub if sync state exists
         if (result.tasks.length > 0 || options.github) {
@@ -70,7 +70,7 @@ export function registerStatusCommand(program: Command): void {
               io.print(`  GitHub writeback: ${wb.updated} tasks updated${wb.created ? " (run-state.json created)" : ""}`);
             }
             // Re-collect to show updated state
-            const refreshed = collectStatus(projectDir);
+            const refreshed = await collectStatus(projectDir);
             result.currentPhase = refreshed.currentPhase;
             result.phaseLabel = refreshed.phaseLabel;
             result.overallProgress = refreshed.overallProgress;
