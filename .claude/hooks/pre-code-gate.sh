@@ -10,6 +10,12 @@ tool=$(echo "$input" | node -e "let d='';process.stdin.on('data',c=>d+=c);proces
 
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 
+# Framework mode check: if repo lacks framework-managed topic, exit 0 (passthrough) (#63)
+mode_check="$project_dir/.claude/hooks/framework-mode-check.sh"
+if [ -f "$mode_check" ]; then
+  source "$mode_check"
+fi
+
 # Extract file path based on tool type
 file_path=""
 if [ "$tool" = "Edit" ] || [ "$tool" = "Write" ]; then

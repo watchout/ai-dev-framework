@@ -27,6 +27,7 @@ import {
   saveGateState,
 } from "../lib/gate-model.js";
 import { installAllHooks } from "../lib/hooks-installer.js";
+import { activateFrameworkMode } from "../lib/framework-mode.js";
 import { installGitHubTemplates } from "../lib/github-templates.js";
 import { loadProfileType, inferProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
@@ -162,6 +163,20 @@ export function registerRetrofitCommand(program: Command): void {
             }
             if (hooksResult.gitHookInstalled) {
               logger.success("Git pre-commit hook installed");
+            }
+          }
+
+          // Activate framework mode (repo topic) (#63)
+          if (!options.dryRun) {
+            const modeResult = await activateFrameworkMode();
+            if (modeResult.ok) {
+              if (modeResult.alreadyActive) {
+                logger.info("  Framework mode: already active");
+              } else {
+                logger.success("Framework mode activated (framework-managed topic)");
+              }
+            } else {
+              logger.warn(`  Framework mode activation failed: ${modeResult.error ?? "unknown"}`);
             }
           }
 

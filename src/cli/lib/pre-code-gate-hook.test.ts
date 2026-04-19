@@ -57,11 +57,21 @@ function writeGatesPassed(): void {
   );
 }
 
-/** Helper: create a mock gh script that returns specified Issues */
-function setupMockGh(issues: { number: number; title: string }[]): void {
+/** Helper: create a mock gh script that handles both topic check and issue list */
+function setupMockGh(issues: { number: number; title: string }[], topicActive = true): void {
   const binDir = path.join(tmpDir, "bin");
   fs.mkdirSync(binDir, { recursive: true });
-  const script = `#!/bin/bash\necho '${JSON.stringify(issues)}'`;
+  const topics = topicActive ? '["framework-managed"]' : '["other"]';
+  const issueJson = JSON.stringify(issues);
+  // Mock gh: if called with "api", return topics; if called with "issue", return issues
+  const script = `#!/bin/bash
+if echo "$@" | grep -q "api"; then
+  echo '${topics}'
+elif echo "$@" | grep -q "issue"; then
+  echo '${issueJson}'
+else
+  echo '[]'
+fi`;
   const ghPath = path.join(binDir, "gh");
   fs.writeFileSync(ghPath, script, { mode: 0o755 });
 }
@@ -98,6 +108,9 @@ beforeEach(() => {
   // Install hook via the installer (canonical source)
   installClaudeCodeHook(tmpDir);
   hookPath = path.join(tmpDir, ".claude/hooks/pre-code-gate.sh");
+
+  // Default mock gh: framework-managed topic active, no active issues
+  setupMockGh([], true);
 
   // Fix the tool input path to use actual tmpDir
   editSrcInput.tool_input.file_path = path.join(tmpDir, "src/auth/login.ts");
