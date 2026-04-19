@@ -102,7 +102,7 @@ describe("deactivateFrameworkMode", () => {
   afterEach(() => {
     if (restoreGh) restoreGh();
     ghCalls = [];
-    delete process.env.FRAMEWORK_BYPASS_EXPECTED;
+    delete process.env.FRAMEWORK_BYPASS_HASH;
   });
 
   it("rejects without token", async () => {
@@ -111,11 +111,13 @@ describe("deactivateFrameworkMode", () => {
     expect(result.error).toContain("token required");
   });
 
-  it("rejects with wrong token when expected is set", async () => {
-    process.env.FRAMEWORK_BYPASS_EXPECTED = "correct-token";
+  it("rejects with wrong token when expected hash is set", async () => {
+    // SHA-256 of "correct-token" prefix
+    const { hashTokenPrefix } = await import("./audit-log.js");
+    process.env.FRAMEWORK_BYPASS_HASH = hashTokenPrefix("correct-token");
     const result = await deactivateFrameworkMode("wrong-token");
     expect(result.ok).toBe(false);
-    expect(result.error).toContain("Invalid");
+    expect(result.error).toContain("hash mismatch");
   });
 
   it("removes topic with valid token", async () => {
