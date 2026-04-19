@@ -29,6 +29,7 @@ import {
   saveGateState,
 } from "../lib/gate-model.js";
 import { installAllHooks } from "../lib/hooks-installer.js";
+import { activateFrameworkMode } from "../lib/framework-mode.js";
 import {
   recommendTestTools,
   recommendationToConfig,
@@ -226,6 +227,19 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   }
   if (hooksResult.gitHookInstalled) {
     logger.success("Git pre-commit hook installed");
+  }
+
+  // Step 10a: Activate framework mode (repo topic) (#63)
+  const modeResult = await activateFrameworkMode();
+  if (modeResult.ok) {
+    if (modeResult.alreadyActive) {
+      logger.info("  Framework mode: already active (topic exists)");
+    } else {
+      logger.success("Framework mode activated (framework-managed topic added)");
+    }
+  } else {
+    logger.warn(`  Framework mode activation failed: ${modeResult.error ?? "unknown"}`);
+    logger.info("  Hooks will still enforce locally. Run 'gh repo edit --add-topic framework-managed' manually.");
   }
 
   // Step 10b: Install gate scripts (scripts/gates/)

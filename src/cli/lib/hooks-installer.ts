@@ -34,6 +34,12 @@ tool=$(echo "$input" | node -e "let d='';process.stdin.on('data',c=>d+=c);proces
 
 project_dir="\${CLAUDE_PROJECT_DIR:-.}"
 
+# Framework mode check: if repo lacks framework-managed topic, exit 0 (passthrough) (#63)
+mode_check="$project_dir/.claude/hooks/framework-mode-check.sh"
+if [ -f "$mode_check" ]; then
+  source "$mode_check"
+fi
+
 # Extract file path based on tool type
 file_path=""
 if [ "$tool" = "Edit" ] || [ "$tool" = "Write" ]; then
@@ -268,6 +274,15 @@ export function installClaudeCodeHook(projectDir: string): {
   const skillTrackerPath = path.join(hooksDir, "skill-tracker.sh");
   fs.writeFileSync(skillTrackerPath, SKILL_TRACKER_SCRIPT, { mode: 0o755 });
   files.push(".claude/hooks/skill-tracker.sh");
+
+  // 2b2. Copy framework-mode-check.sh from templates (#63)
+  const modeCheckSrcPath = path.resolve(__dirname, "../../../templates/hooks/framework-mode-check.sh");
+  if (fs.existsSync(modeCheckSrcPath)) {
+    const modeCheckDestPath = path.join(hooksDir, "framework-mode-check.sh");
+    fs.copyFileSync(modeCheckSrcPath, modeCheckDestPath);
+    fs.chmodSync(modeCheckDestPath, 0o755);
+    files.push(".claude/hooks/framework-mode-check.sh");
+  }
 
   // 2c. Copy framework-runner.sh from templates
   const runnerSrcPath = path.resolve(__dirname, "../../../templates/hooks/framework-runner.sh");
