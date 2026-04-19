@@ -8,7 +8,7 @@
  * Logs exit event to audit log (§2).
  */
 import type { Command } from "commander";
-import { deactivateFrameworkMode, getFrameworkMode } from "../lib/framework-mode.js";
+import { deactivateFrameworkMode, getFrameworkMode, activateFrameworkMode } from "../lib/framework-mode.js";
 import { logFrameworkExit } from "../lib/audit-log.js";
 
 export function registerExitCommand(program: Command): void {
@@ -48,17 +48,20 @@ export function registerExitCommand(program: Command): void {
         process.exit(1);
       }
 
-      // Audit log
-      const logged = await logFrameworkExit(reason);
+      // Audit log (MANDATORY — if logging fails, reactivate and abort)
+      const logged = await logFrameworkExit(reason, token);
+      if (!logged) {
+        console.error("❌ Audit log recording failed. Reactivating framework mode...");
+        await activateFrameworkMode();
+        console.error("   Framework mode restored. Exit aborted.");
+        console.error("   Fix audit log access (gh auth / network) and retry.");
+        process.exit(1);
+      }
 
       console.log("✅ Framework mode deactivated.");
       console.log("   Topic 'framework-managed' removed from repo.");
       console.log("   All hooks are now passthrough (no-ops).");
-      if (logged) {
-        console.log("   Exit event recorded in audit log.");
-      } else {
-        console.warn("   ⚠️  Audit log recording failed (non-blocking).");
-      }
+      console.log("   Exit event recorded in audit log.");
       console.log("");
       console.log("To reactivate: framework init / framework retrofit");
     });

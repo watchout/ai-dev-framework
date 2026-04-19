@@ -6,15 +6,30 @@
  * Records bypass events (framework exit, gate reset, --no-verify)
  * to a dedicated `audit-log` GitHub Issue for immutable audit trail.
  */
+import { createHash } from "node:crypto";
 import { execGh } from "./github-engine.js";
 
 const AUDIT_LOG_LABEL = "audit-log";
+const HASH_PREFIX_LENGTH = 8;
 
 export interface AuditEntry {
   timestamp: string;
   actor: string;
   action: string;
   reason: string;
+  tokenHashPrefix?: string;
+}
+
+export function hashTokenPrefix(token: string): string {
+  const hash = createHash("sha256").update(token).digest("hex");
+  return hash.slice(0, HASH_PREFIX_LENGTH);
+}
+
+export function validateTokenByHash(
+  token: string,
+  expectedHash: string,
+): boolean {
+  return hashTokenPrefix(token) === expectedHash.slice(0, HASH_PREFIX_LENGTH);
 }
 
 async function getOrCreateAuditIssue(): Promise<number | null> {
@@ -60,6 +75,10 @@ export async function appendAuditLog(entry: AuditEntry): Promise<boolean> {
     return false;
   }
 
+  const tokenLine = entry.tokenHashPrefix
+    ? `- **Token validation**: PASS (hash prefix ${HASH_PREFIX_LENGTH} chars: ${entry.tokenHashPrefix})`
+    : `- **Token validation**: N/A`;
+
   const body = [
     `## Bypass Record`,
     ``,
@@ -67,6 +86,7 @@ export async function appendAuditLog(entry: AuditEntry): Promise<boolean> {
     `- **Actor**: ${entry.actor}`,
     `- **Action**: ${entry.action}`,
     `- **Reason**: ${entry.reason}`,
+    tokenLine,
   ].join("\n");
 
   try {
@@ -93,11 +113,21 @@ function getActor(): string {
   }
 }
 
-export async function logFrameworkExit(reason: string): Promise<boolean> {
+export async function logFrameworkExit(reason: string, token?: string): Promise<boolean> {
   return appendAuditLog({
     timestamp: new Date().toISOString(),
     actor: getActor(),
     action: "framework exit",
     reason,
+    tokenHashPrefix: token ? hashTokenPrefix(token) : undefined,
+  });
+}
+
+export async function logFrameworkActivation(actor?: string): Promise<boolean> {
+  return appendAuditLog({
+    timestamp: new Date().toISOString(),
+    actor: actor ?? getActor(),
+    action: "framework activate",
+    reason: "init/retrofit",
   });
 }

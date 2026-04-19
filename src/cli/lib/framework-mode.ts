@@ -13,8 +13,13 @@
  *   exit (CEO token) → inactive (remove topic)
  */
 import { execGh } from "./github-engine.js";
+import { hashTokenPrefix } from "./audit-log.js";
 
 const FRAMEWORK_TOPIC = "framework-managed";
+
+function validateTokenHash(token: string, expectedHash: string): boolean {
+  return hashTokenPrefix(token) === expectedHash.slice(0, 8);
+}
 
 // ─────────────────────────────────────────────
 // Read state
@@ -78,9 +83,10 @@ export async function deactivateFrameworkMode(
     return { ok: false, error: "FRAMEWORK_BYPASS token required" };
   }
 
-  const expectedToken = process.env.FRAMEWORK_BYPASS_EXPECTED;
-  if (expectedToken && bypassToken !== expectedToken) {
-    return { ok: false, error: "Invalid FRAMEWORK_BYPASS token" };
+  // Token validation via SHA-256 hash-prefix (spec §2: full token never in logs)
+  const expectedHash = process.env.FRAMEWORK_BYPASS_HASH;
+  if (expectedHash && !validateTokenHash(bypassToken, expectedHash)) {
+    return { ok: false, error: "Invalid FRAMEWORK_BYPASS token (hash mismatch)" };
   }
 
   try {
