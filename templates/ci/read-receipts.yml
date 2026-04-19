@@ -1,0 +1,117 @@
+name: "Read Receipts"
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  read-receipts:
+    name: Read-Receipt Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: |
+          if [ -f pnpm-lock.yaml ]; then
+            npm install -g pnpm && pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          else
+            npm ci
+          fi
+
+      - name: Check required-reading.json exists
+        id: config
+        run: |
+          if [ -f .framework/required-reading.json ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No .framework/required-reading.json found. Read-receipt verification skipped."
+          fi
+
+      - name: Server-side hash verification (Layer 1)
+        if: steps.config.outputs.exists == 'true'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const crypto = require('crypto');
+
+            const config = JSON.parse(fs.readFileSync('.framework/required-reading.json', 'utf-8'));
+            let failures = 0;
+
+            for (const reading of config.readings) {
+              if (!fs.existsSync(reading.specFile)) {
+                console.log('::error::Spec file not found: ' + reading.specFile);
+                failures++;
+                continue;
+              }
+
+              const content = fs.readFileSync(reading.specFile, 'utf-8');
+              const actualHash = crypto.createHash('sha256').update(content).digest('hex');
+
+              if (actualHash !== reading.expectedHash) {
+                console.log('::error::Hash mismatch for ' + reading.specFile +
+                  ': config=' + reading.expectedHash.slice(0, 8) + '...' +
+                  ' actual=' + actualHash.slice(0, 8) + '...' +
+                  '. Regenerate with: framework generate-reading-config');
+                failures++;
+              } else {
+                console.log('✅ Hash match: ' + reading.specFile);
+              }
+            }
+
+            if (failures > 0) {
+              console.log('::error::' + failures + ' spec file(s) have stale hashes. Regenerate required-reading.json.');
+              process.exit(1);
+            }
+            console.log('Layer 1 (File Hash): PASS — all ' + config.readings.length + ' specs verified');
+          "
+
+      - name: Validate grounding questions exist (Layer 2 config check)
+        if: steps.config.outputs.exists == 'true'
+        run: |
+          node -e "
+            const fs = require('fs');
+            const config = JSON.parse(fs.readFileSync('.framework/required-reading.json', 'utf-8'));
+            let failures = 0;
+
+            for (const reading of config.readings) {
+              if (!reading.groundingQuestions || reading.groundingQuestions.length === 0) {
+                console.log('::error::No grounding questions for ' + reading.specFile + '. Regenerate config.');
+                failures++;
+              }
+              if (!reading.challenges || reading.challenges.length === 0) {
+                console.log('::error::No challenges for ' + reading.specFile + '. Regenerate config.');
+                failures++;
+              }
+            }
+
+            if (failures > 0) {
+              process.exit(1);
+            }
+            console.log('Layer 2/3 config check: PASS — all specs have grounding + challenges');
+          "
+
+      - name: Check read-receipt records exist
+        if: steps.config.outputs.exists == 'true'
+        run: |
+          if [ -d .framework/read-receipts ]; then
+            RECEIPT_COUNT=$(find .framework/read-receipts -name "*.json" | wc -l | tr -d ' ')
+            echo "Found $RECEIPT_COUNT read-receipt record(s)"
+            if [ "$RECEIPT_COUNT" -eq 0 ]; then
+              echo "::warning::No read-receipt records found. Verification of Layer 2/3 answers deferred to hook enforcement."
+            fi
+          else
+            echo "::warning::No .framework/read-receipts/ directory. Layer 2/3 answer verification deferred to hook enforcement."
+          fi
+
+      - name: Read-receipts summary
+        if: steps.config.outputs.exists == 'true'
+        run: echo "Read-Receipt Verification — PASSED (server-side hash verified)"
