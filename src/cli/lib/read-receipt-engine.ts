@@ -110,12 +110,20 @@ export function matchAnswer(
   }
 }
 
+/**
+ * Layer 2 verification — grounding text matching.
+ *
+ * Limitation: answers are matched against pre-computed expected values
+ * from a config snapshot. If the spec has changed since config generation,
+ * expected answers may be stale. Regenerate config when spec hash changes
+ * (auto-update wired in sub-PR 2+ via read-receipts workflow).
+ */
 function verifyGrounding(
   answers: Map<string, string>,
   reading: RequiredReading,
 ): LayerResult {
   if (reading.groundingQuestions.length === 0) {
-    return { layer: 2, passed: true, details: "No grounding questions defined" };
+    return { layer: 2, passed: false, details: "No grounding questions defined — config must include questions" };
   }
 
   const failures: string[] = [];
@@ -148,7 +156,7 @@ function verifyChallenges(
   reading: RequiredReading,
 ): LayerResult {
   if (reading.challenges.length === 0) {
-    return { layer: 3, passed: true, details: "No challenges defined" };
+    return { layer: 3, passed: false, details: "No challenges defined — config must include challenges" };
   }
 
   const failures: string[] = [];

@@ -114,11 +114,12 @@ describe("verifyReadReceipt", () => {
     const reading: RequiredReading = {
       specFile: "docs/spec.md",
       expectedHash: "wrong-hash",
-      groundingQuestions: [],
-      challenges: [],
+      groundingQuestions: [{ question: "Q", expectedAnswer: "A", matchType: "exact" }],
+      challenges: [{ question: "C", answerKey: "A", matchType: "exact", sourceSection: "§1" }],
     };
 
-    const result = verifyReadReceipt(tmpDir, reading, new Map(), new Map());
+    const answers = new Map([["Q", "A"], ["C", "A"]]);
+    const result = verifyReadReceipt(tmpDir, reading, answers, answers);
     expect(result.allPassed).toBe(false);
     expect(result.layers[0].passed).toBe(false);
     expect(result.layers[0].details).toContain("mismatch");
@@ -128,13 +129,48 @@ describe("verifyReadReceipt", () => {
     const reading: RequiredReading = {
       specFile: "nonexistent.md",
       expectedHash: "abc",
+      groundingQuestions: [{ question: "Q", expectedAnswer: "A", matchType: "exact" }],
+      challenges: [{ question: "C", answerKey: "A", matchType: "exact", sourceSection: "§1" }],
+    };
+
+    const answers = new Map([["Q", "A"], ["C", "A"]]);
+    const result = verifyReadReceipt(tmpDir, reading, answers, answers);
+    expect(result.layers[0].passed).toBe(false);
+    expect(result.layers[0].details).toContain("not found");
+  });
+
+  it("fails Layer 2 when no grounding questions defined", () => {
+    const specFile = writeSpec("docs/spec.md", "content");
+    const hash = computeFileHash(path.join(tmpDir, specFile));
+
+    const reading: RequiredReading = {
+      specFile,
+      expectedHash: hash,
       groundingQuestions: [],
+      challenges: [{ question: "C", answerKey: "content", matchType: "contains", sourceSection: "§1" }],
+    };
+
+    const answers = new Map([["C", "content"]]);
+    const result = verifyReadReceipt(tmpDir, reading, answers, answers);
+    expect(result.layers[1].passed).toBe(false);
+    expect(result.layers[1].details).toContain("must include questions");
+  });
+
+  it("fails Layer 3 when no challenges defined", () => {
+    const specFile = writeSpec("docs/spec.md", "content");
+    const hash = computeFileHash(path.join(tmpDir, specFile));
+
+    const reading: RequiredReading = {
+      specFile,
+      expectedHash: hash,
+      groundingQuestions: [{ question: "Q", expectedAnswer: "content", matchType: "contains" }],
       challenges: [],
     };
 
-    const result = verifyReadReceipt(tmpDir, reading, new Map(), new Map());
-    expect(result.layers[0].passed).toBe(false);
-    expect(result.layers[0].details).toContain("not found");
+    const answers = new Map([["Q", "content"]]);
+    const result = verifyReadReceipt(tmpDir, reading, answers, answers);
+    expect(result.layers[2].passed).toBe(false);
+    expect(result.layers[2].details).toContain("must include challenges");
   });
 
   it("fails Layer 2 on wrong grounding answer", () => {
