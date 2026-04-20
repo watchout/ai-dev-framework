@@ -52,6 +52,10 @@ import {
   buildGateContextJSON,
 } from "../lib/gate-json-output.js";
 import { loadProviderConfig } from "../lib/llm-provider.js";
+import {
+  validateSpec,
+  validateAllSpecs,
+} from "../lib/gate-spec-validator.js";
 
 export function registerGateCommand(program: Command): void {
   const gate = program
@@ -869,6 +873,148 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
         }
       },
     );
+
+  // framework gate spec — Gate 0: Spec Validation (v1.2.0)
+  gate
+    .command("spec")
+    .description("Run Gate 0 spec validation (required sections, Gherkin, STRIDE)")
+    .option("--dir <docsDir>", "Spec documents directory (default: docs/spec)")
+    .action(async (options: { dir?: string }) => {
+      const projectDir = process.cwd();
+
+      try {
+        const fs = await import("node:fs");
+        const pathMod = await import("node:path");
+
+        // Check docs_layers.enabled in config
+        const configPath = pathMod.join(projectDir, ".framework/config.json");
+        if (fs.existsSync(configPath)) {
+          try {
+            const config = JSON.parse(
+              fs.readFileSync(configPath, "utf-8"),
+            ) as Record<string, unknown>;
+            const docsLayers = config.docs_layers as
+              | Record<string, unknown>
+              | undefined;
+            if (docsLayers && docsLayers.enabled === false) {
+              logger.info(
+                "INFO: v1.1 互換モード — docs_layers.enabled=false, Gate 0 skipped.",
+              );
+              return;
+            }
+          } catch {
+            // Config parse error — proceed anyway
+          }
+        }
+
+        const docsDir =
+          options.dir ?? pathMod.join(projectDir, "docs", "spec");
+
+        logger.header("Gate 0 — Spec Validation");
+        logger.info("");
+
+        if (!fs.existsSync(docsDir)) {
+          logger.info(`  No spec directory found: ${docsDir}`);
+          logger.info("  Gate 0: PASS (no specs to validate)");
+          return;
+        }
+
+        const specFiles = fs
+          .readdirSync(docsDir)
+          .filter((f: string) => f.endsWith(".md"));
+
+        if (specFiles.length === 0) {
+          logger.info("  No spec files found.");
+          logger.info("  Gate 0: PASS (no specs to validate)");
+          return;
+        }
+
+        logger.info(`  Scanning: ${docsDir}`);
+        logger.info(`  Files: ${specFiles.length}`);
+        logger.info("");
+
+        const result = validateAllSpecs(docsDir, projectDir);
+
+        // Print per-file results
+        for (const file of specFiles) {
+          const filePath = pathMod.join(docsDir, file);
+          const fileResult = validateSpec(filePath, projectDir);
+          const icon = fileResult.status === "PASS" ? "PASS" : "FAIL";
+          logger.info(
+            `  [${icon}] ${file} — C:${fileResult.critical.length} W:${fileResult.warnings.length}`,
+          );
+        }
+
+        logger.info("");
+        logger.info(
+          `  Total: CRITICAL=${result.critical.length}, WARNING=${result.warnings.length}`,
+        );
+        logger.info("");
+
+        // Print details for findings
+        if (result.critical.length > 0) {
+          logger.info("  CRITICAL findings:");
+          for (const c of result.critical) {
+            logger.info(`    [${c.docId}] ${c.type}: ${c.message}`);
+          }
+          logger.info("");
+        }
+        if (result.warnings.length > 0) {
+          logger.info("  WARNING findings:");
+          for (const w of result.warnings) {
+            logger.info(`    [${w.docId}] ${w.type}: ${w.message}`);
+          }
+          logger.info("");
+        }
+
+        // Write report
+        const reportsDir = pathMod.join(projectDir, ".framework", "reports");
+        if (!fs.existsSync(reportsDir)) {
+          fs.mkdirSync(reportsDir, { recursive: true });
+        }
+        const dateStr = new Date().toISOString().slice(0, 10);
+        const reportPath = pathMod.join(
+          reportsDir,
+          `gate-spec-${dateStr}.md`,
+        );
+        const reportContent = `# Gate 0 — Spec Validation Report
+
+## Date
+${new Date().toISOString()}
+
+## Result
+${result.status}
+
+## Summary
+- CRITICAL: ${result.critical.length}
+- WARNING: ${result.warnings.length}
+- Files scanned: ${specFiles.length}
+
+## Critical Findings
+${result.critical.length === 0 ? "None." : result.critical.map((c) => `- [${c.docId}] ${c.type}: ${c.message}`).join("\n")}
+
+## Warnings
+${result.warnings.length === 0 ? "None." : result.warnings.map((w) => `- [${w.docId}] ${w.type}: ${w.message}`).join("\n")}
+`;
+        fs.writeFileSync(reportPath, reportContent, "utf-8");
+        logger.info(`  Report: .framework/reports/gate-spec-${dateStr}.md`);
+        logger.info("");
+
+        if (result.status === "PASS") {
+          logger.success("Gate 0 PASSED — all specs validated.");
+        } else {
+          logger.error(
+            `Gate 0 BLOCKED — CRITICAL=${result.critical.length}, WARNING=${result.warnings.length}`,
+          );
+          process.exit(1);
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          logger.error(`Gate spec error: ${error.message}`);
+        }
+        process.exit(1);
+      }
+    });
 }
 
 // ─────────────────────────────────────────────
