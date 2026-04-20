@@ -161,13 +161,8 @@ export function updateGateC(
   };
 }
 
-/** @deprecated Gate reset is not applicable with check runs. See #62. */
-export function resetGateState(state: GateState): void {
-  const now = new Date().toISOString();
-  state.gateA = { status: "pending", checks: [], checkedAt: now };
-  state.gateB = { status: "pending", checks: [], checkedAt: now };
-  state.gateC = { status: "pending", checks: [], checkedAt: now };
-}
+// resetGateState() removed (#94). Gates are managed by GitHub Actions check runs.
+// To re-run gates, push a new commit or re-run workflows in GitHub Actions.
 
 export function areAllGatesPassed(state: GateState): boolean {
   return (

@@ -10,7 +10,6 @@ import {
   updateGateA,
   updateGateB,
   updateGateC,
-  resetGateState,
   areAllGatesPassed,
   collectFailures,
   buildAllGatesResult,
@@ -122,21 +121,7 @@ describe("gate-model", () => {
     });
   });
 
-  describe("resetGateState", () => {
-    it("resets all gates to pending", () => {
-      const state = createGateState();
-      updateGateA(state, [makeCheck()]);
-      updateGateB(state, [makeCheck()]);
-      updateGateC(state, [makeSSOTCheck()]);
-      expect(state.gateA.status).toBe("passed");
-
-      resetGateState(state);
-      expect(state.gateA.status).toBe("pending");
-      expect(state.gateB.status).toBe("pending");
-      expect(state.gateC.status).toBe("pending");
-      expect(state.gateA.checks).toHaveLength(0);
-    });
-  });
+  // resetGateState removed (#94) — gates managed by GitHub Actions check runs
 
   describe("areAllGatesPassed", () => {
     it("returns true when all gates are passed", () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from "vitest";
-import { appendAuditLog, logFrameworkExit } from "./audit-log.js";
+import { appendAuditLog, logFrameworkExit, logFrameworkActivation, hashTokenPrefix, validateTokenByHash } from "./audit-log.js";
 import { setGhExecutor } from "./github-engine.js";
 
 describe("appendAuditLog", () => {
@@ -102,5 +102,60 @@ describe("logFrameworkExit", () => {
     const bodyIdx = commentCall.indexOf("--body") + 1;
     expect(commentCall[bodyIdx]).toContain("framework exit");
     expect(commentCall[bodyIdx]).toContain("CEO approved shutdown");
+  });
+
+  it("includes token hash prefix when token provided", async () => {
+    restoreGh = setGhExecutor(async (args: string[]) => {
+      ghCalls.push(args);
+      if (args.includes("list")) return JSON.stringify([{ number: 10 }]);
+      return "";
+    });
+
+    await logFrameworkExit("test", "my-secret-token");
+    // Find the comment call (has --body)
+    const commentCall = ghCalls.find(c => c.includes("--body"));
+    expect(commentCall).toBeDefined();
+    const bodyIdx = commentCall!.indexOf("--body") + 1;
+    const body = commentCall![bodyIdx];
+    expect(body).toContain("Token validation");
+    expect(body).not.toContain("my-secret-token");
+  });
+
+  it("logFrameworkActivation records activation event", async () => {
+    restoreGh = setGhExecutor(async (args: string[]) => {
+      ghCalls.push(args);
+      if (args.includes("list")) return JSON.stringify([{ number: 10 }]);
+      return "";
+    });
+
+    const result = await logFrameworkActivation("init-bot");
+    expect(result).toBe(true);
+
+    const commentCall = ghCalls[1];
+    const bodyIdx = commentCall.indexOf("--body") + 1;
+    expect(commentCall[bodyIdx]).toContain("framework activate");
+    expect(commentCall[bodyIdx]).toContain("init-bot");
+  });
+});
+
+describe("hashTokenPrefix / validateTokenByHash", () => {
+  it("returns consistent 8-char hex prefix", () => {
+    const hash = hashTokenPrefix("test-token");
+    expect(hash).toHaveLength(8);
+    expect(hashTokenPrefix("test-token")).toBe(hash);
+  });
+
+  it("different tokens produce different hashes", () => {
+    expect(hashTokenPrefix("token-a")).not.toBe(hashTokenPrefix("token-b"));
+  });
+
+  it("validateTokenByHash returns true for matching token", () => {
+    const hash = hashTokenPrefix("correct-token");
+    expect(validateTokenByHash("correct-token", hash)).toBe(true);
+  });
+
+  it("validateTokenByHash returns false for wrong token", () => {
+    const hash = hashTokenPrefix("correct-token");
+    expect(validateTokenByHash("wrong-token", hash)).toBe(false);
   });
 });
