@@ -36,6 +36,7 @@ import { registerIngestCommand } from "./commands/ingest.js";
 import { registerCheckCommand } from "./commands/check.js";
 import { registerMigrateCommand } from "./commands/migrate.js";
 import { registerExitCommand } from "./commands/exit.js";
+import { registerInitFeatureCommand } from "./commands/init-feature.js";
 import { setWriteThrough, type RunState } from "./lib/run-model.js";
 import { syncTaskStatusToGitHub, resolveIssueNumber } from "./lib/state-writer.js";
 
@@ -101,6 +102,7 @@ registerConfigCommand(program);
 registerImproveCommand(program);
 registerMigrateCommand(program);
 registerExitCommand(program);
+registerInitFeatureCommand(program);
 
 // Connect write-through hook: sync RunState transitions to GitHub Issues (#61)
 setWriteThrough((state: RunState, prev: RunState | null) => {
