@@ -5,33 +5,12 @@
     "primary": "github_issues",
     "command": "gh issue list --assignee @me --state open --json number,title,labels,body",
     "cronIntervalMinutes": 10,
-    "fallback": "goals.json"
+    "note": "GitHub Issues is the sole task source (SSOT). goals.json is deprecated (#61)."
   },
   "levels": {
     "autonomous": {
       "description": "自律実行可能。完了後に[報告:完了]のみ送信",
-      "actions": [
-        "bug_fix",
-        "test",
-        "refactoring",
-        "lint_fix",
-        "typo_fix",
-        "documentation_update",
-        "ci_fix"
-      ],
-      "issueLabels": ["bug", "fix", "test", "refactoring", "docs", "lint", "typo", "ci"]
-    },
-    "notify_then_proceed": {
-      "description": "CTOに[提案]を送信し、5分以内に[却下]がなければ着手",
-      "actions": [
-        "feature_implementation",
-        "ui_component",
-        "api_endpoint",
-        "test_coverage_improvement",
-        "dependency_update_minor"
-      ],
-      "issueLabels": ["feature", "enhancement", "ui", "api"],
-      "timeoutMinutes": 5
+      "issueLabels": ["bug", "fix", "test", "refactoring", "docs", "lint", "typo", "ci", "P0"]
     },
     "approval_required": {
       "description": "CTO承認を待ってから着手。[承認依頼]で依頼",

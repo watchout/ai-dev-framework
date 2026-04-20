@@ -58,7 +58,8 @@ try {
   const classified = issues.map(issue => {
     const issueLabels = (issue.labels || []).map(l => (l.name || l).toLowerCase());
 
-    let level = 'notify_then_proceed'; // default
+    // Label-based deterministic routing: autonomous or approval_required only (#61 v1.1.0)
+    let level = 'approval_required'; // default: conservative
     for (const label of issueLabels) {
       if (labelMap[label] === 'autonomous') { level = 'autonomous'; }
       if (labelMap[label] === 'approval_required') { level = 'approval_required'; break; }
@@ -84,7 +85,7 @@ try {
   console.log('============================================');
 
   for (const t of classified.slice(0, 5)) {
-    const icon = t.level === 'autonomous' ? '▶' : t.level === 'notify_then_proceed' ? '⏳' : '🔒';
+    const icon = t.level === 'autonomous' ? '▶' : '🔒';
     console.log('  ' + icon + ' #' + t.number + ' [' + t.level + '] ' + t.title);
   }
   if (classified.length > 5) {
