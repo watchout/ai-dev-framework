@@ -87,4 +87,36 @@ describe("loadGateStatusFromCheckRuns", () => {
     expect(result.error).toBe("gh_error");
     expect(result.errorMessage).toContain("not authenticated");
   });
+
+  it("maps timed_out to failed", async () => {
+    restoreGh = setGhExecutor(async () =>
+      JSON.stringify({ name: GATE_WORKFLOW_NAMES.A, status: "completed", conclusion: "timed_out" }),
+    );
+    const result = await loadGateStatusFromCheckRuns("x");
+    expect(result.state!.gateA.status).toBe("failed");
+  });
+
+  it("maps startup_failure to failed", async () => {
+    restoreGh = setGhExecutor(async () =>
+      JSON.stringify({ name: GATE_WORKFLOW_NAMES.B, status: "completed", conclusion: "startup_failure" }),
+    );
+    const result = await loadGateStatusFromCheckRuns("x");
+    expect(result.state!.gateB.status).toBe("failed");
+  });
+
+  it("maps action_required to failed", async () => {
+    restoreGh = setGhExecutor(async () =>
+      JSON.stringify({ name: GATE_WORKFLOW_NAMES.C, status: "completed", conclusion: "action_required" }),
+    );
+    const result = await loadGateStatusFromCheckRuns("x");
+    expect(result.state!.gateC.status).toBe("failed");
+  });
+
+  it("maps stale to failed", async () => {
+    restoreGh = setGhExecutor(async () =>
+      JSON.stringify({ name: GATE_WORKFLOW_NAMES.A, status: "completed", conclusion: "stale" }),
+    );
+    const result = await loadGateStatusFromCheckRuns("x");
+    expect(result.state!.gateA.status).toBe("failed");
+  });
 });

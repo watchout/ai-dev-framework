@@ -23,7 +23,6 @@ import {
   loadGateStatusFromCheckRuns,
   saveGateState,
   createGateState,
-  resetGateState,
   type GateState,
   type GateEntry,
   type SSOTGateEntry,
@@ -219,9 +218,6 @@ export function registerGateCommand(program: Command): void {
       logger.info("");
       logger.info("See: .github/workflows/gate-a.yml, gate-b.yml, gate-c.yml");
       process.exit(1);
-      logger.info(
-        "Run 'framework gate check' to re-evaluate.",
-      );
     });
 
   // framework gate scaffold
