@@ -1,0 +1,74 @@
+name: "Bypass Detection"
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  bypass-detection:
+    name: Bypass Detection (09_ENFORCEMENT §2)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect --no-verify commits (missing hook signatures)
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          BYPASS_COMMITS=()
+
+          for COMMIT in $(git log --format="%H" "$BASE_SHA".."$HEAD_SHA"); do
+            # Check for hook signature in commit message or trailers
+            # Hooks that ran successfully append a trailer: "Gate-Check: passed"
+            MSG=$(git log -1 --format="%B" "$COMMIT")
+            if ! echo "$MSG" | grep -q "Gate-Check:\|Co-Authored-By:\|Signed-off-by:"; then
+              # No hook signature — possible --no-verify bypass
+              # Check if commit touches source files (non-doc commits may legitimately skip)
+              CHANGED=$(git diff-tree --no-commit-id --name-only -r "$COMMIT" | grep -E "^src/|^app/|^server/|^lib/" || true)
+              if [ -n "$CHANGED" ]; then
+                BYPASS_COMMITS+=("$COMMIT")
+              fi
+            fi
+          done
+
+          if [ ${#BYPASS_COMMITS[@]} -gt 0 ]; then
+            echo "::warning::Potential --no-verify commits detected (source files changed without hook signature):"
+            for C in "${BYPASS_COMMITS[@]}"; do
+              SHORT=$(git log -1 --format="%h %s" "$C")
+              echo "  - $SHORT"
+            done
+            echo ""
+            echo "If these commits were intentionally bypassed with FRAMEWORK_BYPASS token,"
+            echo "add the token hash to the PR description for audit verification."
+            # Warning only — full enforcement requires FRAMEWORK_BYPASS token validation
+            # which is implemented in the hook + audit-log system
+          fi
+
+      - name: Detect SKIP_GATE_* environment variables in diff
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+
+          DIFF=$(git diff "$BASE_SHA".."$HEAD_SHA" -- . ':!*.yml' ':!*.yaml' ':!*.md')
+
+          SKIP_FOUND=false
+          for PATTERN in SKIP_GATE_A SKIP_GATE_B SKIP_GATE_C SKIP_GATE_D FRAMEWORK_SKIP_TASK_CHECK; do
+            if echo "$DIFF" | grep -q "$PATTERN"; then
+              echo "::error::$PATTERN detected in code diff. Gate bypass env vars must not be committed."
+              SKIP_FOUND=true
+            fi
+          done
+
+          if [ "$SKIP_FOUND" = "true" ]; then
+            echo ""
+            echo "Gate bypass environment variables detected in committed code."
+            echo "Remove SKIP_GATE_* references or provide FRAMEWORK_BYPASS token justification."
+            exit 1
+          fi
+
+          echo "No SKIP_GATE_* env vars in diff — PASS"
+
+      - name: Bypass detection summary
+        run: echo "Bypass Detection — PASSED"
