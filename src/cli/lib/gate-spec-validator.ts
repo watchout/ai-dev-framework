@@ -35,14 +35,33 @@ const REQUIRED_SECTIONS: { prefix: string; label: string }[] = [
 /** Gherkin keywords that must appear in §7. */
 const GHERKIN_KEYWORDS = /\b(Given|When|Then)\b/;
 
-/** STRIDE keyword — appears in §6.3 when STRIDE analysis is present. */
-const STRIDE_SECTION_PATTERN = /§?6\.3|STRIDE/i;
+/** STRIDE keyword — appears in §6.3 when STRIDE analysis is present. Must not match §6.3.2. */
+const STRIDE_SECTION_PATTERN = /§?6\.3(?!\.\d)|STRIDE/i;
+
+/** OWASP keyword — appears in §6.3.2 when OWASP analysis is present. */
+const OWASP_SECTION_PATTERN = /§?6\.3\.2|OWASP/i;
+
+/** §6.3 section pattern — matches the entire security analysis section. */
+const SECURITY_SECTION_63_PATTERN = /§?6\.3\b/;
 
 /** N/A without a reason — "N/A" alone on a line or "N/A" not followed by reason text. */
 const STRIDE_NA_BARE_PATTERN = /^\s*N\/A\s*$/m;
 
-/** Profiles where STRIDE is mandatory. */
-const STRIDE_MANDATORY_PROFILES: ProfileType[] = ["app", "api"];
+/** OWASP Top 10 items (A01-A10). */
+const OWASP_ITEMS = [
+  "A01", "A02", "A03", "A04", "A05",
+  "A06", "A07", "A08", "A09", "A10",
+];
+
+/**
+ * Pattern for an OWASP item marked N/A without reason.
+ * Matches lines like "A01: N/A" or "- A01: N/A" but NOT "A01: N/A — reason here".
+ * Also matches "A01: N/A" not followed by colon + text (i.e., bare N/A after item).
+ */
+const OWASP_NA_WITHOUT_REASON_PATTERN = /^\s*[-*]?\s*A\d{2}[^:]*:\s*N\/A\s*$/;
+
+/** Profiles where STRIDE/OWASP is mandatory. */
+const SECURITY_MANDATORY_PROFILES: ProfileType[] = ["app", "api"];
 
 /** WARNING threshold for Gate 0 PASS. */
 const WARNING_THRESHOLD = 3;
@@ -144,6 +163,100 @@ function checkStride(sections: { heading: string; body: string }[]): StrideCheck
 }
 
 // ─────────────────────────────────────────────
+// OWASP check
+// ─────────────────────────────────────────────
+
+interface OwaspCheckResult {
+  found: boolean;
+  bareNaItems: string[];
+  sectionBody: string;
+}
+
+function checkOwasp(sections: { heading: string; body: string }[]): OwaspCheckResult {
+  // Look for §6.3.2 or OWASP in heading
+  for (const section of sections) {
+    if (OWASP_SECTION_PATTERN.test(section.heading)) {
+      return {
+        found: true,
+        bareNaItems: findBareNaOwaspItems(section.body),
+        sectionBody: section.body,
+      };
+    }
+  }
+
+  // Also check inside §6 or §6.3 body for ### 6.3.2 or OWASP subsection
+  for (const section of sections) {
+    if (
+      headingMatchesPrefix(section.heading, "6") ||
+      STRIDE_SECTION_PATTERN.test(section.heading)
+    ) {
+      const hasOwaspSubsection = OWASP_SECTION_PATTERN.test(section.body);
+      if (hasOwaspSubsection) {
+        // Extract OWASP subsection body
+        const owaspMatch = section.body.match(
+          /(?:###\s*(?:§?6\.3\.2|.*OWASP.*))\n([\s\S]*?)(?=\n###|\n##|$)/i,
+        );
+        const owaspBody = owaspMatch ? owaspMatch[1] : section.body;
+        return {
+          found: true,
+          bareNaItems: findBareNaOwaspItems(owaspBody),
+          sectionBody: owaspBody,
+        };
+      }
+    }
+  }
+
+  return { found: false, bareNaItems: [], sectionBody: "" };
+}
+
+/**
+ * Find OWASP items (A01-A10) that are marked N/A without a reason.
+ */
+function findBareNaOwaspItems(body: string): string[] {
+  const bareItems: string[] = [];
+  const lines = body.split("\n");
+  for (const line of lines) {
+    if (OWASP_NA_WITHOUT_REASON_PATTERN.test(line)) {
+      // Extract the item ID (A01-A10)
+      const itemMatch = line.match(/A(\d{2})/);
+      if (itemMatch) {
+        const itemId = `A${itemMatch[1]}`;
+        if (OWASP_ITEMS.includes(itemId)) {
+          bareItems.push(itemId);
+        }
+      }
+    }
+  }
+  return bareItems;
+}
+
+// ─────────────────────────────────────────────
+// §6.3 section existence check
+// ─────────────────────────────────────────────
+
+function hasSection63(sections: { heading: string; body: string }[]): boolean {
+  // Check for §6.3 in headings
+  for (const section of sections) {
+    if (SECURITY_SECTION_63_PATTERN.test(section.heading)) {
+      return true;
+    }
+  }
+  // Check inside §6 body for ### 6.3
+  for (const section of sections) {
+    if (headingMatchesPrefix(section.heading, "6")) {
+      if (SECURITY_SECTION_63_PATTERN.test(section.body)) {
+        return true;
+      }
+      // Also check if STRIDE or OWASP keywords exist in body (implies §6.3 content)
+      if (STRIDE_SECTION_PATTERN.test(section.body) || OWASP_SECTION_PATTERN.test(section.body)) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// ─────────────────────────────────────────────
 // Main validation
 // ─────────────────────────────────────────────
 
@@ -214,28 +327,50 @@ export function validateSpec(
     }
   }
 
-  // ── Check 3: §6.3 STRIDE (profile-dependent) ──
+  // ── Check 3: §6.3 Security section (profile-dependent) ──
   const effectiveProjectDir = projectDir ?? process.cwd();
   const profileType = loadProfileType(effectiveProjectDir);
   const isMandatory = profileType
-    ? STRIDE_MANDATORY_PROFILES.includes(profileType)
+    ? SECURITY_MANDATORY_PROFILES.includes(profileType)
     : true; // Default: mandatory if no profile
 
-  const stride = checkStride(sections);
-
-  if (!stride.found) {
+  // ── Check 3a: §6.3 section existence (BLOCKER 2) ──
+  const section63Exists = hasSection63(sections);
+  if (!section63Exists) {
     if (isMandatory) {
-      result.warnings.push({
+      result.critical.push({
         docId,
-        type: "STRIDE_Missing",
-        message: "§6.3 STRIDE section not found (mandatory for this profile)",
+        type: "SecuritySection_Missing",
+        message: "§6.3 security section is entirely absent (mandatory for app/api profile)",
       });
     } else {
       result.warnings.push({
         docId,
-        type: "STRIDE_Missing",
-        message: "§6.3 STRIDE section not found (optional for this profile)",
+        type: "SecuritySection_Missing",
+        message: "§6.3 security section not found (optional for this profile)",
       });
+    }
+  }
+
+  // ── Check 3b: STRIDE (profile-dependent) ──
+  const stride = checkStride(sections);
+
+  if (!stride.found) {
+    // Only add STRIDE_Missing if we didn't already flag the entire §6.3 as missing
+    if (section63Exists) {
+      if (isMandatory) {
+        result.critical.push({
+          docId,
+          type: "STRIDE_Missing",
+          message: "§6.3 STRIDE table not found (mandatory for app/api profile)",
+        });
+      } else {
+        result.warnings.push({
+          docId,
+          type: "STRIDE_Missing",
+          message: "§6.3 STRIDE section not found (optional for this profile)",
+        });
+      }
     }
   } else if (stride.isNaBare) {
     if (isMandatory) {
@@ -249,6 +384,42 @@ export function validateSpec(
         docId,
         type: "STRIDE_NA_WithoutReason",
         message: '§6.3 STRIDE marked "N/A" without reason (non-critical for this profile)',
+      });
+    }
+  }
+
+  // ── Check 3c: OWASP Top 10 (profile-dependent) ──
+  const owasp = checkOwasp(sections);
+
+  if (!owasp.found) {
+    // Only add OWASP_Missing if we didn't already flag the entire §6.3 as missing
+    if (section63Exists) {
+      if (isMandatory) {
+        result.critical.push({
+          docId,
+          type: "OWASP_Missing",
+          message: "§6.3.2 OWASP Top 10 section not found (mandatory for app/api profile)",
+        });
+      } else {
+        result.warnings.push({
+          docId,
+          type: "OWASP_Missing",
+          message: "§6.3.2 OWASP Top 10 section not found (optional for this profile)",
+        });
+      }
+    }
+  } else if (owasp.bareNaItems.length > 0) {
+    if (isMandatory) {
+      result.critical.push({
+        docId,
+        type: "OWASP_NA_WithoutReason",
+        message: `§6.3.2 OWASP items marked "N/A" without reason: ${owasp.bareNaItems.join(", ")}`,
+      });
+    } else {
+      result.warnings.push({
+        docId,
+        type: "OWASP_NA_WithoutReason",
+        message: `§6.3.2 OWASP items marked "N/A" without reason: ${owasp.bareNaItems.join(", ")} (non-critical for this profile)`,
       });
     }
   }

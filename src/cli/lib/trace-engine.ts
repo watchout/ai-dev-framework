@@ -51,6 +51,10 @@ export interface GateSpecResult {
     type:
       | "MissingAcceptanceCriteria"
       | "STRIDE_NA_WithoutReason"
+      | "STRIDE_Missing"
+      | "OWASP_NA_WithoutReason"
+      | "OWASP_Missing"
+      | "SecuritySection_Missing"
       | "MissingRequiredSection";
     message: string;
   }[];

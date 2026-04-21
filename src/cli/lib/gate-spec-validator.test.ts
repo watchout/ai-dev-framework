@@ -50,8 +50,68 @@ function writeProjectJson(profileType: string): void {
   );
 }
 
-/** Full valid spec with all 8 sections + Gherkin + STRIDE. */
+/** Full valid spec with all 8 sections + Gherkin + STRIDE + OWASP. */
 function makeValidSpec(): string {
+  return `---
+id: SPEC-AUTH-001
+status: Draft
+traces:
+  impl: [IMPL-AUTH-001]
+---
+
+# SPEC: Auth
+
+## §1 目的
+ユーザー認証を実装する。
+
+## §2 非目的
+外部OAuth連携は対象外。
+
+## §3 ユーザーストーリー
+As a user, I want to log in.
+
+## §4 機能要件
+- ログイン
+- ログアウト
+
+## §5 インターフェース
+POST /api/auth/login
+
+## §6 非機能要件
+パフォーマンス要件あり。
+
+### §6.3 STRIDE
+- Spoofing: JWT token validation
+- Tampering: Request signature
+- Repudiation: Audit log
+- Information Disclosure: Encrypted transport
+- Denial of Service: Rate limiting
+- Elevation of Privilege: RBAC
+
+### §6.3.2 OWASP Top 10
+- A01 Broken Access Control: RBAC enforced at API layer
+- A02 Cryptographic Failures: TLS 1.3 + bcrypt for passwords
+- A03 Injection: Parameterized queries via ORM
+- A04 Insecure Design: Threat model reviewed
+- A05 Security Misconfiguration: Hardened defaults
+- A06 Vulnerable Components: Dependabot enabled
+- A07 Auth Failures: Rate limiting + account lockout
+- A08 Data Integrity Failures: Signed JWTs
+- A09 Logging Failures: Structured audit log
+- A10 SSRF: No outbound fetch from user input
+
+## §7 受入基準
+Given ユーザーがログインページにいる
+When 有効な認証情報を入力する
+Then ダッシュボードにリダイレクトされる
+
+## §8 前提・依存
+- Supabase Auth
+`;
+}
+
+/** Valid spec without OWASP (only STRIDE). */
+function makeSpecWithoutOwasp(): string {
   return `---
 id: SPEC-AUTH-001
 status: Draft
@@ -98,6 +158,46 @@ Then ダッシュボードにリダイレクトされる
 `;
 }
 
+/** Valid spec without any §6.3 security section. */
+function makeSpecWithoutSection63(): string {
+  return `---
+id: SPEC-AUTH-001
+status: Draft
+traces:
+  impl: [IMPL-AUTH-001]
+---
+
+# SPEC: Auth
+
+## §1 目的
+ユーザー認証を実装する。
+
+## §2 非目的
+外部OAuth連携は対象外。
+
+## §3 ユーザーストーリー
+As a user, I want to log in.
+
+## §4 機能要件
+- ログイン
+- ログアウト
+
+## §5 インターフェース
+POST /api/auth/login
+
+## §6 非機能要件
+パフォーマンス要件あり。
+
+## §7 受入基準
+Given ユーザーがログインページにいる
+When 有効な認証情報を入力する
+Then ダッシュボードにリダイレクトされる
+
+## §8 前提・依存
+- Supabase Auth
+`;
+}
+
 describe("validateSpec", () => {
   it("valid spec with all sections → PASS", () => {
     writeProjectJson("app");
@@ -128,7 +228,7 @@ describe("validateSpec", () => {
   it("STRIDE N/A without reason (app profile) → CRITICAL", () => {
     writeProjectJson("app");
     const content = makeValidSpec().replace(
-      /### §6\.3 STRIDE[\s\S]*?(?=## §7)/,
+      /### §6\.3 STRIDE[\s\S]*?(?=### §6\.3\.2)/,
       `### §6.3 STRIDE\nN/A\n\n`,
     );
     const specPath = writeSpec("stride-na-bare", content);
@@ -144,7 +244,7 @@ describe("validateSpec", () => {
   it("STRIDE N/A with reason → PASS (no CRITICAL)", () => {
     writeProjectJson("app");
     const content = makeValidSpec().replace(
-      /### §6\.3 STRIDE[\s\S]*?(?=## §7)/,
+      /### §6\.3 STRIDE[\s\S]*?(?=### §6\.3\.2)/,
       `### §6.3 STRIDE\nN/A — This is a read-only internal tool with no user-facing auth.\n\n`,
     );
     const specPath = writeSpec("stride-na-reason", content);
@@ -159,27 +259,28 @@ describe("validateSpec", () => {
 
   it("STRIDE missing (cli profile) → WARNING only, not CRITICAL", () => {
     writeProjectJson("cli");
-    // Remove STRIDE section entirely
-    const content = makeValidSpec().replace(
-      /### §6\.3 STRIDE[\s\S]*?(?=## §7)/,
-      "",
-    );
+    // Remove entire §6.3 section (STRIDE + OWASP)
+    const content = makeSpecWithoutSection63();
     const specPath = writeSpec("no-stride-cli", content);
     const result = validateSpec(specPath, tmpDir);
 
-    // No STRIDE-related critical
-    const strideCritical = result.critical.filter(
+    // No security-related critical for cli profile
+    const secCritical = result.critical.filter(
       (c) =>
-        c.type === "STRIDE_NA_WithoutReason",
+        c.type === "STRIDE_NA_WithoutReason" ||
+        c.type === "STRIDE_Missing" ||
+        c.type === "OWASP_Missing" ||
+        c.type === "OWASP_NA_WithoutReason" ||
+        c.type === "SecuritySection_Missing",
     );
-    expect(strideCritical).toHaveLength(0);
+    expect(secCritical).toHaveLength(0);
 
-    // Should have warning
-    const strideWarnings = result.warnings.filter(
-      (w) => w.type === "STRIDE_Missing",
+    // Should have warning for missing §6.3
+    const secWarnings = result.warnings.filter(
+      (w) => w.type === "SecuritySection_Missing",
     );
-    expect(strideWarnings).toHaveLength(1);
-    expect(strideWarnings[0].message).toContain("optional");
+    expect(secWarnings).toHaveLength(1);
+    expect(secWarnings[0].message).toContain("optional");
   });
 
   it("§7 present but no Gherkin → CRITICAL", () => {
@@ -202,18 +303,13 @@ describe("validateSpec", () => {
 
   it("WARNING=3 → PASS", () => {
     writeProjectJson("cli");
-    // Build a spec that triggers exactly 3 warnings but no criticals
-    // cli profile: STRIDE missing = 1 warning
-    // We need 2 more warnings. We'll use multiple files via validateAllSpecs instead.
-    // For a single-file test, build a spec with STRIDE missing (1 warning).
-    const content = makeValidSpec().replace(
-      /### §6\.3 STRIDE[\s\S]*?(?=## §7)/,
-      "",
-    );
+    // Build a spec that triggers exactly 1 warning (§6.3 missing) but no criticals
+    // cli profile: §6.3 entirely missing = 1 warning (SecuritySection_Missing)
+    const content = makeSpecWithoutSection63();
     const specPath = writeSpec("three-warn", content);
     const result = validateSpec(specPath, tmpDir);
 
-    // With cli profile, 1 warning for STRIDE missing, 0 criticals → PASS
+    // With cli profile, 1 warning for missing §6.3, 0 criticals → PASS
     expect(result.critical).toHaveLength(0);
     expect(result.warnings.length).toBeLessThanOrEqual(3);
     expect(result.status).toBe("PASS");
@@ -221,11 +317,10 @@ describe("validateSpec", () => {
 
   it("WARNING=4 → BLOCK (via validateAllSpecs aggregation)", () => {
     writeProjectJson("cli");
-    // Create 4 spec files, each with 1 STRIDE warning (cli profile)
+    // Create 4 spec files, each with 1 warning (§6.3 missing, cli profile)
     for (let i = 1; i <= 4; i++) {
-      const content = makeValidSpec()
-        .replace(/id: SPEC-AUTH-001/, `id: SPEC-WARN-${i}`)
-        .replace(/### §6\.3 STRIDE[\s\S]*?(?=## §7)/, "");
+      const content = makeSpecWithoutSection63()
+        .replace(/id: SPEC-AUTH-001/, `id: SPEC-WARN-${i}`);
       writeSpec(`warn-${i}`, content);
     }
 
@@ -295,29 +390,33 @@ None.
 
   it("STRIDE missing (mcp-server profile) → WARNING only", () => {
     writeProjectJson("mcp-server");
-    const content = makeValidSpec().replace(
-      /### §6\.3 STRIDE[\s\S]*?(?=## §7)/,
-      "",
-    );
+    // Remove entire §6.3 section
+    const content = makeSpecWithoutSection63();
     const specPath = writeSpec("no-stride-mcp", content);
     const result = validateSpec(specPath, tmpDir);
 
-    const strideCritical = result.critical.filter(
-      (c) => c.type === "STRIDE_NA_WithoutReason",
+    // No security-related critical for mcp-server profile
+    const secCritical = result.critical.filter(
+      (c) =>
+        c.type === "STRIDE_NA_WithoutReason" ||
+        c.type === "STRIDE_Missing" ||
+        c.type === "OWASP_Missing" ||
+        c.type === "SecuritySection_Missing",
     );
-    expect(strideCritical).toHaveLength(0);
+    expect(secCritical).toHaveLength(0);
 
-    const strideWarnings = result.warnings.filter(
-      (w) => w.type === "STRIDE_Missing",
+    // Should have warning for missing §6.3
+    const secWarnings = result.warnings.filter(
+      (w) => w.type === "SecuritySection_Missing",
     );
-    expect(strideWarnings).toHaveLength(1);
-    expect(strideWarnings[0].message).toContain("optional");
+    expect(secWarnings).toHaveLength(1);
+    expect(secWarnings[0].message).toContain("optional");
   });
 
   it("STRIDE N/A without reason (api profile) → CRITICAL", () => {
     writeProjectJson("api");
     const content = makeValidSpec().replace(
-      /### §6\.3 STRIDE[\s\S]*?(?=## §7)/,
+      /### §6\.3 STRIDE[\s\S]*?(?=### §6\.3\.2)/,
       `### §6.3 STRIDE\nN/A\n\n`,
     );
     const specPath = writeSpec("stride-na-api", content);
@@ -328,5 +427,99 @@ None.
       (c) => c.type === "STRIDE_NA_WithoutReason",
     );
     expect(strideFindings).toHaveLength(1);
+  });
+
+  // ── OWASP Top 10 tests ──
+
+  it("OWASP N/A without reason (app profile) → CRITICAL", () => {
+    writeProjectJson("app");
+    const content = makeValidSpec().replace(
+      /### §6\.3\.2 OWASP Top 10[\s\S]*?(?=## §7)/,
+      `### §6.3.2 OWASP Top 10\n- A01 Broken Access Control: N/A\n- A02 Cryptographic Failures: Encrypted\n\n`,
+    );
+    const specPath = writeSpec("owasp-na-bare", content);
+    const result = validateSpec(specPath, tmpDir);
+
+    expect(result.status).toBe("BLOCK");
+    const owaspFindings = result.critical.filter(
+      (c) => c.type === "OWASP_NA_WithoutReason",
+    );
+    expect(owaspFindings).toHaveLength(1);
+    expect(owaspFindings[0].message).toContain("A01");
+  });
+
+  it("OWASP N/A with reason → PASS (no CRITICAL)", () => {
+    writeProjectJson("app");
+    const content = makeValidSpec().replace(
+      /### §6\.3\.2 OWASP Top 10[\s\S]*?(?=## §7)/,
+      `### §6.3.2 OWASP Top 10\n- A01 Broken Access Control: N/A — Read-only public data, no access control needed\n- A02 Cryptographic Failures: Encrypted transport\n\n`,
+    );
+    const specPath = writeSpec("owasp-na-reason", content);
+    const result = validateSpec(specPath, tmpDir);
+
+    // Should not have OWASP_NA_WithoutReason critical
+    const owaspCritical = result.critical.filter(
+      (c) => c.type === "OWASP_NA_WithoutReason",
+    );
+    expect(owaspCritical).toHaveLength(0);
+  });
+
+  it("OWASP section missing (app profile) → CRITICAL", () => {
+    writeProjectJson("app");
+    // Use spec with STRIDE but no OWASP
+    const content = makeSpecWithoutOwasp();
+    const specPath = writeSpec("no-owasp-app", content);
+    const result = validateSpec(specPath, tmpDir);
+
+    expect(result.status).toBe("BLOCK");
+    const owaspMissing = result.critical.filter(
+      (c) => c.type === "OWASP_Missing",
+    );
+    expect(owaspMissing).toHaveLength(1);
+    expect(owaspMissing[0].message).toContain("mandatory");
+  });
+
+  it("OWASP section missing (cli profile) → WARNING", () => {
+    writeProjectJson("cli");
+    // Use spec with STRIDE but no OWASP — cli profile
+    const content = makeSpecWithoutOwasp();
+    const specPath = writeSpec("no-owasp-cli", content);
+    const result = validateSpec(specPath, tmpDir);
+
+    // No OWASP critical for cli profile
+    const owaspCritical = result.critical.filter(
+      (c) => c.type === "OWASP_Missing" || c.type === "OWASP_NA_WithoutReason",
+    );
+    expect(owaspCritical).toHaveLength(0);
+
+    // Should have OWASP warning
+    const owaspWarnings = result.warnings.filter(
+      (w) => w.type === "OWASP_Missing",
+    );
+    expect(owaspWarnings).toHaveLength(1);
+    expect(owaspWarnings[0].message).toContain("optional");
+  });
+
+  // ── §6.3 entirely missing tests (BLOCKER 2) ──
+
+  it("§6.3 entirely missing (app profile) → CRITICAL (not WARNING)", () => {
+    writeProjectJson("app");
+    const content = makeSpecWithoutSection63();
+    const specPath = writeSpec("no-63-app", content);
+    const result = validateSpec(specPath, tmpDir);
+
+    expect(result.status).toBe("BLOCK");
+    // §6.3 missing should be CRITICAL for app profile
+    const secMissing = result.critical.filter(
+      (c) => c.type === "SecuritySection_Missing",
+    );
+    expect(secMissing).toHaveLength(1);
+    expect(secMissing[0].message).toContain("mandatory");
+
+    // Should NOT be in warnings
+    const secWarnings = result.warnings.filter(
+      (w) => w.type === "SecuritySection_Missing",
+    );
+    expect(secWarnings).toHaveLength(0);
   });
 });

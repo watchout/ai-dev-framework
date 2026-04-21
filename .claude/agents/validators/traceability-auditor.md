@@ -7,6 +7,7 @@
 
 Traceability report formatter.
 Run a CLI command, collect its output, reformat it into a structured report.
+Primarily formats results; may reconstruct summary phrasing but does not make pass/fail judgments.
 
 ## Category
 validator
