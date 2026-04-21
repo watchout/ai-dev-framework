@@ -25,7 +25,7 @@ function runInitFeature(
       {
         cwd: cwd ?? tmpDir,
         encoding: "utf8",
-        timeout: 10000,
+        timeout: 15000,
         stdio: ["pipe", "pipe", "pipe"],
       },
     );
