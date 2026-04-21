@@ -162,7 +162,7 @@ export function registerTraceCommand(program: Command): void {
       logger.info(`  docs dir: ${path.relative(projectDir, docsDir)}`);
       logger.info("");
 
-      const graph = buildGraph(docsDir);
+      const graph = buildGraph(docsDir, projectDir);
       const result = verifyTraceability(graph);
 
       const hasIssues =
@@ -245,7 +245,7 @@ export function registerTraceCommand(program: Command): void {
         process.exit(2);
       }
 
-      const graph = buildGraph(docsDir);
+      const graph = buildGraph(docsDir, projectDir);
 
       if (graph.size === 0) {
         logger.warn(

@@ -191,12 +191,12 @@ function collectMdFiles(dir: string): string[] {
 // buildGraph (IMPL §3 — step 2-1)
 // ─────────────────────────────────────────────
 
-export function buildGraph(docsDir: string): Map<string, DocumentNode> {
+export function buildGraph(docsDir: string, projectDir?: string): Map<string, DocumentNode> {
   const graph = new Map<string, DocumentNode>();
 
   // Check .framework/config.json for docs_layers.enabled
-  const projectDir = path.resolve(docsDir, "..");
-  const config = readDocsLayersConfig(projectDir);
+  const resolvedProjectDir = projectDir ?? path.resolve(docsDir, "..");
+  const config = readDocsLayersConfig(resolvedProjectDir);
   if (!config || !config.enabled) {
     return graph; // empty Map when disabled/missing
   }
@@ -255,15 +255,32 @@ export function verifyTraceability(
     }
   }
 
-  // 3. Detect missing: SPEC id with no corresponding IMPL (via traces.impl)
+  // 3. Detect missing cross-layer references (all expected directions)
+  //    spec→impl, impl→spec, verify→impl, verify→spec, ops→spec, ops→impl
+  const expectedTraces: Record<LayerType, LayerType[]> = {
+    spec: ["impl"],
+    impl: ["spec"],
+    verify: ["impl", "spec"],
+    ops: ["spec", "impl"],
+  };
+
   for (const [_id, node] of graph) {
-    if (node.layer === "spec") {
-      const implRefs = node.frontMatter.traces.impl;
-      if (!implRefs || implRefs.length === 0) {
+    const expected = expectedTraces[node.layer];
+    if (!expected) continue;
+    for (const targetLayer of expected) {
+      const refs = node.frontMatter.traces[targetLayer];
+      if (!refs || refs.length === 0) {
+        const prefix = node.layer.toUpperCase();
+        const targetPrefix = targetLayer.toUpperCase();
+        // Derive expected id by replacing the layer prefix
+        const expectedId = node.id.replace(
+          new RegExp(`^${prefix}-`),
+          `${targetPrefix}-`,
+        );
         missing.push({
           from: node.id,
-          expected: "impl",
-          expectedId: node.id.replace(/^SPEC-/, "IMPL-"),
+          expected: targetLayer,
+          expectedId,
         });
       }
     }

@@ -265,6 +265,7 @@ id: VERIFY-AUTH-001
 status: Draft
 traces:
   impl: [IMPL-AUTH-001]
+  spec: [SPEC-AUTH-001]
 ---
 # Verify`);
 
@@ -382,6 +383,182 @@ traces:
     expect(result.missing).toHaveLength(0);
     expect(result.broken).toHaveLength(0);
     expect(result.oversizedFeatures).toHaveLength(0);
+  });
+
+  it("all 4 layers cross-references fully linked -> PASS", () => {
+    writeConfig({ docs_layers: { enabled: true } });
+
+    writeDoc("spec", "feat", `---
+id: SPEC-FEAT-001
+status: Draft
+traces:
+  impl: [IMPL-FEAT-001]
+  verify: [VERIFY-FEAT-001]
+  ops: [OPS-FEAT-001]
+---
+# Spec`);
+
+    writeDoc("impl", "feat", `---
+id: IMPL-FEAT-001
+status: Draft
+traces:
+  spec: [SPEC-FEAT-001]
+  verify: [VERIFY-FEAT-001]
+  ops: [OPS-FEAT-001]
+---
+# Impl`);
+
+    writeDoc("verify", "feat", `---
+id: VERIFY-FEAT-001
+status: Draft
+traces:
+  impl: [IMPL-FEAT-001]
+  spec: [SPEC-FEAT-001]
+---
+# Verify`);
+
+    writeDoc("ops", "feat", `---
+id: OPS-FEAT-001
+status: Draft
+traces:
+  spec: [SPEC-FEAT-001]
+  impl: [IMPL-FEAT-001]
+---
+# Ops`);
+
+    const docsDir = path.join(tmpDir, "docs");
+    const graph = buildGraph(docsDir);
+    const result = verifyTraceability(graph);
+
+    expect(result.orphans).toHaveLength(0);
+    expect(result.missing).toHaveLength(0);
+    expect(result.broken).toHaveLength(0);
+    expect(result.totalNodes).toBe(4);
+    expect(result.passCount).toBe(4);
+  });
+
+  it("broken impl->spec reference -> broken entry", () => {
+    writeConfig({ docs_layers: { enabled: true } });
+
+    writeDoc("impl", "pay", `---
+id: IMPL-PAY-001
+status: Draft
+traces:
+  spec: [SPEC-NONEXISTENT-001]
+---
+# Impl with broken spec ref`);
+
+    const docsDir = path.join(tmpDir, "docs");
+    const graph = buildGraph(docsDir);
+    const result = verifyTraceability(graph);
+
+    expect(result.broken.length).toBeGreaterThanOrEqual(1);
+    const brokenEntry = result.broken.find(
+      (b) => b.from === "IMPL-PAY-001" && b.to === "SPEC-NONEXISTENT-001",
+    );
+    expect(brokenEntry).toBeDefined();
+    expect(brokenEntry!.reason).toContain("not found in graph");
+  });
+
+  it("broken verify->impl reference -> broken entry", () => {
+    writeConfig({ docs_layers: { enabled: true } });
+
+    writeDoc("verify", "check", `---
+id: VERIFY-CHECK-001
+status: Draft
+traces:
+  impl: [IMPL-GHOST-001]
+  spec: [SPEC-CHECK-001]
+---
+# Verify with broken impl ref`);
+
+    writeDoc("spec", "check", `---
+id: SPEC-CHECK-001
+status: Draft
+traces:
+  impl: [IMPL-CHECK-001]
+---
+# Spec`);
+
+    const docsDir = path.join(tmpDir, "docs");
+    const graph = buildGraph(docsDir);
+    const result = verifyTraceability(graph);
+
+    expect(result.broken.length).toBeGreaterThanOrEqual(1);
+    const brokenEntry = result.broken.find(
+      (b) => b.from === "VERIFY-CHECK-001" && b.to === "IMPL-GHOST-001",
+    );
+    expect(brokenEntry).toBeDefined();
+    expect(brokenEntry!.reason).toContain("not found in graph");
+  });
+
+  it("missing impl->spec -> missing entry", () => {
+    writeConfig({ docs_layers: { enabled: true } });
+
+    writeDoc("impl", "nospec", `---
+id: IMPL-NOSPEC-001
+status: Draft
+traces: {}
+---
+# Impl without spec trace`);
+
+    const docsDir = path.join(tmpDir, "docs");
+    const graph = buildGraph(docsDir);
+    const result = verifyTraceability(graph);
+
+    const missingEntry = result.missing.find(
+      (m) => m.from === "IMPL-NOSPEC-001" && m.expected === "spec",
+    );
+    expect(missingEntry).toBeDefined();
+    expect(missingEntry!.expectedId).toBe("SPEC-NOSPEC-001");
+  });
+
+  it("missing verify->spec and verify->impl -> two missing entries", () => {
+    writeConfig({ docs_layers: { enabled: true } });
+
+    writeDoc("verify", "bare", `---
+id: VERIFY-BARE-001
+status: Draft
+traces: {}
+---
+# Verify without any traces`);
+
+    const docsDir = path.join(tmpDir, "docs");
+    const graph = buildGraph(docsDir);
+    const result = verifyTraceability(graph);
+
+    const missingImpl = result.missing.find(
+      (m) => m.from === "VERIFY-BARE-001" && m.expected === "impl",
+    );
+    const missingSpec = result.missing.find(
+      (m) => m.from === "VERIFY-BARE-001" && m.expected === "spec",
+    );
+    expect(missingImpl).toBeDefined();
+    expect(missingSpec).toBeDefined();
+  });
+
+  it("missing ops->spec and ops->impl -> two missing entries", () => {
+    writeConfig({ docs_layers: { enabled: true } });
+
+    writeDoc("ops", "bare", `---
+id: OPS-BARE-001
+status: Draft
+traces: {}
+---
+# Ops without any traces`);
+
+    const docsDir = path.join(tmpDir, "docs");
+    const graph = buildGraph(docsDir);
+    const result = verifyTraceability(graph);
+
+    const missingSpec = result.missing.find(
+      (m) => m.from === "OPS-BARE-001" && m.expected === "spec",
+    );
+    const missingImpl = result.missing.find(
+      (m) => m.from === "OPS-BARE-001" && m.expected === "impl",
+    );
+    expect(missingSpec).toBeDefined();
+    expect(missingImpl).toBeDefined();
   });
 });
 
