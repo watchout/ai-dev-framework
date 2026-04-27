@@ -3,8 +3,12 @@
 > **Effective: 2026-04-09**
 > **CEO directive**: msg `1491702879067701258` (#dev-arc, 2026-04-09 07:34 JST) +
 > msg `1491704900370042940` (2026-04-09 07:42 JST、CEO 承認 + 実行指示)
-> **Mechanically auto-loaded** by all Claude Code sessions via `~/.claude/rules/`
-> **Repo-tracked copy** (本 path): distribution として各 project に同期される正本
+
+> **Authority model (binding)**:
+> - **Runtime authority (primary)**: `~/.claude/rules/governance-flow.md` — auto-loaded at every Claude Code session start, source of truth for current behavior
+> - **This file (derived)**: distribution snapshot for repo readers and future auto-load migration target. **Not yet authoritative at runtime**
+> - **Sync direction**: home → repo (manual), reverse sync requires CEO directive
+> - **Conflict resolution**: if home and repo disagree, home wins until auto-load switch (Sub-PR 0.x or later)
 
 ## 4-layer review chain (replaces previous CEO-bottlenecked flow)
 
