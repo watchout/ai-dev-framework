@@ -1,0 +1,175 @@
+# {{FEATURE_NAME}} IMPL (施工図)
+
+> doc4l 4-layer / IMPL layer
+> 作成: {{LEAD_BOT}}
+> 対応 SPEC: ./SPEC.md
+> 関連: VERIFY.md / OPS.md (同 directory)
+> 参照規範: `docs/specs/04b_IMPL_FORMAT.md` (§1〜§12 必須セクション + evidence label 規約)
+
+<!--
+本 template は `framework init-feature <name>` で emit される IMPL.md 雛形です。
+§1〜§10 は 04b_IMPL_FORMAT.md で定義された必須セクション、
+順序および名称は SPEC.md FR-L2.1 に拘束されます (Gate 2: IMPL Presence で検証)。
+
+placeholder:
+  {{FEATURE_NAME}}  — feature 名 (snake_case 推奨)
+  {{LEAD_BOT}}      — 担当 lead-bot 名 (例: lead-ama / ARC interim)
+-->
+
+---
+
+## §1 アーキテクチャ概観
+
+<!--
+feature 全体のレイヤ構造・プロセス境界・主要 component を 1 図で示す。
+レイヤ図 (ASCII art) / プロセス境界 / Step → Step の data flow を必須要素とする。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §1 参照。
+-->
+
+(empty — 着手時に lead-bot が記入)
+
+---
+
+## §2 モジュール構造
+
+<!--
+新規 / 変更ファイルツリーを 1 表に集約。reviewer が PR diff を読む前に全体像を掴める状態を作る。
+種別 (新規 / 既存改訂 / 削除) × パス × 変更概要の 3 列表が必須。
+レイヤ別に §2.1 / §2.2 / §2.3 等で分割可。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §2 参照。
+-->
+
+(empty)
+
+---
+
+## §3 実装順序
+
+<!--
+feature を sub-PR に分解し、依存グラフと着手順序を明示する。
+Phase 区分 / Sub-PR 番号 + 概要 + 依存関係 / 依存グラフ図 (ASCII art 可) が必須。
+1 PR 1 concern 原則。bundle 必須の場合は Gap 名 + bundle 理由を明記。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §3 参照。
+-->
+
+(empty)
+
+---
+
+## §4 コードパターン
+
+<!--
+主要 interface / class / function signature を具体的に示し、実装者の頭で再構築させない。
+TypeScript / 該当言語の signature (型まで) / 入出力の型と invariant / 既存パターンとの整合性参照を必須要素とする。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §4 参照。
+-->
+
+(empty)
+
+---
+
+## §5 既存コードからの移行
+
+<!--
+既存 codebase への影響範囲を実コード grep で実測し、紙上設計と実装乖離を排除する。
+影響箇所の grep 結果 (件数 + 代表 path) / 後方互換戦略 / 既存 OPEN PR への影響評価を必須要素とする。
+本 §5 内の assumption は Step 3.45 (Feasibility PoC) で `framework feasibility-check` により検証され、
+[推測] ラベルが [検証済] に置換される。Gate 3 (per-FR traceability matrix) は §5 を中心に評価する。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §5 + `04c_FEASIBILITY_POC_FORMAT.md` 参照。
+-->
+
+(empty)
+
+---
+
+## §6 サブPR 5-section template
+
+<!--
+lead-bot が起票する各 sub-PR の 5-section instruction で共通する Forbidden / Test fixtures を
+IMPL.md レベルで一度宣言し、各 issue で重複記述を避ける。
+全 sub-PR 共通の Forbidden / Test fixtures / Open decisions のデフォルト境界を必須要素とする。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §6 参照。
+-->
+
+(empty)
+
+---
+
+## §7 Adapter / 契約の詳細
+
+<!--
+feature が外部世界 (UI / LLM / DB / Auth / Platform 等) と接する箇所の adapter 契約を明示する。
+env var 切替や文字列 config による多態は abstraction leak として検出する。
+adapter interface (port pattern) / variant 一覧 / 対称性確認 / failure mode 列挙を必須要素とする。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §7 参照。
+-->
+
+(empty)
+
+---
+
+## §8 Phase 0 ブートストラップ (該当時)
+
+<!--
+feature が新規 framework 機構を立ち上げる場合、文書化のみで先行 merge できる Phase 0 boundary を明示する。
+Phase 0 が存在する feature のみ: 文書化スコープ / code touch 禁止の宣言 / Phase 1 着手前提を必須要素とする。
+Phase 0 を持たない feature は本セクションを「該当なし」として明記する (省略禁止)。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §8 参照。
+-->
+
+(empty / 該当なし)
+
+---
+
+## §9 Open decisions
+
+<!--
+implementer (dev-bot) が自由に判断してよい項目を列挙する。本セクションに列挙されないものは暗黙凍結。
+implementer 自由項目の明示列挙 / 暗黙凍結の宣言 / escalate 宛先を必須要素とする。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §9 参照。
+-->
+
+(empty)
+
+---
+
+## §10 lead 責任の明示
+
+<!--
+当該 IMPL.md の作成者と更新責任者を明示する。SPEC drift / IMPL stale 発覚時の問合せ先を読み手に伝える。
+作成者 / 最終更新日 / SPEC との対応 / escalate criteria を必須要素とする。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §10 参照。
+-->
+
+- 作成者: {{LEAD_BOT}}
+- 最終更新日: (Conventional commits の commit date)
+- 対応 SPEC: ./SPEC.md
+- escalate criteria: SPEC drift 検出時 → ARC / cross-cutting 影響 → CTO / per-PR judgment → codex-auditor
+
+---
+
+## Evidence label legend
+
+IMPL.md 内のすべての substantive assertion (技術判断・実数値・設計選択) には以下 3 種のラベルを付与する [文献確認: 04b_IMPL_FORMAT.md §11]。
+
+| ラベル | 英語 | 意味 | 使用条件 |
+|---|---|---|---|
+| `[検証済]` | `[observed]` | 実コード / 実環境で観測 | grep / 実行 / smoke 実施で確認した数値・挙動 |
+| `[文献確認]` | `[referenced]` | 既存 doc / spec / commit / msg を参照 | path / msg id / commit hash 併記推奨 |
+| `[推測]` | `[unverified]` / `[hypothesis]` / `[propose]` | hypothesis、未検証 | Step 3.45 (Feasibility PoC) で検証され `[検証済]` に置換される候補 |
+
+書式例:
+- `fs.readFileSync の利用箇所は 546 箇所 [検証済: ripgrep 実行 04-27]`
+- `adapter pattern を採用 [文献確認: distribution/SPEC.md FR-D2]`
+- `LLM 呼出し total cost は約 $5 [推測: 静的見積、smoke 未実施]`
+
+ラベル不在の substantive assertion は L1 lead レビューで差戻し対象。
+
+---
+
+## 関連 doc
+
+- 親 SPEC: `./SPEC.md`
+- format 規範: `docs/specs/04b_IMPL_FORMAT.md` (§1〜§12 必須セクション)
+- feasibility 仕様: `docs/specs/04c_FEASIBILITY_POC_FORMAT.md` (Step 3.45 + Gate 3)
+- governance: `.claude/rules/governance-flow.md` (lead 責任「IMPL doc authoring」)
