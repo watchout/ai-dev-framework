@@ -1,5 +1,9 @@
 # {{FEATURE_NAME}} IMPL (施工図)
 
+> **Status**: frozen template asset for Sub-PR 1.4 (CLI emit wiring).
+> **Currently NOT emitted by `framework init-feature`** — current CLI generates from `templates/project/docs/*` to `docs/{spec,impl,verify,ops}` (see `src/cli/commands/init-feature.ts`).
+> **World-view note**: this template assumes `docs/specs/<feature>/IMPL.md` layout (post Sub-PR 1.4). Existing `docs/{spec,impl,verify,ops}` layout is the runtime SSOT until Sub-PR 1.4 lands.
+
 > doc4l 4-layer / IMPL layer
 > 作成: {{LEAD_BOT}}
 > 対応 SPEC: ./SPEC.md
@@ -7,7 +11,8 @@
 > 参照規範: `docs/specs/04b_IMPL_FORMAT.md` (§1〜§10 必須セクション + evidence label 規約)
 
 <!--
-本 template は `framework init-feature <name>` で emit される IMPL.md 雛形です。
+本 template は将来 `framework init-feature <name>` が Sub-PR 1.4 (CLI emit wiring) 着地後に
+will be emitted by `framework init-feature` after Sub-PR 1.4 CLI wiring。
 §1〜§10 は 04b_IMPL_FORMAT.md で定義された必須セクション、
 順序および名称は SPEC.md FR-L2.1 に拘束されます (Gate 2: IMPL Presence で検証)。
 
