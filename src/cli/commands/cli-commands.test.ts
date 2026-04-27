@@ -6,6 +6,8 @@
  */
 import { describe, it, expect } from "vitest";
 import { execSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
 
 const CLI_PATH = path.resolve("src/cli/index.ts");
@@ -18,7 +20,10 @@ function runCli(args: string): string {
   });
 }
 
-function runCliWithExit(args: string): {
+function runCliWithExit(
+  args: string,
+  options: { cwd?: string } = {},
+): {
   stdout: string;
   exitCode: number;
   stderr: string;
@@ -28,6 +33,7 @@ function runCliWithExit(args: string): {
       encoding: "utf-8",
       timeout: 15000,
       stdio: ["pipe", "pipe", "pipe"],
+      cwd: options.cwd,
     });
     return { stdout, exitCode: 0, stderr: "" };
   } catch (error) {
@@ -41,6 +47,19 @@ function runCliWithExit(args: string): {
       stderr: err.stderr ?? "",
       exitCode: err.status ?? 1,
     };
+  }
+}
+
+// Creates a fresh non-framework directory (no .framework/project.json) so that
+// CLI invocations exercise the "outside a framework project" code paths even
+// when the test suite runs from inside the ADF repo (which itself is now a
+// framework project after the bootstrap PR).
+function withNonFrameworkDir<T>(fn: (dir: string) => T): T {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-cli-test-"));
+  try {
+    return fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
   }
 }
 
@@ -143,10 +162,12 @@ describe("audit command", () => {
   });
 
   it("ssot without target exits with error about target required", () => {
-    const result = runCliWithExit("audit ssot");
-    expect(result.exitCode).not.toBe(0);
-    const combined = result.stdout + result.stderr;
-    expect(combined).toMatch(/Target|target/i);
+    withNonFrameworkDir((cwd) => {
+      const result = runCliWithExit("audit ssot", { cwd });
+      expect(result.exitCode).not.toBe(0);
+      const combined = result.stdout + result.stderr;
+      expect(combined).toMatch(/Target|target/i);
+    });
   });
 });
 
@@ -196,9 +217,11 @@ describe("status command", () => {
   });
 
   it("status in a non-framework dir exits with error", () => {
-    const result = runCliWithExit("status");
-    expect(result.exitCode).not.toBe(0);
-    const combined = result.stdout + result.stderr;
-    expect(combined).toMatch(/framework|init|retrofit/i);
+    withNonFrameworkDir((cwd) => {
+      const result = runCliWithExit("status", { cwd });
+      expect(result.exitCode).not.toBe(0);
+      const combined = result.stdout + result.stderr;
+      expect(combined).toMatch(/framework|init|retrofit/i);
+    });
   });
 });
