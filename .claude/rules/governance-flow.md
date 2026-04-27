@@ -204,7 +204,7 @@ critical PR の場合は + CEO 明示承認で完了。
 
 # Audit Depth Control (Layer 0 / 1 / 2)
 
-> **Added: 2026-04-13** — per `ai-dev-framework/docs/tools/audit-depth-control-v3.md`
+> **Added: 2026-04-13** — per `ai-dev-framework/docs/specs/tools/audit-depth-control-v3.md`
 > **Mechanically auto-loaded** alongside the 4-layer review chain above.
 
 ## 4-layer chain と Layer 0/1/2 の関係 (重要)
@@ -308,8 +308,8 @@ approver は `.framework/config.json` の `approver` フィールドで設定可
 - `~/Developer/tech-lead/docs/lead-playbook.md` §2 (詳細 & rationale)
 - `~/Developer/tech-lead/.claude/memory/` (governance 関連 feedback memories)
 - `~/.claude/rules/escalation-policy.md` (経営判断 vs 技術判断の境界)
-- `ai-dev-framework/docs/tools/audit-depth-control-v3.md` (Layer 0/1/2 原典)
-- `ai-dev-framework/docs/tools/breaking-change-detection.md` (検出スクリプト原典)
-- `ai-dev-framework/docs/tools/preflight-check-design.md` (必読検証機構)
+- `ai-dev-framework/docs/specs/tools/audit-depth-control-v3.md` (Layer 0/1/2 原典)
+- `ai-dev-framework/docs/specs/tools/breaking-change-detection.md` (検出スクリプト原典)
+- `ai-dev-framework/docs/specs/tools/preflight-check-design.md` (必読検証機構)
 - `docs/specs/04b_IMPL_FORMAT.md` (IMPL.md フォーマット規範、lead 責任「IMPL doc authoring」の規定)
 - `docs/specs/lead-impl-workflow/SPEC.md` (Step 3.4 Lead IMPL Authoring + Step 3.45 Feasibility PoC + Gate 2/3)
