@@ -4,7 +4,7 @@
 > 作成: {{LEAD_BOT}}
 > 対応 SPEC: ./SPEC.md
 > 関連: VERIFY.md / OPS.md (同 directory)
-> 参照規範: `docs/specs/04b_IMPL_FORMAT.md` (§1〜§12 必須セクション + evidence label 規約)
+> 参照規範: `docs/specs/04b_IMPL_FORMAT.md` (§1〜§10 必須セクション + evidence label 規約)
 
 <!--
 本 template は `framework init-feature <name>` で emit される IMPL.md 雛形です。
@@ -170,6 +170,6 @@ IMPL.md 内のすべての substantive assertion (技術判断・実数値・設
 ## 関連 doc
 
 - 親 SPEC: `./SPEC.md`
-- format 規範: `docs/specs/04b_IMPL_FORMAT.md` (§1〜§12 必須セクション)
+- format 規範: `docs/specs/04b_IMPL_FORMAT.md` (§1〜§10 必須セクション)
 - feasibility 仕様: `docs/specs/04c_FEASIBILITY_POC_FORMAT.md` (Step 3.45 + Gate 3)
 - governance: `.claude/rules/governance-flow.md` (lead 責任「IMPL doc authoring」)
