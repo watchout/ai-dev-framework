@@ -142,6 +142,233 @@ function detectLayer(filePath: string): LayerType | null {
   return null;
 }
 
+// ─────────────────────────────────────────────
+// Config reader (for docs_layers.enabled check)
+// ─────────────────────────────────────────────
+
+interface DocsLayersConfig {
+  enabled: boolean;
+  strict?: boolean;
+}
+
+function readDocsLayersConfig(projectDir: string): DocsLayersConfig | null {
+  const configPath = path.join(projectDir, ".framework", "config.json");
+  if (!fs.existsSync(configPath)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    if (raw.docs_layers && typeof raw.docs_layers.enabled === "boolean") {
+      return {
+        enabled: raw.docs_layers.enabled,
+        strict: raw.docs_layers.strict,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ─────────────────────────────────────────────
+// File scanner
+// ─────────────────────────────────────────────
+
+function collectMdFiles(dir: string): string[] {
+  const results: string[] = [];
+  if (!fs.existsSync(dir)) return results;
+  try {
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        results.push(...collectMdFiles(fullPath));
+      } else if (entry.name.endsWith(".md")) {
+        results.push(fullPath);
+      }
+    }
+  } catch {
+    // permission/read errors — skip
+  }
+  return results;
+}
+
+// ─────────────────────────────────────────────
+// buildGraph (IMPL §3 — step 2-1)
+// ─────────────────────────────────────────────
+
+export function buildGraph(docsDir: string, projectDir?: string): Map<string, DocumentNode> {
+  const graph = new Map<string, DocumentNode>();
+
+  // Check .framework/config.json for docs_layers.enabled
+  const resolvedProjectDir = projectDir ?? path.resolve(docsDir, "..");
+  const config = readDocsLayersConfig(resolvedProjectDir);
+  if (!config || !config.enabled) {
+    return graph; // empty Map when disabled/missing
+  }
+
+  for (const layer of LAYERS) {
+    const layerDir = path.join(docsDir, layer);
+    const mdFiles = collectMdFiles(layerDir);
+    for (const filePath of mdFiles) {
+      const node = parseDocument(filePath);
+      if (node) {
+        graph.set(node.id, node);
+      }
+    }
+  }
+
+  return graph;
+}
+
+// ─────────────────────────────────────────────
+// verifyTraceability (IMPL §3 — step 2-1)
+// ─────────────────────────────────────────────
+
+export function verifyTraceability(
+  graph: Map<string, DocumentNode>,
+): TraceResult {
+  const allIds = new Set(graph.keys());
+  const referenced = new Set<string>();
+  const orphans: DocumentNode[] = [];
+  const missing: TraceResult["missing"] = [];
+  const broken: TraceResult["broken"] = [];
+  const oversizedFeatures: TraceResult["oversizedFeatures"] = [];
+
+  // 1. Collect all referenced ids & detect broken references
+  for (const [_id, node] of graph) {
+    const traces = node.frontMatter.traces;
+    for (const layer of LAYERS) {
+      const refs = traces[layer];
+      if (!refs) continue;
+      for (const ref of refs) {
+        referenced.add(ref);
+        if (!allIds.has(ref)) {
+          broken.push({
+            from: node.id,
+            to: ref,
+            reason: `Referenced id "${ref}" not found in graph`,
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Detect orphans: nodes not referenced by any other node
+  for (const [id, node] of graph) {
+    if (!referenced.has(id)) {
+      orphans.push(node);
+    }
+  }
+
+  // 3. Detect missing cross-layer references (all expected directions)
+  //    spec→impl, impl→spec, verify→impl, verify→spec, ops→spec, ops→impl
+  const expectedTraces: Record<LayerType, LayerType[]> = {
+    spec: ["impl"],
+    impl: ["spec"],
+    verify: ["impl", "spec"],
+    ops: ["spec", "impl"],
+  };
+
+  for (const [_id, node] of graph) {
+    const expected = expectedTraces[node.layer];
+    if (!expected) continue;
+    for (const targetLayer of expected) {
+      const refs = node.frontMatter.traces[targetLayer];
+      if (!refs || refs.length === 0) {
+        const prefix = node.layer.toUpperCase();
+        const targetPrefix = targetLayer.toUpperCase();
+        // Derive expected id by replacing the layer prefix
+        const expectedId = node.id.replace(
+          new RegExp(`^${prefix}-`),
+          `${targetPrefix}-`,
+        );
+        missing.push({
+          from: node.id,
+          expected: targetLayer,
+          expectedId,
+        });
+      }
+    }
+  }
+
+  // 4. Detect oversized features: >100 ids sharing a feature prefix
+  const featureCounts = new Map<string, number>();
+  for (const id of allIds) {
+    // Extract feature name: e.g. "SPEC-AUTH-001" → "AUTH"
+    const parts = id.split("-");
+    if (parts.length >= 3) {
+      const feature = parts.slice(1, -1).join("-");
+      featureCounts.set(feature, (featureCounts.get(feature) ?? 0) + 1);
+    }
+  }
+  for (const [feature, count] of featureCounts) {
+    if (count > 100) {
+      oversizedFeatures.push({ feature, idCount: count });
+    }
+  }
+
+  // 5. Calculate pass count (nodes with no issues)
+  const problemIds = new Set<string>();
+  for (const o of orphans) problemIds.add(o.id);
+  for (const m of missing) problemIds.add(m.from);
+  for (const b of broken) problemIds.add(b.from);
+
+  return {
+    orphans,
+    missing,
+    broken,
+    oversizedFeatures,
+    totalNodes: graph.size,
+    passCount: graph.size - problemIds.size,
+  };
+}
+
+// ─────────────────────────────────────────────
+// renderGraph (IMPL §3 — step 2-1)
+// ─────────────────────────────────────────────
+
+const LAYER_COLORS: Record<LayerType, string> = {
+  spec: "#4A90D9",
+  impl: "#7B68EE",
+  verify: "#50C878",
+  ops: "#FF8C00",
+};
+
+export function renderGraph(
+  graph: Map<string, DocumentNode>,
+  _format: "mermaid",
+): string {
+  const lines: string[] = ["graph LR"];
+
+  // Add style classes
+  lines.push("  classDef spec fill:#4A90D9,stroke:#333,color:#fff");
+  lines.push("  classDef impl fill:#7B68EE,stroke:#333,color:#fff");
+  lines.push("  classDef verify fill:#50C878,stroke:#333,color:#fff");
+  lines.push("  classDef ops fill:#FF8C00,stroke:#333,color:#fff");
+
+  // Add nodes with class assignments
+  for (const [id, node] of graph) {
+    lines.push(`  ${id}[${id}]:::${node.layer}`);
+  }
+
+  // Add edges from traces
+  for (const [_id, node] of graph) {
+    const traces = node.frontMatter.traces;
+    for (const layer of LAYERS) {
+      const refs = traces[layer];
+      if (!refs) continue;
+      for (const ref of refs) {
+        lines.push(`  ${node.id} --> ${ref}`);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
+// ─────────────────────────────────────────────
+// Document parser (IMPL §2.2)
+// ─────────────────────────────────────────────
+
 export function parseDocument(filePath: string): DocumentNode | null {
   if (!fs.existsSync(filePath)) return null;
 
