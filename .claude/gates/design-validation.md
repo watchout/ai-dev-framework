@@ -13,6 +13,7 @@ Design Phase（/design）完了後、Planning（framework plan）開始前
 - feasibility-checker → 技術的実現可能性
 - coherence-auditor → SSOT間の整合性
 - gap-detector → 仕様の漏れ検出
+- traceability-auditor → SSOT↔IMPL trace整合性（`framework trace verify` ラッパー）
 
 ## Pass criteria
 - Zero CRITICAL findings
@@ -50,6 +51,7 @@ Design complete
 │ feasibility-checker     │ → PRD↔API/DB実現可能性
 │ coherence-auditor       │ → SSOT間の矛盾検出
 │ gap-detector            │ → 未定義事項の検出
+│ traceability-auditor    │ → SSOT↔IMPL trace整合性
 └─────────────────────────┘
   ↓ (sequential)
 Aggregate results
