@@ -10,8 +10,14 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 
-const CLI_PATH = path.resolve("src/cli/index.ts");
-const TSX = "npx tsx";
+// Resolve repo-anchored paths at module load time, before any test-level cwd
+// manipulation (withNonFrameworkDir / runCliWithExit({ cwd })). Using `npx tsx`
+// or cwd-relative paths leaks the test runner's cwd into the resolution and
+// breaks under tmp dir cwd in clean/offline environments (auditor block on
+// PR #112 cycle 2: hidden impact + regression class).
+const REPO_ROOT = process.cwd();
+const CLI_PATH = path.resolve(REPO_ROOT, "src/cli/index.ts");
+const TSX = path.resolve(REPO_ROOT, "node_modules", ".bin", "tsx");
 
 function runCli(args: string): string {
   return execSync(`${TSX} ${CLI_PATH} ${args}`, {
