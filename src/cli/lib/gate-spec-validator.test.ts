@@ -522,4 +522,30 @@ None.
     );
     expect(secWarnings).toHaveLength(0);
   });
+
+  // ── checkStride() regex anti-regression (cycle X+1) ──
+  it("§6.3.2 OWASP only (no STRIDE subsection) → STRIDE_Missing for app", () => {
+    writeProjectJson("app");
+    // Strip the §6.3 STRIDE subsection while keeping §6.3.2 OWASP intact.
+    // The pre-cycle-X+1 regex falsely treated §6.3.2 as a STRIDE section.
+    const content = makeValidSpec().replace(
+      /### §6\.3 STRIDE[\s\S]*?(?=### §6\.3\.2)/,
+      "",
+    );
+    const specPath = writeSpec("owasp-only", content);
+    const result = validateSpec(specPath, tmpDir);
+
+    // app profile → STRIDE missing must surface as CRITICAL, not silently pass
+    const strideMissing = result.critical.filter(
+      (c) => c.type === "STRIDE_Missing",
+    );
+    expect(strideMissing).toHaveLength(1);
+    expect(result.status).toBe("BLOCK");
+
+    // OWASP must still be detected (not consumed by the STRIDE section)
+    const owaspMissing = result.critical.filter(
+      (c) => c.type === "OWASP_Missing",
+    );
+    expect(owaspMissing).toHaveLength(0);
+  });
 });

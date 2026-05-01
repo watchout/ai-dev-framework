@@ -35,8 +35,19 @@ const REQUIRED_SECTIONS: { prefix: string; label: string }[] = [
 /** Gherkin keywords that must appear in §7. */
 const GHERKIN_KEYWORDS = /\b(Given|When|Then)\b/;
 
-/** STRIDE keyword — appears in §6.3 when STRIDE analysis is present. Must not match §6.3.2. */
-const STRIDE_SECTION_PATTERN = /§?6\.3(?!\.\d)|STRIDE/i;
+/**
+ * STRIDE keyword — used to test H2 headings like "§6.3 STRIDE" or "STRIDE Analysis".
+ * Negative lookahead on §?6\.3 prevents a match against §6.3.2 (OWASP).
+ */
+const STRIDE_SECTION_PATTERN = /§?6\.3(?!\.\d)|\bSTRIDE\b/i;
+
+/**
+ * STRIDE H3 subsection pattern — used to detect a STRIDE subsection inside the
+ * body of a §6 (or similar) H2 section. Must NOT match `### §6.3.2 OWASP`, which
+ * is why the §?6\.3 alternative carries a negative lookahead and the STRIDE
+ * alternative requires the keyword in the heading line itself (`### ... STRIDE`).
+ */
+const STRIDE_H3_HEADING_PATTERN = /^###\s*(?:§?6\.3(?!\.\d)|[^\n]*\bSTRIDE\b)/im;
 
 /** OWASP keyword — appears in §6.3.2 when OWASP analysis is present. */
 const OWASP_SECTION_PATTERN = /§?6\.3\.2|OWASP/i;
@@ -142,12 +153,13 @@ function checkStride(sections: { heading: string; body: string }[]): StrideCheck
   // Also check inside §6 body for ### 6.3 or STRIDE subsection
   for (const section of sections) {
     if (headingMatchesPrefix(section.heading, "6")) {
-      const hasStrideSubsection =
-        STRIDE_SECTION_PATTERN.test(section.body);
+      const hasStrideSubsection = STRIDE_H3_HEADING_PATTERN.test(section.body);
       if (hasStrideSubsection) {
-        // Extract STRIDE subsection body
+        // Extract STRIDE subsection body. The leading anchor mirrors
+        // STRIDE_H3_HEADING_PATTERN so that "### §6.3.2 OWASP" is NOT classified
+        // as a STRIDE subsection (auditor cycle X+1 fix).
         const strideMatch = section.body.match(
-          /(?:###\s*(?:§?6\.3|.*STRIDE.*))\n([\s\S]*?)(?=\n###|\n##|$)/i,
+          /###\s*(?:§?6\.3(?!\.\d)|[^\n]*\bSTRIDE\b)[^\n]*\n([\s\S]*?)(?=\n###|\n##|$)/i,
         );
         const strideBody = strideMatch ? strideMatch[1] : section.body;
         return {

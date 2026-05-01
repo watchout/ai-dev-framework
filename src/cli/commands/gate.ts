@@ -454,15 +454,16 @@ ${found}/${designDocs.length} (${missing} missing)
 ${contextBody}
 
 ## Instructions
-以下の3つのValidatorを順次実行し、統合判定を行ってください:
+以下の4つのValidatorを順次実行し、統合判定を行ってください:
 
 1. **feasibility-checker**: PRD↔API/DB技術的実現可能性
 2. **coherence-auditor**: SSOT間の矛盾検出
 3. **gap-detector**: 設計欠落の検出
+4. **traceability-auditor**: SSOT↔IMPL trace整合性（\`framework trace verify\` ラッパー）
 
 判定基準:
-- PASS: 全CRITICAL = 0 かつ WARNING合計 ≤ 3
-- BLOCK: CRITICAL ≥ 1 または WARNING > 3
+- PASS: 全CRITICAL = 0 かつ WARNING合計 ≤ 5
+- BLOCK: CRITICAL ≥ 1 または WARNING > 5
 `;
 
           fs.writeFileSync(path.join(contextDir, "design-validation.md"), contextContent, "utf-8");
