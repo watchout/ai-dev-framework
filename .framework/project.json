@@ -1,0 +1,26 @@
+{
+  "name": "ai-dev-framework",
+  "version": "0.1.0",
+  "profileType": "cli",
+  "description": "AI Dev Framework — meta-framework for AI agent-driven development",
+  "createdAt": "2026-04-27T07:00:00.000Z",
+  "updatedAt": "2026-04-27T07:00:00.000Z",
+  "phase": -1,
+  "status": "initialized",
+  "repository": "watchout/ai-dev-framework",
+  "techStack": {
+    "framework": "nodejs-cli",
+    "language": "typescript",
+    "ui": "none",
+    "runtime": "node",
+    "package_manager": "npm",
+    "testing": "vitest",
+    "deployment": "npm-package"
+  },
+  "config": {
+    "aiProvider": "anthropic",
+    "aiModel": "claude-sonnet-4-20250514",
+    "autoCommit": false,
+    "escalationMode": "strict"
+  }
+}
