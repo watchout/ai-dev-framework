@@ -33,7 +33,8 @@ framework gate design
 ```
 
 ## Input
-設計書群の全文（git diffではない）:
+
+**Primary**（feasibility-checker / coherence-auditor / gap-detector が消費）— 設計書群の全文（git diffではない）:
 - SSOT-0_PRD.md
 - SSOT-1_FEATURE_CATALOG.md
 - SSOT-2_UI_STATE.md
@@ -42,6 +43,10 @@ framework gate design
 - SSOT-5_CROSS_CUTTING.md
 - TECH_STACK.md
 - docs/design/features/*.md
+
+**Supplementary**（traceability-auditor が消費）— 設計書群を補完する traceability metadata:
+- `npx framework trace verify` の出力（SSOT↔IMPL trace の整合性）
+- `docs_layers` 未設定の consumer は traceability-auditor を skip（graceful degrade、Gate 1 の overall verdict には影響しない）
 
 ## Check flow
 ```
