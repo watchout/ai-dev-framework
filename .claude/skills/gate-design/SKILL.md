@@ -13,11 +13,12 @@ description: |
 
 ## Agents（参照）
 
-3つのValidatorを順次実行する:
+4つのValidatorを順次実行する:
 
 1. @agents/validators/feasibility-checker.md → 技術的実現可能性の検証
 2. @agents/validators/coherence-auditor.md → 設計書間の矛盾検出
 3. @agents/validators/gap-detector.md → 設計欠落の検出
+4. @agents/validators/traceability-auditor.md → SSOT↔IMPL trace整合性検証（`framework trace verify` ラッパー）
 
 ## 実行フロー
 
@@ -27,9 +28,10 @@ description: |
    - PRD, API Contract, Data Model, Cross-Cutting, Feature Catalog, UI State, Tech Stack
 
 2. Validator並列実行（Agent Teams独立セッション）
-   feasibility-checker ┐
-   coherence-auditor   ├→ 並列
-   gap-detector        ┘
+   feasibility-checker  ┐
+   coherence-auditor    ├→ 並列
+   gap-detector         │
+   traceability-auditor ┘
 
 3. 統合判定
    - PASS: 全CRITICAL = 0 かつ WARNING ≤ 5
@@ -107,6 +109,9 @@ framework gate design
 {findings}
 
 ### 3. Gap Detector
+{findings}
+
+### 4. Traceability Auditor
 {findings}
 
 ## Aggregate

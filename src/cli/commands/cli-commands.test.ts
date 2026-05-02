@@ -4,8 +4,8 @@
  * Tests that verify individual CLI commands handle help, invalid input,
  * and non-framework directory scenarios correctly.
  */
-import { describe, it, expect } from "vitest";
-import { execSync } from "node:child_process";
+import { describe, it, expect, beforeAll } from "vitest";
+import { execSync, execFileSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -228,6 +228,86 @@ describe("status command", () => {
       expect(result.exitCode).not.toBe(0);
       const combined = result.stdout + result.stderr;
       expect(combined).toMatch(/framework|init|retrofit/i);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// trace verify — consumer-environment smoke (PR #104 cycle X+2)
+// ---------------------------------------------------------------------------
+//
+// Anti-regression for the auditor BLOCK on cycle X+1: the traceability-auditor
+// prompt previously invoked `npx tsx src/cli/index.ts trace verify`, which
+// requires a source tree and a tsx binary. The new prompt invokes
+// `npx framework trace verify`, the published CLI bin. This smoke test
+// simulates a consumer repo by running the CLI from a directory with no
+// .framework/config.json and asserts a graceful exit-0 skip rather than a
+// crash — matching the "graceful degrade" requirement of cycle X+2 §2.
+// ---------------------------------------------------------------------------
+describe("trace verify (consumer environment)", () => {
+  it("exits 0 with a skip message when docs_layers is not configured", () => {
+    withNonFrameworkDir((cwd) => {
+      const result = runCliWithExit("trace verify", { cwd });
+      expect(result.exitCode).toBe(0);
+      const combined = result.stdout + result.stderr;
+      expect(combined).toMatch(/docs_layers|skip|not configured/i);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// distribution CLI contract — node_modules/.bin/framework smoke (PR #104 cycle X+3)
+// ---------------------------------------------------------------------------
+//
+// Auditor X+2 axes 3+6 BLOCK: the cycle X+2 graceful-skip test still exercised
+// the source tree via tsx (CLI_PATH = src/cli/index.ts), so the "distribution
+// CLI bin works in a consumer environment" claim was unproven. This describe
+// invokes the published bin directly — `node_modules/.bin/framework`, whose
+// package.json field `bin.framework` resolves to `./dist/cli/index.js` — with
+// no tsx and no source tree on the resolution path. A symlink to dist is
+// created in beforeAll if absent, since npm root-install does not self-link
+// the package's own bin into node_modules/.bin (real consumers get the link
+// transitively when they `npm install ai-dev-framework`).
+// ---------------------------------------------------------------------------
+const FRAMEWORK_BIN = path.resolve(REPO_ROOT, "node_modules/.bin/framework");
+const DIST_BIN = path.resolve(REPO_ROOT, "dist/cli/index.js");
+
+describe("distribution CLI contract (node_modules/.bin/framework)", () => {
+  beforeAll(() => {
+    if (!fs.existsSync(DIST_BIN)) {
+      throw new Error(
+        `dist/cli/index.js missing — run \`npm run build:cli\` (package.json bin.framework points to ./dist/cli/index.js)`,
+      );
+    }
+    fs.chmodSync(DIST_BIN, 0o755);
+    if (!fs.existsSync(FRAMEWORK_BIN)) {
+      fs.mkdirSync(path.dirname(FRAMEWORK_BIN), { recursive: true });
+      fs.symlinkSync(DIST_BIN, FRAMEWORK_BIN);
+    }
+  });
+
+  it("node_modules/.bin/framework trace verify graceful-skips in a consumer cwd (dist bin only, no source tree)", () => {
+    expect(fs.existsSync(FRAMEWORK_BIN)).toBe(true);
+    withNonFrameworkDir((cwd) => {
+      let stdout = "";
+      let stderr = "";
+      let exitCode = 0;
+      try {
+        stdout = execFileSync(FRAMEWORK_BIN, ["trace", "verify"], {
+          encoding: "utf-8",
+          cwd,
+          timeout: 15000,
+          stdio: ["pipe", "pipe", "pipe"],
+        });
+      } catch (error) {
+        const err = error as { stdout?: string; stderr?: string; status?: number };
+        stdout = err.stdout ?? "";
+        stderr = err.stderr ?? "";
+        exitCode = err.status ?? 1;
+      }
+      expect(exitCode).toBe(0);
+      const combined = stdout + stderr;
+      expect(combined).toMatch(/docs_layers|skip|not configured/i);
     });
   });
 });
