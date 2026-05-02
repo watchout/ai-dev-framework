@@ -1,0 +1,9 @@
+{
+  "tool_name": "mcp__agent-comms__send",
+  "tool_input": {
+    "content": "## 1. Interface contract\nfrozen contract spec\n\n## 2. Required behavior\nbulleted invariants\n\n## 3. Forbidden behavior\nanti-patterns\n\n## 4. Test fixtures\nexecutable cases\n\n## 5. Open decisions\nimplementer free items\n",
+    "mentions": ["adf-dev"],
+    "reply_to": null,
+    "channel": "1486161309941764317"
+  }
+}
