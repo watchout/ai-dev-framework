@@ -308,20 +308,20 @@ Before task execution:
 
 ---
 
-## Gate 3 Hook Integration (Lead IMPL Authoring)
+## Gate 2 Hook Integration (IMPL Presence, FR-L4)
 
 > **Effective**: 2026-05-02 (governance-flow.md Pre-impl gate と同 effective)
 > **Owner**: lead-bot + codex-auditor
-> **Ref**: `02_GENERATION_CHAIN.md` Step 3.45 + Gate 3, `04b_IMPL_FORMAT.md`, `lead-impl-workflow/SPEC.md` FR-L4
+> **Ref**: `02_GENERATION_CHAIN.md` Gate 2 (IMPL Presence), `04b_IMPL_FORMAT.md`, `lead-impl-workflow/SPEC.md` FR-L4
 
 ### Flow
 
 ```
 Step 3 (Technical / SSOT freeze)
-  → Step 3.45 Lead IMPL Authoring
+  → Step 3.4 Lead IMPL Authoring (parent SPEC FR-L1)
       ├─ lead-bot が IMPL.md を起草 (04b_IMPL_FORMAT.md 準拠)
-      ├─ Gate 3 (機械的 format check、framework gate validate impl)
-      │     - WARNING のみ発行、§1〜§10 header / evidence label / §5 grep claim 等を deterministic に check
+      ├─ Gate 2 IMPL Presence (機械的 check、framework gate validate impl)
+      │     - WARNING のみ発行、IMPL.md 存在 / §1〜§10 header / evidence label / Closes link を deterministic に check
       └─ Pre-impl gate (codex-auditor 6 項目意味判断)
            - 指示書品質 (3) / 抽象整合 (2) / 実装可能性 (1)
            - PASS 後に dev-bot dispatch
@@ -329,19 +329,21 @@ Step 3 (Technical / SSOT freeze)
   → Step 4 (Dev Start)
 ```
 
+Feasibility PoC + per-FR traceability matrix は parent SPEC FR-L6 で別 scope (Sub-PR 0.4 / 0.5 で land 予定)、本 section の射程外。
+
 ### Hook integration points
 
 | Hook | Trigger | Action |
 |---|---|---|
-| `framework gate validate impl` | CI on PR open / IMPL.md commit | Gate 3 deterministic check (WARNING) |
-| `lead-bot dispatch` | IMPL.md commit + Gate 3 通過 | codex-auditor に Pre-impl gate dispatch |
+| `framework gate validate impl` | CI on PR open / IMPL.md commit | Gate 2 IMPL Presence deterministic check (WARNING) |
+| `lead-bot dispatch` | IMPL.md commit + Gate 2 通過 | codex-auditor に Pre-impl gate dispatch |
 | `dev-bot dispatch` | Pre-impl gate PASS | 5-section 指示書 (Interface contract / Required / Forbidden / Test fixtures / Open decisions) を dev-bot に渡す |
 
 ### Failure modes
 
-- **Gate 3 WARNING のみ**: lead-bot が root cause を分析、L1 lead 判断で BLOCK or 進行を決定 (機械 gate 自体は exit 0)
+- **Gate 2 WARNING のみ**: lead-bot が root cause を分析、L1 lead 判断で BLOCK or 進行を決定 (機械 gate 自体は exit 0)
 - **Pre-impl gate FAIL (auditor BLOCK)**: lead-bot に差戻し、5-section 指示書の品質 / 抽象整合 / 実装可能性を修正してから再 dispatch
-- **Step 3.45 skip 検知**: dev-bot dispatch 時に対象 feature directory に IMPL.md 不在 → exit 2 (block) + 明確エラー出力 (parent IMPL §3 で deterministic 化予定、`framework feasibility-check` CLI 拡張で対応)
+- **Step 3.4 skip 検知**: dev-bot dispatch 時に対象 feature directory に IMPL.md 不在 → exit 2 (block) + 明確エラー出力 (parent IMPL §3 で deterministic 化予定、`framework feasibility-check` CLI 拡張で対応)
 
 詳細 lifecycle は `~/.claude/rules/governance-flow.md` の Pre-impl gate section (2026-05-02 effective、CEO directive `c4fb8e6c`) 参照。
 
@@ -352,4 +354,4 @@ Step 3 (Technical / SSOT freeze)
 | Date | Change |
 |------|--------|
 | 2026-04-17 | v1.1.0 — New spec created. Consolidates enforcement mechanisms from epic #60 (LLM → deterministic control) |
-| 2026-05-02 | v1.2.0 — Gate 3 Hook Integration section 追加 (Lead IMPL Authoring / Pre-impl gate)、Sub-PR 0.2 (lead-impl-workflow Phase 0.2) |
+| 2026-05-02 | v1.2.0 — Gate 2 Hook Integration section 追加 (IMPL Presence FR-L4 / Pre-impl gate)、Sub-PR 0.2 (lead-impl-workflow Phase 0.2)。cycle 2 で親 SPEC 整合化 (Feasibility PoC は別 scope) |
