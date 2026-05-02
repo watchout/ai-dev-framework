@@ -370,3 +370,10 @@ Severity: Critical / Major / Minor
 | 9. Consistency check | AI-executed | Cross-document verification |
 | 10. Audit | AI-executed | Scoring + fixes |
 | **Total** | **1-2 hours** | |
+
+---
+
+## See also
+
+- **`04b_IMPL_FORMAT.md`** — IMPL.md (施工図) のフォーマット規範。SSOT が固まった後、Step 3.45 で lead-bot が per-feature `IMPL.md` を起草する際に従う必須セクション §1〜§10 + evidence label 規約 (`[検証済]` / `[文献確認]` / `[推測]`) を定義。本 SPEC が「**何を作るか**」(SSOT) を扱うのに対し、04b は「**どう作るか**」(IMPL) を扱う。
+- **`02_GENERATION_CHAIN.md` Step 3.45** — Lead IMPL Authoring 工程。本 SSOT 完了後、Step 3.5 (Task Decomposition) の前に挟まる lead-bot 専任工程。
