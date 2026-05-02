@@ -395,6 +395,42 @@ TECH_STACK decided with rationale; API_CONTRACT all endpoints defined; DATA_MODE
 
 ---
 
+## Step 3.4 Reference (Lead IMPL Authoring)
+
+> **Owner**: lead-bot (Tech Lead / Senior Engineer)
+> 親 SPEC: `lead-impl-workflow/SPEC.md` FR-L1 / FR-L2 / FR-L4
+> 詳細工程: 親 SPEC §FR-L1 (Step 3 と Step 3.5 の間に挿入される lead authoring 工程) を参照
+
+Step 3 (Technical / SSOT freeze) 完了後、lead-bot が `04b_IMPL_FORMAT.md` (§1〜§10 必須 + evidence label 規約) に従い per-feature `IMPL.md` (施工図) を起草する。詳細な workflow / input / output / exit criteria は親 SPEC `lead-impl-workflow/SPEC.md` で定義。
+
+## Gate 2: IMPL Presence (FR-L4)
+
+> **Trigger**: `framework gate validate impl` 実行時 (Step 3.4 完了判定 / CI hook)
+> **Severity**: WARNING (BLOCK は L1 lead 判断、機械 gate 自体は WARNING のみ発行)
+> 親 SPEC: `lead-impl-workflow/SPEC.md` FR-L4.1〜L4.3
+
+### Validation Rules
+
+機械的 check (deterministic、LLM 非依存) で **IMPL.md の存在 + format 整合** を判定:
+
+| Rule | Check | Severity on miss |
+|---|---|---|
+| Presence (FR-L4.1) | 対象 feature directory に `IMPL.md` が存在 | WARNING (不在は L1 lead が BLOCK 判断) |
+| §1〜§10 header (FR-L4.2) | `04b_IMPL_FORMAT.md` 必須セクション header (`## §1` 〜 `## §10`) が存在 | WARNING |
+| Evidence label (FR-L4.3) | 3 種 (`[検証済]` / `[文献確認]` / `[推測]`) のうち **少なくとも 1 つ** が出現 | WARNING |
+| Closes link | 親 SSOT (`docs/specs/<feature>/SPEC.md` 等) への relative link | WARNING |
+
+WARNING のみ → `framework gate validate impl` exit 0 (gate 通過)。BLOCK 判断は L1 lead が手動で実行 (未充足項目を root cause 分析した上で differ)。
+
+### Pre-impl gate との分離
+
+- **Gate 2 (本 section)**: 機械的 IMPL Presence + format check (FR-L4)
+- **Pre-impl gate (governance-flow 2026-05-02 effective)**: codex-auditor が 6 項目で意味判断 (指示書品質 / 抽象整合 / 実装可能性)
+
+両者は直交。Gate 2 は Pre-impl gate より前に CI で走り、IMPL.md 不在 / format 不備を機械的に捕捉する第 0 段。Feasibility PoC + per-FR traceability matrix は parent SPEC FR-L6 で別 scope (Sub-PR 0.4 / 0.5 で扱う)。
+
+---
+
 ## Step 3.5: Task Decomposition and Planning
 
 > **Mandatory before Step 4. Skipping this step to start implementation is prohibited.**

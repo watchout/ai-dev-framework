@@ -23,6 +23,8 @@ Tasks REFERENCE the SSOT. No task-specific SSOTs are created.
   |- S10 Test Cases   <- Task 5 (Test)
 ```
 
+> **Prerequisite (Step 3.4 Lead IMPL Authoring, FR-L1)**: 実装着手前に lead-bot が per-feature `IMPL.md` (施工図) を起草する。format は **`04b_IMPL_FORMAT.md`** に準拠 (§1〜§10 必須 + evidence label `[検証済]` / `[文献確認]` / `[推測]`)。Step 3.4 完了 (IMPL.md 存在 + Gate 2 IMPL Presence WARNING 0 + Pre-impl gate auditor PASS) が本 doc の Task 分解の入力前提条件。詳細は親 SPEC `lead-impl-workflow/SPEC.md` FR-L1 参照。
+
 ---
 
 ## Part 1: Determining Implementation Order
