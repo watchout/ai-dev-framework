@@ -80,7 +80,7 @@ TypeScript / 該当言語の signature (型まで) / 入出力の型と invarian
 影響箇所の grep 結果 (件数 + 代表 path) / 後方互換戦略 / 既存 OPEN PR への影響評価を必須要素とする。
 本 §5 内の assumption は Step 3.45 (Feasibility PoC) で `framework feasibility-check` により検証され、
 [推測] ラベルが [検証済] に置換される。Gate 3 (per-FR traceability matrix) は §5 を中心に評価する。
-詳細は `docs/specs/04b_IMPL_FORMAT.md` §5 + `04c_FEASIBILITY_POC_FORMAT.md` 参照。
+詳細は `docs/specs/04b_IMPL_FORMAT.md` §5 参照。
 -->
 
 (empty)
@@ -176,5 +176,7 @@ IMPL.md 内のすべての substantive assertion (技術判断・実数値・設
 
 - 親 SPEC: `./SPEC.md`
 - format 規範: `docs/specs/04b_IMPL_FORMAT.md` (§1〜§10 必須セクション)
-- feasibility 仕様: `docs/specs/04c_FEASIBILITY_POC_FORMAT.md` (Step 3.45 + Gate 3)
 - governance: `.claude/rules/governance-flow.md` (lead 責任「IMPL doc authoring」)
+
+<!-- Note: feasibility 仕様 `docs/specs/04c_FEASIBILITY_POC_FORMAT.md` (Step 3.45 + Gate 3) は Sub-PR 0.4 で land 予定 (現在 not yet)。land 後に本 list へ追加する。 -->
+
