@@ -25,9 +25,12 @@ import * as fs from "node:fs";
 
 /**
  * Required IMPL.md section header patterns (line-anchored, multiline).
- * §8 (Phase 0 bootstrap) is optional and excluded from missingSections when absent.
+ *
+ * ARC 裁定 (cycle 2): §8 (Phase 0 bootstrap) HEADER は always required。
+ * BODY content は Phase 0 該当時のみ実体記述 (該当しない feature は「該当なし」明記)。
+ * Body content の judgment は本 lib scope 外 (Sub-PR 1.7+)。本 lib は HEADER 存在のみ check。
  */
-export const REQUIRED_SECTIONS: { re: RegExp; label: string; optional?: boolean }[] = [
+export const REQUIRED_SECTIONS: { re: RegExp; label: string }[] = [
   { re: /^## §1 アーキテクチャ概観/m, label: "§1 アーキテクチャ概観" },
   { re: /^## §2 モジュール構造/m, label: "§2 モジュール構造" },
   { re: /^## §3 実装順序/m, label: "§3 実装順序" },
@@ -35,7 +38,7 @@ export const REQUIRED_SECTIONS: { re: RegExp; label: string; optional?: boolean 
   { re: /^## §5 既存コードからの移行/m, label: "§5 既存コードからの移行" },
   { re: /^## §6 サブPR/m, label: "§6 サブPR" },
   { re: /^## §7 .*契約/m, label: "§7 契約" },
-  { re: /^## §8 Phase 0/m, label: "§8 Phase 0", optional: true },
+  { re: /^## §8 Phase 0/m, label: "§8 Phase 0" },
   { re: /^## §9 Open decisions/m, label: "§9 Open decisions" },
   { re: /^## §10 lead 責任/m, label: "§10 lead 責任" },
 ];
@@ -81,7 +84,6 @@ export function validateImpl(path: string): ImplValidationResult {
 
   const missing: string[] = [];
   for (const section of REQUIRED_SECTIONS) {
-    if (section.optional) continue;
     if (!section.re.test(content)) {
       missing.push(section.label);
     }

@@ -73,9 +73,21 @@ describe("impl-validator", () => {
     });
   });
 
-  it("returns PASS when §8 (optional) is absent but §1〜§7, §9, §10 + evidence are present", () => {
+  it("returns WARNING when §8 header is absent (cycle 2: §8 header always required per ARC ruling)", () => {
     const without8 = ALL_SECTIONS.replace(/## §8 Phase 0 bootstrap\ncontent\n\n/, "");
     withTempImpl(without8, (file) => {
+      const result = validateImpl(file);
+      expect(result.status).toBe("WARNING");
+      expect(result.missingSections).toContain("§8 Phase 0");
+    });
+  });
+
+  it("returns PASS when §8 header is present with body '該当なし' (cycle 2: header required, body free)", () => {
+    const naBody = ALL_SECTIONS.replace(
+      "## §8 Phase 0 bootstrap\ncontent",
+      "## §8 Phase 0 bootstrap\n\n該当なし",
+    );
+    withTempImpl(naBody, (file) => {
       const result = validateImpl(file);
       expect(result.status).toBe("PASS");
       expect(result.missingSections).toEqual([]);
@@ -115,10 +127,10 @@ extra [推測: not yet observed]
     });
   });
 
-  it("REQUIRED_SECTIONS exposes 10 entries with §8 marked optional", () => {
+  it("REQUIRED_SECTIONS exposes 10 entries, all required (cycle 2: §8 always required)", () => {
     expect(REQUIRED_SECTIONS).toHaveLength(10);
     const eight = REQUIRED_SECTIONS.find((s) => s.label === "§8 Phase 0");
-    expect(eight?.optional).toBe(true);
+    expect(eight).toBeDefined();
   });
 
   it("EVIDENCE_LABEL_RE matches all 3 Japanese label variants", () => {
