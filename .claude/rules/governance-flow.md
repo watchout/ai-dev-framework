@@ -3,12 +3,14 @@
 > **Effective: 2026-04-09**
 > **CEO directive**: msg `1491702879067701258` (#dev-arc, 2026-04-09 07:34 JST) +
 > msg `1491704900370042940` (2026-04-09 07:42 JST、CEO 承認 + 実行指示)
+> **Mechanically auto-loaded** by all Claude Code sessions via `~/.claude/rules/`
 
-> **Authority model (binding)**:
-> - **Runtime authority (primary)**: `~/.claude/rules/governance-flow.md` — auto-loaded at every Claude Code session start, source of truth for current behavior
-> - **This file (derived)**: distribution snapshot for repo readers and future auto-load migration target. **Not yet authoritative at runtime**
-> - **Sync direction**: home → repo (manual), reverse sync requires CEO directive
-> - **Conflict resolution**: if home and repo disagree, home wins until auto-load switch (Sub-PR 0.x or later)
+## Authority model (binding)
+
+- **Runtime authority (primary)**: this file (`~/.claude/rules/governance-flow.md`) — auto-loaded at every Claude Code session start, source of truth for current behavior
+- **Derived snapshot**: `<repo>/.claude/rules/governance-flow.md` (e.g. `ai-dev-framework/.claude/rules/governance-flow.md`) — distribution snapshot for repo readers and future auto-load migration target. **Not authoritative at runtime**
+- **Sync direction**: home → repo (manual). Reverse sync requires CEO directive
+- **Conflict resolution**: if home and repo disagree, home wins until auto-load switch (separate Sub-PR)
 
 ## 4-layer review chain (replaces previous CEO-bottlenecked flow)
 
@@ -50,7 +52,7 @@ dev bot (実装)
 | **ARC** | マスター設計 / interface 契約 / spec 凍結 / contract test 提示 | ✅ spec 差戻し可 |
 | **dev bot** | 実装 + test 書き + PR 起票 + Test plan checkbox | (起票だけ、block 権限なし) |
 | **lead-bot** | **Spec→PR 変換時の設計監査** + **IMPL doc authoring** (Step 3.4) + 5-section 指示書作成 + 一次レビュー / 仕様準拠 / PR description 確認 / route label 付与 | ✅ block 可 + ARC 差戻し可 |
-| **codex-auditor** (`<@1485603913934835903>`) | judgment レビュー (6 axes: 設計意図 / scope bundle / 隠れた影響 / regression class / SSOT 整合 / commit message 正直さ) | ✅ block 可 |
+| **codex-auditor** (`<@1485603913934835903>`) | **Pre-impl gate**: 5-section 指示書を 6 項目で監査 (指示書品質 / 抽象整合 / 実装可能性) + **Post-impl L2 review**: PR diff を 6-axis で監査 (設計意図 / scope bundle / 隠れた影響 / regression class / SSOT 整合 / commit message 正直さ) | ✅ block 可 (両 gate) |
 | **CTO** | **Cross-cutting / strategic 設計監査** + 三次レビュー / governance gate / framework adoption check / 最終 sanity / merge ボタン | ✅ block 可 + merge 実行 |
 | **CEO** | route:ceo-approval の最終判断 / 経営判断 / 戦略決定 | ✅ block 可 (critical PR のみ) |
 
@@ -117,6 +119,65 @@ lead-bot は ARC spec (新規 or 重要更新) を受領し、PR 分解する **
 
 implementer が (1)-(5) に含まれない判断に遭遇 → lead-bot に escalate、self-proceed 禁止。
 
+## Spec→Impl auditor 監査 (Pre-impl gate、2026-05-02 追加)
+
+> **Effective: 2026-05-02**
+> **CEO directive**: msg `c4fb8e6c` (#dev-arc, 2026-05-02 05:50 JST)「impl=5-section 指示書、これを auditor が監査」
+> **Rationale**: 5-section 指示書段階で abstraction leak / scope ambiguity / forbidden 漏れを検出し、dev-bot impl 開始前に差戻す。post-impl の auditor L2 では既にコード化されており修正コストが大きいため、pre-impl で意味判断を入れる。
+
+### Flow 変更 (5-layer chain に拡張)
+
+```
+ARC spec 凍結
+  → lead-bot (Spec→PR 変換時の設計監査 + 5-section 指示書作成)
+  → 【NEW】codex-auditor (5-section 指示書の Pre-impl 監査)
+  → dev-bot (5-section の凍結部分内で impl + test + PR 起票)
+  → lead-bot (一次レビュー: sprint 視点 / 仕様準拠 / PR description)
+  → codex-auditor (二次レビュー: 6-axis judgment)
+  → CTO (三次レビュー: governance / framework / cross-cutting / 最終 sanity)
+  → merge
+```
+
+auditor は同 PR sprint 内で **2 回登場** (Pre-impl gate + Post-impl L2 review)。両者の checklist は別物 (下記)。
+
+### Pre-impl gate: auditor が 5-section 指示書を監査する 6 項目
+
+lead-bot が 5-section 指示書を完成させ dev-bot に dispatch する **前** に、auditor が以下 6 項目を判定。1 項目でも FAIL なら **lead-bot に差戻し**、dev-bot に届かない。
+
+```
+指示書品質 (3):
+  [ ] Interface contract の signature / pre / post / invariants が曖昧でないか
+  [ ] Required behavior が spec section 参照で具体化され、production semantic が観測可能 (testable) か
+  [ ] Forbidden behavior に過去 incident 参照付き anti-pattern が含まれているか
+
+抽象整合 (2):
+  [ ] 変動軸が adapter / port で分離されているか (env var switch / 文字列置換 で済ませていないか)
+  [ ] adapter 対称性 — 同抽象レベルの外部世界に非対称な実装が混入していないか
+
+実装可能性 (1):
+  [ ] Test fixtures が executable で、merge gate として機能する具体性があるか
+```
+
+= 5 項目までは過去 (2026-04-23) の lead-bot audit checklist と同根。auditor 視点で **第三者として再審査** することで lead-bot 自身の盲点を補完。
+
+### Pre-impl gate と Post-impl L2 review の違い
+
+| gate | timing | 監査対象 | checklist |
+|---|---|---|---|
+| **Pre-impl gate** (NEW) | 5-section 完成 → dev-bot impl 開始 **前** | 5-section 指示書 (テキスト) | 上記 6 項目 (指示書品質 + 抽象整合 + 実装可能性) |
+| **Post-impl L2 review** | dev-bot PR 起票 → lead LGTM 後 | PR diff (コード) | 6-axis (設計意図 / scope bundle / 隠れた影響 / regression / SSOT / honesty) |
+
+### Pre-impl gate の差戻し先
+
+- **指示書品質 / 抽象整合 FAIL** → **lead-bot 差戻し** (lead-bot が 5-section を改訂)
+- **spec design gap が原因** → lead-bot 経由で **ARC 差戻し** (auditor は ARC に直接 escalate しない、lead-bot ハブ経由)
+- **cross-repo / 戦略的問題** → lead-bot 経由で **CTO escalate**
+
+### 適用対象
+
+全 lead-bot → dev-bot 5-section 指示書に **必須適用**。例外なし。
+typo / docs / 軽微 PR で 5-section 指示書を発行しない場合は本 gate も skip (元々 5-section 指示書が前提)。
+
 ## CTO 監査 scope
 
 lead-bot 監査は per-project。CTO 監査は **cross-cutting** に限定:
@@ -136,7 +197,7 @@ per-PR design audit は lead-bot に委譲、CTO は **per-PR は Layer 3 sanity
 | lead-bot (lead-ama / lead-tuk / lead-sus) | Tech Lead / Senior Engineer | spec→PR 変換時 design audit + **IMPL doc authoring** (Step 3.4) + 5-section 指示書 |
 | dev-bot (各 dev) | Software Engineer | 5-section 指示書の「open decisions」範囲で実装 |
 | CTO | VP Engineering | Cross-cutting design + Layer 3 governance |
-| codex-auditor | Automated review | spec drift / contract violation mechanical 検出 |
+| codex-auditor | Independent reviewer | **Pre-impl gate (5-section 指示書監査、6 項目)** + Post-impl L2 review (PR diff、6-axis judgment) |
 
 各層が **independent に block** 可能。1 つでも reject なら merge しない。
 
@@ -208,7 +269,7 @@ critical PR の場合は + CEO 明示承認で完了。
 
 # Audit Depth Control (Layer 0 / 1 / 2)
 
-> **Added: 2026-04-13** — per `ai-dev-framework/docs/specs/tools/audit-depth-control-v3.md`
+> **Added: 2026-04-13** — per `ai-dev-framework/docs/tools/audit-depth-control-v3.md`
 > **Mechanically auto-loaded** alongside the 4-layer review chain above.
 
 ## 4-layer chain と Layer 0/1/2 の関係 (重要)
@@ -312,8 +373,6 @@ approver は `.framework/config.json` の `approver` フィールドで設定可
 - `~/Developer/tech-lead/docs/lead-playbook.md` §2 (詳細 & rationale)
 - `~/Developer/tech-lead/.claude/memory/` (governance 関連 feedback memories)
 - `~/.claude/rules/escalation-policy.md` (経営判断 vs 技術判断の境界)
-- `ai-dev-framework/docs/specs/tools/audit-depth-control-v3.md` (Layer 0/1/2 原典)
-- `ai-dev-framework/docs/specs/tools/breaking-change-detection.md` (検出スクリプト原典)
-- `ai-dev-framework/docs/specs/tools/preflight-check-design.md` (必読検証機構)
-- `docs/specs/04b_IMPL_FORMAT.md` (IMPL.md フォーマット規範、lead 責任「IMPL doc authoring」の規定)
-- `docs/specs/lead-impl-workflow/SPEC.md` (Step 3.4 Lead IMPL Authoring + Step 3.45 Feasibility PoC + Gate 2/3)
+- `ai-dev-framework/docs/tools/audit-depth-control-v3.md` (Layer 0/1/2 原典)
+- `ai-dev-framework/docs/tools/breaking-change-detection.md` (検出スクリプト原典)
+- `ai-dev-framework/docs/tools/preflight-check-design.md` (必読検証機構)
