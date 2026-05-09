@@ -39,4 +39,20 @@ traces:
 
 ## 8. 権限管理 [app/api プロファイルで必須]
 
-## 9. トレース [必須]
+## 9. 制御機構の使い分け原則 [必須]
+
+> ADF 原則 0 (script 制御絶対) の運用視点。本 feature の運用機構が原則と整合していることを明記する。
+> Canonical reference: [script 制御 vs Boris 式 Hook — 使い分け原則 (ADF 原則 0 整合)](https://www.notion.so/35ad2b26f3dc8122b9f5e513b769d4e4)
+
+### 9.1 採択原則 (運用視点)
+- **default**: script 制御 (daemon / cron / launchd / pg trigger / GH Actions)
+- **fallback**: Boris 式 Hook、不可避 4 case のみ:
+  1. tool 呼出 BLOCK (PreToolUse)
+  2. LLM context 注入 (UserPromptSubmit / SessionStart)
+  3. session 起動時 state 復元 (SessionStart)
+  4. tool 実行直後の検証 (PostToolUse)
+
+### 9.2 本 feature の運用機構
+SPEC §10 (制御機構選定原則) を参照、運用視点で補足する場合は本節に追記。
+
+## 10. トレース [必須]
