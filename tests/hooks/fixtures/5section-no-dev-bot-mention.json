@@ -1,0 +1,7 @@
+{
+  "tool_name": "mcp__agent-comms__send",
+  "tool_input": {
+    "content": "## 1. Interface contract\nfrozen\n\n## 2. Required behavior\nbulleted\n\n## 3. Forbidden behavior\nanti\n\n## 4. Test fixtures\ncases\n\n## 5. Open decisions\nfree\n",
+    "mentions": ["auditor"]
+  }
+}
