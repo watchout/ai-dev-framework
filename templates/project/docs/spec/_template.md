@@ -153,3 +153,29 @@ Feature: {feature-name}
 | FR-XXX or AC-XXX | test file path + test name | file path + line range or symbol |
 
 `framework trace verify` で完全性を CI gate 検証 (drift 検出時 exit 2)。
+
+## §Evidence (本 spec / PR の主張根拠) [SPEC-DOC4L-016 per、必須]
+
+> [文献確認: SPEC-DOC4L-016] 本 section は SPEC / IMPL / VERIFY / OPS 各 file 必須。`[検証済]` 断定は必ず本 section の sub-entry に紐付ける。Discord msg / private memory ref は禁止 (repo-only)。
+
+### 実 file 引用 (repo 内、grep で再検証可能)
+- `path/to/file.ts:42-50` (claim X の根拠) [content quoted]
+
+### 実 DB query 出力
+- `psql -c "SELECT ..."`:
+  ```
+  (output)
+  ```
+
+### 実 log 抜粋
+- `tail -N /path/to/log`:
+  ```
+  (output)
+  ```
+
+### Web 検索 / 公式 doc URL
+- https://... (claim Y の根拠)
+
+### `[検証済]` ラベル付き断定の根拠紐付け
+- claim X → 実 file 引用 §
+- claim Y → Web URL §
