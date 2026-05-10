@@ -102,3 +102,54 @@ Feature: {feature-name}
 ### 10.3 違反時 rollback
 script で代替可能なのに Hook で実装 → CTO L3 review で reject、refactor 要請。
 詳細: Notion canonical doc 参照。
+
+## 11. Test Coverage Gap [SPEC-DOC4L-012、新規 feature 必須]
+
+> [文献確認: SPEC-DOC4L-012] 新規 feature 起票時に 4 種 gap を必須評価。
+
+| gap 種別 | 内容 | 解消アクション |
+|---|---|---|
+| Coverage gap | 仕様カバレッジ (要件 → test 漏れ) | test 追加 |
+| Environment gap | 環境カバレッジ (dev/staging/production の差異漏れ) | 環境用意 |
+| Tooling gap | 検証ツール不足 (mock では verify 不可な real env 検査漏れ) | tool 導入 |
+| Skill gap | 知識不足 (担当 dev の expertise 不足) | pair / 学習 / 委譲 |
+
+各 gap に対し: gap 内容 / 影響範囲 / 解消アクション / verify 方法 を明示。
+
+## 12. Acceptance Criteria (BDD) [SPEC-DOC4L-013、必須]
+
+> [文献確認: SPEC-DOC4L-013] §7 Gherkin Scenario と `tests/acceptance/` test を **1:1** で配置。
+
+format 規約:
+- `### AC-{FEATURE}-{NNN}` heading
+- 直下に gherkin code block (Given/When/Then)
+- 対応 test ファイル: `tests/acceptance/AC-{FEATURE}-{NNN}.test.{ts,sh}`
+
+```gherkin
+### AC-{FEATURE}-001
+Feature: {feature-name}
+  Scenario: {scenario-name}
+    Given
+    When
+    Then
+```
+
+## 13. Invariants (Property-Based) [SPEC-DOC4L-014、重要 feature 該当時]
+
+> [文献確認: SPEC-DOC4L-014] 重要 feature の invariant を明示、`tests/property/` に fast-check で 1000+ runs verify。
+
+```
+### INV-{FEATURE}-001
+内容: 入力空間に対して常に成立すべき property
+反例検出時: counterexample 記録 + test fail
+```
+
+## 14. Traceability Matrix [SPEC-DOC4L-015、必須]
+
+> [文献確認: SPEC-DOC4L-015] 要件 ↔ test ↔ code の 3 者 link を `traceability.csv` (or 同等) で機械可読化。
+
+| 要件 ID | test ID | code 範囲 |
+|---|---|---|
+| FR-XXX or AC-XXX | test file path + test name | file path + line range or symbol |
+
+`framework trace verify` で完全性を CI gate 検証 (drift 検出時 exit 2)。
