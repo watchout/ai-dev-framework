@@ -9,6 +9,17 @@
 > tested, and reproduced. LLM-based review chains are project governance
 > concerns, not framework enforcement.
 
+> **制御機構選定原則** (2026-05-10 追加、CEO directive `0eeb341e`):
+> - **default**: script 制御 (daemon / cron / launchd / pg trigger / GH Actions / CI workflow)
+> - **fallback**: Boris 式 Hook、**不可避 4 case** のみ:
+>   1. tool 呼出 BLOCK (PreToolUse)
+>   2. LLM context 注入 (UserPromptSubmit / SessionStart)
+>   3. session 起動時 state 復元 (SessionStart)
+>   4. tool 実行直後の検証 (PostToolUse)
+> - 上記以外で Hook を採用 → CTO L3 review で reject、script 化 refactor 要請
+> - Canonical reference: [script 制御 vs Boris 式 Hook — 使い分け原則 (ADF 原則 0 整合)](https://www.notion.so/35ad2b26f3dc8122b9f5e513b769d4e4)
+> - 全 spec の §10 (SPEC-template) / §9 (OPS-template) で本原則の採用根拠を明記すること
+
 ---
 
 ## 1. Framework Mode State Machine (#63)
