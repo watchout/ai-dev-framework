@@ -12,7 +12,6 @@ const REQUIRED_BASE = [
   '7.',
   '8.',
   '9.',
-  '11.',
 ];
 
 function hasSectionMatching(headings: string[], prefix: string): boolean {

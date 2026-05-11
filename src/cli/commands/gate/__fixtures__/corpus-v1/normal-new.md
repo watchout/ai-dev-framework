@@ -16,7 +16,7 @@ When validate is run
 Then it passes
 ## 8. 前提
 ## 9. リスク
-## 10. 制御機構
-ok
+## 10. 制御機構選定原則
+script を採用、選定根拠は再現性。Hook は不可避でないため不採用。
 ## 11. testing layer
 - unit

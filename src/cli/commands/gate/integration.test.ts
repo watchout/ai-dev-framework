@@ -96,7 +96,7 @@ function corpusGit(preExisting: string[]): GitHistoryPort {
 }
 
 describe('integration smoke (corpus-v1)', () => {
-  it('Smoke A: no-flag default → exit 2, 3 findings (F1 fail + 2 warns)', async () => {
+  it('Smoke A: no-flag default → exit 2, 3 literal findings', async () => {
     const { history, files } = loadCorpus();
     const r = await validateSpec(
       { baseRef: history.baseRef, linkProbe: 'fake' },
@@ -109,19 +109,31 @@ describe('integration smoke (corpus-v1)', () => {
     );
     expect(r.exit_code).toBe(2);
     expect(r.findings.length).toBe(3);
+
     const f1 = r.findings.find((f) => f.check === 'id-uniqueness');
     expect(f1).toBeDefined();
     expect(f1!.severity).toBe('fail');
     expect(new Set(f1!.files)).toEqual(
       new Set(['corpus-v1/duplicate.md', 'corpus-v1/normal-new.md'])
     );
-    const warns = r.findings.filter((f) => f.severity === 'warn');
-    expect(warns.length).toBe(2);
+
+    const f4 = r.findings.find(
+      (f) => f.check === 'control-mechanism' && f.files[0] === 'corpus-v1/legacy-1.md'
+    );
+    expect(f4).toBeDefined();
+    expect(f4!.severity).toBe('warn');
+
+    const f7 = r.findings.find(
+      (f) => f.check === 'completion-literal' && f.files[0] === 'corpus-v1/legacy-2.md'
+    );
+    expect(f7).toBeDefined();
+    expect(f7!.severity).toBe('warn');
+
     expect(r.audit_log_path).not.toBe('');
     expect(r.audit_log_path).not.toBe('unavailable');
   });
 
-  it('Smoke B: --bootstrap → exit 0, 3 warn findings', async () => {
+  it('Smoke B: --bootstrap → exit 0, 3 warn findings (legacy-1 F4 / legacy-2 F7 / dup-normal F1 demoted)', async () => {
     const { history, files } = loadCorpus();
     const r = await validateSpec(
       { baseRef: history.baseRef, linkProbe: 'fake', bootstrap: true },
@@ -135,5 +147,16 @@ describe('integration smoke (corpus-v1)', () => {
     expect(r.exit_code).toBe(0);
     expect(r.findings.length).toBe(3);
     for (const f of r.findings) expect(f.severity).toBe('warn');
+    expect(r.findings.find((f) => f.check === 'id-uniqueness')).toBeDefined();
+    expect(
+      r.findings.find(
+        (f) => f.check === 'control-mechanism' && f.files[0] === 'corpus-v1/legacy-1.md'
+      )
+    ).toBeDefined();
+    expect(
+      r.findings.find(
+        (f) => f.check === 'completion-literal' && f.files[0] === 'corpus-v1/legacy-2.md'
+      )
+    ).toBeDefined();
   });
 });

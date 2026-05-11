@@ -130,7 +130,7 @@ ok
     expect(r.findings[0].message).toContain('Gherkin');
   });
 
-  it('Fixture 5: F2-c §11 testing layer missing → fail', async () => {
+  it('Fixture 5: F2-c §11 完全不在 → fail', async () => {
     const content = `---
 id: SPEC-FOO-005
 status: Draft
@@ -149,9 +149,6 @@ Then Z
 ## 8. 前提
 ## 9. リスク
 ## 10. 制御機構
-ok
-## 11. notes
-some notes that do not declare testing
 `;
     const spec = makeFakeSpec([{ path: 'f2c.md', content }]);
     const r = await validateSpec({ check: 'template-compliance' }, ports(spec));
