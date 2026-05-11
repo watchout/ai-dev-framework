@@ -1,0 +1,38 @@
+name: spec-audit (SPEC-DOC4L-017)
+
+on:
+  pull_request:
+    paths:
+      - 'docs/spec/**'
+      - 'src/cli/commands/gate/**'
+      - 'src/cli/commands/gate/__fixtures__/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/spec-audit.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'docs/spec/**'
+      - 'src/cli/commands/gate/**'
+      - 'src/cli/commands/gate/__fixtures__/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/spec-audit.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Run unit + integration + CLI e2e (15 tests, merge gate)
+        run: npx vitest run src/cli/commands/gate/
+      - name: Run validate-spec on real corpus (no-flag default, fake link probe)
+        run: npx tsx src/cli/index.ts gate validate spec --base-ref=origin/main --link-probe=fake
