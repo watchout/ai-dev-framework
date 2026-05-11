@@ -56,11 +56,15 @@ import {
   validateSpec,
   validateAllSpecs,
 } from "../lib/gate-spec-validator.js";
+import { buildValidateCommand } from "./gate/cli.js";
 
 export function registerGateCommand(program: Command): void {
   const gate = program
     .command("gate")
     .description("Pre-Code Gate management (A/B/C checks)");
+
+  // framework gate validate spec (SPEC-DOC4L-017)
+  gate.addCommand(buildValidateCommand());
 
   // framework gate check
   gate
