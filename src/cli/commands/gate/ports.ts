@@ -10,6 +10,7 @@ export interface SpecRepositoryPort {
 
 export interface GitHistoryPort {
   isPreExistingSpec(path: string, baseRef: string): Promise<boolean>;
+  fileAtRef(path: string, ref: string): Promise<string | null>;
 }
 
 export interface LinkProbePort {

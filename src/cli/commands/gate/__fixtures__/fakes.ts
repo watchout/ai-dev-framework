@@ -86,11 +86,17 @@ export function makeFakeSpec(files: FakeFile[]): SpecRepositoryPort {
   };
 }
 
-export function makeFakeGit(preExistingPaths: string[]): GitHistoryPort {
+export function makeFakeGit(
+  preExistingPaths: string[],
+  oldContent: Record<string, string> = {}
+): GitHistoryPort {
   const set = new Set(preExistingPaths);
   return {
     async isPreExistingSpec(path: string) {
       return set.has(path);
+    },
+    async fileAtRef(path: string) {
+      return oldContent[path] ?? null;
     },
   };
 }

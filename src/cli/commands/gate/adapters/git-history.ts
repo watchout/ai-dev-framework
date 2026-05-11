@@ -4,6 +4,15 @@ import type { GitHistoryPort } from '../ports.js';
 
 const exec = promisify(execFile);
 
+async function revParse(repoRoot: string, ref: string): Promise<string | null> {
+  try {
+    const { stdout } = await exec('git', ['rev-parse', ref], { cwd: repoRoot });
+    return stdout.trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 async function gitFirstAddCommit(
   repoRoot: string,
   baseRef: string,
@@ -26,18 +35,18 @@ async function gitFirstAddCommit(
   }
 }
 
-async function isCommitOlderThan(
+async function isStrictAncestor(
   repoRoot: string,
   commit: string,
   ref: string
 ): Promise<boolean> {
+  const refSha = await revParse(repoRoot, ref);
+  if (refSha === null) return false;
+  if (commit === refSha) return false;
   try {
-    const { stdout } = await exec(
-      'git',
-      ['merge-base', '--is-ancestor', commit, ref],
-      { cwd: repoRoot }
-    );
-    void stdout;
+    await exec('git', ['merge-base', '--is-ancestor', commit, ref], {
+      cwd: repoRoot,
+    });
     return true;
   } catch {
     return false;
@@ -49,7 +58,17 @@ export function makeGitHistory(repoRoot: string): GitHistoryPort {
     async isPreExistingSpec(path: string, baseRef: string): Promise<boolean> {
       const firstAdd = await gitFirstAddCommit(repoRoot, baseRef, path);
       if (firstAdd === null) return false;
-      return isCommitOlderThan(repoRoot, firstAdd, baseRef);
+      return isStrictAncestor(repoRoot, firstAdd, baseRef);
+    },
+    async fileAtRef(path: string, ref: string): Promise<string | null> {
+      try {
+        const { stdout } = await exec('git', ['show', `${ref}:${path}`], {
+          cwd: repoRoot,
+        });
+        return stdout;
+      } catch {
+        return null;
+      }
     },
   };
 }

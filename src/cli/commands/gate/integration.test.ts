@@ -92,7 +92,14 @@ function corpusSpec(files: Array<{ path: string; content: string }>): SpecReposi
 
 function corpusGit(preExisting: string[]): GitHistoryPort {
   const set = new Set(preExisting);
-  return { async isPreExistingSpec(path: string) { return set.has(path); } };
+  return {
+    async isPreExistingSpec(path: string) {
+      return set.has(path);
+    },
+    async fileAtRef() {
+      return null;
+    },
+  };
 }
 
 describe('integration smoke (corpus-v1)', () => {
