@@ -76,6 +76,19 @@ meta_spec_layer: ops
 ## §7 Related documents
 `;
 
+const IMPL_WRONG_TITLE = `---
+id: IMPL-FOO-002
+meta_spec: true
+meta_spec_layer: impl
+---
+## §1 概要
+## §2 アーキテクチャ
+## §3 主要 component
+## §4 主要 file path 一覧
+## §5 SPEC ↔ IMPL alignment
+## §6 Foo
+`;
+
 describe('template-compliance layer-aware', () => {
   it('T1: SPEC layer PASS (legacy meta_spec, no layer field)', async () => {
     const content = SPEC_OK.replace('meta_spec_layer: spec\n', '');
@@ -128,6 +141,20 @@ describe('template-compliance layer-aware', () => {
     expect(r.exit_code).toBe(2);
     expect(r.findings[0].message).toContain('IMPL');
     expect(r.findings[0].message).toContain('§3');
+    expect(r.findings[0].message).toContain('主要 component');
+  });
+
+  it('T10: IMPL §6 with wrong title (Related documents missing) → FAIL', async () => {
+    const spec = makeFakeSpec([
+      { path: 'i-wrong-title.md', content: IMPL_WRONG_TITLE },
+    ]);
+    const r = await validateSpec(
+      { check: 'template-compliance' },
+      ports(spec)
+    );
+    expect(r.exit_code).toBe(2);
+    expect(r.findings[0].message).toContain('§6');
+    expect(r.findings[0].message).toContain('Related documents');
   });
 
   it('T6: invalid layer value falls back to SPEC', async () => {
