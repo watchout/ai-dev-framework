@@ -43,4 +43,33 @@ describe('PR #141 e2e — real v1.2.6 4-layer docs pass layer-aware validator', 
     ).toEqual([]);
     expect(r.exit_code).toBe(0);
   });
+
+  it('Task 3 regression: v1.2.6-spec-audit-gate.md (inline-comment frontmatter) PASSes template-compliance via production adapter (metaSpec exception)', async () => {
+    const { makeFsSpecRepository } = await import('./adapters/spec-fs.js');
+    const content = loadFile('v1.2.6-spec-audit-gate.md').content;
+    expect(content).toMatch(/^meta_spec:\s*true\s+#/m);
+    const spec = makeFsSpecRepository(DOCS_DIR);
+    const all = await spec.list();
+    const target = all.find((f) => f.path.endsWith('v1.2.6-spec-audit-gate.md'));
+    expect(target).toBeDefined();
+    const fm = await spec.parseFrontmatter(target!.path);
+    expect(fm.metaSpec).toBe(true);
+
+    const singleFileSpec = makeFakeSpec([
+      { path: target!.path, content: target!.content, metaSpec: true },
+    ]);
+    const r = await validateSpec(
+      { check: 'template-compliance' },
+      {
+        spec: singleFileSpec,
+        git: makeFakeGit([]),
+        link: makeFakeLink({}),
+        audit: makeFakeAudit(),
+      }
+    );
+    expect(
+      r.findings.filter((f) => f.check === 'template-compliance')
+    ).toEqual([]);
+    expect(r.exit_code).toBe(0);
+  });
 });
