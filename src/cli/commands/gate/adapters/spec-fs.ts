@@ -42,7 +42,7 @@ function parseFrontmatterImpl(content: string): {
       if (t) ids.push(t);
     }
   }
-  const metaSpec = /^meta_spec:\s*true\s*$/m.test(fm[1]);
+  const metaSpec = /^meta_spec:\s*true(\s+#.*)?\s*$/m.test(fm[1]);
   const layerMatch = fm[1].match(/^meta_spec_layer:\s*([A-Za-z]+)\s*$/m);
   const rawLayer = layerMatch?.[1];
   const metaSpecLayer: MetaSpecLayer =
