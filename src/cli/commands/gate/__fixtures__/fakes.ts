@@ -2,14 +2,17 @@ import type {
   AuditLogPort,
   GitHistoryPort,
   LinkProbePort,
+  MetaSpecLayer,
   SpecRepositoryPort,
 } from '../ports.js';
+import { META_SPEC_LAYERS } from '../ports.js';
 
 interface FakeFile {
   path: string;
   content: string;
   id?: string[];
   metaSpec?: boolean;
+  metaSpecLayer?: MetaSpecLayer;
 }
 
 const HEADING_RE = /^(#{1,6})\s+(.+?)\s*$/gm;
@@ -44,6 +47,15 @@ export function makeFakeSpec(files: FakeFile[]): SpecRepositoryPort {
     if (!fm) return false;
     return /^meta_spec:\s*true\s*$/m.test(fm[1]);
   };
+  const parseMetaSpecLayer = (content: string): MetaSpecLayer => {
+    const fm = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fm) return 'spec';
+    const m = fm[1].match(/^meta_spec_layer:\s*([A-Za-z]+)\s*$/m);
+    const raw = m?.[1];
+    return raw && (META_SPEC_LAYERS as readonly string[]).includes(raw)
+      ? (raw as MetaSpecLayer)
+      : 'spec';
+  };
 
   return {
     async list() {
@@ -51,11 +63,13 @@ export function makeFakeSpec(files: FakeFile[]): SpecRepositoryPort {
     },
     async parseFrontmatter(path: string) {
       const f = files.find((x) => x.path === path);
-      if (!f) return { id: [], headings: [], metaSpec: false };
+      if (!f)
+        return { id: [], headings: [], metaSpec: false, metaSpecLayer: 'spec' };
       const id = f.id ?? parseFrontmatterIds(f.content);
       const metaSpec = f.metaSpec ?? parseMetaSpec(f.content);
+      const metaSpecLayer = f.metaSpecLayer ?? parseMetaSpecLayer(f.content);
       const headings = parseHeadings(f.content);
-      return { id, headings, metaSpec };
+      return { id, headings, metaSpec, metaSpecLayer };
     },
     async sectionBody(path: string, heading: string) {
       const f = files.find((x) => x.path === path);

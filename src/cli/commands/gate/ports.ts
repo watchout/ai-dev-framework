@@ -1,9 +1,19 @@
+export type MetaSpecLayer = 'spec' | 'impl' | 'verify' | 'ops';
+
+export const META_SPEC_LAYERS: readonly MetaSpecLayer[] = [
+  'spec',
+  'impl',
+  'verify',
+  'ops',
+] as const;
+
 export interface SpecRepositoryPort {
   list(): Promise<Array<{ path: string; content: string }>>;
   parseFrontmatter(path: string): Promise<{
     id: string[];
     headings: string[];
     metaSpec: boolean;
+    metaSpecLayer: MetaSpecLayer;
   }>;
   sectionBody(path: string, heading: string): Promise<string | null>;
 }
