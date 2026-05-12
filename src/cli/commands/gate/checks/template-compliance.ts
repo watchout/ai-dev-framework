@@ -14,20 +14,23 @@ const SPEC_REQUIRED_BASE = [
   '9.',
 ];
 
-const IMPL_REQUIRED = ['§1', '§2', '§3', '§4', '§5'];
-const VERIFY_REQUIRED = ['§1', '§2', '§3', '§4', '§5'];
-const OPS_REQUIRED = ['§1', '§2', '§3', '§4', '§5', '§6'];
+const IMPL_REQUIRED = ['§1', '§2', '§3', '§4', '§5', '§6'];
+const VERIFY_REQUIRED = ['§1', '§2', '§3', '§4', '§5', '§6'];
+const OPS_REQUIRED = ['§1', '§2', '§3', '§4', '§5', '§6', '§7'];
 
 function hasSectionMatching(headings: string[], prefix: string): boolean {
   return headings.some((h) => {
     const t = h.trim();
-    if (t.startsWith(prefix)) return true;
     if (prefix.startsWith('§')) {
       const num = prefix.slice(1);
-      if (t.startsWith(`${num}.`) || t.startsWith(`${num} `)) return true;
-      if (t.startsWith(prefix)) return true;
+      return (
+        t === `§${num}` ||
+        t.startsWith(`§${num} `) ||
+        t.startsWith(`§${num}.`) ||
+        t.startsWith(`§${num}\t`)
+      );
     }
-    return false;
+    return t.startsWith(prefix);
   });
 }
 

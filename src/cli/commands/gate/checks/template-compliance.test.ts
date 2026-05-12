@@ -150,6 +150,26 @@ describe('template-compliance layer-aware', () => {
     expect(r.exit_code).toBe(0);
   });
 
+  it('T9: prefix matcher boundary — §10 must not satisfy §1', async () => {
+    const content = `---
+id: IMPL-EDGE-001
+meta_spec: true
+meta_spec_layer: impl
+---
+## §10 SCM
+## §11 Notes
+## §12 X
+`;
+    const spec = makeFakeSpec([{ path: 'edge.md', content }]);
+    const r = await validateSpec(
+      { check: 'template-compliance' },
+      ports(spec)
+    );
+    expect(r.exit_code).toBe(2);
+    const msg = r.findings[0].message;
+    expect(msg).toContain('§1');
+  });
+
   it('T8: regression — legacy non-meta_spec doc still required §0-§9', async () => {
     const content = `---
 id: SPEC-LEGACY-001
