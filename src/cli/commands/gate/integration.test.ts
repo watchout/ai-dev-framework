@@ -49,17 +49,26 @@ function corpusSpec(files: Array<{ path: string; content: string }>): SpecReposi
     if (!fm) return false;
     return /^meta_spec:\s*true\s*$/m.test(fm[1]);
   };
+  const metaLayer = (content: string): 'spec' | 'impl' | 'verify' | 'ops' => {
+    const fm = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fm) return 'spec';
+    const m = fm[1].match(/^meta_spec_layer:\s*([A-Za-z]+)\s*$/m);
+    const raw = m?.[1];
+    return raw === 'impl' || raw === 'verify' || raw === 'ops' ? raw : 'spec';
+  };
   return {
     async list() {
       return files;
     },
     async parseFrontmatter(path: string) {
       const f = files.find((x) => x.path === path);
-      if (!f) return { id: [], headings: [], metaSpec: false };
+      if (!f)
+        return { id: [], headings: [], metaSpec: false, metaSpecLayer: 'spec' };
       return {
         id: ids(f.content),
         headings: parseHeadings(f.content),
         metaSpec: meta(f.content),
+        metaSpecLayer: metaLayer(f.content),
       };
     },
     async sectionBody(path: string, heading: string) {

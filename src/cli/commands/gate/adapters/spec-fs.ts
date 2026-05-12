@@ -1,6 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { SpecRepositoryPort } from '../ports.js';
+import type { MetaSpecLayer, SpecRepositoryPort } from '../ports.js';
+import { META_SPEC_LAYERS } from '../ports.js';
 
 async function listMarkdown(root: string): Promise<string[]> {
   const out: string[] = [];
@@ -27,9 +28,10 @@ function parseHeadingsImpl(content: string): string[] {
 function parseFrontmatterImpl(content: string): {
   id: string[];
   metaSpec: boolean;
+  metaSpecLayer: MetaSpecLayer;
 } {
   const fm = content.match(/^---\n([\s\S]*?)\n---/);
-  if (!fm) return { id: [], metaSpec: false };
+  if (!fm) return { id: [], metaSpec: false, metaSpecLayer: 'spec' };
   const ids: string[] = [];
   const single = fm[1].match(/^id:\s*(\S+)\s*$/m);
   if (single) ids.push(single[1]);
@@ -40,7 +42,14 @@ function parseFrontmatterImpl(content: string): {
       if (t) ids.push(t);
     }
   }
-  return { id: ids, metaSpec: /^meta_spec:\s*true\s*$/m.test(fm[1]) };
+  const metaSpec = /^meta_spec:\s*true\s*$/m.test(fm[1]);
+  const layerMatch = fm[1].match(/^meta_spec_layer:\s*([A-Za-z]+)\s*$/m);
+  const rawLayer = layerMatch?.[1];
+  const metaSpecLayer: MetaSpecLayer =
+    rawLayer && (META_SPEC_LAYERS as readonly string[]).includes(rawLayer)
+      ? (rawLayer as MetaSpecLayer)
+      : 'spec';
+  return { id: ids, metaSpec, metaSpecLayer };
 }
 
 function sectionBodyImpl(content: string, heading: string): string | null {

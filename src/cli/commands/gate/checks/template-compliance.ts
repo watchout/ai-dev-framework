@@ -1,7 +1,7 @@
 import type { CheckContext } from '../validate-spec.js';
-import type { Finding } from '../ports.js';
+import type { Finding, MetaSpecLayer } from '../ports.js';
 
-const REQUIRED_BASE = [
+const SPEC_REQUIRED_BASE = [
   '0.',
   '1.',
   '2.',
@@ -14,9 +14,33 @@ const REQUIRED_BASE = [
   '9.',
 ];
 
+const IMPL_REQUIRED = ['§1', '§2', '§3', '§4', '§5'];
+const VERIFY_REQUIRED = ['§1', '§2', '§3', '§4', '§5'];
+const OPS_REQUIRED = ['§1', '§2', '§3', '§4', '§5', '§6'];
+
 function hasSectionMatching(headings: string[], prefix: string): boolean {
-  return headings.some((h) => h.trim().startsWith(prefix));
+  return headings.some((h) => {
+    const t = h.trim();
+    if (t.startsWith(prefix)) return true;
+    if (prefix.startsWith('§')) {
+      const num = prefix.slice(1);
+      if (t.startsWith(`${num}.`) || t.startsWith(`${num} `)) return true;
+      if (t.startsWith(prefix)) return true;
+    }
+    return false;
+  });
 }
+
+interface LayerCheck {
+  required: readonly string[];
+  label: string;
+}
+
+const LAYER_CHECKS: Record<Exclude<MetaSpecLayer, 'spec'>, LayerCheck> = {
+  impl: { required: IMPL_REQUIRED, label: 'IMPL' },
+  verify: { required: VERIFY_REQUIRED, label: 'VERIFY' },
+  ops: { required: OPS_REQUIRED, label: 'OPS' },
+};
 
 export async function runTemplateCompliance(ctx: CheckContext): Promise<Finding[]> {
   const files = await ctx.ports.spec.list();
@@ -25,8 +49,26 @@ export async function runTemplateCompliance(ctx: CheckContext): Promise<Finding[
   for (const f of files) {
     const fm = await ctx.ports.spec.parseFrontmatter(f.path);
 
+    if (fm.metaSpec && fm.metaSpecLayer !== 'spec') {
+      const rule = LAYER_CHECKS[fm.metaSpecLayer];
+      const missing = rule.required.filter(
+        (p) => !hasSectionMatching(fm.headings, p)
+      );
+      if (missing.length > 0) {
+        findings.push({
+          check: 'template-compliance',
+          severity: 'fail',
+          files: [f.path],
+          message: `Missing sections in ${rule.label} layer: ${missing.join(',')}`,
+        });
+      }
+      continue;
+    }
+
     if (fm.metaSpec) {
-      const missingMeta = REQUIRED_BASE.filter((p) => !hasSectionMatching(fm.headings, p));
+      const missingMeta = SPEC_REQUIRED_BASE.filter(
+        (p) => !hasSectionMatching(fm.headings, p)
+      );
       if (missingMeta.length > 0) {
         findings.push({
           check: 'template-compliance',
@@ -38,7 +80,9 @@ export async function runTemplateCompliance(ctx: CheckContext): Promise<Finding[
       continue;
     }
 
-    const missing = REQUIRED_BASE.filter((p) => !hasSectionMatching(fm.headings, p));
+    const missing = SPEC_REQUIRED_BASE.filter(
+      (p) => !hasSectionMatching(fm.headings, p)
+    );
     if (missing.length > 0) {
       findings.push({
         check: 'template-compliance',
