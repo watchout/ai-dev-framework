@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { parseSsot, SsotParseError } from './ssot-parser.js';
@@ -146,6 +147,26 @@ describe('parseSsot', () => {
       ]);
       expect(r.items.get('AUTH-002')).toEqual(['3.1 First section of B']);
     });
+  });
+
+  it('T10: pure script invariant — forbidden keyword count = 0 (Assertion A)', () => {
+    let count = '0';
+    try {
+      count = execSync(
+        "grep -Ec '(fetch|axios|http|claude|openai|llm|anthropic)' src/cli/lib/ssot-parser.ts",
+        { stdio: ['ignore', 'pipe', 'pipe'] }
+      )
+        .toString()
+        .trim();
+    } catch (e: unknown) {
+      const err = e as { status?: number; stdout?: Buffer };
+      if (err.status === 1 && err.stdout) {
+        count = err.stdout.toString().trim();
+      } else {
+        throw e;
+      }
+    }
+    expect(count).toBe('0');
   });
 
   it('T9: H4 and below ignored', () => {

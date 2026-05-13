@@ -1,3 +1,10 @@
+/**
+ * SPEC-DOC4L-006 prerequisite — SSOT.md parser (pure script).
+ *
+ * Public surface (signature literal, per instruction §1.1):
+ *   export function parseSsot(ssotPath: string): { features: string[]; items: Map<string, string[]> };
+ *   export class SsotParseError extends Error { constructor(message: string); }
+ */
 import { existsSync, readFileSync } from 'node:fs';
 
 export class SsotParseError extends Error {
