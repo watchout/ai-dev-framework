@@ -1,0 +1,289 @@
+# OPS: 4層ドキュメント体系導入
+
+## 0. 対応するSPEC / IMPL
+
+- SPEC-ID: SPEC-DOC4L-001〜007
+- IMPL-ID: IMPL-DOC4L-001
+
+---
+
+## 1. デプロイ手順（ADF v1.2.0 リリース）
+
+### 1.1 前提条件
+
+- `feature/doc4l-v1.2.0` ブランチで全テスト（1,458 + 新規）が PASS
+- `test/principle0.test.ts` が PASS（原則0: LLM 非依存が静的担保されている）
+- `framework gate quality --auto-fix` で PASS 確定（dogfooding）
+- `framework gate release` で SHIP 判定
+- haishin-puls-hub での実戦適用完了:
+  - 新規 feature 1 件で SPEC→IMPL トレース検証精度計測
+  - 既存 12 feature で `migrate-to-v1.2` のマイグレーション精度計測
+  - 両レポートを Drive に配置済み
+- CHANGELOG.md、README.md、`docs/specs/07_DOCUMENTATION_v1.2.0.md` が揃っている
+
+### 1.2 手順
+
+```bash
+# 1. 最終検証
+cd ~/Developer/ai-dev-framework
+git checkout feature/doc4l-v1.2.0
+npm test
+npm test -- test/principle0.test.ts  # 原則0専用検証
+node dist/cli/index.js gate quality
+node dist/cli/index.js gate release
+
+# 2. PR 作成とレビュー
+gh pr create \
+  --title "feat: 4-layer doc system + migration tool (v1.2.0)" \
+  --body-file .framework/reports/gate3-verdict.md
+# → CEO レビュー → approve
+
+# 3. main マージ
+gh pr merge --squash
+
+# 4. タグ付け
+git checkout main
+git pull
+git tag -a v1.2.0 -m "4-layer documentation system + migration"
+git push origin v1.2.0
+
+# 5. npm 公開
+npm version 1.2.0 --no-git-tag-version
+npm publish
+
+# 6. GitHub Release 作成
+gh release create v1.2.0 --notes-file CHANGELOG_v1.2.0.md
+
+# 7. Drive SSOT 更新
+rclone copy docs/specs/07_DOCUMENTATION_v1.2.0.md \
+  IYASAKA:開発/ADF/v1.2.0_2026-XX-XX/specs/
+```
+
+### 1.3 デプロイ後確認
+
+```bash
+# 新規プロジェクトで動作確認
+mkdir /tmp/test-doc4l && cd /tmp/test-doc4l
+npx @iyasaka/ai-dev-framework@1.2.0 init
+npx ai-dev-framework init-feature hello
+ls docs/{spec,impl,verify,ops}/hello.md  # 4ファイル存在確認
+npx ai-dev-framework trace verify         # PASS 確認
+
+# 既存プロジェクトでマイグレーション動作確認
+cd ~/Developer/haishin-puls-hub  # 本番適用後の確認
+npx ai-dev-framework@1.2.0 migrate-to-v1.2 --dry-run
+# → 出力内容を目視確認、問題なければ実運用
+```
+
+---
+
+## 2. ロールバック手順
+
+### 2.1 ロールバック条件
+
+v1.2.0 リリース後 24 時間以内に以下のいずれかが発生:
+
+- npm install で ADF が壊れる報告が 2 件以上
+- `framework trace verify` が既存 v1.1 プロジェクト（`docs_layers.enabled=false` または未設定）で誤って BLOCK する
+- `framework migrate-to-v1.2` で既存ファイルを破壊する報告
+- セキュリティ脆弱性の報告
+- `framework gate release` を再実行して SHIP 判定が取れない
+
+### 2.2 手順
+
+```bash
+# 1. npm で deprecate
+npm deprecate @iyasaka/ai-dev-framework@1.2.0 "Rolled back due to <reason>"
+
+# 2. 前バージョンを latest タグに戻す
+npm dist-tag add @iyasaka/ai-dev-framework@1.1.x latest
+
+# 3. GitHub Release を draft に戻す
+gh release edit v1.2.0 --draft
+
+# 4. CEO と開発 bot に通知
+# → Discord #iyasaka-dev チャンネルに報告
+
+# 5. 原因分析と修正 PR
+git checkout -b hotfix/v1.2.1
+# 修正
+git commit -m "fix: <issue>"
+# Gate 全通過 → v1.2.1 リリース
+```
+
+---
+
+## 3. 監視項目
+
+| メトリクス | 正常範囲 | アラート条件 | 通知先 |
+|---|---|---|---|
+| npm weekly downloads | 増加傾向 | 前週比 50% 減 | Discord #iyasaka-dev |
+| GitHub Issues（v1.2 ラベル） | < 5件/週 | > 10件/週 | Discord #iyasaka-dev |
+| `trace verify` 実行時間（CI） | < 10 秒 | > 30 秒 | CI 失敗として通知 |
+| `migrate-to-v1.2` 成功率 | > 95% | < 90% | CEO エスカレーション |
+| haishin-puls-hub での Gate 0 BLOCK 率 | < 30% | > 70%（形骸化の兆候） | CEO エスカレーション |
+| 既存プロジェクトからの「壊れた」報告数 | 0 | ≥ 1 | 即ロールバック検討 |
+
+---
+
+## 4. SLO
+
+| SLI | 目標値 | 測定方法 | エラーバジェット |
+|---|---|---|---|
+| `framework init-feature` 成功率 | 99.9% | 直近 100 実行のログ | 月 0.1% |
+| `framework trace verify` 実行時間 p95 | 5 秒以下（100 feature規模） | ベンチスイート | 月 5 回超過まで |
+| `framework migrate-to-v1.2` 実行時間 p95 | 30 秒以下（100 feature規模） | ベンチスイート | 月 3 回超過まで |
+| トレース未対応の誤検出率（偽陽性） | 1% 以下 | haishin-puls-hub 実戦データ | 月 3 件まで |
+| トレース未対応の検出率（真陽性） | 95% 以上 | 同上 | 月 3 件取りこぼしまで |
+| マイグレーション後の手動修正率 | 30% 以下 | haishin-puls-hub 12 feature 実績 | 月 2 件超過まで |
+
+---
+
+## 5. 障害対応 Runbook
+
+### 5.1 症状: `init-feature` でファイル生成が途中で失敗
+
+- **一次対応:**
+  1. `.framework/locks/init-{feature}.lock` を削除
+  2. 中途生成された `docs/{spec,impl,verify,ops}/{feature}.md` を手動で確認し、不整合があれば削除
+  3. `--force` 付きで再実行
+- **エスカレーション:** 3 回連続で失敗 → CEO に報告、開発 bot でデバッグモード実行
+- **再発防止:** テンプレート読み込みエラーなら CLI 同梱版へのフォールバック動作を確認
+
+### 5.2 症状: `trace verify` が既存 v1.1 プロジェクトで BLOCK 連発
+
+- **一次対応:**
+  1. `.framework/config.json` を確認し、`docs_layers.enabled` が意図せず `true` になっていないか確認
+  2. 意図せず true の場合 → `false` に戻す（v1.1 互換モード）
+  3. 意図して true の場合 → マイグレーションツール未実行の可能性。`framework migrate-to-v1.2 --dry-run` で事前確認、問題なければ実行
+- **エスカレーション:** v1.1 互換モードでも BLOCK が出る場合 → ADF のバグ、Issue 起票
+- **再発防止:** v1.2.1 で enabled フィールドの明示的検証を追加、INFO ログを強化
+
+### 5.3 症状: `migrate-to-v1.2` が既存ファイルを破壊
+
+- **一次対応:**
+  1. **即座に作業中断**（他のプロジェクトに波及しないよう Issue チャンネルで警告）
+  2. git で差分確認、git reset --hard で復旧（Git 管理下である前提）
+  3. `.framework/reports/migration-*.md` で生成ファイル一覧を確認、影響範囲を特定
+  4. Git 管理外のファイルが影響を受けていた場合、バックアップから復旧
+- **エスカレーション:** 即座に v1.2.0 ロールバック（§2.2）
+- **再発防止:** `migrate-to-v1.2` はデフォルトで `--dry-run` が推奨、既存ファイル検出時は必ず警告、`--force` なしでは上書き不可
+
+### 5.4 症状: STRIDE セクションの「N/A」記入で実装者が混乱
+
+- **一次対応:**
+  1. Gate 0 のエラーメッセージを確認し、「理由必須」が明示されているか確認
+  2. N/A 記入例を `docs/specs/07_DOCUMENTATION_v1.2.0.md` §STRIDE セクションで提示
+  3. テンプレートの §6.3.1 ヘッダーコメントに「N/A は理由必須」を明示
+- **エスカレーション:** v1.2.1 でテンプレートコメントを強化
+- **再発防止:** OSS 公開時の README に STRIDE 記入例を明示
+
+---
+
+## 6. 定期メンテナンス
+
+| 項目 | 頻度 | 手順 |
+|---|---|---|
+| npm audit | 週次 | `npm audit` → 脆弱性があれば `npm audit fix` → PR |
+| テンプレート更新レビュー | 月次 | haishin-puls-hub の最新 feature を見て、テンプレート節立ての過不足を点検 |
+| Gate 精度測定 | 月次 | haishin-puls-hub の最新 10 feature で Gate 0/1 拡張の真陽性率・偽陽性率を計測、Drive にレポート |
+| マイグレーション精度測定 | 四半期 | 新規 ADF 導入プロジェクトでの migrate-to-v1.2 の手動修正率を集計 |
+| 依存ライブラリ更新 | 四半期 | Renovate / Dependabot の PR をまとめてレビュー |
+| 原則0 準拠チェック | 各リリース前 | `test/principle0.test.ts` が PASS することをリリース前に確認 |
+
+---
+
+## 7. バックアップ・リストア
+
+### 7.1 対象・頻度
+
+- ソースコード: GitHub（Anthropic 側リポジトリでバックアップ）
+- SSOT ドキュメント: Google Drive（Google 側でバージョン履歴保持）
+- npm パッケージ: npm レジストリ（deprecated でも 72 時間は復旧可）
+
+### 7.2 RTO / RPO
+
+- RTO: 1 時間（npm 再公開 or GitHub Release 差し替え）
+- RPO: 0（Git で全履歴保持）
+
+---
+
+## 8. 権限管理
+
+| ロール | 付与条件 | 剥奪条件 |
+|---|---|---|
+| npm publish 権限 | CEO のみ | 該当なし |
+| GitHub watchout/ai-dev-framework への write | CEO + 開発 bot アカウント | bot 退役時 |
+| Drive `IYASAKA:開発/ADF/` への write | CEO + ARC + CTO bot | 該当なし |
+
+---
+
+## 9. 既存プロジェクトへの適用ガイド（公式フロー）
+
+### 9.1 基本方針
+
+v1.2 の強制力は ON/OFF 二値。既存プロジェクトを v1.2 に乗せる場合、**マイグレーションツールを先行実行してから ON に切り替える**のが公式フロー。ツール未実行で ON に切り替えると、既存全 feature が Gate 1 で BLOCK される。
+
+### 9.2 既存プロジェクト適用の標準手順
+
+```bash
+cd ~/Developer/<project>
+
+# 1. v1.2 にアップグレード（互換モードで着地）
+npm install -D @iyasaka/ai-dev-framework@1.2.0
+# この時点では docs_layers 設定なし → v1.1 互換モードのまま
+
+# 2. マイグレーションの事前確認（dry-run）
+framework migrate-to-v1.2 --dry-run
+# → 生成予定ファイル一覧を確認
+# → SSOT 構造が抽出不能なら SsotParseError で中断、手動変換を検討
+
+# 3. マイグレーション実行
+framework migrate-to-v1.2
+# → docs/{spec,impl,verify,ops}/ に4層雛形が生成される
+# → .framework/config.json に docs_layers.enabled=true が追記される
+
+# 4. 生成された雛形を人間が記入
+# 原則0に従いツールは足場のみ生成。中身（Gherkin、型定義、SLO 等）は人間が記入
+
+# 5. トレース検証
+framework trace verify
+# → 全 feature がトレース対応するまで中身を埋めていく
+
+# 6. Gate 0/1 で PASS 確認
+framework gate spec
+framework gate design
+# → PASS が取れたら v1.2 完全移行完了
+```
+
+### 9.3 マイグレーションツールが出力する雛形の性質
+
+- **ファイル構造と ID 採番は自動**: feature 名抽出、3 桁 ID 採番、Front Matter ひな形、4 層の必須節ヘッダーまで
+- **中身は空**: Gherkin シナリオ、型定義、シーケンス図、SLO 数値、Runbook は全て空。人間が埋める
+- **SPEC のみ既存 SSOT から内容を転記**: 機能要件節（§4）だけは既存 SSOT から内容を正規表現で抽出して転記。それ以外の節（§5 インターフェース、§6 非機能要件、§7 受入基準等）は空
+- **IMPL/VERIFY/OPS は完全に空雛形**: 施工図・検査書・運用書は既存コードから逆生成しない（v1.3 の reverse-impl で対応予定）
+
+### 9.4 マイグレーション後の精度目標
+
+haishin-puls-hub の既存 12 feature で計測し、以下を達成：
+
+- feature 境界抽出の成功率 ≥ 95%（100 feature 中 95 件で正しく feature 単位にファイル分割できる）
+- ID 採番の正確性 100%（重複ゼロ、連番）
+- SPEC §4 の自動転記精度 ≥ 70%（残り 30% は手動修正許容）
+- 全体としての手動修正率 ≤ 30%（97 ファイル中 30 件以下の修正で完了）
+
+### 9.5 移行不能ケースの対処
+
+マイグレーションツールが失敗または精度が低すぎる場合:
+
+- **原因 1**: SSOT が自由形式で feature 境界が抽出不能 → `--force` で feature=1 として全体を 1 セットに詰め込み、人間が手動分割
+- **原因 2**: 旧 SSOT が複数ファイルに分散 → `--ssot <path>` で個別指定、複数回実行
+- **原因 3**: 上記いずれでも対応できない → v1.1 互換モード（`enabled: false`）のまま継続運用。v1.3 以降の改善を待つ
+
+---
+
+## 10. トレース
+
+- SPEC: SPEC-DOC4L-006（マイグレーション）, SPEC-DOC4L-007（ON/OFF 二値）
+- IMPL: IMPL-DOC4L-001（付録 B: v1.2.0 実装段階）
+- VERIFY: VERIFY-DOC4L-006（マイグレーション）, VERIFY-DOC4L-007（ON/OFF 二値）
