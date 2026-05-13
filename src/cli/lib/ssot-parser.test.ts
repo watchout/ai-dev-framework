@@ -169,6 +169,21 @@ describe('parseSsot', () => {
     expect(count).toBe('0');
   });
 
+  it('T10: pure script invariant — quiet grep exits 1 (Assertion B)', () => {
+    let exitStatus = 0;
+    try {
+      execSync(
+        "grep -Eq '(fetch|axios|http|claude|openai|llm|anthropic)' src/cli/lib/ssot-parser.ts",
+        { stdio: ['ignore', 'ignore', 'ignore'] }
+      );
+      exitStatus = 0;
+    } catch (e: unknown) {
+      const err = e as { status?: number };
+      exitStatus = err.status ?? -1;
+    }
+    expect(exitStatus).toBe(1);
+  });
+
   it('T9: H4 and below ignored', () => {
     const ssot = `## AUTH-001 X
 
