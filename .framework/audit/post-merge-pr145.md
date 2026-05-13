@@ -4,10 +4,26 @@
 - verifier: dev-001
 - target commit: b9ae981
 - target file: src/cli/lib/ssot-parser.ts, src/cli/lib/ssot-parser.test.ts
-- branch: chore/post-merge-pr145-verify
+- verification HEAD: main @ b9ae981 (= verification 実行時の checkout)
+- report artifact branch: chore/post-merge-pr145-verify (= 本 report commit のみの artifact branch、verification 実行は main で実施)
 - environment: node 22.x (`actions/setup-node@v4` baseline)
 
+## verification HEAD 立証 (auditor cycle 2 patch per)
+
+```
+$ git rev-parse HEAD
+b9ae98165ada5bde79ced0ec058f7ccd141a71f2
+```
+
+= main HEAD と一致、§3 Forbidden 「main 以外で verification 禁止」 遵守。
+
 ## 2.1 build & test
+
+```
+$ pwd && git status -sb | head -1
+/Users/yuji/Developer/ai-dev-framework
+## main...origin/main
+```
 
 - npm install: **PASS** (依存 install 完了、vulnerabilities advisory は `npm audit fix` 別 PR scope per §3 Forbidden)
 - vitest 11 tests: **PASS**
@@ -24,6 +40,12 @@
 
 ## 2.2 T10 shell gate
 
+```
+$ pwd && git status -sb | head -1
+/Users/yuji/Developer/ai-dev-framework
+## main...origin/main
+```
+
 - T10-A: **PASS**
 
 ```
@@ -39,6 +61,12 @@ $ ! grep -Eq '(fetch|axios|http|claude|openai|llm|anthropic)' src/cli/lib/ssot-p
 ```
 
 ## 2.3 実 SSOT.md smoke test
+
+```
+$ pwd && git status -sb | head -1
+/Users/yuji/Developer/ai-dev-framework
+## main...origin/main
+```
 
 - input: `docs/specs/03_SSOT_FORMAT.md` (open decisions §5、H2 features ID prefix 含む実 markdown、SS1〜SS12 の `SS<N>` 形式)
 - 実行 snippet (ad-hoc tsx script `/tmp/smoke-pr145.mjs`):
