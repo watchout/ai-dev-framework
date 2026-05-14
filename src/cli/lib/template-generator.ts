@@ -1,83 +1,102 @@
 /**
- * Template generator — 4-layer document template generation.
+ * PR-1b template-generator — SPEC-DOC4L-006 sub-PR (leaf, parseSsot 非依存).
  *
- * Part of ADF v1.2.0 (#92, SPEC-DOC4L-002).
- * Spec: IMPL §3.1, §4.3, 付録 A.
+ * Public surface (signature literal, per instruction §1.1):
+ *   export type LayerType = 'spec' | 'impl' | 'verify' | 'ops';
+ *   export function loadTemplate(layer: LayerType): string;
+ *   export function generateFeatureTemplates(featureName: string, outputDir: string): Promise<string[]>;
+ *   export class TemplateGenerationError extends Error { ... }
+ *   export class TemplateLoadError extends TemplateGenerationError { ... }
  *
- * Principle #0: Pure script — template expansion only, no LLM calls.
+ * Per §3 Forbidden: no embedded fallback templates, no LLM/HTTP/DB,
+ * no CLI wiring, no `--force` flag, no filesystem port abstraction.
  */
-import * as fs from "node:fs";
-import * as path from "node:path";
-import type { LayerType } from "./trace-engine.js";
+import { readFileSync, existsSync } from 'node:fs';
+import { writeFile, mkdir } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-// ─────────────────────────────────────────────
-// Template loading (IMPL §4.3: fallback to CLI-bundled defaults)
-// ─────────────────────────────────────────────
+export type LayerType = 'spec' | 'impl' | 'verify' | 'ops';
 
-const TEMPLATE_DIR = path.resolve(
-  import.meta.dirname ?? path.dirname(new URL(import.meta.url).pathname),
-  "../../../templates/project/docs",
-);
+const LAYERS: readonly LayerType[] = ['spec', 'impl', 'verify', 'ops'] as const;
+
+const FEATURE_NAME_RE = /^[A-Z][A-Z0-9]*-[0-9]{3}$/;
+const FEATURE_NAME_PATTERN = '^[A-Z][A-Z0-9]*-[0-9]{3}$';
+
+export class TemplateGenerationError extends Error {
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message);
+    this.name = 'TemplateGenerationError';
+    if (options?.cause !== undefined) {
+      (this as { cause?: unknown }).cause = options.cause;
+    }
+  }
+}
+
+export class TemplateLoadError extends TemplateGenerationError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'TemplateLoadError';
+  }
+}
+
+function templatePath(layer: LayerType): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const repoRoot = resolve(here, '..', '..', '..');
+  return join(repoRoot, 'templates', 'project', 'docs', layer, '_template.md');
+}
 
 export function loadTemplate(layer: LayerType): string {
-  const templatePath = path.join(TEMPLATE_DIR, layer, "_template.md");
-  if (fs.existsSync(templatePath)) {
-    return fs.readFileSync(templatePath, "utf-8");
+  const path = templatePath(layer);
+  try {
+    return readFileSync(path, 'utf-8');
+  } catch {
+    throw new TemplateLoadError(`Template not found for layer: ${layer}`);
   }
-  // Fallback: minimal default (IMPL §4.3)
-  return `---
-id: ${layer.toUpperCase()}-{FEATURE}-{NNN}
-status: Draft
-traces: {}
----
-
-# ${layer.toUpperCase()}: {feature-name}
-
-## 0. メタ
-`;
 }
 
-// ─────────────────────────────────────────────
-// Template expansion
-// ─────────────────────────────────────────────
-
-function expandTemplate(
-  template: string,
-  featureName: string,
-  layer: LayerType,
-): string {
-  const featureUpper = featureName.toUpperCase();
+function applyPlaceholders(template: string, featureName: string): string {
+  const lower = featureName.toLowerCase();
   return template
-    .replace(/\{FEATURE\}/g, featureUpper)
-    .replace(/\{feature-name\}/g, featureName)
-    .replace(/\{NNN\}/g, "001");
+    .replace(/\{FEATURE\}/g, featureName)
+    .replace(/\{feature-name\}/g, lower)
+    .replace(/\{NNN\}/g, '001');
 }
-
-// ─────────────────────────────────────────────
-// Feature template generation (IMPL §3.1)
-// ─────────────────────────────────────────────
-
-const LAYERS: LayerType[] = ["spec", "impl", "verify", "ops"];
 
 export async function generateFeatureTemplates(
   featureName: string,
-  outputDir: string,
+  outputDir: string
 ): Promise<string[]> {
-  const generated: string[] = [];
-
-  for (const layer of LAYERS) {
-    const template = loadTemplate(layer);
-    const content = expandTemplate(template, featureName, layer);
-    const layerDir = path.join(outputDir, layer);
-
-    if (!fs.existsSync(layerDir)) {
-      fs.mkdirSync(layerDir, { recursive: true });
-    }
-
-    const filePath = path.join(layerDir, `${featureName}.md`);
-    fs.writeFileSync(filePath, content, "utf-8");
-    generated.push(filePath);
+  if (!FEATURE_NAME_RE.test(featureName)) {
+    throw new TemplateGenerationError(
+      `Invalid featureName (must match ${FEATURE_NAME_PATTERN}): ${featureName}`
+    );
   }
 
-  return generated;
+  const planned: Array<{ outPath: string; content: string }> = [];
+  for (const layer of LAYERS) {
+    const raw = loadTemplate(layer);
+    const content = applyPlaceholders(raw, featureName);
+    const layerDir = join(outputDir, layer);
+    const outPath = resolve(layerDir, `${featureName}.md`);
+    if (existsSync(outPath)) {
+      throw new TemplateGenerationError(`Output file already exists: ${outPath}`);
+    }
+    planned.push({ outPath, content });
+  }
+
+  const written: string[] = [];
+  for (const item of planned) {
+    try {
+      await mkdir(dirname(item.outPath), { recursive: true });
+      await writeFile(item.outPath, item.content, 'utf-8');
+      written.push(item.outPath);
+    } catch (e) {
+      throw new TemplateGenerationError(
+        `Failed to write ${item.outPath}: ${(e as Error).message}`,
+        { cause: e }
+      );
+    }
+  }
+  return written;
 }
