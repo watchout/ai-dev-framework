@@ -5,5 +5,8 @@
     "validation": "claude",
     "ingestion": "claude",
     "worktree": "claude"
+  },
+  "docs_layers": {
+    "enabled": true
   }
 }
