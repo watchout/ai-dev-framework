@@ -120,6 +120,18 @@ describe("initProject", () => {
     ).toBe(true);
   });
 
+  it("creates .framework/config.json with docs layers enabled", async () => {
+    await initProject(defaultOptions());
+
+    const raw = fs.readFileSync(
+      path.join(projectPath(), ".framework/config.json"),
+      "utf-8",
+    );
+    const config = JSON.parse(raw);
+    expect(config.provider.default).toBe("claude");
+    expect(config.docs_layers.enabled).toBe(true);
+  });
+
   it("fetches framework docs into docs/standards/", async () => {
     await initProject(defaultOptions());
 
@@ -252,6 +264,55 @@ describe("initProject", () => {
     expect(state.techStack.language).toBe("typescript");
     expect(state.config.aiProvider).toBe("anthropic");
     expect(state.config.escalationMode).toBe("strict");
+  });
+
+  it("creates a coherent mcp-server project skeleton", async () => {
+    fs.mkdirSync(path.join(fakeFrameworkDir, "templates/ci"), { recursive: true });
+    fs.writeFileSync(
+      path.join(fakeFrameworkDir, "templates/ci/mcp-server.yml"),
+      "name: CI - {{PROJECT_NAME}}\n",
+    );
+
+    const result = await initProject(
+      defaultOptions({
+        projectName: "kodama-test",
+        description: "Kodama test MCP server",
+        profileType: "mcp-server",
+      }),
+    );
+    const root = projectPath("kodama-test");
+
+    expect(result.errors).not.toContain(
+      "CI template not found for profile: mcp-server",
+    );
+    expect(
+      fs.existsSync(path.join(root, "docs/design/core/SSOT-3_API_CONTRACT.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(root, "docs/design/core/SSOT-4_DATA_MODEL.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(root, "docs/design/core/SSOT-2_UI_STATE.md")),
+    ).toBe(false);
+    expect(fs.existsSync(path.join(root, ".github/workflows/ci.yml"))).toBe(true);
+
+    const claudeMd = fs.readFileSync(path.join(root, "CLAUDE.md"), "utf-8");
+    expect(claudeMd).toContain("MCP server");
+    expect(claudeMd).toContain("storage/index adapters");
+    expect(claudeMd).not.toContain("Next.js");
+    expect(claudeMd).not.toContain("React");
+    expect(claudeMd).not.toContain("Vercel");
+
+    const project = JSON.parse(
+      fs.readFileSync(path.join(root, ".framework/project.json"), "utf-8"),
+    );
+    expect(project.profileType).toBe("mcp-server");
+    expect(project.techStack.framework).toBe("mcp-server");
+
+    const frameworkConfig = JSON.parse(
+      fs.readFileSync(path.join(root, ".framework/config.json"), "utf-8"),
+    );
+    expect(frameworkConfig.docs_layers.enabled).toBe(true);
   });
 
   it("returns list of created files", async () => {

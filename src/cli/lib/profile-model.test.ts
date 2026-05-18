@@ -76,6 +76,18 @@ describe("profile-model", () => {
       expect(profile.defaultTechStack.cli_framework).toBeDefined();
     });
 
+    it("returns mcp-server profile with data model enabled", () => {
+      const profile = getProfile("mcp-server");
+      expect(profile.id).toBe("mcp-server");
+      expect(profile.enabledSsot).toContain("SSOT-3_API_CONTRACT");
+      expect(profile.enabledSsot).toContain("SSOT-4_DATA_MODEL");
+      expect(profile.requiredTemplates).toContain(
+        "docs/design/core/SSOT-4_DATA_MODEL.md",
+      );
+      expect(profile.skipTemplates).not.toContain("SSOT-4_DATA_MODEL");
+      expect(profile.defaultTechStack.frontend).toBeNull();
+    });
+
     it("all profiles have required fields", () => {
       for (const type of PROFILE_TYPES) {
         const profile = getProfile(type);
@@ -231,6 +243,28 @@ describe("profile-model", () => {
         isTemplateEnabled(profile, "docs/growth/GROWTH_STRATEGY.md"),
       ).toBe(false);
     });
+
+    it("mcp-server profile enables API contract and data model but skips UI state", () => {
+      const profile = getProfile("mcp-server");
+      expect(
+        isTemplateEnabled(
+          profile,
+          "docs/design/core/SSOT-3_API_CONTRACT.md",
+        ),
+      ).toBe(true);
+      expect(
+        isTemplateEnabled(
+          profile,
+          "docs/design/core/SSOT-4_DATA_MODEL.md",
+        ),
+      ).toBe(true);
+      expect(
+        isTemplateEnabled(
+          profile,
+          "docs/design/core/SSOT-2_UI_STATE.md",
+        ),
+      ).toBe(false);
+    });
   });
 
   // ─────────────────────────────────────────────
@@ -314,6 +348,15 @@ describe("profile-model", () => {
       expect(inferProfileType("Backend service")).toBe("api");
       expect(inferProfileType("バックエンドサービス")).toBe("api");
       expect(inferProfileType("Server-side application")).toBe("api");
+    });
+
+    it("detects MCP server from description", () => {
+      expect(inferProfileType("MCP server for context retrieval")).toBe(
+        "mcp-server",
+      );
+      expect(inferProfileType("Model Context Protocol tool server")).toBe(
+        "mcp-server",
+      );
     });
 
     it("detects landing page from description", () => {
@@ -469,6 +512,21 @@ describe("profile-model", () => {
   // ─────────────────────────────────────────────
 
   describe("profile data integrity", () => {
+    it("has a template JSON file for mcp-server matching embedded essentials", () => {
+      const templatePath = path.resolve("templates/profiles/mcp-server.json");
+      const raw = fs.readFileSync(templatePath, "utf-8");
+      const fromTemplate = JSON.parse(raw) as {
+        id: string;
+        enabledSsot: string[];
+        requiredTemplates: string[];
+      };
+      const embedded = getProfile("mcp-server");
+
+      expect(fromTemplate.id).toBe(embedded.id);
+      expect(fromTemplate.enabledSsot).toEqual(embedded.enabledSsot);
+      expect(fromTemplate.requiredTemplates).toEqual(embedded.requiredTemplates);
+    });
+
     it("all enabledSsot entries are valid SSOT names", () => {
       const validSsots = [
         "SSOT-0_PRD",

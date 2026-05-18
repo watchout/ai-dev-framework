@@ -80,6 +80,23 @@ describe("generateClaudeMd", () => {
     expect(result).toContain("camelCase");
     expect(result).toContain("any");
   });
+
+  it("generates MCP-server-specific instructions without web defaults", () => {
+    const result = generateClaudeMd({
+      projectName: "kodama",
+      description: "Context platform MCP server",
+      profileType: "mcp-server",
+    });
+
+    expect(result).toContain("MCP server");
+    expect(result).toContain("MCP tool contracts");
+    expect(result).toContain("stdio or HTTP");
+    expect(result).toContain("storage/index adapters");
+    expect(result).toContain("SSOT-4_DATA_MODEL");
+    expect(result).not.toContain("Next.js");
+    expect(result).not.toContain("React");
+    expect(result).not.toContain("Vercel");
+  });
 });
 
 // ─────────────────────────────────────────────
@@ -326,6 +343,20 @@ describe("generateProjectState", () => {
     expect(result.techStack.framework).toBe("next.js");
     expect(result.techStack.language).toBe("typescript");
     expect(result.techStack.testing).toBe("vitest");
+  });
+
+  it("uses MCP-server tech stack for mcp-server profile", () => {
+    const result = JSON.parse(
+      generateProjectState({
+        projectName: "kodama",
+        description: "Context platform MCP server",
+        profileType: "mcp-server",
+      }),
+    );
+    expect(result.profileType).toBe("mcp-server");
+    expect(result.techStack.framework).toBe("mcp-server");
+    expect(result.techStack.runtime).toBe("node.js");
+    expect(result.techStack.ui).toBeUndefined();
   });
 
   it("includes config with escalation mode", () => {
