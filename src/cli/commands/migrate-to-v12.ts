@@ -55,11 +55,13 @@ export function registerMigrateToV12Command(program: Command): void {
     .description('Migrate v1.1 SSOT markdown to v1.2 SPEC/IMPL/VERIFY/OPS docs')
     .option('--dry-run', 'Print planned files without writing')
     .option('--ssot <path>', 'Path to v1.1 SSOT markdown file')
-    .action(async (options: { dryRun?: boolean; ssot?: string }) => {
+    .option('--output-dir <path>', 'Directory where SPEC/IMPL/VERIFY/OPS docs are written')
+    .action(async (options: { dryRun?: boolean; ssot?: string; outputDir?: string }) => {
       try {
         const result = await migrateToV12(process.cwd(), {
           dryRun: options.dryRun ?? false,
           ssotPath: options.ssot,
+          outputDir: options.outputDir,
         });
         printResult(result);
       } catch (e) {

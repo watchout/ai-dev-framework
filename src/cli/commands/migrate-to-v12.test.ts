@@ -90,6 +90,28 @@ describe('migrate-to-v1.2 command', () => {
     ).toBe(true);
   });
 
+  it('generates 4-layer docs into a custom output directory', async () => {
+    writeSsot();
+    const program = makeProgram();
+
+    await program.parseAsync([
+      'node',
+      'framework',
+      'migrate-to-v1.2',
+      '--output-dir',
+      join(tmpDir, '.framework', 'v12-preview'),
+    ]);
+
+    expect(process.exitCode).toBeUndefined();
+    expect(existsSync(join(tmpDir, '.framework', 'v12-preview', 'spec', 'AUTH-001.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.framework', 'v12-preview', 'impl', 'AUTH-001.md'))).toBe(true);
+    expect(existsSync(join(tmpDir, 'docs', 'spec', 'AUTH-001.md'))).toBe(false);
+    expect(
+      JSON.parse(readFileSync(join(tmpDir, '.framework', 'config.json'), 'utf-8'))
+        .docs_layers.enabled
+    ).toBe(true);
+  });
+
   it('sets exitCode 2 on migration errors', async () => {
     const program = makeProgram();
 
