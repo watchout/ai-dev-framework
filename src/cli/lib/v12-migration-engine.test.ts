@@ -72,6 +72,7 @@ describe('migrateToV12', () => {
 
     expect(result.dryRun).toBe(false);
     expect(result.discoveredFeatures).toEqual(['AUTH-001', 'BILL-002']);
+    expect(result.skippedFeatures).toHaveLength(0);
     expect(result.generatedFiles).toHaveLength(8);
     expect(result.configUpdated).toBe(true);
     expect(result.reportPath).toBe(join(tmpDir, '.framework', 'reports', 'migration-20260519.md'));
@@ -95,8 +96,54 @@ describe('migrateToV12', () => {
 
     const report = readFileSync(result.reportPath!, 'utf-8');
     expect(report).toContain('Discovered features: 2');
+    expect(report).toContain('Skipped features: 0');
     expect(report).toContain('Generated files: 8');
     expect(report).toContain('AUTH-001');
+  });
+
+  it('falls back to feature catalog table rows when H2 feature boundaries are absent', async () => {
+    writeSsot([
+      '# SSOT-1: Feature Catalog',
+      '',
+      '## 2. Feature List',
+      '',
+      '| ID | Feature Name |',
+      '|----|--------------|',
+      '| AUTH-001 | Login |',
+      '| AUTH-006-010 | Better Auth range |',
+      '| ACCT-002 | Profile |',
+      '',
+    ].join('\n'));
+
+    const result = await migrateToV12(tmpDir, { dryRun: true });
+
+    expect(result.discoveredFeatures).toEqual(['AUTH-001', 'ACCT-002']);
+    expect(result.skippedFeatures).toEqual([
+      {
+        id: 'AUTH-006-010',
+        reason: 'feature ID does not match ^[A-Z][A-Z0-9]*-[0-9]{3}$',
+      },
+    ]);
+    expect(result.generatedFiles).toHaveLength(8);
+  });
+
+  it('falls back to numbered H3 feature headings when H2 boundaries are absent', async () => {
+    writeSsot([
+      '# Feature Catalog',
+      '',
+      '## 3. 機能概要',
+      '',
+      '### 3.1 F-001: 案件自動収集',
+      '',
+      '### 3.2 F-002: AI読解',
+      '',
+    ].join('\n'));
+
+    const result = await migrateToV12(tmpDir, { dryRun: true });
+
+    expect(result.discoveredFeatures).toEqual(['F-001', 'F-002']);
+    expect(result.skippedFeatures).toHaveLength(0);
+    expect(result.generatedFiles).toHaveLength(8);
   });
 
   it('dry-run reports existing output conflicts as skipped files', async () => {

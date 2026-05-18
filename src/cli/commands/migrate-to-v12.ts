@@ -7,9 +7,21 @@ import { migrateToV12 } from '../lib/v12-migration-engine.js';
 function printResult(result: Awaited<ReturnType<typeof migrateToV12>>): void {
   const verb = result.dryRun ? 'Would generate' : 'Generated';
   console.log(`Discovered ${result.discoveredFeatures.length} feature(s).`);
+  if (result.skippedFeatures.length > 0) {
+    console.log(`Skipped ${result.skippedFeatures.length} feature(s).`);
+  }
   console.log(`${verb} ${result.generatedFiles.length} file(s).`);
 
+  if (result.skippedFeatures.length > 0) {
+    console.log('');
+    console.log('Skipped features:');
+    for (const skipped of result.skippedFeatures) {
+      console.log(`  - ${skipped.id}: ${skipped.reason}`);
+    }
+  }
+
   if (result.skippedFiles.length > 0) {
+    console.log('');
     console.log(`Skipped ${result.skippedFiles.length} file(s):`);
     for (const skipped of result.skippedFiles) {
       console.log(`  - ${skipped.path}: ${skipped.reason}`);

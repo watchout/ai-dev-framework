@@ -2,8 +2,9 @@
 id: SPEC-{FEATURE}-{NNN}
 status: Draft
 traces:
-  impl: []
-  verify: []
+  impl: [IMPL-{FEATURE}-{NNN}]
+  verify: [VERIFY-{FEATURE}-{NNN}]
+  ops: [OPS-{FEATURE}-{NNN}]
 ---
 
 # SPEC: {feature-name}

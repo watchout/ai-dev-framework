@@ -81,6 +81,12 @@ const WARNING_THRESHOLD = 3;
 // Section extraction
 // ─────────────────────────────────────────────
 
+function extractFrontMatterId(content: string): string | null {
+  const match = content.match(/^---\n[\s\S]*?^id:\s*(.+)$/m);
+  if (!match) return null;
+  return match[1].trim().replace(/^["']|["']$/g, "");
+}
+
 /**
  * Extract H2 sections from markdown content.
  * Returns array of { heading, body } for each ## section.
@@ -302,6 +308,10 @@ export function validateSpec(
 
   const content = fs.readFileSync(specPath, "utf-8");
   const docId = path.basename(specPath, ".md");
+  const frontMatterId = extractFrontMatterId(content);
+  if (frontMatterId && !frontMatterId.startsWith("SPEC-")) {
+    return result;
+  }
   const sections = extractSections(content);
 
   // ── Check 1: Required sections ──

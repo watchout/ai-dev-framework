@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname, join, resolve } from 'node:path';
 import { parseSsot } from './ssot-parser.js';
 import { generateFeatureTemplates } from './template-generator.js';
+import { SsotParseError } from './ssot-parser.js';
 
 export interface V12MigrationOptions {
   ssotPath?: string;
@@ -18,6 +19,7 @@ export interface V12MigrationOptions {
 
 export interface V12MigrationResult {
   discoveredFeatures: string[];
+  skippedFeatures: { id: string; reason: string }[];
   generatedFiles: string[];
   skippedFiles: { path: string; reason: string }[];
   configUpdated: boolean;
@@ -36,6 +38,7 @@ export class V12MigrationError extends Error {
 }
 
 const LAYERS = ['spec', 'impl', 'verify', 'ops'] as const;
+const FEATURE_NAME_RE = /^[A-Z][A-Z0-9]*-[0-9]{3}$/;
 
 function defaultSsotPath(projectDir: string): string {
   return join(projectDir, 'docs', 'ssot.md');
@@ -49,6 +52,60 @@ function plannedPaths(outputDir: string, features: string[]): string[] {
   return features.flatMap((feature) =>
     LAYERS.map((layer) => resolve(outputDir, layer, `${feature}.md`))
   );
+}
+
+function unique(values: string[]): string[] {
+  return [...new Set(values)];
+}
+
+function discoverFeatureCandidates(content: string): string[] {
+  const candidates: string[] = [];
+  const headingRe = /^#{2,3}\s+(?:\d+(?:\.\d+)*\s+)?(?:\[?([A-Z][A-Z0-9]*-\d{3}(?:-\d{3})?)\]?)(?=\b|:|\s)/gm;
+  const tableRe = /^\|\s*([A-Z][A-Z0-9]*-\d{3}(?:-\d{3})?)\s*\|/gm;
+
+  for (const match of content.matchAll(headingRe)) {
+    candidates.push(match[1]);
+  }
+  for (const match of content.matchAll(tableRe)) {
+    candidates.push(match[1]);
+  }
+  return unique(candidates);
+}
+
+function parseOrDiscoverFeatures(ssotPath: string): {
+  features: string[];
+  skippedFeatures: { id: string; reason: string }[];
+  items: Map<string, string[]>;
+} {
+  try {
+    const parsed = parseSsot(ssotPath);
+    return { ...parsed, skippedFeatures: [] };
+  } catch (e) {
+    if (
+      !(e instanceof SsotParseError) ||
+      !e.message.includes('No feature boundaries detected')
+    ) {
+      throw e;
+    }
+  }
+
+  const content = readFileSync(ssotPath, 'utf-8');
+  const candidates = discoverFeatureCandidates(content);
+  const features = candidates.filter((id) => FEATURE_NAME_RE.test(id));
+  const skippedFeatures = candidates
+    .filter((id) => !FEATURE_NAME_RE.test(id))
+    .map((id) => ({
+      id,
+      reason: 'feature ID does not match ^[A-Z][A-Z0-9]*-[0-9]{3}$',
+    }));
+
+  if (features.length === 0) {
+    throw new V12MigrationError(
+      `No migratable features detected in SSOT: ${ssotPath}`
+    );
+  }
+
+  return { features, skippedFeatures, items: new Map() };
 }
 
 function findExisting(paths: string[]): { path: string; reason: string }[] {
@@ -130,6 +187,7 @@ function writeMigrationReport(
     '',
     `- Dry run: ${result.dryRun ? 'yes' : 'no'}`,
     `- Discovered features: ${result.discoveredFeatures.length}`,
+    `- Skipped features: ${result.skippedFeatures.length}`,
     `- Generated files: ${result.generatedFiles.length}`,
     `- Skipped files: ${result.skippedFiles.length}`,
     `- Config updated: ${result.configUpdated ? 'yes' : 'no'}`,
@@ -141,6 +199,12 @@ function writeMigrationReport(
     '## Generated Files',
     '',
     ...result.generatedFiles.map((file) => `- ${file}`),
+    '',
+    '## Skipped Features',
+    '',
+    ...(result.skippedFeatures.length === 0
+      ? ['- none']
+      : result.skippedFeatures.map((s) => `- ${s.id}: ${s.reason}`)),
     '',
     '## Skipped Files',
     '',
@@ -160,13 +224,14 @@ export async function migrateToV12(
   const ssotPath = options.ssotPath ?? defaultSsotPath(projectDir);
   const outputDir = options.outputDir ?? defaultOutputDir(projectDir);
   const dryRun = options.dryRun ?? false;
-  const parsed = parseSsot(ssotPath);
+  const parsed = parseOrDiscoverFeatures(ssotPath);
   const planned = plannedPaths(outputDir, parsed.features);
   const skippedFiles = findExisting(planned);
 
   if (dryRun) {
     return {
       discoveredFeatures: parsed.features,
+      skippedFeatures: parsed.skippedFeatures,
       generatedFiles: planned,
       skippedFiles,
       configUpdated: false,
@@ -194,6 +259,7 @@ export async function migrateToV12(
 
     const resultWithoutReport = {
       discoveredFeatures: parsed.features,
+      skippedFeatures: parsed.skippedFeatures,
       generatedFiles,
       skippedFiles: [],
       configUpdated: true,
