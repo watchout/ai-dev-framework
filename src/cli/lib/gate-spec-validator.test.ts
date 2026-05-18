@@ -209,6 +209,26 @@ describe("validateSpec", () => {
     expect(result.warnings).toHaveLength(0);
   });
 
+  it("skips colocated non-SPEC layer documents", () => {
+    writeProjectJson("app");
+    const specPath = writeSpec("impl-colocated", `---
+id: IMPL-DOC4L-017
+status: Draft
+traces:
+  spec: [SPEC-DOC4L-017]
+---
+
+# IMPL colocated under docs/spec
+
+## §1 概要
+`);
+    const result = validateSpec(specPath, tmpDir);
+
+    expect(result.status).toBe("PASS");
+    expect(result.critical).toHaveLength(0);
+    expect(result.warnings).toHaveLength(0);
+  });
+
   it("missing §7 (acceptance criteria) → CRITICAL, BLOCK", () => {
     writeProjectJson("app");
     const content = makeValidSpec().replace(

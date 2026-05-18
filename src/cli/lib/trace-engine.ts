@@ -142,6 +142,14 @@ function detectLayer(filePath: string): LayerType | null {
   return null;
 }
 
+function detectLayerFromId(id: string): LayerType | null {
+  const prefix = id.split("-", 1)[0]?.toLowerCase();
+  if (LAYERS.includes(prefix as LayerType)) {
+    return prefix as LayerType;
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────────
 // Config reader (for docs_layers.enabled check)
 // ─────────────────────────────────────────────
@@ -223,10 +231,34 @@ export function buildGraph(docsDir: string, projectDir?: string): Map<string, Do
 // verifyTraceability (IMPL §3 — step 2-1)
 // ─────────────────────────────────────────────
 
+function buildIdAliases(graph: Map<string, DocumentNode>): Map<string, string> {
+  const aliases = new Map<string, string>();
+  const bundleRe = /^(SPEC|IMPL|VERIFY|OPS)-(.+)-(\d{3})-(\d{3})$/;
+  for (const id of graph.keys()) {
+    aliases.set(id, id);
+    const match = id.match(bundleRe);
+    if (!match) continue;
+    const [, layer, feature, startRaw, endRaw] = match;
+    const start = Number(startRaw);
+    const end = Number(endRaw);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || end < start) {
+      continue;
+    }
+    if (end - start > 99) {
+      continue;
+    }
+    for (let n = start; n <= end; n++) {
+      aliases.set(`${layer}-${feature}-${String(n).padStart(3, "0")}`, id);
+    }
+  }
+  return aliases;
+}
+
 export function verifyTraceability(
   graph: Map<string, DocumentNode>,
 ): TraceResult {
-  const allIds = new Set(graph.keys());
+  const aliases = buildIdAliases(graph);
+  const allIds = new Set(aliases.keys());
   const referenced = new Set<string>();
   const orphans: DocumentNode[] = [];
   const missing: TraceResult["missing"] = [];
@@ -240,8 +272,11 @@ export function verifyTraceability(
       const refs = traces[layer];
       if (!refs) continue;
       for (const ref of refs) {
-        referenced.add(ref);
-        if (!allIds.has(ref)) {
+        const canonicalRef = aliases.get(ref);
+        if (canonicalRef) {
+          referenced.add(canonicalRef);
+        }
+        if (!canonicalRef) {
           broken.push({
             from: node.id,
             to: ref,
@@ -292,7 +327,7 @@ export function verifyTraceability(
 
   // 4. Detect oversized features: >100 ids sharing a feature prefix
   const featureCounts = new Map<string, number>();
-  for (const id of allIds) {
+  for (const id of graph.keys()) {
     // Extract feature name: e.g. "SPEC-AUTH-001" → "AUTH"
     const parts = id.split("-");
     if (parts.length >= 3) {
@@ -400,8 +435,9 @@ export function parseDocument(filePath: string): DocumentNode | null {
     sections.push(match[0].replace(/^## /, "").trim());
   }
 
-  // Detect layer from path
-  const layer = detectLayer(filePath);
+  // Detect layer from document id first. Some meta-spec layers are colocated
+  // under docs/spec for historical reasons but carry IMPL/VERIFY/OPS ids.
+  const layer = detectLayerFromId(frontMatter.id) ?? detectLayer(filePath);
   if (!layer) return null;
 
   return {

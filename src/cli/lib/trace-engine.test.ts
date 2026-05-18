@@ -102,6 +102,20 @@ traces: {}
     }
   });
 
+  it("prefers layer from front matter id over historical file path", () => {
+    const filePath = writeDoc("spec", "impl-colocated", `---
+id: IMPL-DOC4L-017
+status: Draft
+traces:
+  spec: [SPEC-DOC4L-017]
+---
+# Colocated IMPL doc`);
+
+    const doc = parseDocument(filePath);
+    expect(doc).not.toBeNull();
+    expect(doc!.layer).toBe("impl");
+  });
+
   it("handles Frozen and Deprecated status", () => {
     const filePath = writeDoc("impl", "frozen", `---
 id: IMPL-FROZEN-001
@@ -326,6 +340,34 @@ traces:
     );
     expect(brokenEntry).toBeDefined();
     expect(brokenEntry!.reason).toContain("not found in graph");
+  });
+
+  it("resolves bundled document ids as aliases for member ids", () => {
+    writeConfig({ docs_layers: { enabled: true } });
+
+    writeDoc("spec", "bundle", `---
+id: SPEC-DOC4L-010-011
+status: Draft
+traces:
+  impl: [IMPL-DOC4L-010, IMPL-DOC4L-011]
+---
+# Bundled spec`);
+
+    writeDoc("impl", "bundle", `---
+id: IMPL-DOC4L-010-011
+status: Draft
+traces:
+  spec: [SPEC-DOC4L-010, SPEC-DOC4L-011]
+---
+# Bundled impl`);
+
+    const docsDir = path.join(tmpDir, "docs");
+    const graph = buildGraph(docsDir);
+    const result = verifyTraceability(graph);
+
+    expect(result.orphans).toHaveLength(0);
+    expect(result.missing).toHaveLength(0);
+    expect(result.broken).toHaveLength(0);
   });
 
   it("oversized feature (101 ids) -> WARNING", () => {
