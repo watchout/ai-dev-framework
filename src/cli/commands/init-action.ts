@@ -18,7 +18,7 @@ import {
   AGENT_TEMPLATES,
   type ProjectConfig,
 } from "../lib/templates.js";
-import { fetchFrameworkDocs } from "../lib/framework-fetch.js";
+import { fetchFrameworkDocs, findFrameworkRoot } from "../lib/framework-fetch.js";
 import {
   type ProfileType,
   getProfile,
@@ -172,7 +172,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const SKILL_DIRS = ["discovery", "design", "implement", "review", "scan-updates", "gate-design", "gate-quality", "gate-release"];
   const frameworkRoot = options.frameworkSourceDir
     ? options.frameworkSourceDir
-    : path.join(projectPath, ".framework/tmp");
+    : (findFrameworkRoot() ?? path.join(projectPath, ".framework/tmp"));
   let skillsCopied = 0;
   for (const skillName of SKILL_DIRS) {
     const srcPath = path.join(frameworkRoot, "templates/skills", skillName, "SKILL.md");
@@ -205,6 +205,21 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const statePath = path.join(projectPath, ".framework/project.json");
   fs.writeFileSync(statePath, generateProjectState(config), "utf-8");
   createdFiles.push(".framework/project.json");
+
+  const frameworkConfigPath = path.join(projectPath, ".framework/config.json");
+  fs.writeFileSync(
+    frameworkConfigPath,
+    `${JSON.stringify(
+      {
+        provider: { default: "claude" },
+        docs_layers: { enabled: true },
+      },
+      null,
+      2,
+    )}\n`,
+    "utf-8",
+  );
+  createdFiles.push(".framework/config.json");
 
   // Gate state: managed by GitHub Actions check runs (#62)
   // Local gates.json is created on-demand by `framework gate check` (local cache for hooks).

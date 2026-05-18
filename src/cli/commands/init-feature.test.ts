@@ -47,13 +47,26 @@ describe("init-feature CLI", { timeout: 15000 }, () => {
     expect(result.exitCode).toBe(0);
 
     for (const layer of ["spec", "impl", "verify", "ops"]) {
-      const filePath = path.join(tmpDir, "docs", layer, "testfeat.md");
+      const filePath = path.join(tmpDir, "docs", layer, "TESTFEAT-001.md");
       expect(fs.existsSync(filePath)).toBe(true);
 
       const content = fs.readFileSync(filePath, "utf-8");
       expect(content).toContain("---");
       expect(content).toContain(`id: ${layer.toUpperCase()}-TESTFEAT-001`);
     }
+  });
+
+  it("normalizes slug input to a canonical feature id", () => {
+    const result = runInitFeature("source-registry");
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain(
+      "Input 'source-registry' normalized to 'SOURCEREGISTRY-001'",
+    );
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, "docs", "spec", "SOURCEREGISTRY-001.md"),
+      ),
+    ).toBe(true);
   });
 
   // VERIFY §2: boundary values
@@ -65,6 +78,9 @@ describe("init-feature CLI", { timeout: 15000 }, () => {
   it("accepts 1-char feature name", () => {
     const result = runInitFeature("a");
     expect(result.exitCode).toBe(0);
+    expect(fs.existsSync(path.join(tmpDir, "docs", "spec", "A-001.md"))).toBe(
+      true,
+    );
   });
 
   it("accepts 64-char feature name", () => {

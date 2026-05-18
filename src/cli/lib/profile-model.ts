@@ -362,7 +362,7 @@ const PROFILES: Record<ProfileType, ProjectProfile> = {
     id: "mcp-server",
     name: "MCP Server",
     description: "Model Context Protocol server (stdio or HTTP transport)",
-    enabledSsot: ["SSOT-0_PRD", "SSOT-3_API_CONTRACT"],
+    enabledSsot: ["SSOT-0_PRD", "SSOT-3_API_CONTRACT", "SSOT-4_DATA_MODEL"],
     enabledAudit: ["code", "test"],
     discoveryStages: [1, 2, 3],
     freezeRequired: [1, 2, 3],
@@ -370,6 +370,7 @@ const PROFILES: Record<ProfileType, ProjectProfile> = {
     requiredTemplates: [
       "docs/requirements/SSOT-0_PRD.md",
       "docs/design/core/SSOT-3_API_CONTRACT.md",
+      "docs/design/core/SSOT-4_DATA_MODEL.md",
       "docs/standards/TECH_STACK.md",
       "docs/standards/CODING_STANDARDS.md",
       "docs/standards/TESTING_STANDARDS.md",
@@ -377,7 +378,6 @@ const PROFILES: Record<ProfileType, ProjectProfile> = {
     skipTemplates: [
       "SSOT-1_FEATURE_CATALOG",
       "SSOT-2_UI_STATE",
-      "SSOT-4_DATA_MODEL",
       "docs/design/features/common/",
       "docs/marketing/",
       "docs/growth/",
@@ -396,7 +396,7 @@ const PROFILES: Record<ProfileType, ProjectProfile> = {
     defaultTechStack: {
       frontend: null,
       backend: "Node.js (TypeScript) MCP SDK",
-      database: null,
+      database: "SQLite/PostgreSQL via storage adapter",
       auth: null,
       hosting: "stdio / npm registry",
       testing: "Vitest",
@@ -522,6 +522,15 @@ export function getDiscoveryStages(profile: ProjectProfile): number[] {
 // ─────────────────────────────────────────────
 
 const INFERENCE_RULES: { keywords: string[]; type: ProfileType }[] = [
+  {
+    keywords: [
+      "mcp",
+      "model context protocol",
+      "context protocol",
+      "tool server",
+    ],
+    type: "mcp-server",
+  },
   {
     keywords: [
       "cli",
