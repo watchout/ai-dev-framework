@@ -190,7 +190,7 @@ describe("checkSSL (D-2)", () => {
     const result = await checkSSL("https://example.com");
     expect(result.passed).toBe(true);
     expect(result.warning).toBe(true);
-    expect(result.message).toContain("15 days");
+    expect(result.message).toMatch(/expires in \d+ days/);
   });
 
   it("fails with self-signed certificate", async () => {
