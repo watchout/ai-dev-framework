@@ -24,7 +24,9 @@ import {
 import { updateClaudeMdSkillSection } from "../lib/claudemd-updater.js";
 import { installClaudeCodeHook } from "../lib/hooks-installer.js";
 import { installMcpJson } from "../lib/mcp-installer.js";
-import { loadProfileType } from "../lib/profile-model.js";
+import { installGitHubTemplates } from "../lib/github-templates.js";
+import { checkAllGates } from "../lib/gate-engine.js";
+import { loadProfileType, type ProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
 
 export function registerUpdateCommand(program: Command): void {
@@ -70,9 +72,11 @@ export function registerUpdateCommand(program: Command): void {
             for (const project of projects) {
               logger.info(`  Updating: ${project.name} (${project.path})`);
               try {
+                const profileType = loadProfileType(project.path) ?? undefined;
                 const result = await fetchFrameworkDocs(project.path, {
                   force: true,
-                  profileType: loadProfileType(project.path) ?? undefined,
+                  profileType,
+                  backupExisting: true,
                 });
                 if (result.errors.length > 0) {
                   for (const err of result.errors) {
@@ -80,7 +84,11 @@ export function registerUpdateCommand(program: Command): void {
                   }
                   failCount++;
                 } else {
+                  updateReusableProjectFiles(project.path, profileType);
                   logger.success(`    Updated ${result.copiedFiles.length} files`);
+                  if (result.archivedPath) {
+                    logger.info(`    Previous standards archived: ${result.archivedPath}`);
+                  }
                   successCount++;
                 }
               } catch (err) {
@@ -142,13 +150,15 @@ export function registerUpdateCommand(program: Command): void {
             );
           }
 
-          const totalSteps = 7;
+          const totalSteps = 9;
+          const profileType = loadProfileType(projectDir) ?? undefined;
           logger.info("");
           logger.step(1, totalSteps, "Fetching latest framework docs...");
 
           const result = await fetchFrameworkDocs(projectDir, {
             force: true,
-            profileType: loadProfileType(projectDir) ?? undefined,
+            profileType,
+            backupExisting: true,
           });
 
           if (result.errors.length > 0) {
@@ -156,6 +166,10 @@ export function registerUpdateCommand(program: Command): void {
               logger.error(err);
             }
             process.exit(1);
+          }
+
+          if (result.archivedPath) {
+            logger.info(`  Previous standards archived: ${result.archivedPath}`);
           }
 
           logger.step(2, totalSteps, "Updating Agent Teams templates...");
@@ -220,7 +234,29 @@ export function registerUpdateCommand(program: Command): void {
             logger.info(`  ${mcpResult.reason}`);
           }
 
-          logger.step(7, totalSteps, "Update complete.");
+          logger.step(7, totalSteps, "Updating GitHub templates...");
+          const ghResult = updateGitHubTemplates(projectDir, profileType);
+          if (ghResult.installed.length > 0) {
+            logger.success(`Updated ${ghResult.installed.length} GitHub templates`);
+          } else {
+            logger.info("  GitHub templates up to date (or template source unavailable)");
+          }
+          for (const w of ghResult.skipped) {
+            logger.info(`  Skipped: ${w}`);
+          }
+          for (const err of ghResult.errors) {
+            logger.warn(`GitHub templates: ${err}`);
+          }
+
+          logger.step(8, totalSteps, "Regenerating .framework/gates.json...");
+          const gateResult = checkAllGates(projectDir, undefined, profileType);
+          if (gateResult.allPassed) {
+            logger.success("Gates regenerated: all passed");
+          } else {
+            logger.warn("Gates regenerated with failures; inspect .framework/gates.json");
+          }
+
+          logger.step(9, totalSteps, "Update complete.");
           logger.info("");
           logger.success(
             `Updated ${result.copiedFiles.length} framework docs`,
@@ -244,6 +280,9 @@ export function registerUpdateCommand(program: Command): void {
           if (mcpResult.installed) {
             logger.success("Playwright MCP configured (.mcp.json)");
           }
+          if (ghResult.installed.length > 0) {
+            logger.success("GitHub templates updated");
+          }
           logger.info(
             `  Version: ${result.version.slice(0, 8)}`,
           );
@@ -256,4 +295,35 @@ export function registerUpdateCommand(program: Command): void {
         }
       },
     );
+}
+
+function updateReusableProjectFiles(
+  projectDir: string,
+  profileType?: ProfileType,
+): void {
+  const fwRoot = findFrameworkRoot();
+  updateAgentTemplates(projectDir);
+  if (fwRoot) {
+    updateSkillTemplates(projectDir, fwRoot);
+    updateGitHubTemplates(projectDir, profileType);
+  }
+  updateClaudeMdSkillSection(projectDir);
+  installClaudeCodeHook(projectDir);
+  installMcpJson(projectDir);
+  checkAllGates(projectDir, undefined, profileType);
+}
+
+function updateGitHubTemplates(
+  projectDir: string,
+  profileType?: ProfileType,
+) {
+  const fwRoot = findFrameworkRoot();
+  if (!fwRoot || !profileType) {
+    return { installed: [], skipped: [], errors: [] };
+  }
+  return installGitHubTemplates(projectDir, profileType, fwRoot, {
+    projectName: path.basename(projectDir),
+    force: true,
+    pruneObsolete: true,
+  });
 }

@@ -26,17 +26,19 @@ export interface GitHubTemplateResult {
  * @param frameworkRoot Root of the ai-dev-framework repo (for template source)
  * @param options.projectName Used for CI workflow {{PROJECT_NAME}} replacement
  * @param options.force Overwrite existing files (default: false)
+ * @param options.pruneObsolete Remove profile-inapplicable generated templates
  */
 export function installGitHubTemplates(
   projectDir: string,
   profileType: ProfileType,
   frameworkRoot: string,
-  options?: { projectName?: string; force?: boolean },
+  options?: { projectName?: string; force?: boolean; pruneObsolete?: boolean },
 ): GitHubTemplateResult {
   const installed: string[] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
   const force = options?.force ?? false;
+  const pruneObsolete = options?.pruneObsolete ?? false;
   const projectName = options?.projectName ?? path.basename(projectDir);
 
   // Ensure directories exist
@@ -106,6 +108,13 @@ export function installGitHubTemplates(
 
   // 3. Issue Templates
   const issueTemplates = issueTemplatesForProfile(profileType);
+  if (pruneObsolete) {
+    pruneObsoleteIssueTemplates(
+      projectDir,
+      issueTemplates,
+      installed,
+    );
+  }
   for (const tmpl of issueTemplates) {
     const src = path.join(frameworkRoot, "templates/github/ISSUE_TEMPLATE", tmpl);
     const dest = path.join(projectDir, ".github/ISSUE_TEMPLATE", tmpl);
@@ -118,6 +127,33 @@ export function installGitHubTemplates(
   copyTemplateFile(codeownersSrc, codeownersDest, force, installed, skipped, errors);
 
   return { installed, skipped, errors };
+}
+
+function pruneObsoleteIssueTemplates(
+  projectDir: string,
+  keepTemplates: string[],
+  installed: string[],
+): void {
+  const issueDir = path.join(projectDir, ".github/ISSUE_TEMPLATE");
+  if (!fs.existsSync(issueDir)) return;
+
+  const keep = new Set(keepTemplates);
+  const generatedTemplates = [
+    "feature-db.md",
+    "feature-api.md",
+    "feature-ui.md",
+    "feature-test.md",
+    "bug.md",
+  ];
+
+  for (const tmpl of generatedTemplates) {
+    if (keep.has(tmpl)) continue;
+    const target = path.join(issueDir, tmpl);
+    if (fs.existsSync(target)) {
+      fs.rmSync(target, { force: true });
+      installed.push(`.github/ISSUE_TEMPLATE/${tmpl} (removed obsolete)`);
+    }
+  }
 }
 
 function issueTemplatesForProfile(profileType: ProfileType): string[] {
