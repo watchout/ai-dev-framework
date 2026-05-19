@@ -52,9 +52,10 @@ const version = packageJson.version;
 const program = new Command();
 
 program
-  .name("framework")
+  .name("shirube")
+  .alias("framework")
   .description(
-    "AI Development Framework CLI - Automates the development lifecycle from discovery to deployment",
+    "Shirube CLI - Automates the development lifecycle from discovery to deployment",
   )
   .version(version);
 

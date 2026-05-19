@@ -1,6 +1,8 @@
-# AI Development Framework v3.2
+# Shirube v3.2
 
-AI駆動の開発フレームワーク。曖昧なプロダクトアイデアから実装まで、品質を保証しながら自動化する。
+Shirube は、AI駆動の開発フレームワークです。曖昧なプロダクトアイデアから実装まで、品質を保証しながら自動化します。
+
+> 旧称: AI Development Framework / ADF。既存プロジェクトとの互換性のため、`framework` コマンドと `.framework/` ディレクトリは当面維持します。
 
 ## 特徴
 
@@ -49,42 +51,44 @@ AI駆動の開発フレームワーク。曖昧なプロダクトアイデアか
 
 ### インストール
 ```bash
-git clone https://github.com/watchout/ai-dev-platform.git
-cd ai-dev-platform
+git clone https://github.com/watchout/ai-dev-framework.git
+cd ai-dev-framework
 npm install
 npm link
 ```
 
 ### 利用可能なコマンド
 ```bash
+shirube --help
+# compatibility alias
 framework --help
 ```
 
 ### 新規プロジェクト
 ```bash
-framework init my-project --type=app
+shirube init my-project --type=app
 cd my-project
-framework discover
-framework generate business
-framework generate product
-framework generate technical
-framework plan
-framework run --start-only --json
-framework audit all
+shirube discover
+shirube generate business
+shirube generate product
+shirube generate technical
+shirube plan
+shirube run --start-only --json
+shirube audit all
 ```
 
 ### 既存プロジェクト
 ```bash
 cd /path/to/existing-project
-framework retrofit
-framework plan
-framework run --start-only --json
-framework audit all
+shirube retrofit
+shirube plan
+shirube run --start-only --json
+shirube audit all
 ```
 
 ### 進捗確認
 ```bash
-framework status
+shirube status
 ```
 
 詳細は [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) を参照。
@@ -94,15 +98,15 @@ framework status
 ## CLIコマンド
 
 ```
-framework init [name]       プロジェクト初期化（--type=app|lp|hp|api|cli）
-framework discover          ディスカバリー（ヒアリング実行）
-framework generate <step>   SSOT生成（business|product|technical）
-framework plan              実装計画作成（タスク分解）
-framework audit [target]    品質監査（ssot|code|test|visual|all）
-framework run <task-id>     タスク実行 / start-only / heartbeat / fail-task
-framework status            進捗表示（--json でダッシュボード・ランナー連携）
-framework retrofit          既存プロジェクト導入
-framework update            フレームワーク更新
+shirube init [name]       プロジェクト初期化（--type=app|lp|hp|api|cli）
+shirube discover          ディスカバリー（ヒアリング実行）
+shirube generate <step>   SSOT生成（business|product|technical）
+shirube plan              実装計画作成（タスク分解）
+shirube audit [target]    品質監査（ssot|code|test|visual|all）
+shirube run <task-id>     タスク実行 / start-only / heartbeat / fail-task
+shirube status            進捗表示（--json でダッシュボード・ランナー連携）
+shirube retrofit          既存プロジェクト導入
+shirube update            フレームワーク更新
 ```
 
 ---
@@ -139,11 +143,11 @@ framework update            フレームワーク更新
 
 | タイプ | 用途 | コマンド |
 |--------|------|---------|
-| `app` | フルスタックWebアプリ（デフォルト） | `framework init my-app` |
-| `lp` | ランディングページ | `framework init my-lp --type=lp` |
-| `hp` | ホームページ | `framework init my-hp --type=hp` |
-| `api` | API/バックエンド | `framework init my-api --type=api` |
-| `cli` | CLIツール | `framework init my-cli --type=cli` |
+| `app` | フルスタックWebアプリ（デフォルト） | `shirube init my-app` |
+| `lp` | ランディングページ | `shirube init my-lp --type=lp` |
+| `hp` | ホームページ | `shirube init my-hp --type=hp` |
+| `api` | API/バックエンド | `shirube init my-api --type=api` |
+| `cli` | CLIツール | `shirube init my-cli --type=cli` |
 
 タイプによって生成されるSSOT・実行される監査・Discoveryの範囲が変わります。
 
@@ -153,7 +157,7 @@ framework update            フレームワーク更新
 
 | リポジトリ | 説明 |
 |-----------|------|
-| [ai-dev-platform](https://github.com/watchout/ai-dev-platform) | CLIツール本体（`framework` コマンド） |
+| [ai-dev-framework](https://github.com/watchout/ai-dev-framework) | Shirube CLI本体（`shirube` / `framework` コマンド） |
 
 ---
 

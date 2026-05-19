@@ -64,7 +64,7 @@ export function registerFeedbackCommand(program: Command): void {
     .command("approve")
     .description("Approve a proposal by ID (applies diff and commits)")
     .argument("<id>", "Proposal ID")
-    .option("--push-upstream", "Create PR in ai-dev-framework repository")
+    .option("--push-upstream", "Create PR in the Shirube repository")
     .option("--telegram", "Request approval via Telegram before applying")
     .action((id: string, options: { pushUpstream?: boolean; telegram?: boolean }) => {
       try {

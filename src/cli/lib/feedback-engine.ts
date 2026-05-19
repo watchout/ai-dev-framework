@@ -167,7 +167,7 @@ export function applyDiff(targetFile: string, diff: string): void {
  * Send a notification via openclaw system event.
  */
 export function notifyProposal(proposal: Proposal): void {
-  const text = `【ai-dev-framework】新しい改善提案: ${proposal.title} [id: ${proposal.id}]`;
+  const text = `【Shirube】新しい改善提案: ${proposal.title} [id: ${proposal.id}]`;
   spawnSync("openclaw", ["system", "event", "--text", text, "--mode", "now"], {
     encoding: "utf-8",
     timeout: 10000,
