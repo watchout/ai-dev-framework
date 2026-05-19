@@ -107,6 +107,14 @@ Then ダッシュボードにリダイレクトされる
 
 ## §8 前提・依存
 - Supabase Auth
+
+## §10 制御機構選定原則
+| FR | 機構 (script / Hook / 両者) | 不可避 case 該当 (Hook のみ) | 根拠 |
+|---|---|---|---|
+| SPEC-AUTH-001 | script | - | Vitest acceptance test and CI gate |
+
+## §Evidence
+- src/cli/lib/gate-spec-validator.test.ts: valid-spec fixture covers this contract.
 `;
 }
 
@@ -155,6 +163,14 @@ Then ダッシュボードにリダイレクトされる
 
 ## §8 前提・依存
 - Supabase Auth
+
+## §10 制御機構選定原則
+| FR | 機構 (script / Hook / 両者) | 不可避 case 該当 (Hook のみ) | 根拠 |
+|---|---|---|---|
+| SPEC-AUTH-001 | script | - | Vitest acceptance test and CI gate |
+
+## §Evidence
+- src/cli/lib/gate-spec-validator.test.ts: valid-spec fixture covers this contract.
 `;
 }
 
@@ -195,6 +211,14 @@ Then ダッシュボードにリダイレクトされる
 
 ## §8 前提・依存
 - Supabase Auth
+
+## §10 制御機構選定原則
+| FR | 機構 (script / Hook / 両者) | 不可避 case 該当 (Hook のみ) | 根拠 |
+|---|---|---|---|
+| SPEC-AUTH-001 | script | - | Vitest acceptance test and CI gate |
+
+## §Evidence
+- src/cli/lib/gate-spec-validator.test.ts: valid-spec fixture covers this contract.
 `;
 }
 

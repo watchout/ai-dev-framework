@@ -219,6 +219,56 @@ describe("fetchFrameworkDocs", () => {
     expect(hasChecklistFile).toBe(true);
   });
 
+  it("filters marketing, Stripe, and browser-only standards for mcp-server projects", async () => {
+    createFakeFrameworkRepo();
+    fs.mkdirSync(path.join(sourceDir, "marketing"), { recursive: true });
+    fs.writeFileSync(
+      path.join(sourceDir, "marketing/LAUNCH_PLAN.md"),
+      "# Launch Plan",
+    );
+    fs.mkdirSync(path.join(sourceDir, "growth"), { recursive: true });
+    fs.writeFileSync(
+      path.join(sourceDir, "growth/GROWTH_STRATEGY.md"),
+      "# Growth",
+    );
+    fs.mkdirSync(path.join(sourceDir, "testing"), { recursive: true });
+    fs.writeFileSync(
+      path.join(sourceDir, "testing/l3-e2e-browser-use.md"),
+      "# Browser E2E",
+    );
+    fs.writeFileSync(
+      path.join(sourceDir, "SECURITY_STRIPE.md"),
+      "# Stripe Security",
+    );
+
+    const targetDir = path.join(tmpDir, "mcp-project");
+    fs.mkdirSync(targetDir, { recursive: true });
+
+    const result = await fetchFrameworkDocs(targetDir, {
+      sourceDir,
+      profileType: "mcp-server",
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(
+      fs.existsSync(path.join(targetDir, "docs/standards/00_MASTER_GUIDE.md")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(targetDir, "docs/standards/marketing")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(targetDir, "docs/standards/growth")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(targetDir, "docs/standards/SECURITY_STRIPE.md")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(targetDir, "docs/standards/testing/l3-e2e-browser-use.md"),
+      ),
+    ).toBe(false);
+  });
+
   it("file content is correctly copied", async () => {
     createFakeFrameworkRepo();
     const targetDir = path.join(tmpDir, "my-project");

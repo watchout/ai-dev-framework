@@ -55,7 +55,11 @@ export interface GateSpecResult {
       | "OWASP_NA_WithoutReason"
       | "OWASP_Missing"
       | "SecuritySection_Missing"
-      | "MissingRequiredSection";
+      | "MissingRequiredSection"
+      | "PlaceholderContent"
+      | "EmptyGherkinStep"
+      | "MissingEvidence"
+      | "MissingControlMechanism";
     message: string;
   }[];
   warnings: { docId: string; type: string; message: string }[];
@@ -295,10 +299,10 @@ export function verifyTraceability(
   }
 
   // 3. Detect missing cross-layer references (all expected directions)
-  //    spec→impl, impl→spec, verify→impl, verify→spec, ops→spec, ops→impl
+  //    spec→impl, impl→spec/verify/ops, verify→impl/spec, ops→spec/impl
   const expectedTraces: Record<LayerType, LayerType[]> = {
     spec: ["impl"],
-    impl: ["spec"],
+    impl: ["spec", "verify", "ops"],
     verify: ["impl", "spec"],
     ops: ["spec", "impl"],
   };

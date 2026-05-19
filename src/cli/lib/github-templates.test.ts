@@ -189,6 +189,30 @@ describe("installGitHubTemplates", () => {
     expect(prContent).toContain("Closes #XXX");
   });
 
+  it("uses MCP-server PR template and skips UI issue template", () => {
+    installGitHubTemplates(tmpDir, "mcp-server", frameworkRoot);
+
+    const prContent = fs.readFileSync(
+      path.join(tmpDir, ".github/PULL_REQUEST_TEMPLATE.md"),
+      "utf-8",
+    );
+    expect(prContent).toContain("4-Layer Docs");
+    expect(prContent).toContain("MCP Contract");
+    expect(prContent).toContain("framework trace verify");
+    expect(prContent).not.toContain("FEAT-XXX");
+
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".github/ISSUE_TEMPLATE/feature-ui.md"),
+      ),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".github/ISSUE_TEMPLATE/feature-api.md"),
+      ),
+    ).toBe(true);
+  });
+
   it("issue templates contain correct front matter", () => {
     installGitHubTemplates(tmpDir, "app", frameworkRoot);
 
