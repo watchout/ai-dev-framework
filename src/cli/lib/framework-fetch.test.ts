@@ -103,6 +103,12 @@ describe("fetchFrameworkDocs", () => {
 
   it("skips .git and .DS_Store", async () => {
     createFakeFrameworkRepo();
+    fs.mkdirSync(path.join(sourceDir, "github"), { recursive: true });
+    fs.writeFileSync(
+      path.join(sourceDir, "github/PULL_REQUEST_TEMPLATE.md"),
+      "# PR",
+    );
+    fs.writeFileSync(path.join(sourceDir, "channel-routing.json"), "{}");
     const targetDir = path.join(tmpDir, "my-project");
     fs.mkdirSync(targetDir, { recursive: true });
 
@@ -116,6 +122,12 @@ describe("fetchFrameworkDocs", () => {
     ).toBe(false);
     expect(
       fs.existsSync(path.join(targetDir, "docs/standards/.DS_Store")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(targetDir, "docs/standards/github")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(targetDir, "docs/standards/channel-routing.json")),
     ).toBe(false);
   });
 
@@ -169,6 +181,38 @@ describe("fetchFrameworkDocs", () => {
       fs.existsSync(
         path.join(targetDir, "docs/standards/00_MASTER_GUIDE.md"),
       ),
+    ).toBe(true);
+  });
+
+  it("archives existing docs/standards/ before force update when requested", async () => {
+    createFakeFrameworkRepo();
+    const targetDir = path.join(tmpDir, "my-project");
+    fs.mkdirSync(path.join(targetDir, "docs/standards"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(targetDir, "docs/standards/old-file.md"),
+      "old content",
+    );
+
+    const result = await fetchFrameworkDocs(targetDir, {
+      sourceDir,
+      force: true,
+      backupExisting: true,
+    });
+
+    expect(result.errors).toEqual([]);
+    expect(result.archivedPath).toBeDefined();
+    expect(
+      fs.existsSync(path.join(targetDir, "docs/standards/old-file.md")),
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(targetDir, result.archivedPath!, "old-file.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(path.join(targetDir, "docs/standards/00_MASTER_GUIDE.md")),
     ).toBe(true);
   });
 

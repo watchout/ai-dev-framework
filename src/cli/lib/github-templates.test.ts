@@ -213,6 +213,41 @@ describe("installGitHubTemplates", () => {
     ).toBe(true);
   });
 
+  it("overwrites stale templates and prunes obsolete issue templates on reapply", () => {
+    fs.mkdirSync(path.join(tmpDir, ".github/ISSUE_TEMPLATE"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(tmpDir, ".github/PULL_REQUEST_TEMPLATE.md"),
+      "old PR template",
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, ".github/ISSUE_TEMPLATE/feature-ui.md"),
+      "old UI template",
+    );
+
+    const result = installGitHubTemplates(tmpDir, "mcp-server", frameworkRoot, {
+      force: true,
+      pruneObsolete: true,
+    });
+
+    expect(result.errors).toHaveLength(0);
+    const prContent = fs.readFileSync(
+      path.join(tmpDir, ".github/PULL_REQUEST_TEMPLATE.md"),
+      "utf-8",
+    );
+    expect(prContent).toContain("MCP Contract");
+    expect(prContent).not.toContain("old PR template");
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".github/ISSUE_TEMPLATE/feature-ui.md"),
+      ),
+    ).toBe(false);
+    expect(result.installed).toContain(
+      ".github/ISSUE_TEMPLATE/feature-ui.md (removed obsolete)",
+    );
+  });
+
   it("issue templates contain correct front matter", () => {
     installGitHubTemplates(tmpDir, "app", frameworkRoot);
 

@@ -54,6 +54,7 @@ export interface FrameworkFetchResult {
   copiedFiles: string[];
   version: string;
   errors: string[];
+  archivedPath?: string;
 }
 
 export interface FrameworkState {
@@ -76,7 +77,12 @@ export interface FrameworkState {
  */
 export async function fetchFrameworkDocs(
   targetDir: string,
-  options?: { force?: boolean; sourceDir?: string; profileType?: ProfileType },
+  options?: {
+    force?: boolean;
+    sourceDir?: string;
+    profileType?: ProfileType;
+    backupExisting?: boolean;
+  },
 ): Promise<FrameworkFetchResult> {
   const errors: string[] = [];
   const copiedFiles: string[] = [];
@@ -156,10 +162,16 @@ export async function fetchFrameworkDocs(
     }
   }
 
+  let archivedPath: string | undefined;
+
   try {
     // Clear existing if force mode
     if (options?.force && fs.existsSync(standardsDir)) {
-      fs.rmSync(standardsDir, { recursive: true, force: true });
+      if (options.backupExisting) {
+        archivedPath = archiveExistingStandards(targetDir, standardsDir);
+      } else {
+        fs.rmSync(standardsDir, { recursive: true, force: true });
+      }
     }
 
     // Ensure target directory exists
@@ -194,7 +206,7 @@ export async function fetchFrameworkDocs(
     }
   }
 
-  return { copiedFiles, version, errors };
+  return { copiedFiles, version, errors, archivedPath };
 }
 
 /**
@@ -234,6 +246,27 @@ function saveFrameworkState(
   fs.writeFileSync(statePath, JSON.stringify(state, null, 2), "utf-8");
 }
 
+function archiveExistingStandards(
+  targetDir: string,
+  standardsDir: string,
+): string {
+  const archiveRoot = path.join(targetDir, ".framework/archive");
+  if (!fs.existsSync(archiveRoot)) {
+    fs.mkdirSync(archiveRoot, { recursive: true });
+  }
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  let archivePath = path.join(archiveRoot, `standards-${stamp}`);
+  let suffix = 1;
+  while (fs.existsSync(archivePath)) {
+    archivePath = path.join(archiveRoot, `standards-${stamp}-${suffix}`);
+    suffix++;
+  }
+
+  fs.renameSync(standardsDir, archivePath);
+  return path.relative(targetDir, archivePath);
+}
+
 /**
  * Directories in templates/ that should NOT be copied to docs/standards/.
  * These are distribution templates handled separately by init/update/hooks.
@@ -241,6 +274,7 @@ function saveFrameworkState(
 const EXCLUDED_TEMPLATE_DIRS = new Set([
   "ci",
   "hooks",
+  "github",
   "profiles",
   "project",
   "skills",
@@ -263,6 +297,7 @@ function copyDirRecursive(
 
   for (const entry of entries) {
     if (entry.name === ".git" || entry.name === ".DS_Store") continue;
+    if (isTopLevel && entry.name === "channel-routing.json") continue;
 
     const relativePath = relativeDir
       ? path.join(relativeDir, entry.name)
