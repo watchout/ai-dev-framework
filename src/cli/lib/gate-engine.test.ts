@@ -189,6 +189,89 @@ describe("gate-engine", () => {
       expect(profileCheck?.message).toContain("framework retrofit");
       expect(profileCheck?.message).toContain("project.json");
     });
+
+    it("fails 4-layer readiness when plan exists but feature spec is placeholder-only", () => {
+      const frameworkDir = path.join(tmpDir, ".framework");
+      fs.mkdirSync(frameworkDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(frameworkDir, "project.json"),
+        JSON.stringify({ profileType: "mcp-server" }),
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(frameworkDir, "config.json"),
+        JSON.stringify({ docs_layers: { enabled: true } }),
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(frameworkDir, "plan.json"),
+        JSON.stringify({
+          status: "generated",
+          generatedAt: "2024-01-01",
+          updatedAt: "2024-01-01",
+          waves: [
+            {
+              number: 1,
+              phase: "common",
+              title: "Wave 1",
+              features: [
+                {
+                  id: "SOURCEREGISTRY-001",
+                  name: "Source Registry",
+                  priority: "P0",
+                  size: "M",
+                  type: "common",
+                  dependencies: [],
+                  dependencyCount: 0,
+                  ssotFile: "docs/spec/SOURCEREGISTRY-001.md",
+                },
+              ],
+            },
+          ],
+          circularDependencies: [],
+        }),
+        "utf-8",
+      );
+      const specDir = path.join(tmpDir, "docs/spec");
+      fs.mkdirSync(specDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(specDir, "SOURCEREGISTRY-001.md"),
+        `---
+id: SPEC-SOURCEREGISTRY-001
+status: Draft
+traces:
+  impl: [IMPL-SOURCEREGISTRY-001]
+---
+# SPEC: source-registry
+## 1. 目的
+## 2. 非目的
+## 3. ユーザーストーリー
+## 4. 機能要件
+### 4.1 [SPEC-SOURCEREGISTRY-001] <要件名>
+## 5. インターフェース
+## 6. 非機能要件
+## 7. 受入基準
+Given
+When
+Then
+## 8. 前提・依存
+## 10. 制御機構選定原則
+| FR | 機構 (script / Hook / 両者) | 不可避 case 該当 (Hook のみ) | 根拠 |
+|---|---|---|---|
+|  |  |  |  |
+`,
+        "utf-8",
+      );
+
+      const checks = checkGateB(tmpDir);
+      const readiness = checks.find((c) =>
+        c.name.includes("4-layer docs implementation readiness"),
+      );
+      expect(readiness?.passed).toBe(false);
+      expect(readiness?.message).toContain(
+        "Feature specs are not implementation-ready",
+      );
+    });
   });
 
   describe("checkGateC", () => {
@@ -310,6 +393,67 @@ describe("gate-engine", () => {
       expect(checks).toHaveLength(1);
       expect(checks[0].passed).toBe(true);
       expect(checks[0].message).toContain("New-format SSOT");
+    });
+
+    it("does not auto-pass core SSOT when docs_layers feature spec is placeholder-only", () => {
+      const fwDir = path.join(tmpDir, ".framework");
+      fs.mkdirSync(fwDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(fwDir, "config.json"),
+        JSON.stringify({ docs_layers: { enabled: true } }),
+        "utf-8",
+      );
+
+      const coreDir = path.join(tmpDir, "docs/design/core");
+      fs.mkdirSync(coreDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(coreDir, "SSOT-3_API_CONTRACT.md"),
+        Array.from({ length: 15 }, (_, i) => `Line ${i + 1}`).join("\n"),
+        "utf-8",
+      );
+
+      const specDir = path.join(tmpDir, "docs/spec");
+      fs.mkdirSync(specDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(specDir, "SOURCEREGISTRY-001.md"),
+        `---
+id: SPEC-SOURCEREGISTRY-001
+status: Draft
+traces:
+  impl: [IMPL-SOURCEREGISTRY-001]
+---
+
+# SPEC: source-registry
+
+## 1. 目的
+## 2. 非目的
+## 3. ユーザーストーリー
+## 4. 機能要件
+### 4.1 [SPEC-SOURCEREGISTRY-001] <要件名>
+## 5. インターフェース
+## 6. 非機能要件
+## 7. 受入基準
+Given
+When
+Then
+## 8. 前提・依存
+## 10. 制御機構選定原則
+| FR | 機構 (script / Hook / 両者) | 不可避 case 該当 (Hook のみ) | 根拠 |
+|---|---|---|---|
+|  |  |  |  |
+`,
+        "utf-8",
+      );
+
+      const checks = checkGateC(tmpDir);
+      expect(checks).toHaveLength(1);
+      expect(checks[0].passed).toBe(false);
+      expect(checks[0].message).toContain(
+        "Feature specs are not implementation-ready",
+      );
+      expect(checks[0].missingSections).toContain(
+        "SOURCEREGISTRY-001:PlaceholderContent",
+      );
     });
 
     it("auto-passes for requirements (PRD, Feature Catalog) as new-format", () => {

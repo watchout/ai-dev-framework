@@ -24,6 +24,7 @@ import {
 import { updateClaudeMdSkillSection } from "../lib/claudemd-updater.js";
 import { installClaudeCodeHook } from "../lib/hooks-installer.js";
 import { installMcpJson } from "../lib/mcp-installer.js";
+import { loadProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
 
 export function registerUpdateCommand(program: Command): void {
@@ -71,6 +72,7 @@ export function registerUpdateCommand(program: Command): void {
               try {
                 const result = await fetchFrameworkDocs(project.path, {
                   force: true,
+                  profileType: loadProfileType(project.path) ?? undefined,
                 });
                 if (result.errors.length > 0) {
                   for (const err of result.errors) {
@@ -146,6 +148,7 @@ export function registerUpdateCommand(program: Command): void {
 
           const result = await fetchFrameworkDocs(projectDir, {
             force: true,
+            profileType: loadProfileType(projectDir) ?? undefined,
           });
 
           if (result.errors.length > 0) {

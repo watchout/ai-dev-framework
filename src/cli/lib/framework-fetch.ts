@@ -14,6 +14,7 @@ import * as os from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
+import type { ProfileType } from "./profile-model.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -75,7 +76,7 @@ export interface FrameworkState {
  */
 export async function fetchFrameworkDocs(
   targetDir: string,
-  options?: { force?: boolean; sourceDir?: string },
+  options?: { force?: boolean; sourceDir?: string; profileType?: ProfileType },
 ): Promise<FrameworkFetchResult> {
   const errors: string[] = [];
   const copiedFiles: string[] = [];
@@ -167,7 +168,13 @@ export async function fetchFrameworkDocs(
     }
 
     // Copy framework files
-    copyDirRecursive(sourceDir, standardsDir, copiedFiles, targetDir);
+    copyDirRecursive(
+      sourceDir,
+      standardsDir,
+      copiedFiles,
+      targetDir,
+      options?.profileType,
+    );
 
     // Save framework state
     saveFrameworkState(targetDir, {
@@ -248,12 +255,21 @@ function copyDirRecursive(
   dest: string,
   copiedFiles: string[],
   projectDir: string,
+  profileType?: ProfileType,
   isTopLevel = true,
+  relativeDir = "",
 ): void {
   const entries = fs.readdirSync(src, { withFileTypes: true });
 
   for (const entry of entries) {
     if (entry.name === ".git" || entry.name === ".DS_Store") continue;
+
+    const relativePath = relativeDir
+      ? path.join(relativeDir, entry.name)
+      : entry.name;
+    if (!shouldCopyTemplate(relativePath, entry.isDirectory(), profileType)) {
+      continue;
+    }
 
     // Skip distribution-only directories at top level of templates/
     if (
@@ -271,10 +287,48 @@ function copyDirRecursive(
       if (!fs.existsSync(destPath)) {
         fs.mkdirSync(destPath, { recursive: true });
       }
-      copyDirRecursive(srcPath, destPath, copiedFiles, projectDir, false);
+      copyDirRecursive(
+        srcPath,
+        destPath,
+        copiedFiles,
+        projectDir,
+        profileType,
+        false,
+        relativePath,
+      );
     } else {
       fs.copyFileSync(srcPath, destPath);
       copiedFiles.push(path.relative(projectDir, destPath));
     }
   }
+}
+
+function shouldCopyTemplate(
+  relativePath: string,
+  isDirectory: boolean,
+  profileType?: ProfileType,
+): boolean {
+  if (profileType !== "mcp-server") return true;
+
+  const normalized = relativePath.split(path.sep).join("/");
+  const topLevel = normalized.split("/")[0];
+  if (["marketing", "growth", "idea"].includes(topLevel)) return false;
+
+  const fileName = path.posix.basename(normalized);
+  if (
+    [
+      "SECURITY_STRIPE.md",
+      "l3-e2e-browser-use.md",
+      "LP_SPEC.md",
+      "LAUNCH_PLAN.md",
+      "SNS_STRATEGY.md",
+      "EMAIL_SEQUENCE.md",
+      "PRICING_STRATEGY.md",
+    ].includes(fileName)
+  ) {
+    return false;
+  }
+
+  if (isDirectory && normalized === "testing") return true;
+  return true;
 }

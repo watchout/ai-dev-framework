@@ -5,7 +5,7 @@
  * Installs:
  * - .github/workflows/ci.yml (from templates/ci/{profileType}.yml)
  * - .github/PULL_REQUEST_TEMPLATE.md
- * - .github/ISSUE_TEMPLATE/ (feature-db, feature-api, feature-ui, feature-test, bug)
+ * - .github/ISSUE_TEMPLATE/ (profile-aware)
  * - .github/CODEOWNERS
  */
 import * as fs from "node:fs";
@@ -93,18 +93,19 @@ export function installGitHubTemplates(
   }
 
   // 2. PR Template
-  const prTemplateSrc = path.join(frameworkRoot, "templates/github/PULL_REQUEST_TEMPLATE.md");
+  const profilePrTemplateSrc = path.join(
+    frameworkRoot,
+    "templates/github",
+    `${profileType}-PULL_REQUEST_TEMPLATE.md`,
+  );
+  const prTemplateSrc = fs.existsSync(profilePrTemplateSrc)
+    ? profilePrTemplateSrc
+    : path.join(frameworkRoot, "templates/github/PULL_REQUEST_TEMPLATE.md");
   const prTemplateDest = path.join(projectDir, ".github/PULL_REQUEST_TEMPLATE.md");
   copyTemplateFile(prTemplateSrc, prTemplateDest, force, installed, skipped, errors);
 
   // 3. Issue Templates
-  const issueTemplates = [
-    "feature-db.md",
-    "feature-api.md",
-    "feature-ui.md",
-    "feature-test.md",
-    "bug.md",
-  ];
+  const issueTemplates = issueTemplatesForProfile(profileType);
   for (const tmpl of issueTemplates) {
     const src = path.join(frameworkRoot, "templates/github/ISSUE_TEMPLATE", tmpl);
     const dest = path.join(projectDir, ".github/ISSUE_TEMPLATE", tmpl);
@@ -117,6 +118,24 @@ export function installGitHubTemplates(
   copyTemplateFile(codeownersSrc, codeownersDest, force, installed, skipped, errors);
 
   return { installed, skipped, errors };
+}
+
+function issueTemplatesForProfile(profileType: ProfileType): string[] {
+  if (profileType === "mcp-server") {
+    return [
+      "feature-db.md",
+      "feature-api.md",
+      "feature-test.md",
+      "bug.md",
+    ];
+  }
+  return [
+    "feature-db.md",
+    "feature-api.md",
+    "feature-ui.md",
+    "feature-test.md",
+    "bug.md",
+  ];
 }
 
 function copyTemplateFile(

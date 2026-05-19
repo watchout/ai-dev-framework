@@ -35,6 +35,8 @@ import {
   loadProfileType,
   type ProfileType,
 } from "./profile-model.js";
+import { validateAllSpecs } from "./gate-spec-validator.js";
+import { buildGraph, verifyTraceability } from "./trace-engine.js";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -305,6 +307,21 @@ export function checkGateB(projectDir: string): GateCheck[] {
     );
   }
 
+  if (plan && isDocsLayersEnabled(projectDir)) {
+    const readiness = checkDocsLayerReadiness(projectDir);
+    checks.push(
+      readiness.passed
+        ? passCheck(
+            "4-layer docs implementation readiness",
+            "Feature SPEC/IMPL/VERIFY/OPS docs are ready for implementation",
+          )
+        : failCheck(
+            "4-layer docs implementation readiness",
+            readiness.message,
+          ),
+    );
+  }
+
   return checks;
 }
 
@@ -360,7 +377,23 @@ export function checkGateC(projectDir: string): SSOTCheck[] {
     return checks;
   }
 
-  // New-format SSOT (SSOT-0~5) auto-passes Gate C
+  if (isDocsLayersEnabled(projectDir)) {
+    const readiness = checkDocsLayerReadiness(projectDir);
+    if (!readiness.passed || readiness.checked) {
+      checks.push({
+        name: "Gate C (4-layer feature docs)",
+        passed: readiness.passed,
+        status: readiness.passed ? "pass" : "fail",
+        message: readiness.message,
+        filePath: "docs/spec",
+        missingSections: readiness.missing,
+      });
+      if (!readiness.passed) return checks;
+    }
+  }
+
+  // New-format core SSOT (SSOT-0~5) passes Gate C only after any
+  // docs_layers feature docs above have been validated.
   const newFormatFiles = findNewFormatSSOTFiles(projectDir);
   if (newFormatFiles.length > 0) {
     const fileList = newFormatFiles.map((f) => path.relative(projectDir, f));
@@ -532,6 +565,110 @@ function checkDirExists(
   return exists
     ? passCheck(name, `${name}: found`)
     : failCheck(name, failMessage);
+}
+
+interface DocsLayerReadiness {
+  checked: boolean;
+  passed: boolean;
+  message: string;
+  missing: string[];
+}
+
+function isDocsLayersEnabled(projectDir: string): boolean {
+  const configPath = path.join(projectDir, ".framework/config.json");
+  if (!fs.existsSync(configPath)) return false;
+  try {
+    const raw = JSON.parse(fs.readFileSync(configPath, "utf-8")) as {
+      docs_layers?: { enabled?: unknown };
+    };
+    return raw.docs_layers?.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
+function collectMdFiles(dir: string): string[] {
+  const results: string[] = [];
+  if (!fs.existsSync(dir)) return results;
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...collectMdFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+
+function checkDocsLayerReadiness(projectDir: string): DocsLayerReadiness {
+  const specDir = path.join(projectDir, "docs/spec");
+  const docsDir = path.join(projectDir, "docs");
+  const missing: string[] = [];
+
+  if (!fs.existsSync(specDir)) {
+    return {
+      checked: false,
+      passed: true,
+      message: "No docs/spec directory found; skipped 4-layer feature readiness",
+      missing,
+    };
+  }
+
+  const specFiles = collectMdFiles(specDir);
+  if (specFiles.length === 0) {
+    return {
+      checked: false,
+      passed: true,
+      message: "No docs/spec/*.md feature specs found; skipped 4-layer feature readiness",
+      missing,
+    };
+  }
+
+  const specResult = validateAllSpecs(specDir, projectDir);
+  if (specResult.status === "BLOCK") {
+    for (const finding of specResult.critical) {
+      missing.push(`${finding.docId}:${finding.type}`);
+    }
+    return {
+      checked: true,
+      passed: false,
+      message: `Feature specs are not implementation-ready: ${missing.join(", ")}`,
+      missing,
+    };
+  }
+
+  const graph = buildGraph(docsDir, projectDir);
+  const trace = verifyTraceability(graph);
+  if (
+    trace.missing.length > 0 ||
+    trace.broken.length > 0 ||
+    trace.orphans.length > 0
+  ) {
+    for (const item of trace.missing) {
+      missing.push(`${item.from}:missing-${item.expected}`);
+    }
+    for (const item of trace.broken) {
+      missing.push(`${item.from}:broken-${item.to}`);
+    }
+    for (const item of trace.orphans) {
+      missing.push(`${item.id}:orphan`);
+    }
+    return {
+      checked: true,
+      passed: false,
+      message: `4-layer trace is incomplete: ${missing.join(", ")}`,
+      missing,
+    };
+  }
+
+  return {
+    checked: true,
+    passed: true,
+    message: `4-layer feature docs validated (${specFiles.length} spec files, ${graph.size} trace nodes)`,
+    missing,
+  };
 }
 
 /** Pattern matching new-format SSOT file names (SSOT-0 through SSOT-5) */

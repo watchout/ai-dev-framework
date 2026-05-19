@@ -95,6 +95,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   logger.step(2, totalSteps, "Fetching Shirube framework docs...");
   const fetchResult = await fetchFrameworkDocs(projectPath, {
     sourceDir: options.frameworkSourceDir,
+    profileType,
   });
   if (fetchResult.errors.length > 0) {
     for (const err of fetchResult.errors) {
@@ -134,7 +135,11 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
     if (!fs.existsSync(docDir)) {
       fs.mkdirSync(docDir, { recursive: true });
     }
-    fs.writeFileSync(docPath, "", "utf-8");
+    fs.writeFileSync(
+      docPath,
+      initialDocContent(profileType, doc.path),
+      "utf-8",
+    );
     createdFiles.push(doc.path);
   }
 
@@ -308,6 +313,43 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   }
 
   return { projectPath, createdFiles, errors };
+}
+
+function initialDocContent(profileType: ProfileType, docPath: string): string {
+  if (
+    profileType === "mcp-server" &&
+    docPath === "docs/design/core/SSOT-4_DATA_MODEL.md"
+  ) {
+    return `# SSOT-4 Data Model
+
+## Required MVP Entities
+
+Data-backed MCP servers must define concrete storage entities before implementation begins.
+
+| Entity | Purpose | Required fields |
+|---|---|---|
+| sources | External or local knowledge roots | id, type, uri, display_name, status, created_at, updated_at |
+| source_items | Addressable source records | id, source_id, external_id, uri, title, content_type, checksum, updated_at |
+| content_chunks | Searchable content units | id, source_item_id, chunk_index, text_hash, token_count, embedding_ref |
+| context_records | Normalized reusable context | id, kind, title, summary, confidence, freshness, source_item_id |
+| evidence_links | Provenance from context to source | id, context_record_id, source_item_id, locator, quote_hash |
+| sync_state | Connector sync cursors | id, source_id, cursor, last_success_at, last_error |
+
+## Persistence Modes
+
+- reference: store source pointers, metadata, hashes, and summaries only.
+- mirror: store normalized text chunks for local retrieval.
+- managed: store full indexed content with access policy enforcement.
+
+## Constraints
+
+- IDs must be stable across repeated syncs.
+- Content hashes are computed after redaction/normalization.
+- Records must preserve source provenance and freshness.
+- Access policy and audit log entities may be deferred, but their extension points must be named before implementation.
+`;
+  }
+  return "";
 }
 
 /**

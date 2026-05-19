@@ -34,6 +34,10 @@ const REQUIRED_SECTIONS: { prefix: string; label: string }[] = [
 
 /** Gherkin keywords that must appear in §7. */
 const GHERKIN_KEYWORDS = /\b(Given|When|Then)\b/;
+const EMPTY_GHERKIN_STEP_PATTERN = /^\s*(Given|When|Then)\s*$/m;
+const PLACEHOLDER_PATTERN =
+  /<[^>\n]+>|\{scenario-name\}|\[要確認\]|TODO|TBD|未記入|未定/i;
+const BLANK_TABLE_ROW_PATTERN = /^\|\s*\|\s*\|\s*\|\s*\|?\s*$/m;
 
 /**
  * STRIDE keyword — used to test H2 headings like "§6.3 STRIDE" or "STRIDE Analysis".
@@ -132,6 +136,33 @@ function headingMatchesPrefix(heading: string, prefix: string): boolean {
     new RegExp(`^${prefix}[.．]`),
   ];
   return patterns.some((p) => p.test(heading.trim()));
+}
+
+function findSection(
+  sections: { heading: string; body: string }[],
+  prefix: string,
+): { heading: string; body: string } | undefined {
+  return sections.find((s) => headingMatchesPrefix(s.heading, prefix));
+}
+
+function hasEvidenceSection(content: string): boolean {
+  return /^##\s+§?Evidence\b/im.test(content);
+}
+
+function isSectionBodyEmpty(body: string): boolean {
+  const cleaned = body
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => {
+      if (line.length === 0) return false;
+      if (/^<!--.*-->$/.test(line)) return false;
+      if (/^```/.test(line)) return false;
+      return true;
+    });
+  if (cleaned.length === 0) return true;
+  return cleaned.every((line) =>
+    /^(TODO|TBD|N\/A|未記入|未定|\[要確認\]|-|表形式:.*|チェックボックス形式.*)$/i.test(line),
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -316,10 +347,8 @@ export function validateSpec(
 
   // ── Check 1: Required sections ──
   for (const req of REQUIRED_SECTIONS) {
-    const found = sections.some((s) =>
-      headingMatchesPrefix(s.heading, req.prefix),
-    );
-    if (!found) {
+    const section = findSection(sections, req.prefix);
+    if (!section) {
       // §7 missing is CRITICAL (separate type)
       if (req.prefix === "7") {
         result.critical.push({
@@ -334,17 +363,62 @@ export function validateSpec(
           message: `§${req.prefix} ${req.label} is missing`,
         });
       }
+    } else if (isSectionBodyEmpty(section.body)) {
+      result.critical.push({
+        docId,
+        type: req.prefix === "7" ? "MissingAcceptanceCriteria" : "MissingRequiredSection",
+        message: `§${req.prefix} ${req.label} is empty or placeholder-only`,
+      });
     }
   }
 
+  if (!findSection(sections, "10")) {
+    result.critical.push({
+      docId,
+      type: "MissingControlMechanism",
+      message: "§10 制御機構選定原則 is missing",
+    });
+  } else {
+    const section10 = findSection(sections, "10")!;
+    if (isSectionBodyEmpty(section10.body) || BLANK_TABLE_ROW_PATTERN.test(section10.body)) {
+      result.critical.push({
+        docId,
+        type: "MissingControlMechanism",
+        message: "§10 制御機構選定原則 is empty or has no selected control mechanism",
+      });
+    }
+  }
+
+  if (!hasEvidenceSection(content)) {
+    result.critical.push({
+      docId,
+      type: "MissingEvidence",
+      message: "§Evidence section is missing",
+    });
+  }
+
+  if (PLACEHOLDER_PATTERN.test(content)) {
+    result.critical.push({
+      docId,
+      type: "PlaceholderContent",
+      message: "Spec contains placeholder markers such as <...>, TODO, TBD, or 未記入",
+    });
+  }
+
   // ── Check 2: §7 Gherkin content ──
-  const section7 = sections.find((s) => headingMatchesPrefix(s.heading, "7"));
+  const section7 = findSection(sections, "7");
   if (section7) {
     if (!GHERKIN_KEYWORDS.test(section7.body)) {
       result.critical.push({
         docId,
         type: "MissingAcceptanceCriteria",
         message: "§7 受入基準 lacks Gherkin content (Given/When/Then)",
+      });
+    } else if (EMPTY_GHERKIN_STEP_PATTERN.test(section7.body)) {
+      result.critical.push({
+        docId,
+        type: "EmptyGherkinStep",
+        message: "§7 受入基準 has empty Given/When/Then steps",
       });
     }
   }
