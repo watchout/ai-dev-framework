@@ -118,7 +118,7 @@ Gate は 2層の構造的強制で実行される。
 Layer 1: Claude Code hook（リアルタイム）
   - PreToolUse フックが Edit/Write をインターセプト
   - src/ 等のソースコードパスへの編集を Gate 未通過時にブロック
-  - .claude/hooks/pre-code-gate.sh → .framework/gates.json を参照
+  - .claude/hooks/pre-code-gate.sh → ローカル hook 用キャッシュ .framework/gates.json を参照
   - docs/, config 等の非ソースファイルは制限なし
 
 Layer 2: Git pre-commit hook（コミット時）
@@ -131,9 +131,11 @@ Gate A: 開発環境・インフラの準備
 Gate B: タスク分解・計画の完了
   - .framework/plan.json（framework plan 実行済み）
   - .framework/project.json の存在確認
+  - docs_layers 有効時は 4-layer docs implementation readiness も確認
 
 Gate C: SSOT 完全性チェック
-  - 各SSOT の §3-E/F/G/H セクションが記入されているか
+  - core SSOT と feature SPEC/IMPL/VERIFY/OPS の完全性
+  - placeholder-only spec と trace 不備を BLOCK
 
 操作コマンド:
   framework gate check       全Gate一括チェック → gates.json に保存
@@ -141,11 +143,12 @@ Gate C: SSOT 完全性チェック
   framework gate check-b     Gate B のみチェック
   framework gate check-c     Gate C のみチェック
   framework gate status      現在のGate状態を表示
-  framework gate reset       Gate 状態をリセット
+  framework gate spec        feature SPEC の実装可能性を検証
+  framework trace verify     SPEC/IMPL/VERIFY/OPS の trace を検証
 
 自動連動:
-  framework plan 成功時     → Gate B が自動パス
-  framework audit ssot 実行時 → Gate C が自動評価
+  framework update           → .framework/gates.json を最新ルールで再生成
+  GitHub Actions check runs  → gate status の正
 
 日常のワークフロー:
   1. framework gate check   ← 全ゲートをチェック
@@ -366,8 +369,8 @@ discovery → design → implement → review
 ### Pre-Code Gate 連携
 「実装開始」の場合:
 1. Skill ツールで /implement を起動
-2. /implement スキル内で .framework/gates.json を確認
-3. 全Gate passed なら実装開始。未通過なら報告。
+2. /implement スキル内で `framework gate check` と `framework trace verify` を確認
+3. 全Gate passed なら実装開始。未通過なら BLOCK 理由を報告。
 
 ---
 

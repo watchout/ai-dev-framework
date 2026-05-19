@@ -44,6 +44,9 @@ describe("generateClaudeMd", () => {
     expect(result).toContain("Gate A");
     expect(result).toContain("Gate B");
     expect(result).toContain("Gate C");
+    expect(result).toContain("framework gate spec");
+    expect(result).toContain("framework trace verify");
+    expect(result).not.toContain("§3-E/F/G/H");
   });
 
   it("includes Workflow Orchestration section", () => {
@@ -93,6 +96,7 @@ describe("generateClaudeMd", () => {
     expect(result).toContain("stdio or HTTP");
     expect(result).toContain("storage/index adapters");
     expect(result).toContain("SSOT-4_DATA_MODEL");
+    expect(result).toContain("4-layer docs implementation readiness");
     expect(result).not.toContain("Next.js");
     expect(result).not.toContain("React");
     expect(result).not.toContain("Vercel");

@@ -65,8 +65,8 @@ discovery → design → implement → review
 ### Pre-Code Gate 連携
 「実装開始」の場合:
 1. Skill ツールで /implement を起動
-2. /implement スキル内で .framework/gates.json を確認
-3. 全Gate passed なら実装開始。未通過なら報告。`;
+2. /implement スキル内で \`framework gate check\` と \`framework trace verify\` を確認
+3. 全Gate passed なら実装開始。未通過なら BLOCK 理由を報告。`;
 }
 
 /**
