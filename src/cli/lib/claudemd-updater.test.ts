@@ -331,7 +331,8 @@ describe("claudemd-updater", () => {
     it("contains Pre-Code Gate integration", () => {
       const content = getWorkflowOrchestrationContent();
       expect(content).toContain("Pre-Code Gate");
-      expect(content).toContain("gates.json");
+      expect(content).toContain("framework gate check");
+      expect(content).toContain("framework trace verify");
     });
   });
 });

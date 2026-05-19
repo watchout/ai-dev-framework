@@ -111,12 +111,13 @@ docs/
 ## Pre-Code Gate (3-gate enforcement)
 
 コードを1行でも書く前に Gate A/B/C を確認する。
-状態は .framework/gates.json で管理。
+GitHub Actions check runs を正とし、ローカル hook 用キャッシュとして .framework/gates.json も再生成される。
 
 - Gate A: 開発環境（package.json, node_modules, .env, CI等）
-- Gate B: 計画（.framework/plan.json にwave分類済み、GitHub Issues作成済み）
-- Gate C: SSOT完全性（機能仕様書に §3-E/F/G/H が記入済み）
+- Gate B: 計画（.framework/plan.json）と 4-layer docs implementation readiness
+- Gate C: core SSOT と feature SPEC/IMPL/VERIFY/OPS の完全性
 
+実装前に \`framework gate check\`, \`framework gate spec\`, \`framework trace verify\` を確認する。
 全Gate passed でなければ src/ 以下の編集は .claude/hooks/pre-code-gate.sh でブロックされる。
 
 ## GitHub Integration
@@ -240,12 +241,13 @@ docs/
 ## Pre-Code Gate (3-gate enforcement)
 
 コードを1行でも書く前に Gate A/B/C を確認する。
-状態は .framework/gates.json で管理。
+GitHub Actions check runs を正とし、ローカル hook 用キャッシュとして .framework/gates.json も再生成される。
 
 - Gate A: 開発環境（package.json, node_modules, .env, docker-compose等）
-- Gate B: 計画（.framework/plan.json にwave分類済み、GitHub Issues作成済み）
-- Gate C: SSOT完全性（機能仕様書に §3-E/F/G/H が記入済み）
+- Gate B: 計画（.framework/plan.json）と 4-layer docs implementation readiness
+- Gate C: core SSOT と feature SPEC/IMPL/VERIFY/OPS の完全性
 
+実装前に \`framework gate check\`, \`framework gate spec\`, \`framework trace verify\` を確認する。
 全Gate passed でなければ src/ 以下の編集は .claude/hooks/pre-code-gate.sh でブロックされる。
 
 ## GitHub Integration
@@ -325,8 +327,8 @@ discovery → design → implement → review
 ### Pre-Code Gate 連携
 「実装開始」の場合:
 1. Skill ツールで /implement を起動
-2. /implement スキル内で .framework/gates.json を確認
-3. 全Gate passed なら実装開始。未通過なら報告。
+2. /implement スキル内で \`framework gate check\` と \`framework trace verify\` を確認
+3. 全Gate passed なら実装開始。未通過なら BLOCK 理由を報告。
 
 ## Knowledge & Memory
 
