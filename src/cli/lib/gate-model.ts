@@ -326,6 +326,13 @@ export async function loadGateStatusFromCheckRuns(
     const checkRuns: CheckRunResult[] = lines.map((line) =>
       JSON.parse(line) as CheckRunResult,
     );
+    const gateWorkflowNames = new Set(Object.values(GATE_WORKFLOW_NAMES));
+    const hasGateCheckRun = checkRuns.some((run) =>
+      gateWorkflowNames.has(run.name),
+    );
+    if (!hasGateCheckRun) {
+      return { state: null, error: "no_check_runs" };
+    }
 
     const now = new Date().toISOString();
     const state = createGateState();

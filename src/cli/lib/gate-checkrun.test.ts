@@ -77,6 +77,19 @@ describe("loadGateStatusFromCheckRuns", () => {
     expect(result.error).toBe("no_check_runs");
   });
 
+  it("returns no_check_runs when only non-gate check runs exist", async () => {
+    restoreGh = setGhExecutor(async () =>
+      [
+        JSON.stringify({ name: "Lint", status: "completed", conclusion: "success" }),
+        JSON.stringify({ name: "Build", status: "completed", conclusion: "success" }),
+      ].join("\n"),
+    );
+
+    const result = await loadGateStatusFromCheckRuns("abc123");
+    expect(result.state).toBeNull();
+    expect(result.error).toBe("no_check_runs");
+  });
+
   it("returns gh_error on gh CLI failure", async () => {
     restoreGh = setGhExecutor(async () => {
       throw new Error("gh: not authenticated");
