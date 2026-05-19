@@ -26,7 +26,7 @@ import { logger } from "../lib/logger.js";
 export function registerInitCommand(program: Command): void {
   program
     .command("init [project-name]")
-    .description("Initialize a new project with the AI Development Framework")
+    .description("Initialize a new project with Shirube")
     .option("-d, --description <desc>", "Project description")
     .option(
       "-t, --type <type>",

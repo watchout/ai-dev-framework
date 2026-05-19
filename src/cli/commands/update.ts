@@ -1,5 +1,5 @@
 /**
- * framework update - Update framework docs from ai-dev-framework repository
+ * framework update - Update Shirube docs from the upstream repository
  *
  * Fetches the latest framework specification documents from the SSOT
  * repository and updates the project's docs/standards/ directory.
@@ -30,7 +30,7 @@ export function registerUpdateCommand(program: Command): void {
   program
     .command("update")
     .description(
-      "Update framework docs from ai-dev-framework repository",
+      "Update Shirube docs from the upstream repository",
     )
     .argument(
       "[path]",
@@ -52,7 +52,7 @@ export function registerUpdateCommand(program: Command): void {
             const { projects, warnings } = listRegisteredProjects();
 
             if (projects.length === 0) {
-              logger.info("No registered projects. Use 'framework projects register' first.");
+              logger.info("No registered projects. Use 'shirube projects register' first.");
               return;
             }
 

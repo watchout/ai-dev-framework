@@ -175,7 +175,7 @@ function buildSSOTGenerationPrompt(
       })) + 1
     : 101;
 
-  return `あなたは AI Development Framework の SSOT 生成エキスパートです。
+  return `あなたは Shirube の SSOT 生成エキスパートです。
 以下の設計書を分析し、機能単位に分割して SSOT 形式の機能仕様書を生成してください。
 
 ## 入力ファイル

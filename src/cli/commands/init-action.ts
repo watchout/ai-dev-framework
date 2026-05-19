@@ -91,8 +91,8 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
     fs.mkdirSync(dirPath, { recursive: true });
   }
 
-  // Step 2: Fetch framework docs from ai-dev-framework
-  logger.step(2, totalSteps, "Fetching framework docs from ai-dev-framework...");
+  // Step 2: Fetch Shirube framework docs
+  logger.step(2, totalSteps, "Fetching Shirube framework docs...");
   const fetchResult = await fetchFrameworkDocs(projectPath, {
     sourceDir: options.frameworkSourceDir,
   });
@@ -102,7 +102,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
     }
     errors.push(...fetchResult.errors);
   } else {
-    logger.success(`Installed ${fetchResult.copiedFiles.length} framework docs`);
+    logger.success(`Installed ${fetchResult.copiedFiles.length} Shirube docs`);
     createdFiles.push(...fetchResult.copiedFiles);
   }
 

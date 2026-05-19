@@ -1,10 +1,11 @@
 {
-  "name": "@anthropic-ai/ai-dev-framework",
+  "name": "@watchout/shirube",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "AI Development Framework - SSOT, CLI, Dashboard, and Skills for AI-driven development",
+  "description": "Shirube - SSOT, CLI, Dashboard, and Skills for AI-driven development",
   "bin": {
+    "shirube": "./dist/cli/index.js",
     "framework": "./dist/cli/index.js"
   },
   "scripts": {
@@ -18,7 +19,8 @@
     "test:coverage": "vitest --coverage",
     "type-check": "tsc --noEmit",
     "prepare": "tsc -p tsconfig.cli.json && husky || true",
-    "framework": "tsx src/cli/index.ts"
+    "framework": "tsx src/cli/index.ts",
+    "shirube": "tsx src/cli/index.ts"
   },
   "dependencies": {
     "commander": "^13.0.0"
@@ -41,12 +43,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/anthropic-ai/ai-dev-framework.git"
+    "url": "https://github.com/watchout/ai-dev-framework.git"
   },
   "keywords": [
     "ai",
     "development",
     "framework",
+    "shirube",
     "cli",
     "ssot",
     "claude"

@@ -38,8 +38,8 @@ function runCliWithExit(args: string): { stdout: string; exitCode: number } {
 describe("CLI Smoke Tests", () => {
   it("shows help with --help", () => {
     const output = runCli("--help");
-    expect(output).toContain("framework");
-    expect(output).toContain("AI Development Framework CLI");
+    expect(output).toContain("shirube");
+    expect(output).toContain("Shirube CLI");
   });
 
   it("shows version with --version", () => {
