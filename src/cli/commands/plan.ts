@@ -1,5 +1,5 @@
 /**
- * framework plan - Implementation plan generation command
+ * shirube plan - Implementation plan generation command
  *
  * Reference: 14_IMPLEMENTATION_ORDER.md
  *
@@ -97,7 +97,7 @@ export function registerPlanCommand(program: Command): void {
             const existingPlan = loadPlan(projectDir);
             if (!existingPlan || !existingPlan.tasks || existingPlan.tasks.length === 0) {
               logger.error(
-                "No plan with tasks found. Run 'framework plan' first.",
+                "No plan with tasks found. Run 'shirube plan' first.",
               );
               process.exit(1);
             }
@@ -125,7 +125,7 @@ export function registerPlanCommand(program: Command): void {
           const frameworkDir = path.join(projectDir, ".framework");
           if (!fs.existsSync(frameworkDir)) {
             logger.error(
-              "No .framework directory found. Run 'framework init' first.",
+              "No .framework directory found. Run 'shirube init' first.",
             );
             process.exit(1);
           }
@@ -276,14 +276,14 @@ export function registerPlanCommand(program: Command): void {
           logger.info("");
           logger.header("Next steps:");
           logger.info("  1. Review the plan");
-          logger.info("  2. framework plan --output docs/PLAN.md  <- Export plan");
+          logger.info("  2. shirube plan --output docs/PLAN.md  <- Export plan");
           if (!options.sync) {
-            logger.info("  3. framework plan --sync  <- Sync to GitHub Issues");
-            logger.info("  4. framework gate check   <- Verify all gates");
-            logger.info("  5. framework run          <- Start auto-development");
+            logger.info("  3. shirube plan --sync  <- Sync to GitHub Issues");
+            logger.info("  4. shirube gate check   <- Verify all gates");
+            logger.info("  5. shirube run          <- Start auto-development");
           } else {
-            logger.info("  3. framework gate check  <- Verify all gates");
-            logger.info("  4. framework run         <- Start auto-development");
+            logger.info("  3. shirube gate check  <- Verify all gates");
+            logger.info("  4. shirube run         <- Start auto-development");
           }
           logger.info("");
         } catch (error) {
@@ -300,7 +300,7 @@ function printPlanStatus(projectDir: string): void {
   const plan = loadPlan(projectDir);
 
   if (!plan) {
-    logger.info("No plan found. Run 'framework plan' to generate.");
+    logger.info("No plan found. Run 'shirube plan' to generate.");
     return;
   }
 

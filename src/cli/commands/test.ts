@@ -1,5 +1,5 @@
 /**
- * framework test - Test audit command
+ * shirube test - Test audit command
  *
  * Reference: 18_TEST_FORMAT.md
  *

@@ -21,7 +21,7 @@ adversarial (sequential, interdependent — NOT parallelizable)
 
 ## CLI
 ```
-framework gate release
+shirube gate release
 ```
 
 ## Skill

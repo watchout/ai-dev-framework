@@ -234,7 +234,7 @@ export function identifyGaps(
           name: expected.name,
           path: expected.path,
           status: "exists",
-          recommendation: "Audit with 'framework audit ssot' to verify quality",
+          recommendation: "Audit with 'shirube audit ssot' to verify quality",
         });
       }
     }
@@ -292,7 +292,7 @@ export function calculateReadiness(
   // 5. Testing framework (10pts)
   const hasTesting = techStack.some((t) => t.category === "testing");
   checks.push({
-    name: "Testing framework configured",
+    name: "Testing shirube configured",
     passed: hasTesting,
     points: 10,
     detail: hasTesting

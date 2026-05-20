@@ -1,5 +1,5 @@
 /**
- * framework compact - Strategic context compaction
+ * shirube compact - Strategic context compaction
  *
  * Reference: 21_AI_ESCALATION.md Strategic Compact
  *
@@ -31,7 +31,7 @@ export function registerCompactCommand(program: Command): void {
 
           if (status.recommendation === "compact_now") {
             logger.warn(
-              "Context needs compaction. Run 'framework compact --auto' to compact.",
+              "Context needs compaction. Run 'shirube compact --auto' to compact.",
             );
           }
         } catch (error) {

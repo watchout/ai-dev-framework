@@ -1,5 +1,5 @@
 /**
- * framework exit — Deactivate framework mode.
+ * shirube exit — Deactivate framework mode.
  *
  * Part of #63 (09_ENFORCEMENT §1 Exit).
  *
@@ -22,7 +22,7 @@ export function registerExitCommand(program: Command): void {
         console.error("❌ FRAMEWORK_BYPASS environment variable required.");
         console.error("");
         console.error("Usage:");
-        console.error("  FRAMEWORK_BYPASS=<ceo-token> framework exit --reason \"...\"");
+        console.error("  FRAMEWORK_BYPASS=<ceo-token> shirube exit --reason \"...\"");
         console.error("");
         console.error("This command requires CEO authorization.");
         process.exit(1);
@@ -63,6 +63,6 @@ export function registerExitCommand(program: Command): void {
       console.log("   All hooks are now passthrough (no-ops).");
       console.log("   Exit event recorded in audit log.");
       console.log("");
-      console.log("To reactivate: framework start --resume");
+      console.log("To reactivate: shirube start --resume");
     });
 }

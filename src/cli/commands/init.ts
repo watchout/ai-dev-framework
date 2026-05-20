@@ -1,5 +1,5 @@
 /**
- * framework init - Project initialization command
+ * shirube init - Project initialization command
  *
  * Reference: 00_MASTER_GUIDE.md, 09_TOOLCHAIN.md
  *
@@ -113,7 +113,7 @@ function printResult(result: InitResult, profileType: ProfileType): void {
   logger.info("");
   logger.header("Next steps:");
   logger.info("  1. cd " + result.projectPath);
-  logger.info("  2. framework discover    <- Start the discovery flow");
-  logger.info("  3. framework generate    <- Generate SSOT documents");
+  logger.info("  2. shirube discover    <- Start the discovery flow");
+  logger.info("  3. shirube generate    <- Generate SSOT documents");
   logger.info("");
 }

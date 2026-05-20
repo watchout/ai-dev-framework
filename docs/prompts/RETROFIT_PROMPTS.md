@@ -26,7 +26,7 @@ CLAUDE.md の Gate A 定義を読んで、以下を確認・修正して：
 5. pnpm dev でローカル開発サーバーが起動するか
 6. .github/workflows/ci.yml が配置されているか
 
-不足があれば修正して、最後に `framework gate check-a` を実行。
+不足があれば修正して、最後に `shirube gate check-a` を実行。
 ```
 
 ### Prompt 1-2: Gate C（SSOT 品質監査）
@@ -34,7 +34,7 @@ CLAUDE.md の Gate A 定義を読んで、以下を確認・修正して：
 ```
 hotel-kanri の Pre-Code Gate C を通過させたい。
 
-`framework audit ssot` を実行して、docs/03_ssot/00_foundation/ の
+`shirube audit ssot` を実行して、docs/03_ssot/00_foundation/ の
 主要 SSOT の §3-E/F/G/H の充足状況を確認して。
 
 優先順位：
@@ -45,7 +45,7 @@ hotel-kanri の Pre-Code Gate C を通過させたい。
 各ファイルの不足セクション（§3-E 入出力例、§3-F 境界値、
 §3-G 例外応答、§3-H Gherkin）を補完して。
 
-補完後、`framework gate check-c` を実行。
+補完後、`shirube gate check-c` を実行。
 ```
 
 ---
@@ -63,7 +63,7 @@ hotel-kanri の Pre-Code Gate C を通過させたい。
 ```
 haishin-plus-hub の Pre-Code Gate B を通過させたい。
 
-`framework plan` を実行して実装計画を作成して。
+`shirube plan` を実行して実装計画を作成して。
 
 前提：
 - docs/design/features/ の common/ と project/ 配下の全 SSOT を分析
@@ -71,7 +71,7 @@ haishin-plus-hub の Pre-Code Gate B を通過させたい。
 - GitHub Issues の作成候補を出力
 
 plan 完了後、Gate B は自動で passed になる。
-`framework gate status` で確認して。
+`shirube gate status` で確認して。
 ```
 
 ### Prompt 2-2: Gate C（SSOT 品質監査）
@@ -79,7 +79,7 @@ plan 完了後、Gate B は自動で passed になる。
 ```
 haishin-plus-hub の Pre-Code Gate C を通過させたい。
 
-`framework audit ssot` を実行して、以下の優先順で
+`shirube audit ssot` を実行して、以下の優先順で
 §3-E/F/G/H の充足状況を確認して：
 
 1. docs/design/core/SSOT-3_API_CONTRACT.md
@@ -87,7 +87,7 @@ haishin-plus-hub の Pre-Code Gate C を通過させたい。
 3. docs/design/core/SSOT-5_CROSS_CUTTING.md
 4. docs/design/features/common/ の主要ファイル
 
-不足セクションを補完して、`framework gate check-c` を実行。
+不足セクションを補完して、`shirube gate check-c` を実行。
 ```
 
 ---
@@ -113,7 +113,7 @@ CLAUDE.md の Gate A 定義を読んで、以下を確認・修正して：
 5. pnpm dev でローカル開発サーバーが起動するか
 6. CI 設定が存在するか
 
-不足があれば修正して、最後に `framework gate check-a` を実行。
+不足があれば修正して、最後に `shirube gate check-a` を実行。
 ```
 
 ### Prompt 3-2: Gate B（計画作成）
@@ -121,14 +121,14 @@ CLAUDE.md の Gate A 定義を読んで、以下を確認・修正して：
 ```
 wbs の Pre-Code Gate B を通過させたい。
 
-`framework plan` を実行して実装計画を作成して。
+`shirube plan` を実行して実装計画を作成して。
 
 前提：
 - docs/ 配下の全 SSOT（SSOT_*.md）を分析
 - docs/core/, docs/ssot/ も含める
 - 依存関係 → Wave 分類 → 実装順序を決定
 
-plan 完了後、`framework gate status` で確認。
+plan 完了後、`shirube gate status` で確認。
 ```
 
 ### Prompt 3-3: Gate C（SSOT 品質監査）
@@ -136,13 +136,13 @@ plan 完了後、`framework gate status` で確認。
 ```
 wbs の Pre-Code Gate C を通過させたい。
 
-`framework audit ssot` を実行して、主要 SSOT の
+`shirube audit ssot` を実行して、主要 SSOT の
 §3-E/F/G/H の充足状況を確認して。
 
 wbs の SSOT は docs/ にフラットに配置されている。
 優先順位の高いファイルから補完して。
 
-補完後、`framework gate check-c` を実行。
+補完後、`shirube gate check-c` を実行。
 ```
 
 ---
@@ -163,7 +163,7 @@ iyasaka はまだディスカバリーフローが完了していない。
 PRD 等の仕様書が不足している。
 
 docs/idea/IDEA_CANVAS.md を読んで現状を把握した上で、
-`framework discover` を実行してヒアリングを開始して。
+`shirube discover` を実行してヒアリングを開始して。
 
 ※ 1問ずつ質問して。まとめて聞かない。
 ```
@@ -180,7 +180,7 @@ CLAUDE.md の Gate A 定義を読んで、以下を確認・修正して：
 4. .env.example が存在するか
 5. Supabase の接続設定が正しいか
 
-不足があれば修正して、最後に `framework gate check-a` を実行。
+不足があれば修正して、最後に `shirube gate check-a` を実行。
 ```
 
 ### Prompt 4-2: Gate B（計画作成）
@@ -189,9 +189,9 @@ CLAUDE.md の Gate A 定義を読んで、以下を確認・修正して：
 iyasaka の Pre-Code Gate B を通過させたい。
 
 ディスカバリーで生成された SSOT を元に
-`framework plan` を実行して実装計画を作成して。
+`shirube plan` を実行して実装計画を作成して。
 
-plan 完了後、`framework gate status` で確認。
+plan 完了後、`shirube gate status` で確認。
 ```
 
 ### Prompt 4-3: Gate C（SSOT 品質監査）
@@ -199,10 +199,10 @@ plan 完了後、`framework gate status` で確認。
 ```
 iyasaka の Pre-Code Gate C を通過させたい。
 
-`framework audit ssot` を実行して、
+`shirube audit ssot` を実行して、
 docs/design/core/ の SSOT の §3-E/F/G/H を確認。
 
-不足セクションを補完して、`framework gate check-c` を実行。
+不足セクションを補完して、`shirube gate check-c` を実行。
 ```
 
 ---
@@ -210,7 +210,7 @@ docs/design/core/ の SSOT の §3-E/F/G/H を確認。
 ## 全プロジェクト共通: Gate 通過確認プロンプト
 
 ```
-`framework gate status` を実行して、全 Gate の状態を表示して。
+`shirube gate status` を実行して、全 Gate の状態を表示して。
 未通過の Gate があれば、何が必要か説明して。
 ```
 
@@ -218,6 +218,6 @@ docs/design/core/ の SSOT の §3-E/F/G/H を確認。
 
 ```
 全 Gate が passed であることを確認した上で、
-次に実装すべき機能を `framework status` で確認して。
+次に実装すべき機能を `shirube status` で確認して。
 FRAMEWORK_v34_OPERATIONS.md の Step 5 に従って開発を進めて。
 ```

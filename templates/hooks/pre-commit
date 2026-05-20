@@ -15,13 +15,13 @@ if ! command -v framework >/dev/null 2>&1; then
 fi
 
 echo "[Pre-Code Gate] Source code staged. Running gate check..."
-framework gate check
+shirube gate check
 gate_exit=$?
 
 if [ $gate_exit -ne 0 ]; then
   echo ""
   echo "[Pre-Code Gate] COMMIT BLOCKED: Pre-Code Gates have not passed."
-  echo "[Pre-Code Gate] Fix the issues above, then run 'framework gate check' again."
+  echo "[Pre-Code Gate] Fix the issues above, then run 'shirube gate check' again."
   echo "[Pre-Code Gate] Emergency bypass: git commit --no-verify"
   exit 1
 fi

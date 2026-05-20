@@ -308,16 +308,16 @@ function printSummary(
   // Next steps
   io.print("  Next Steps:");
   if (missing.length > 0 && generatedFiles.length === 0) {
-    io.print("    1. Run 'framework retrofit --generate' to create SSOT stubs");
+    io.print("    1. Run 'shirube retrofit --generate' to create SSOT stubs");
     io.print("    2. Review and complete generated documents");
-    io.print("    3. Run 'framework audit ssot <path>' on each document");
+    io.print("    3. Run 'shirube audit ssot <path>' on each document");
   } else if (generatedFiles.length > 0) {
     io.print("    1. Review and complete generated SSOT documents");
-    io.print("    2. Run 'framework audit ssot <path>' on each document");
-    io.print("    3. Use 'framework status' to track progress");
+    io.print("    2. Run 'shirube audit ssot <path>' on each document");
+    io.print("    3. Use 'shirube status' to track progress");
   } else {
-    io.print("    1. Run 'framework audit ssot <path>' to verify quality");
-    io.print("    2. Use 'framework status' to track progress");
+    io.print("    1. Run 'shirube audit ssot <path>' to verify quality");
+    io.print("    2. Use 'shirube status' to track progress");
   }
   io.print("");
 }

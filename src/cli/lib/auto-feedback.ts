@@ -1,7 +1,7 @@
 /**
  * Auto-feedback engine - Automatically generates improvement proposals
- * from error patterns detected during `framework run` failures and
- * `framework audit` low scores.
+ * from error patterns detected during `shirube run` failures and
+ * `shirube audit` low scores.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";

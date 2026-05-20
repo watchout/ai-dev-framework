@@ -1,5 +1,5 @@
 /**
- * framework resequence - Re-assign WWWFFFFTTT numbers in 10-step intervals
+ * shirube resequence - Re-assign WWWFFFFTTT numbers in 10-step intervals
  *
  * Design: docs/TASK-SEQUENCE-DESIGN.md §5
  * Issue: #19

@@ -1,12 +1,12 @@
 /**
- * framework projects - Project registry management command
+ * shirube projects - Project registry management command
  *
  * Manages the global registry of projects that use the framework.
  *
  * Subcommands:
- *   framework projects register [path]   - Register a project
- *   framework projects list              - List registered projects
- *   framework projects unregister [path] - Unregister a project
+ *   shirube projects register [path]   - Register a project
+ *   shirube projects list              - List registered projects
+ *   shirube projects unregister [path] - Unregister a project
  */
 import { type Command } from "commander";
 import {
@@ -21,7 +21,7 @@ export function registerProjectsCommand(program: Command): void {
     .command("projects")
     .description("Project registry management (register, list, unregister)");
 
-  // framework projects register
+  // shirube projects register
   projects
     .command("register")
     .description("Register a project in the global registry")
@@ -46,7 +46,7 @@ export function registerProjectsCommand(program: Command): void {
       }
     });
 
-  // framework projects list
+  // shirube projects list
   projects
     .command("list")
     .description("List all registered projects")
@@ -56,7 +56,7 @@ export function registerProjectsCommand(program: Command): void {
 
         if (result.projects.length === 0) {
           logger.info("No projects registered.");
-          logger.info("Use 'framework projects register [path]' to register a project.");
+          logger.info("Use 'shirube projects register [path]' to register a project.");
           return;
         }
 
@@ -83,7 +83,7 @@ export function registerProjectsCommand(program: Command): void {
       }
     });
 
-  // framework projects unregister
+  // shirube projects unregister
   projects
     .command("unregister")
     .description("Unregister a project from the global registry")

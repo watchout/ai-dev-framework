@@ -153,7 +153,7 @@ Feature: {feature-name}
 |---|---|---|
 | FR-XXX or AC-XXX | test file path + test name | file path + line range or symbol |
 
-`framework trace verify` で完全性を CI gate 検証 (drift 検出時 exit 2)。
+`shirube trace verify` で完全性を CI gate 検証 (drift 検出時 exit 2)。
 
 ## §Evidence (本 spec / PR の主張根拠) [SPEC-DOC4L-016 per、必須]
 

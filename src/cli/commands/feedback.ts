@@ -1,11 +1,11 @@
 /**
- * framework feedback - Framework feedback management command
+ * shirube feedback - Framework feedback management command
  *
  * Subcommands:
- *   framework feedback list                  - List pending proposals
- *   framework feedback approve <id>          - Approve a proposal
- *   framework feedback reject <id> [--reason] - Reject a proposal
- *   framework feedback propose [options]     - Create a new proposal
+ *   shirube feedback list                  - List pending proposals
+ *   shirube feedback approve <id>          - Approve a proposal
+ *   shirube feedback reject <id> [--reason] - Reject a proposal
+ *   shirube feedback propose [options]     - Create a new proposal
  */
 import { type Command } from "commander";
 import type { ProposalCategory } from "../lib/feedback-model.js";
@@ -27,7 +27,7 @@ export function registerFeedbackCommand(program: Command): void {
     .command("feedback")
     .description("Framework feedback management (propose, list, approve, reject)");
 
-  // framework feedback list
+  // shirube feedback list
   feedback
     .command("list")
     .description("List pending proposals")
@@ -59,7 +59,7 @@ export function registerFeedbackCommand(program: Command): void {
       }
     });
 
-  // framework feedback approve <id> [--push-upstream] [--telegram]
+  // shirube feedback approve <id> [--push-upstream] [--telegram]
   feedback
     .command("approve")
     .description("Approve a proposal by ID (applies diff and commits)")
@@ -118,7 +118,7 @@ export function registerFeedbackCommand(program: Command): void {
       }
     });
 
-  // framework feedback reject <id> [--reason]
+  // shirube feedback reject <id> [--reason]
   feedback
     .command("reject")
     .description("Reject a proposal by ID")
@@ -147,7 +147,7 @@ export function registerFeedbackCommand(program: Command): void {
       }
     });
 
-  // framework feedback propose
+  // shirube feedback propose
   feedback
     .command("propose")
     .description("Create a new improvement proposal")

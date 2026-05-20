@@ -87,7 +87,7 @@ function handleStatus(
 
   if (reports.length === 0) {
     io.print(
-      `\n  No deploy reports for ${environment}. Run 'framework deploy ${environment}' to deploy.\n`,
+      `\n  No deploy reports for ${environment}. Run 'shirube deploy ${environment}' to deploy.\n`,
     );
     return createEmptyDeployReport(environment);
   }

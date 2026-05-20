@@ -1,5 +1,5 @@
 /**
- * framework generate - Document generation command
+ * shirube generate - Document generation command
  *
  * Reference: 10_GENERATION_CHAIN.md, 11_FEATURE_SPEC_FLOW.md
  *
@@ -53,7 +53,7 @@ export function registerGenerateCommand(program: Command): void {
           const frameworkDir = path.join(projectDir, ".framework");
           if (!fs.existsSync(frameworkDir)) {
             logger.error(
-              "No .framework directory found. Run 'framework init' first.",
+              "No .framework directory found. Run 'shirube init' first.",
             );
             process.exit(1);
           }
@@ -98,7 +98,7 @@ function printResults(
   logger.header("Next steps:");
   logger.info("  1. Review generated documents in docs/");
   logger.info("  2. Fill in TBD sections");
-  logger.info("  3. framework plan    <- Create implementation plan");
+  logger.info("  3. shirube plan    <- Create implementation plan");
   logger.info("");
 }
 
@@ -107,7 +107,7 @@ function printGenerationStatus(projectDir: string): void {
 
   if (!state) {
     logger.info("No generation state found.");
-    logger.info("Run 'framework generate' to start.");
+    logger.info("Run 'shirube generate' to start.");
     return;
   }
 

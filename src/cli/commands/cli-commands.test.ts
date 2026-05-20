@@ -573,7 +573,7 @@ describe("status command", () => {
 // Anti-regression for the auditor BLOCK on cycle X+1: the traceability-auditor
 // prompt previously invoked `npx tsx src/cli/index.ts trace verify`, which
 // requires a source tree and a tsx binary. The new prompt invokes
-// `npx framework trace verify`, the published CLI bin. This smoke test
+// `npx shirube trace verify`, the published CLI bin. This smoke test
 // simulates a consumer repo by running the CLI from a directory with no
 // .framework/config.json and asserts a graceful exit-0 skip rather than a
 // crash — matching the "graceful degrade" requirement of cycle X+2 §2.

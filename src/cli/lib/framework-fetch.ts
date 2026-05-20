@@ -1,7 +1,7 @@
 /**
  * Framework fetch utility - Provides framework documents from unified repo
  *
- * Used by `framework init` and `framework update` to obtain framework
+ * Used by `shirube init` and `shirube update` to obtain framework
  * specification documents, templates, and skills.
  *
  * SSOT principle: This repository IS the source of truth (unified repo).
@@ -98,7 +98,7 @@ export async function fetchFrameworkDocs(
     if (contents.length > 0) {
       errors.push(
         "docs/standards/ already exists and is not empty. " +
-          "Use framework update to overwrite.",
+          "Use shirube update to overwrite.",
       );
       return { copiedFiles, version, errors };
     }

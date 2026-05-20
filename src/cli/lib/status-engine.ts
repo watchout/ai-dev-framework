@@ -532,9 +532,9 @@ export function printStatus(
     io.print(`    ${iconB} Gate B (Planning)          ${result.gates.gateB.toUpperCase()}`);
     io.print(`    ${iconC} Gate C (SSOT Completeness) ${result.gates.gateC.toUpperCase()}`);
     if (result.gates.allPassed) {
-      io.print("    → 'framework run' is allowed");
+      io.print("    → 'shirube run' is allowed");
     } else {
-      io.print("    → 'framework run' is BLOCKED. Run 'framework gate check'.");
+      io.print("    → 'shirube run' is BLOCKED. Run 'shirube gate check'.");
     }
     io.print("");
   }

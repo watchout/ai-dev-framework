@@ -1,11 +1,11 @@
 /**
- * framework prune — Remove orphaned tasks from plan.json
+ * shirube prune — Remove orphaned tasks from plan.json
  *
  * Design: docs/TASK-SEQUENCE-DESIGN.md §9
  * Issue: #18
  *
  * Orphaned task = exists in plan.json but has no corresponding GitHub Issue.
- * Detected by framework sync; explicitly removed by framework prune.
+ * Detected by shirube sync; explicitly removed by shirube prune.
  */
 import * as fs from "node:fs";
 import * as path from "node:path";

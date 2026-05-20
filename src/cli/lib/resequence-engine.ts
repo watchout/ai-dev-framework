@@ -1,5 +1,5 @@
 /**
- * framework resequence — Re-assign WWWFFFFTTT numbers in 10-step intervals
+ * shirube resequence — Re-assign WWWFFFFTTT numbers in 10-step intervals
  *
  * Design: docs/TASK-SEQUENCE-DESIGN.md §5
  * Issue: #19
@@ -51,7 +51,7 @@ export async function runResequence(
     if (!plan || !plan.tasks) {
       return {
         ok: false,
-        error: "plan.json が見つかりません。先に framework plan を実行してください。",
+        error: "plan.json が見つかりません。先に shirube plan を実行してください。",
         resequenced: 0,
         migrated: 0,
         warnings,

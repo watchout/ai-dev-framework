@@ -12,7 +12,7 @@ export function printAuditStatus(
 
   if (reports.length === 0) {
     logger.info(
-      "No audit reports found. Run 'framework audit <mode> <target>' to audit.",
+      "No audit reports found. Run 'shirube audit <mode> <target>' to audit.",
     );
     return;
   }

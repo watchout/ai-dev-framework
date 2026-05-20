@@ -21,7 +21,7 @@ export function resolveAuditTarget(
     if (!fs.existsSync(defaultTarget)) {
       logger.error(
         "No target specified and default SSOT file not found.\n" +
-          "Usage: framework audit <mode> <target>\n" +
+          "Usage: shirube audit <mode> <target>\n" +
           "Or create: ssot/SSOT-0_PRD.md",
       );
       process.exit(1);

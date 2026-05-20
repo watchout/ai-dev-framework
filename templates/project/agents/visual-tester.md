@@ -8,7 +8,7 @@ Playwright MCP（`.mcp.json` で設定済み）を使用して画面表示・操
 
 ## 前提条件
 
-- `.mcp.json` に Playwright MCP が設定されていること（`framework init`/`retrofit`/`update` で自動設定）
+- `.mcp.json` に Playwright MCP が設定されていること（`shirube init`/`retrofit`/`update` で自動設定）
 - **Playwright MCP が提供する専用 Chromium を使う**（ユーザーの Chrome を使わない）
 - Chrome 拡張機能との競合を避けるため、ユーザーのブラウザプロファイルは使用しない
 

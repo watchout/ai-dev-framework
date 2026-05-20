@@ -44,8 +44,8 @@ describe("generateClaudeMd", () => {
     expect(result).toContain("Gate A");
     expect(result).toContain("Gate B");
     expect(result).toContain("Gate C");
-    expect(result).toContain("framework gate spec");
-    expect(result).toContain("framework trace verify");
+    expect(result).toContain("shirube gate spec");
+    expect(result).toContain("shirube trace verify");
     expect(result).not.toContain("§3-E/F/G/H");
   });
 
@@ -67,8 +67,8 @@ describe("generateClaudeMd", () => {
   it("includes GitHub Integration section", () => {
     const result = generateClaudeMd(testConfig);
     expect(result).toContain("GitHub Integration");
-    expect(result).toContain("framework plan --sync");
-    expect(result).toContain("framework status --github");
+    expect(result).toContain("shirube plan --sync");
+    expect(result).toContain("shirube status --github");
   });
 
   it("includes Knowledge & Memory section", () => {

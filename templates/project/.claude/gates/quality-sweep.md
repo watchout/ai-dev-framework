@@ -24,7 +24,7 @@ auto-remediate (max=2 attempts) then escalate
 
 ## CLI
 ```
-framework gate quality
+shirube gate quality
 ```
 
 ## Description

@@ -105,7 +105,7 @@ describe("gate-engine", () => {
       expect(ciCheck?.passed).toBe(true);
     });
 
-    it("passes framework check when .framework/ exists", () => {
+    it("passes .framework directory check when .framework/ exists", () => {
       fs.mkdirSync(path.join(tmpDir, ".framework"));
       const checks = checkGateA(tmpDir);
       const fwCheck = checks.find((c) => c.name.includes("Framework"));
@@ -186,7 +186,7 @@ describe("gate-engine", () => {
         c.name.includes("Project profile"),
       );
       expect(profileCheck?.passed).toBe(false);
-      expect(profileCheck?.message).toContain("framework retrofit");
+      expect(profileCheck?.message).toContain("shirube retrofit");
       expect(profileCheck?.message).toContain("project.json");
     });
 
@@ -952,7 +952,7 @@ Then
     it("WARNING checks are visible in print output (not silent pass)", async () => {
       // Regression guard for codex-auditor PR #54 cycle 2 finding:
       // printChecks was hiding passed:true messages, making the DB
-      // migration WARNING effectively silent in `framework gate check`.
+      // migration WARNING effectively silent in `shirube gate check`.
       writeBasicProject(tmpDir);
       fs.writeFileSync(path.join(tmpDir, ".env.example"), "", "utf-8");
       fs.writeFileSync(path.join(tmpDir, "docker-compose.yml"), "", "utf-8");

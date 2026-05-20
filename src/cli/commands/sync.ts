@@ -1,5 +1,5 @@
 /**
- * framework sync - Bidirectional sync between plan.json and GitHub Issues
+ * shirube sync - Bidirectional sync between plan.json and GitHub Issues
  *
  * Design: docs/TASK-SEQUENCE-DESIGN.md §8-9
  * Issue: #16

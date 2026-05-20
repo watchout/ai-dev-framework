@@ -218,7 +218,7 @@ describe("claudemd-updater", () => {
         "utf-8",
       );
       expect(updated).toContain("## Workflow Orchestration");
-      expect(updated).toContain("framework gate check");
+      expect(updated).toContain("shirube gate check");
       expect(updated).not.toContain("Old workflow text");
       expect(updated).toContain("## Knowledge & Memory");
       expect(updated).toContain("- Keep this section.");
@@ -359,8 +359,8 @@ describe("claudemd-updater", () => {
     it("contains Pre-Code Gate integration", () => {
       const content = getWorkflowOrchestrationContent();
       expect(content).toContain("Pre-Code Gate");
-      expect(content).toContain("framework gate check");
-      expect(content).toContain("framework trace verify");
+      expect(content).toContain("shirube gate check");
+      expect(content).toContain("shirube trace verify");
     });
   });
 });

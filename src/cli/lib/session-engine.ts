@@ -151,7 +151,7 @@ export function runSessionLoad(
   if (!state) {
     io.print("");
     io.print("  No saved session found.");
-    io.print("  Run 'framework session-save' to save current state.");
+    io.print("  Run 'shirube session-save' to save current state.");
     io.print("");
     return null;
   }

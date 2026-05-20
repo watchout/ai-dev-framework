@@ -136,7 +136,7 @@ export async function runTask(
     }
     if (!plan || plan.waves.length === 0) {
       errors.push(
-        "No implementation plan found. Run 'framework plan --sync' first.",
+        "No implementation plan found. Run 'shirube plan --sync' first.",
       );
       return {
         taskId: "",
@@ -392,7 +392,7 @@ export async function runTask(
       errors,
     };
   }
-  const auditScore = 100; // Actual audit should be run separately via `framework audit`
+  const auditScore = 100; // Actual audit should be run separately via `shirube audit`
 
   task.acceptanceChecks = validation.checks;
   completeTask(state, task.taskId, files, auditScore);
@@ -431,7 +431,7 @@ export async function runTask(
     io.print(formatNextTaskProposal(nextProposal, progress, state.tasks.length, doneCount));
     io.print("");
   } else if (progress === 100) {
-    io.print("[提案] 全タスク完了。framework audit code でコード監査を実行してください。");
+    io.print("[提案] 全タスク完了。shirube audit code でコード監査を実行してください。");
     io.print("");
   }
 
@@ -487,7 +487,7 @@ export interface FailTaskResult {
  * Mark a task as done without interactive prompts.
  * Designed for use from Claude Code sessions / CI / scripts.
  *
- * Usage: framework run <taskId> --complete
+ * Usage: shirube run <taskId> --complete
  */
 export async function completeTaskNonInteractive(
   projectDir: string,
@@ -503,7 +503,7 @@ export async function completeTaskNonInteractive(
   if (!state) {
     const plan = loadPlan(projectDir);
     if (!plan || plan.waves.length === 0) {
-      return { error: "No plan found. Run 'framework plan' first.", progress: 0, totalTasks: 0, doneTasks: 0, issueClosed: false };
+      return { error: "No plan found. Run 'shirube plan' first.", progress: 0, totalTasks: 0, doneTasks: 0, issueClosed: false };
     }
     state = initRunStateFromPlan(plan);
     saveRunState(projectDir, state);
@@ -687,7 +687,7 @@ export function heartbeatTaskNonInteractive(
   const state = loadRunState(projectDir);
   if (!state) {
     return {
-      error: "No run state found. Run 'framework run --start-only' first.",
+      error: "No run state found. Run 'shirube run --start-only' first.",
       taskId: taskId ?? "",
       progress: 0,
     };
@@ -751,7 +751,7 @@ export async function failTaskNonInteractive(
   const state = loadRunState(projectDir);
   if (!state) {
     return {
-      error: "No run state found. Run 'framework run --start-only' first.",
+      error: "No run state found. Run 'shirube run --start-only' first.",
       taskId,
       progress: 0,
       issueLabeled: false,
@@ -798,7 +798,7 @@ export interface BatchCompleteResult {
 /**
  * Mark all tasks for a feature as done (non-interactive batch).
  *
- * Usage: framework run <featureId> --complete-feature
+ * Usage: shirube run <featureId> --complete-feature
  */
 export async function completeFeatureNonInteractive(
   projectDir: string,
@@ -854,7 +854,7 @@ export async function completeFeatureNonInteractive(
 /**
  * Mark all tasks in a wave as done (non-interactive batch).
  *
- * Usage: framework run <waveNumber> --complete-wave
+ * Usage: shirube run <waveNumber> --complete-wave
  */
 export async function completeWaveNonInteractive(
   projectDir: string,
@@ -939,7 +939,7 @@ export async function syncRunStateFromGitHub(
 ): Promise<GitHubWritebackResult> {
   const errors: string[] = [];
 
-  // Require GitHub sync state (created by `framework plan --sync`)
+  // Require GitHub sync state (created by `shirube plan --sync`)
   const syncState = loadSyncState(projectDir);
   if (!syncState) {
     return { updated: 0, created: false, progress: 0, errors: ["No GitHub sync state found."] };
@@ -1018,7 +1018,7 @@ function loadOrInitRunState(
 
   const plan = loadPlan(projectDir);
   if (!plan || plan.waves.length === 0) {
-    return { error: "No plan found. Run 'framework plan' first." };
+    return { error: "No plan found. Run 'shirube plan' first." };
   }
 
   state = initRunStateFromPlan(plan);
@@ -1068,7 +1068,7 @@ export function formatNextTaskProposal(
     lines.push(`  依存: ${proposal.blockedBy.join(", ")}`);
   }
   lines.push(`  進捗: ${doneTasks}/${totalTasks} (${progress}%)`);
-  lines.push(`  実行: framework run ${proposal.taskId} --start-only`);
+  lines.push(`  実行: shirube run ${proposal.taskId} --start-only`);
   return lines.join("\n");
 }
 
@@ -1086,7 +1086,7 @@ export function formatNextTaskProposal(
 export function initRunStateFromPlan(plan: PlanState): RunState {
   if (!plan.tasks || plan.tasks.length === 0) {
     throw new Error(
-      "plan.json missing tasks[]. Re-run 'framework plan' to regenerate.",
+      "plan.json missing tasks[]. Re-run 'shirube plan' to regenerate.",
     );
   }
 
@@ -1154,7 +1154,7 @@ export function generateTaskPrompt(task: TaskExecution): string {
       lines.push("3. Cover normal, abnormal, boundary cases");
       break;
     case "review":
-      lines.push("1. Run Adversarial Review (framework audit code)");
+      lines.push("1. Run Adversarial Review (shirube audit code)");
       lines.push("2. Verify SSOT compliance");
       lines.push("3. Check all MUST requirements");
       lines.push("4. Identify edge cases and failure modes");

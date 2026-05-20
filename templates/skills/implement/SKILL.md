@@ -19,7 +19,7 @@ Pre-Code Gate (A/B/C) が全て passed であることが前提。
 
 許可されること:
 - コード、テスト、実装メモ、関連ドキュメントを作成・更新する
-- `npm test`, `npm run build`, `framework gate check`, `framework trace verify` などを実行し、結果を事実として報告する
+- `npm test`, `npm run build`, `shirube gate check`, `shirube trace verify` などを実行し、結果を事実として報告する
 - 明らかな不備を自己レビューとして修正する
 - `/gate-quality` や `/review` に渡すべき検証観点を整理する
 
@@ -65,7 +65,7 @@ Gate Check → I1: 実装 → I2: テスト → I3: 監査 → I4: 統合 → I5
 - **Gate B** (Planning): タスク分解・Wave分類が完了しているか
 - **Gate C** (SSOT): §3-E/F/G/H が記入済みか
 
-全Gate passed でなければ `framework gate check` を実行して解決する。
+全Gate passed でなければ `shirube gate check` を実行して解決する。
 
 ## エージェント詳細
 
@@ -278,7 +278,7 @@ notesファイルは短く具体的に書くこと。1ファイル50行以内を
 実装完了後、PR作成前にGate 2を通すこと:
 
 ```
-1. framework gate quality     ← コンテキスト収集（CLI）
+1. shirube gate quality     ← コンテキスト収集（CLI）
 2. /gate-quality               ← Validator実行（スキル）
 3. PASS → PR作成に進む
    BLOCK → 指摘事項を修正 → 1に戻る

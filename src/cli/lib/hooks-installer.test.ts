@@ -247,7 +247,7 @@ describe("hooks-installer", () => {
       const content = fs.readFileSync(hookPath, "utf-8");
       expect(content).toContain("#!/bin/sh");
       expect(content).toContain("Pre-Code Gate");
-      expect(content).toContain("framework gate check");
+      expect(content).toContain("shirube gate check");
     });
 
     it("creates executable pre-commit hook", () => {

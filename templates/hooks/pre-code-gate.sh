@@ -81,7 +81,7 @@ fi
 # ─── Pre-Code Gate (hard layer) ───
 gates_file="$project_dir/.framework/gates.json"
 if [ ! -f "$gates_file" ]; then
-  echo "[Pre-Code Gate] .framework/gates.json not found. Run 'framework gate check'." >&2
+  echo "[Pre-Code Gate] .framework/gates.json not found. Run 'shirube gate check'." >&2
   exit 2
 fi
 
@@ -111,7 +111,7 @@ if [ "$result" != "PASSED" ]; then
   echo "  Gate B (Planning):    \${gate_b:-error}" >&2
   echo "  Gate C (SSOT):        \${gate_c:-error}" >&2
   echo "" >&2
-  echo "  Run: framework gate check" >&2
+  echo "  Run: shirube gate check" >&2
   echo "  (docs/.env/.framework edits are allowed)" >&2
   echo "=====================================" >&2
   exit 2

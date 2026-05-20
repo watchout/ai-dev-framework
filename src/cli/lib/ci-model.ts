@@ -221,7 +221,7 @@ function evaluateE2E(projectDir: string): CIStageResult {
   if (hasCypress) details.push("Cypress config found");
 
   if (!hasPlaywright && !hasCypress) {
-    details.push("No E2E framework config found (recommended)");
+    details.push("No E2E shirube config found (recommended)");
     return { stage: "e2e", name: "E2E Tests", status: "skip", required: false, details };
   }
 

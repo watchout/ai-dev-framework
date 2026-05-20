@@ -1,15 +1,15 @@
 /**
- * framework gate - Pre-Code Gate management command
+ * shirube gate - Pre-Code Gate management command
  *
  * Reference: CLAUDE.md §Pre-Code Gate (A/B/C)
  *
  * Subcommands:
- *   framework gate check       - Run all gate checks
- *   framework gate check-a     - Run Gate A only (environment)
- *   framework gate check-b     - Run Gate B only (planning)
- *   framework gate check-c     - Run Gate C only (SSOT completeness)
- *   framework gate status      - Show current gate state
- *   framework gate reset       - Reset all gates to pending
+ *   shirube gate check       - Run all gate checks
+ *   shirube gate check-a     - Run Gate A only (environment)
+ *   shirube gate check-b     - Run Gate B only (planning)
+ *   shirube gate check-c     - Run Gate C only (SSOT completeness)
+ *   shirube gate status      - Show current gate state
+ *   shirube gate reset       - Reset all gates to pending
  */
 import { type Command } from "commander";
 import { basename } from "node:path";
@@ -63,10 +63,10 @@ export function registerGateCommand(program: Command): void {
     .command("gate")
     .description("Pre-Code Gate management (A/B/C checks)");
 
-  // framework gate validate spec (SPEC-DOC4L-017)
+  // shirube gate validate spec (SPEC-DOC4L-017)
   gate.addCommand(buildValidateCommand());
 
-  // framework gate check
+  // shirube gate check
   gate
     .command("check")
     .description("Run all gate checks (A, B, C)")
@@ -98,11 +98,11 @@ export function registerGateCommand(program: Command): void {
 
         if (result.allPassed) {
           logger.success(
-            "All gates passed. 'framework run' is now allowed.",
+            "All gates passed. 'shirube run' is now allowed.",
           );
         } else {
           logger.error(
-            "Gate check failed. Resolve issues before running 'framework run'.",
+            "Gate check failed. Resolve issues before running 'shirube run'.",
           );
           io.print("");
           for (const failure of result.failures) {
@@ -122,7 +122,7 @@ export function registerGateCommand(program: Command): void {
       }
     });
 
-  // framework gate check-a
+  // shirube gate check-a
   gate
     .command("check-a")
     .description("Run Gate A only (environment readiness)")
@@ -137,7 +137,7 @@ export function registerGateCommand(program: Command): void {
       runSingleGateCheck("A", options.profile as ProfileType | undefined);
     });
 
-  // framework gate check-b
+  // shirube gate check-b
   gate
     .command("check-b")
     .description("Run Gate B only (planning completeness)")
@@ -145,7 +145,7 @@ export function registerGateCommand(program: Command): void {
       runSingleGateCheck("B");
     });
 
-  // framework gate check-c
+  // shirube gate check-c
   gate
     .command("check-c")
     .description("Run Gate C only (SSOT §3-E/F/G/H)")
@@ -153,7 +153,7 @@ export function registerGateCommand(program: Command): void {
       runSingleGateCheck("C");
     });
 
-  // framework gate status
+  // shirube gate status
   gate
     .command("status")
     .description("Show current gate state")
@@ -188,7 +188,7 @@ export function registerGateCommand(program: Command): void {
           state = loadGateState(projectDir);
           if (!state) {
             logger.info(
-              "No gate state found. Run 'framework gate check' or configure Gate workflows.",
+              "No gate state found. Run 'shirube gate check' or configure Gate workflows.",
             );
             return;
           }
@@ -212,12 +212,12 @@ export function registerGateCommand(program: Command): void {
       }
     });
 
-  // framework gate reset — removed (#62)
+  // shirube gate reset — removed (#62)
   gate
     .command("reset")
     .description("(Removed) Gates are managed by GitHub Actions check runs")
     .action(async () => {
-      logger.error("'framework gate reset' has been removed.");
+      logger.error("'shirube gate reset' has been removed.");
       logger.info("");
       logger.info("Gates are now managed by GitHub Actions check runs.");
       logger.info("To re-run gate checks:");
@@ -228,7 +228,7 @@ export function registerGateCommand(program: Command): void {
       process.exit(1);
     });
 
-  // framework gate scaffold
+  // shirube gate scaffold
   gate
     .command("scaffold")
     .description("Generate missing §3-E/F/G/H templates in SSOT files")
@@ -301,7 +301,7 @@ export function registerGateCommand(program: Command): void {
       }
     });
 
-  // framework gate verify — Gate D Post-Deploy Verification (Phase 1)
+  // shirube gate verify — Gate D Post-Deploy Verification (Phase 1)
   gate
     .command("verify")
     .description("Run Gate D post-deploy verification (D-1 Health + D-3 Pages)")
@@ -376,7 +376,7 @@ export function registerGateCommand(program: Command): void {
       },
     );
 
-  // framework gate design — Gate 1: Design Validation context collection
+  // shirube gate design — Gate 1: Design Validation context collection
   gate
     .command("design")
     .description("Collect context for Gate 1 Design Validation (run /gate-design after)")
@@ -463,7 +463,7 @@ ${contextBody}
 1. **feasibility-checker**: PRD↔API/DB技術的実現可能性
 2. **coherence-auditor**: SSOT間の矛盾検出
 3. **gap-detector**: 設計欠落の検出
-4. **traceability-auditor**: SSOT↔IMPL trace整合性（\`framework trace verify\` ラッパー）
+4. **traceability-auditor**: SSOT↔IMPL trace整合性（\`shirube trace verify\` ラッパー）
 
 判定基準:
 - PASS: 全CRITICAL = 0 かつ WARNING合計 ≤ 5
@@ -487,7 +487,7 @@ ${contextBody}
       },
     );
 
-  // framework gate release — Gate 3: Adversarial Review context collection
+  // shirube gate release — Gate 3: Adversarial Review context collection
   gate
     .command("release")
     .description("Collect context for Gate 3 Adversarial Review (run /gate-release after)")
@@ -654,7 +654,7 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
       },
     );
 
-  // framework gate quality — Gate 2: Quality Sweep (parallel execution + auto-aggregation)
+  // shirube gate quality — Gate 2: Quality Sweep (parallel execution + auto-aggregation)
   gate
     .command("quality")
     .description("Run Gate 2 Quality Sweep: collect context, run 4 validators, auto-aggregate")
@@ -879,7 +879,7 @@ ${testOutput.slice(0, 5000)}${testOutput.length > 5000 ? "\n... (truncated)" : "
       },
     );
 
-  // framework gate spec — Gate 0: Spec Validation (v1.2.0)
+  // shirube gate spec — Gate 0: Spec Validation (v1.2.0)
   gate
     .command("spec")
     .description("Run Gate 0 spec validation (required sections, Gherkin, STRIDE)")

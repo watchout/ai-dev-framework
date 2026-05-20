@@ -8,7 +8,7 @@
 - OPS: `docs/ops/<FEATURE-ID>.md`
 
 ## Traceability
-- [ ] `framework trace verify` passes
+- [ ] `shirube trace verify` passes
 - [ ] SPEC traces to IMPL / VERIFY / OPS
 - [ ] IMPL traces to SPEC / VERIFY / OPS
 - [ ] VERIFY traces to SPEC / IMPL
@@ -23,8 +23,8 @@
 - [ ] `npm run build`
 - [ ] `npm run type-check`
 - [ ] `npm test`
-- [ ] `framework gate spec`
-- [ ] `framework gate check`
+- [ ] `shirube gate spec`
+- [ ] `shirube gate check`
 
 ## Related Issue
 Closes #

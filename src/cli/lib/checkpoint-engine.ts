@@ -338,7 +338,7 @@ function generateRecommendations(
   const recs: string[] = [];
   if (scores.ssotAlignment < 70) {
     recs.push(
-      "Run 'framework init' to set up docs/standards/ and .framework/",
+      "Run 'shirube init' to set up docs/standards/ and .framework/",
     );
   }
   if (scores.codeQuality < 80) {

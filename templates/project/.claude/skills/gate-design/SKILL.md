@@ -9,7 +9,7 @@ description: |
 
 ## 概要
 
-設計完了後、Planning（framework plan）開始前に3つのValidatorが設計書群の矛盾・不整合・欠落を検出するGateスキル。設計欠陥は実装後に10倍のコストがかかるため、Gate 2より厳格な基準を適用する。
+設計完了後、Planning（shirube plan）開始前に3つのValidatorが設計書群の矛盾・不整合・欠落を検出するGateスキル。設計欠陥は実装後に10倍のコストがかかるため、Gate 2より厳格な基準を適用する。
 
 ## Agents（参照）
 
@@ -43,7 +43,7 @@ description: |
 
 | 条件 | 判定 |
 |------|------|
-| 全CRITICAL = 0、WARNING ≤ 5 | **PASS** → framework plan 実行可 |
+| 全CRITICAL = 0、WARNING ≤ 5 | **PASS** → shirube plan 実行可 |
 | CRITICAL ≥ 1 | **BLOCK** → 設計書修正優先 |
 | WARNING > 5 | **BLOCK** → 設計改善必要 |
 
@@ -60,7 +60,7 @@ description: |
 
 ```bash
 # コンテキスト収集（CLIコマンド）
-framework gate design
+shirube gate design
 
 # → .framework/gate-context/design-validation.md が生成される
 ```
@@ -73,7 +73,7 @@ framework gate design
 
 ### 結果の扱い
 
-- **PASS**: `framework plan` に進む
+- **PASS**: `shirube plan` に進む
 - **BLOCK（1回目）**: 指摘事項に基づき設計書を修正 → 再実行
 - **BLOCK（2回目連続）**: 設計アプローチ自体を見直す。場当たり的な設計書修正は禁止
 - **BLOCK（3回目）**: CEOにエスカレーション
@@ -118,7 +118,7 @@ framework gate design
 
 ## ルール
 
-1. **BLOCK時はframework planを実行せず設計書修正優先**
+1. **BLOCK時はshirube planを実行せず設計書修正優先**
 2. **2回連続BLOCK時は設計アプローチ自体を見直す**
 3. **Gate判定結果はCEOへの報告に含めること**
 4. **Design Completeness Scoreを必ず算出すること**

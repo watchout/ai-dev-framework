@@ -28,15 +28,15 @@
 
 | コマンド | 説明 | 主要オプション |
 |---------|------|--------------|
-| `framework init [name]` | プロジェクト初期化 | `--type=app\|lp\|hp\|api\|cli` |
-| `framework discover` | ディスカバリー（ヒアリング） | `--resume` |
-| `framework generate <step>` | SSOT生成 | `business\|product\|technical`, `--auto` |
-| `framework plan` | 実装計画作成 | |
-| `framework audit [target]` | 品質監査 | `ssot\|code\|test\|visual\|all`, `--fix` |
-| `framework run <task-id>` | タスク実行 | `--auto`, `--dry-run` |
-| `framework status` | 進捗表示 | `--json`, `--detail` |
-| `framework retrofit` | 既存プロジェクト導入 | `--scan-only` |
-| `framework update` | フレームワーク更新 | `--check`, `--force` |
+| `shirube init [name]` | プロジェクト初期化 | `--type=app\|lp\|hp\|api\|cli` |
+| `shirube discover` | ディスカバリー（ヒアリング） | `--resume` |
+| `shirube generate <step>` | SSOT生成 | `business\|product\|technical`, `--auto` |
+| `shirube plan` | 実装計画作成 | |
+| `shirube audit [target]` | 品質監査 | `ssot\|code\|test\|visual\|all`, `--fix` |
+| `shirube run <task-id>` | タスク実行 | `--auto`, `--dry-run` |
+| `shirube status` | 進捗表示 | `--json`, `--detail` |
+| `shirube retrofit` | 既存プロジェクト導入 | `--scan-only` |
+| `shirube update` | フレームワーク更新 | `--check`, `--force` |
 
 ### フロー
 
@@ -267,7 +267,7 @@ RES_xxx(404,409), RATE_xxx(429), SYS_xxx(500,503)
 Claude Code に以下を伝える:
 
 「以下のディスカバリー結果を docs/idea/ に配置して、
- 生成チェーン（framework generate）を実行してください。
+ 生成チェーン（shirube generate）を実行してください。
 
  プロジェクトタイプ: [app|lp|hp|api|cli]
 
@@ -284,7 +284,7 @@ Claude Code に以下を伝える:
 4. docs/ssot/DECISION_BACKLOG.md（未決定事項）
 
 引き継ぎ手順:
-1. 前セッションで framework status を実行し、進捗を記録
+1. 前セッションで shirube status を実行し、進捗を記録
 2. 新セッションで Claude Code を起動
 3. CLAUDE.md が自動読み込みされる
 4. .claude/memory/ から前回の状態が復元される
@@ -301,7 +301,7 @@ Claude Code に以下を伝える:
   - 重要な意思決定（ADR）
 
 あると良い:
-  - framework status の出力
+  - shirube status の出力
   - 直近のコミットログ
   - 品質監査の結果
 ```

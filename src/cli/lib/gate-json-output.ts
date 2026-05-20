@@ -5,8 +5,8 @@
  * and §6.2 (test-quality audit report). Human-readable Markdown and
  * machine-readable JSON are produced from the same data.
  *
- * Used by `framework gate quality --output json` and
- * `framework gate release --output json`.
+ * Used by `shirube gate quality --output json` and
+ * `shirube gate release --output json`.
  */
 import type { QualitySweepResult } from "./gate-quality-engine.js";
 
@@ -49,7 +49,7 @@ export interface GateResultJSON {
 }
 
 /**
- * Emitted when `framework gate release --output json` (or similar
+ * Emitted when `shirube gate release --output json` (or similar
  * context-collection command) runs BEFORE an actual verdict is rendered
  * by the downstream skill. DELIBERATELY omits `verdict` so machine
  * consumers cannot misread a preparation step as a SHIP decision.

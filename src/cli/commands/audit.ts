@@ -1,5 +1,5 @@
 /**
- * framework audit - Quality audit command
+ * shirube audit - Quality audit command
  *
  * Reference: 13_SSOT_AUDIT.md, 17_CODE_AUDIT.md
  *

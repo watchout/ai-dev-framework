@@ -142,7 +142,7 @@ export function validateDeployReadiness(
       .reverse();
 
     if (ciFiles.length === 0) {
-      blockers.push("No CI reports found - run 'framework ci' first");
+      blockers.push("No CI reports found - run 'shirube ci' first");
     } else {
       const raw = fs.readFileSync(
         path.join(auditsDir, ciFiles[0]),
@@ -154,7 +154,7 @@ export function validateDeployReadiness(
       }
     }
   } else {
-    blockers.push("No CI reports found - run 'framework ci' first");
+    blockers.push("No CI reports found - run 'shirube ci' first");
   }
 
   // Check build output exists

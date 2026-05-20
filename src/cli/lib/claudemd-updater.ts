@@ -1,7 +1,7 @@
 /**
  * claudemd-updater.ts - CLAUDE.md section replacement engine
  *
- * Replaces the skill/workflow section in CLAUDE.md during `framework update`.
+ * Replaces the skill/workflow section in CLAUDE.md during `shirube update`.
  * Only touches the skill section — all other sections are preserved.
  */
 import * as fs from "node:fs";
@@ -30,7 +30,7 @@ const SECTION_SEPARATOR_PATTERN = /^---\s*$/;
 
 /**
  * The replacement content for the skill section (v4.0 Workflow Orchestration).
- * This is the canonical content that `framework update` installs.
+ * This is the canonical content that `shirube update` installs.
  */
 export function getWorkflowOrchestrationContent(): string {
   return `## Workflow Orchestration
@@ -65,7 +65,7 @@ discovery → design → implement → review
 ### Pre-Code Gate 連携
 「実装開始」の場合:
 1. Skill ツールで /implement を起動
-2. /implement スキル内で \`framework gate check\` と \`framework trace verify\` を確認
+2. /implement スキル内で \`shirube gate check\` と \`shirube trace verify\` を確認
 3. 全Gate passed なら実装開始。未通過なら BLOCK 理由を報告。`;
 }
 

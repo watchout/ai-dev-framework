@@ -1,16 +1,16 @@
 /**
- * framework retrofit - Retrofit existing projects into framework management
+ * shirube retrofit - Retrofit existing projects into framework management
  *
  * Scans an existing codebase, analyzes its architecture,
  * identifies missing SSOT documents, and generates stubs
  * to bring the project under framework management.
  *
  * Usage:
- *   framework retrofit [path]              Scan and report
- *   framework retrofit [path] --generate   Scan and generate missing SSOTs
- *   framework retrofit [path] --dry-run    Show what would be generated
- *   framework retrofit --report            Show last retrofit report
- *   framework retrofit --output <path>     Write markdown report
+ *   shirube retrofit [path]              Scan and report
+ *   shirube retrofit [path] --generate   Scan and generate missing SSOTs
+ *   shirube retrofit [path] --dry-run    Show what would be generated
+ *   shirube retrofit --report            Show last retrofit report
+ *   shirube retrofit --output <path>     Write markdown report
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -68,7 +68,7 @@ export function registerRetrofitCommand(program: Command): void {
             const existing = loadRetrofitReport(projectDir);
             if (!existing) {
               logger.info(
-                "No retrofit report found. Run 'framework retrofit' first.",
+                "No retrofit report found. Run 'shirube retrofit' first.",
               );
               return;
             }
@@ -105,13 +105,13 @@ export function registerRetrofitCommand(program: Command): void {
           }
 
           // Gate state: managed by GitHub Actions check runs (#62)
-          // Local gates.json created on-demand by `framework gate check`.
+          // Local gates.json created on-demand by `shirube gate check`.
           if (!options.dryRun && !loadGateState(projectDir)) {
             logger.info(
               "  Gate state: managed by GitHub Actions (gate-a/b/c.yml).",
             );
             logger.info(
-              "  Run 'framework gate check' for local cache if needed.",
+              "  Run 'shirube gate check' for local cache if needed.",
             );
           }
 

@@ -73,7 +73,7 @@ export async function runGenerateEngine(
   // Load discover session
   const session = loadSession(projectDir);
   if (!session) {
-    errors.push("No discover session found. Run 'framework discover' first.");
+    errors.push("No discover session found. Run 'shirube discover' first.");
     return {
       state: createGenerationState(),
       generatedDocuments,
@@ -83,7 +83,7 @@ export async function runGenerateEngine(
 
   if (session.status !== "completed") {
     errors.push(
-      `Discover session is ${session.status}. Complete 'framework discover' first.`,
+      `Discover session is ${session.status}. Complete 'shirube discover' first.`,
     );
     return {
       state: createGenerationState(),

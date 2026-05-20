@@ -1,5 +1,5 @@
 /**
- * Feedback model - Types for framework feedback proposals
+ * Feedback model - Types for shirube feedback proposals
  *
  * Proposals capture improvement suggestions from projects
  * and store them in .framework/feedback/proposals.json.

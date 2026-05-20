@@ -3,7 +3,7 @@
  * Based on: CLAUDE.md §Pre-Code Gate (A/B/C)
  *
  * Manages gate passage state in .framework/gates.json.
- * Gates must all be "passed" before `framework run` can execute tasks.
+ * Gates must all be "passed" before `shirube run` can execute tasks.
  *
  * Gate A: Development environment ready
  * Gate B: Task decomposition / planning complete

@@ -366,7 +366,7 @@ export function formatPriorityDisplay(
 
   if (displayNodes.length > 0) {
     lines.push("  Run first:");
-    lines.push(`    framework run ${displayNodes[0].id}`);
+    lines.push(`    shirube run ${displayNodes[0].id}`);
     lines.push("");
   }
 

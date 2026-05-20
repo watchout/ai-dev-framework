@@ -196,7 +196,7 @@ export function checkGateA(
           )
         : failCheck(
             "CI configuration (.github/workflows/)",
-            ".github/workflows/ not found. Run 'framework ci' to set up CI.",
+            ".github/workflows/ not found. Run 'shirube ci' to set up CI.",
           ),
     );
   } else {
@@ -214,7 +214,7 @@ export function checkGateA(
     projectDir,
     ".framework",
     "Framework management (.framework/)",
-    ".framework/ not found. Run 'framework retrofit' or 'framework init'.",
+    ".framework/ not found. Run 'shirube retrofit' or 'shirube init'.",
   ));
 
   return checks;
@@ -240,7 +240,7 @@ export function checkGateB(projectDir: string): GateCheck[] {
         )
       : failCheck(
           "Implementation plan (.framework/plan.json)",
-          "No plan found. Run 'framework plan' to generate.",
+          "No plan found. Run 'shirube plan' to generate.",
         ),
   );
 
@@ -258,7 +258,7 @@ export function checkGateB(projectDir: string): GateCheck[] {
           )
         : failCheck(
             "Plan contains features",
-            "Plan has no features. Re-run 'framework plan'.",
+            "Plan has no features. Re-run 'shirube plan'.",
           ),
     );
   } else {
@@ -282,7 +282,7 @@ export function checkGateB(projectDir: string): GateCheck[] {
         )
       : failCheck(
           "Project profile configured (.framework/project.json)",
-          "No project profile. Run 'framework retrofit' again to generate .framework/project.json.",
+          "No project profile. Run 'shirube retrofit' again to generate .framework/project.json.",
         ),
   );
 
@@ -302,7 +302,7 @@ export function checkGateB(projectDir: string): GateCheck[] {
           )
         : warnCheck(
             "GitHub Issues synced (informational)",
-            `${syncedFeatures}/${totalFeatures} features synced. Run 'framework plan --sync' to sync remaining.`,
+            `${syncedFeatures}/${totalFeatures} features synced. Run 'shirube plan --sync' to sync remaining.`,
           ),
     );
   }

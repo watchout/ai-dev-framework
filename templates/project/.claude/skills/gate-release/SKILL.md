@@ -61,7 +61,7 @@ DefenseはProsecutorの思考過程を見ることができない。JudgeはPros
 ### 事前準備（CLI）
 
 ```bash
-framework gate release
+shirube gate release
 # → .framework/gate-context/adversarial-review.md が生成される
 # → Gate 1/2の結果も表示される
 # → 「~5-10分かかる」旨が表示される
@@ -102,8 +102,8 @@ Gate 3実行後、以下をLEARNINGS.mdに記録する:
 BLOCK時に `--auto-fix` オプションで自動修正→再Gate実行が可能:
 
 ```bash
-framework gate release --auto-fix               # デフォルト2回リトライ
-framework gate release --auto-fix --max-retries 3  # 最大3回
+shirube gate release --auto-fix               # デフォルト2回リトライ
+shirube gate release --auto-fix --max-retries 3  # 最大3回
 ```
 
 フロー: BLOCK → GUILTY/条件を抽出 → `claude -p` で修正 → npm test → 再Gate

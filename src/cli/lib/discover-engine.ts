@@ -211,7 +211,7 @@ export async function runDiscoverEngine(
       if (answer.toLowerCase() === "pause") {
         pauseSession(session);
         saveSession(projectDir, session);
-        io.print("\nSession paused. Run 'framework discover' again to resume.");
+        io.print("\nSession paused. Run 'shirube discover' again to resume.");
         return { session, completed: false, paused: true };
       }
 
@@ -243,7 +243,7 @@ export async function runDiscoverEngine(
     if (confirmed === "pause") {
       pauseSession(session);
       saveSession(projectDir, session);
-      io.print("\nSession paused. Run 'framework discover' again to resume.");
+      io.print("\nSession paused. Run 'shirube discover' again to resume.");
       return { session, completed: false, paused: true };
     }
 
@@ -273,7 +273,7 @@ export async function runDiscoverEngine(
 
   if (finalConfirm === "no") {
     io.print("Discovery completed but document generation skipped.");
-    io.print("Run 'framework generate' when ready.");
+    io.print("Run 'shirube generate' when ready.");
   }
 
   completeSession(session);
@@ -281,8 +281,8 @@ export async function runDiscoverEngine(
 
   io.print("\nDiscovery completed!");
   io.print("\nNext steps:");
-  io.print("  1. framework generate    <- Generate SSOT documents");
-  io.print("  2. framework plan        <- Create implementation plan");
+  io.print("  1. shirube generate    <- Generate SSOT documents");
+  io.print("  2. shirube plan        <- Create implementation plan");
   io.print("");
 
   return { session, completed: true, paused: false };

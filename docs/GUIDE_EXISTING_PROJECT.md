@@ -8,9 +8,9 @@
 
 ```
 Step 1: 状況確認         プロジェクトの現状を把握
-Step 2: retrofit 実行    framework retrofit
+Step 2: retrofit 実行    shirube retrofit
 Step 3: ギャップ対応      不足SSOTを補完
-Step 4: 通常フローに合流   framework plan → run → audit
+Step 4: 通常フローに合流   shirube plan → run → audit
 ```
 
 ---
@@ -56,10 +56,10 @@ find src/ -name "*.ts" -o -name "*.tsx" -o -name "*.js" -o -name "*.jsx" | wc -l
 
 ```bash
 # スキャンとギャップ分析
-framework retrofit --scan-only
+shirube retrofit --scan-only
 
 # レポートを確認してから実行
-framework retrofit
+shirube retrofit
 ```
 
 ### retrofit の処理フロー
@@ -102,7 +102,7 @@ R-5: CLAUDE.md 生成
 R-6: フレームワーク移行完了
 ────────────────────────────────
   - docs/ 配下にSSOTを配置
-  - framework status で確認
+  - shirube status で確認
 ```
 
 ---
@@ -155,16 +155,16 @@ claude "既存のUI（src/pages/ と src/components/）を分析して、
 
 ```bash
 # 実装計画（既存機能の整理 + 新機能の追加）
-framework plan
+shirube plan
 
 # 新機能の開発
-framework run NEW-FEAT-001
+shirube run NEW-FEAT-001
 
 # 品質監査
-framework audit all
+shirube audit all
 
 # 進捗確認
-framework status
+shirube status
 ```
 
 ---

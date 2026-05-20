@@ -1,5 +1,5 @@
 /**
- * framework deploy - Deployment command
+ * shirube deploy - Deployment command
  *
  * Reference: 23_DEPLOY_RELEASE.md
  *

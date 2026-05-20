@@ -1,5 +1,5 @@
 /**
- * framework status - Display project progress
+ * shirube status - Display project progress
  *
  * Reference: SSOT-3 §2.7, SSOT-2 §4.1-4.2
  *
@@ -33,7 +33,7 @@ export function registerStatusCommand(program: Command): void {
         const frameworkDir = `${projectDir}/.framework`;
         if (!fs.existsSync(frameworkDir)) {
           logger.error(
-            "Not a framework project. Run 'framework init' or 'framework retrofit' first.",
+            "Not a framework project. Run 'shirube init' or 'shirube retrofit' first.",
           );
           process.exit(1);
         }
@@ -42,7 +42,7 @@ export function registerStatusCommand(program: Command): void {
         const projectJsonPath = `${frameworkDir}/project.json`;
         if (!fs.existsSync(projectJsonPath)) {
           logger.error(
-            "Missing .framework/project.json. Run 'framework retrofit' again to generate it.",
+            "Missing .framework/project.json. Run 'shirube retrofit' again to generate it.",
           );
           process.exit(1);
         }

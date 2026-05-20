@@ -1,7 +1,7 @@
 # タスク順序管理 設計書
 
-> ai-dev-framework におけるタスク管理・実行順序の設計仕様。  
-> OpenClaw 配下に依存せず、フレームワーク単体で動作することを前提とする。  
+> ai-dev-framework におけるタスク管理・実行順序の設計仕様。
+> OpenClaw 配下に依存せず、フレームワーク単体で動作することを前提とする。
 > 監査反映済み: 2026-03-11
 
 ---
@@ -14,24 +14,24 @@
 |--------|------|--------------|
 | タスク定義・順序 | GitHub Issues | 必須 |
 | 実行ステータス（進行中） | plan.json（ローカル） | 不要 |
-| 同期 | `framework sync` | 必須 |
+| 同期 | `shirube sync` | 必須 |
 
 - GitHub Issues = 唯一の正本（SSOT）
 - plan.json = 実行中のワーキングコピー（キャッシュ）
-- plan.json の順序・タスク定義は `framework sync` のみが更新する（エージェントによる直接書き換え禁止）
+- plan.json の順序・タスク定義は `shirube sync` のみが更新する（エージェントによる直接書き換え禁止）
 
 ### 2フェーズ分離
 
 ```
-計画フェーズ: framework plan
+計画フェーズ: shirube plan
   → GitHub Issues からタスクを読み込み
   → plan.json を生成（オンライン必須）
 
-実行フェーズ: framework run / framework next / framework current
+実行フェーズ: shirube run / shirube next / shirube current
   → plan.json を参照（オフライン可）
   → ステータスをローカルに書き込む
 
-同期フェーズ: framework sync
+同期フェーズ: shirube sync
   → plan.json の状態を GitHub Issues に反映（オンライン必須）
   → CI hook により PR マージ時に自動実行
 ```
@@ -82,28 +82,28 @@ TTT  = Task番号    （3桁）
 
 | コマンド | 説明 |
 |---------|------|
-| `framework plan` | GitHub Issues → plan.json 生成 |
-| `framework sync` | plan.json ↔ GitHub Issues の双方向同期 |
-| `framework current` | 作業中タスク（status=in_progress）の表示 |
-| `framework next` | 次の todo タスクを取得（in_progress があれば警告） |
-| `framework next --force` | in_progress を無視して次の todo を取得（並列作業用、ログ記録） |
-| `framework run` | タスク実行（sync 状態チェック付き） |
-| `framework resequence` | WWWFFFFTTT を10刻みに振り直し |
-| `framework resequence --migrate` | 旧フォーマット → WWWFFFFTTT への移行 |
-| `framework prune` | orphan タスクの明示的削除 |
-| `framework status` | sync 状態・dirty フラグ・lock 状態の確認 |
+| `shirube plan` | GitHub Issues → plan.json 生成 |
+| `shirube sync` | plan.json ↔ GitHub Issues の双方向同期 |
+| `shirube current` | 作業中タスク（status=in_progress）の表示 |
+| `shirube next` | 次の todo タスクを取得（in_progress があれば警告） |
+| `shirube next --force` | in_progress を無視して次の todo を取得（並列作業用、ログ記録） |
+| `shirube run` | タスク実行（sync 状態チェック付き） |
+| `shirube resequence` | WWWFFFFTTT を10刻みに振り直し |
+| `shirube resequence --migrate` | 旧フォーマット → WWWFFFFTTT への移行 |
+| `shirube prune` | orphan タスクの明示的削除 |
+| `shirube status` | sync 状態・dirty フラグ・lock 状態の確認 |
 
 ---
 
-## 4. framework next / current ロジック
+## 4. shirube next / current ロジック
 
-### framework current
+### shirube current
 
 ```
 status = in_progress のタスクを返す（なければ空）
 ```
 
-### framework next
+### shirube next
 
 ```
 status = todo の最小 WWWFFFFTTT を返す
@@ -111,7 +111,7 @@ in_progress が存在する場合は警告を出す:
   "Task #42 が作業中です。完了してから next を実行してください"
 ```
 
-### framework next --force
+### shirube next --force
 
 ```
 in_progress を無視して次の todo を返す（並列作業用）
@@ -141,13 +141,13 @@ audit.log に以下を記録:
 
 ### resequence
 
-挿入が連続して番号が詰まった場合、`framework resequence` で10刻みに振り直す。  
+挿入が連続して番号が詰まった場合、`shirube resequence` で10刻みに振り直す。
 GitHub Issues のラベルも自動更新する。
 
 ### hotfix / 割り込み
 
-特別な予約レンジは持たない。  
-割り込みタスクは `framework resequence` で通常 Wave に組み込む。
+特別な予約レンジは持たない。
+割り込みタスクは `shirube resequence` で通常 Wave に組み込む。
 
 ---
 
@@ -178,10 +178,10 @@ GitHub Issues のラベルも自動更新する。
   → Squash & Merge
   → main CI 再実行 → Staging 自動デプロイ
   → GitHub Projects → Done
-  → CI hook: framework sync 自動実行（atomic write）
+  → CI hook: shirube sync 自動実行（atomic write）
        → GitHub Issue 自動 close
        → plan.json 更新
-  → framework next
+  → shirube next
        → 最小 WWWFFFFTTT の todo を返す
        → 次タスク開始
 ```
@@ -210,7 +210,7 @@ GitHub Issues のラベルも自動更新する。
 ### 人間による停止
 
 - PR に `hold` ラベルを付与 → 自動マージをスキップ
-- `framework block <PR番号>` でラベル付与可能
+- `shirube block <PR番号>` でラベル付与可能
 
 ---
 
@@ -259,7 +259,7 @@ GitHub Issues のラベルも自動更新する。
 }
 ```
 
-- `dirty: true` の場合、`framework run` 実行時に警告を表示してブロック
+- `dirty: true` の場合、`shirube run` 実行時に警告を表示してブロック
 - 同じ状態で何度 sync しても結果が同じ（冪等性）
 - 各 Issue の `syncedAt` タイムスタンプで変更検知
 
@@ -267,14 +267,14 @@ GitHub Issues のラベルも自動更新する。
 
 ## 9. orphan 検出
 
-### framework sync 実行時の突合
+### shirube sync 実行時の突合
 
 1. plan.json のタスク一覧と GitHub Issues を突合
 2. plan.json にあるが GitHub にない → orphaned として警告:
    ```
    ⚠️ Task #42 (1000100020) は GitHub に存在しません。
-   削除: framework prune #42
-   維持: framework sync --keep-orphans
+   削除: shirube prune #42
+   維持: shirube sync --keep-orphans
    ```
 3. GitHub にあるが plan.json にない → 新規タスクとして追加
 
@@ -284,9 +284,9 @@ GitHub Issues のラベルも自動更新する。
 
 ### 制約一覧
 
-- `framework run` 実行前に sync 状態チェック → `dirty: true` ならブロック
-- `framework plan` / `framework sync` 実行中は `.plan.lock` を生成
-- PR マージ時は CI hook で `framework sync` を強制実行
+- `shirube run` 実行前に sync 状態チェック → `dirty: true` ならブロック
+- `shirube plan` / `shirube sync` 実行中は `.plan.lock` を生成
+- PR マージ時は CI hook で `shirube sync` を強制実行
 - `syncedAt` と GitHub の最終更新を比較。古ければブロック
 
 ### リスクと対処
@@ -297,11 +297,11 @@ GitHub Issues のラベルも自動更新する。
 | ② | Issue リンクなし PR マージ | PR テンプレートで `Closes #xxx` を必須化 |
 | ③ | Review Reject 後の宙吊り | Reject 時に plan.json を `review_failed` ステータスに更新 |
 | ④ | 並行タスクの sync 競合 | `.plan.lock` で直列化 |
-| ⑤ | sync 前の framework next 実行 | `dirty` フラグで run をブロック |
+| ⑤ | sync 前の shirube next 実行 | `dirty` フラグで run をブロック |
 | ⑥ | Wave 境界での未展開 | Wave 境界到達時に次 Wave を plan.json へ自動展開 |
 | ⑦ | sync 途中のネットワーク断 | atomic write + dirty フラグ |
 | ⑧ | .plan.lock の残存 | PID + タイムアウトで自動解除 |
-| ⑨ | GitHub Issue 外部削除 | orphan 検出 + framework prune |
+| ⑨ | GitHub Issue 外部削除 | orphan 検出 + shirube prune |
 | ⑩ | 古い plan.json での run | syncedAt と GitHub の最終更新を比較。古ければブロック |
 
 ---
@@ -313,13 +313,13 @@ GitHub Issues のラベルも自動更新する。
 | `src/cli/lib/plan-model.ts` | Task/Feature に `seq: string`（WWWFFFFTTT）フィールド追加 |
 | `src/cli/lib/plan-engine.ts` | plan 生成時に seq 番号を自動付与するロジック追加 |
 | `src/cli/lib/github-model.ts` | Issue ラベルに WWWFFFFTTT を付与 |
-| `src/cli/lib/run-engine.ts` | `framework next` / `framework current` を実装 |
+| `src/cli/lib/run-engine.ts` | `shirube next` / `shirube current` を実装 |
 | `src/cli/lib/status-engine.ts` | dirty フラグ・syncedAt チェック追加 |
-| `src/cli/lib/sync-engine.ts` | 新規: `framework sync`（atomic write・orphan 検出・冪等性） |
-| `src/cli/lib/resequence-engine.ts` | 新規: `framework resequence`（--migrate オプション含む） |
+| `src/cli/lib/sync-engine.ts` | 新規: `shirube sync`（atomic write・orphan 検出・冪等性） |
+| `src/cli/lib/resequence-engine.ts` | 新規: `shirube resequence`（--migrate オプション含む） |
 | `src/cli/lib/lock-model.ts` | 新規: `.plan.lock` PID + タイムアウト管理 |
-| `src/cli/lib/prune-engine.ts` | 新規: `framework prune` |
-| `audit.log` | `framework next --force` 使用時の audit trail |
+| `src/cli/lib/prune-engine.ts` | 新規: `shirube prune` |
+| `audit.log` | `shirube next --force` 使用時の audit trail |
 
 ---
 

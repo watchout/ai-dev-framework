@@ -233,7 +233,7 @@ export async function runQualitySweep(
   // Read context
   const contextPath = path.join(projectDir, ".framework/gate-context/quality-sweep.md");
   if (!fs.existsSync(contextPath)) {
-    throw new Error("No quality sweep context found. Run 'framework gate quality' first to collect context.");
+    throw new Error("No quality sweep context found. Run 'shirube gate quality' first to collect context.");
   }
   let context = fs.readFileSync(contextPath, "utf-8");
 

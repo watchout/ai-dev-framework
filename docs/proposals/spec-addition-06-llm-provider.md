@@ -23,7 +23,7 @@
 | `default` | 全般 | 自動検出（claude → codex） |
 | `remediation` | 自動修正（Gate BLOCK後） | `default` を継承 |
 | `validation` | Validator 実行（Gate 2） | `default` を継承 |
-| `ingestion` | 設計書取り込み（`framework ingest`） | `default` を継承 |
+| `ingestion` | 設計書取り込み（`shirube ingest`） | `default` を継承 |
 | `worktree` | 並列タスク実行 | `default` を継承 |
 
 ### 7.2 設定例
@@ -60,7 +60,7 @@ README の "前提条件" に明記すること。
 
 ## 承認フロー
 1. CEOが本提案をレビュー
-2. 承認後、`framework feedback approve <id>` 経由で docs/specs/06_CODE_QUALITY.md に自動追記
+2. 承認後、`shirube feedback approve <id>` 経由で docs/specs/06_CODE_QUALITY.md に自動追記
 
 ## 関連変更
 - `src/cli/lib/llm-provider.ts` 新規

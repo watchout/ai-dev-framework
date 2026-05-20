@@ -4,7 +4,7 @@
 
 ## Responsibility Split
 
-### framework
+### Shirube
 
 - SSOT / plan / gate の単一責任
 - 実行可能なタスクの選定
@@ -27,8 +27,8 @@
 ### Start Task
 
 ```bash
-framework run <task-id> --start-only --json
-framework run --start-only --json
+shirube run <task-id> --start-only --json
+shirube run --start-only --json
 ```
 
 返却:
@@ -48,8 +48,8 @@ framework run --start-only --json
 ### Refresh Heartbeat
 
 ```bash
-framework run <task-id> --heartbeat --json
-framework run --heartbeat --json
+shirube run <task-id> --heartbeat --json
+shirube run --heartbeat --json
 ```
 
 返却:
@@ -68,7 +68,7 @@ framework run --heartbeat --json
 ### Complete Task
 
 ```bash
-framework run <task-id> --complete --json
+shirube run <task-id> --complete --json
 ```
 
 返却:
@@ -80,13 +80,13 @@ framework run <task-id> --complete --json
 
 備考:
 
-- framework 側で blocker / lease / modified files の基本チェックを行う
+- Shirube 側で blocker / lease / modified files の基本チェックを行う
 - 実装タスクは `.git/` が存在する場合、変更差分なしでは完了できない
 
 ### Fail Task
 
 ```bash
-framework run <task-id> --fail-task --reason max_idle_exceeded --detail "No heartbeat for 7 minutes" --json
+shirube run <task-id> --fail-task --reason max_idle_exceeded --detail "No heartbeat for 7 minutes" --json
 ```
 
 返却:
@@ -98,16 +98,16 @@ framework run <task-id> --fail-task --reason max_idle_exceeded --detail "No hear
 
 用途:
 
-- openclaw が停止理由を framework に確定記録する
+- openclaw が停止理由を Shirube に確定記録する
 
 ### Read Status
 
 ```bash
-framework run --status --json
-framework status --json
+shirube run --status --json
+shirube status --json
 ```
 
-`framework run --status --json` は実行レイヤー中心、`framework status --json` はプロジェクト全体中心。
+`shirube run --status --json` は実行レイヤー中心、`shirube status --json` はプロジェクト全体中心。
 
 ## Runtime State Fields
 
@@ -135,18 +135,18 @@ framework status --json
 - `acceptance_failed`
 - `no_changes_detected`
 
-openclaw は独自の文言を持たず、まず framework の標準値を優先する。
+openclaw は独自の文言を持たず、まず Shirube の標準値を優先する。
 
 ## OpenClaw Loop
 
 推奨ループ:
 
-1. `framework status --json` で gate / execution を確認
-2. `framework run --start-only --json` で task を claim
+1. `shirube status --json` で gate / execution を確認
+2. `shirube run --start-only --json` で task を claim
 3. 外部エージェントへ `prompt` を渡す
-4. 2-5 分ごとに `framework run <task-id> --heartbeat --json`
-5. 実装成功なら `framework run <task-id> --complete --json`
-6. 異常時は `framework run <task-id> --fail-task --reason ... --json`
+4. 2-5 分ごとに `shirube run <task-id> --heartbeat --json`
+5. 実装成功なら `shirube run <task-id> --complete --json`
+6. 異常時は `shirube run <task-id> --fail-task --reason ... --json`
 
 ## Audit Checkpoints
 
@@ -161,7 +161,7 @@ openclaw は独自の文言を持たず、まず framework の標準値を優先
 
 ## Non-Goals
 
-この契約は以下を framework に含めない。
+この契約は以下を Shirube に含めない。
 
 - 通知チャネル固有の処理
 - ジョブキュー基盤

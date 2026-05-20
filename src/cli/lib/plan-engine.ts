@@ -76,7 +76,7 @@ export async function runPlanEngine(
 
   if (features.length === 0) {
     errors.push(
-      "No features found. Run 'framework generate' first to create the feature catalog.",
+      "No features found. Run 'shirube generate' first to create the feature catalog.",
     );
     return {
       plan: createEmptyPlan(),

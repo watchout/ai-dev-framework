@@ -25,7 +25,7 @@ describe("appendAuditLog", () => {
     const result = await appendAuditLog({
       timestamp: "2026-04-20T00:00:00Z",
       actor: "test-bot",
-      action: "framework exit",
+      action: "shirube exit",
       reason: "maintenance",
     });
 
@@ -71,7 +71,7 @@ describe("appendAuditLog", () => {
     const result = await appendAuditLog({
       timestamp: "2026-04-20T00:00:00Z",
       actor: "test-bot",
-      action: "framework exit",
+      action: "shirube exit",
       reason: "test",
     });
 
@@ -100,7 +100,7 @@ describe("logFrameworkExit", () => {
 
     const commentCall = ghCalls[1];
     const bodyIdx = commentCall.indexOf("--body") + 1;
-    expect(commentCall[bodyIdx]).toContain("framework exit");
+    expect(commentCall[bodyIdx]).toContain("shirube exit");
     expect(commentCall[bodyIdx]).toContain("CEO approved shutdown");
   });
 

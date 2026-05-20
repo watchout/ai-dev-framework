@@ -1,5 +1,5 @@
 /**
- * framework run - Execute implementation tasks
+ * shirube run - Execute implementation tasks
  *
  * Reference: SSOT-3 §2.5, 21_AI_ESCALATION.md
  *
@@ -202,7 +202,7 @@ export function registerRunCommand(program: Command): void {
           if (options.failTask) {
             if (!taskId) {
               logger.error(
-                "Task ID required. Usage: framework run <taskId> --fail-task",
+                "Task ID required. Usage: shirube run <taskId> --fail-task",
               );
               process.exit(1);
             }
@@ -228,11 +228,11 @@ export function registerRunCommand(program: Command): void {
             return;
           }
 
-          // Non-interactive completion: framework run <taskId> --complete
+          // Non-interactive completion: shirube run <taskId> --complete
           if (options.complete) {
             if (!taskId) {
               logger.error(
-                "Task ID required. Usage: framework run <taskId> --complete",
+                "Task ID required. Usage: shirube run <taskId> --complete",
               );
               process.exit(1);
             }
@@ -261,16 +261,16 @@ export function registerRunCommand(program: Command): void {
               logger.info(formatNextTaskProposal(result.nextProposal, result.progress, result.totalTasks, result.doneTasks));
             } else if (result.progress === 100) {
               logger.info("");
-              logger.info("[提案] 全タスク完了。framework audit code でコード監査を実行してください。");
+              logger.info("[提案] 全タスク完了。shirube audit code でコード監査を実行してください。");
             }
             return;
           }
 
-          // Batch feature completion: framework run <featureId> --complete-feature
+          // Batch feature completion: shirube run <featureId> --complete-feature
           if (options.completeFeature) {
             if (!taskId) {
               logger.error(
-                "Feature ID required. Usage: framework run <featureId> --complete-feature",
+                "Feature ID required. Usage: shirube run <featureId> --complete-feature",
               );
               process.exit(1);
             }
@@ -299,11 +299,11 @@ export function registerRunCommand(program: Command): void {
             return;
           }
 
-          // Batch wave completion: framework run <waveNumber> --complete-wave
+          // Batch wave completion: shirube run <waveNumber> --complete-wave
           if (options.completeWave) {
             if (!taskId) {
               logger.error(
-                "Wave number required. Usage: framework run <waveNumber> --complete-wave",
+                "Wave number required. Usage: shirube run <waveNumber> --complete-wave",
               );
               process.exit(1);
             }
@@ -358,7 +358,7 @@ export function registerRunCommand(program: Command): void {
             logger.info("");
             if (!gateState) {
               logger.info(
-                "  Gate 状態が見つかりません。まず 'framework gate check' を実行してください。",
+                "  Gate 状態が見つかりません。まず 'shirube gate check' を実行してください。",
               );
             } else {
               const failures = collectFailures(gateState);
@@ -371,10 +371,10 @@ export function registerRunCommand(program: Command): void {
             }
             logger.info("");
             logger.info(
-              "  → 'framework gate check' で詳細を確認してください。",
+              "  → 'shirube gate check' で詳細を確認してください。",
             );
             logger.info(
-              "  → 全ての Gate が PASSED になるまで 'framework run' は実行できません。",
+              "  → 全ての Gate が PASSED になるまで 'shirube run' は実行できません。",
             );
             process.exit(1);
           }
@@ -461,7 +461,7 @@ function printRunStatus(projectDir: string, asJson = false): void {
       return;
     }
     logger.info(
-      "No run state found. Run 'framework run' to start.",
+      "No run state found. Run 'shirube run' to start.",
     );
     return;
   }

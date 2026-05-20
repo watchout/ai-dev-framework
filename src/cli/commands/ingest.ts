@@ -1,14 +1,14 @@
 /**
- * framework ingest - Design Ingest Pipeline
+ * shirube ingest - Design Ingest Pipeline
  *
  * Reads design documents, uses AI to generate SSOT feature specs,
  * and integrates them into the development workflow.
  *
  * Usage:
- *   framework ingest [path]           Ingest design documents from path or docs/inbox/
- *   framework ingest --status         Show ingestion status
- *   framework ingest --approve [id]   Approve reviewed SSOTs and integrate into plan
- *   framework ingest --dry-run        Preview without writing files
+ *   shirube ingest [path]           Ingest design documents from path or docs/inbox/
+ *   shirube ingest --status         Show ingestion status
+ *   shirube ingest --approve [id]   Approve reviewed SSOTs and integrate into plan
+ *   shirube ingest --dry-run        Preview without writing files
  */
 import { type Command } from "commander";
 import {
@@ -103,7 +103,7 @@ export function registerIngestCommand(program: Command): void {
               `Ingested ${result.processedDocuments.length} documents. ${reviewCount} ready for review.`,
             );
             logger.info("  Review SSOTs in docs/design/features/, then:");
-            logger.info("  framework ingest --approve");
+            logger.info("  shirube ingest --approve");
           }
         } catch (error) {
           if (error instanceof Error) {

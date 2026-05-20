@@ -1,5 +1,5 @@
 /**
- * framework init - Core logic (separated for testability)
+ * shirube init - Core logic (separated for testability)
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -221,7 +221,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   createdFiles.push(".framework/config.json");
 
   // Gate state: managed by GitHub Actions check runs (#62)
-  // Local gates.json is created on-demand by `framework gate check` (local cache for hooks).
+  // Local gates.json is created on-demand by `shirube gate check` (local cache for hooks).
   // No longer auto-created at init time.
 
   // Initialize testing config (ADR-010)

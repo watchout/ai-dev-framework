@@ -11,13 +11,13 @@ const PHASES = [
 ];
 
 const CLI_COMMANDS = [
-  { cmd: "framework status", desc: "View current progress" },
-  { cmd: "framework discover", desc: "Start discovery flow" },
-  { cmd: "framework generate", desc: "Generate SSOT documents" },
-  { cmd: "framework plan", desc: "Create implementation plan" },
-  { cmd: "framework audit ssot <file>", desc: "Run SSOT audit" },
-  { cmd: "framework audit code <file>", desc: "Run code audit" },
-  { cmd: "framework run", desc: "Execute next task" },
+  { cmd: "shirube status", desc: "View current progress" },
+  { cmd: "shirube discover", desc: "Start discovery flow" },
+  { cmd: "shirube generate", desc: "Generate SSOT documents" },
+  { cmd: "shirube plan", desc: "Create implementation plan" },
+  { cmd: "shirube audit ssot <file>", desc: "Run SSOT audit" },
+  { cmd: "shirube audit code <file>", desc: "Run code audit" },
+  { cmd: "shirube run", desc: "Execute next task" },
 ];
 
 const AGENT_TEAMS = [
@@ -124,7 +124,7 @@ export default function Home() {
           ))}
         </div>
         <p style={{ color: "#666", fontSize: "13px", marginTop: "12px" }}>
-          Run <code style={{ color: "#888" }}>framework status</code> to see
+          Run <code style={{ color: "#888" }}>shirube status</code> to see
           current phase.
         </p>
       </Card>
@@ -203,7 +203,7 @@ export default function Home() {
             ))}
             <p style={{ color: "#666", fontSize: "12px", margin: 0 }}>
               .claude/agents/ directory - auto-created by{" "}
-              <code style={{ color: "#888" }}>framework init</code>
+              <code style={{ color: "#888" }}>shirube init</code>
             </p>
           </div>
         </Card>
@@ -214,7 +214,7 @@ export default function Home() {
         <div style={{ fontSize: "14px", color: "#aaa", lineHeight: 1.8 }}>
           <ol style={{ margin: 0, paddingLeft: "20px" }}>
             <li>
-              <code style={{ color: "#4ec9b0" }}>framework init my-app</code>{" "}
+              <code style={{ color: "#4ec9b0" }}>shirube init my-app</code>{" "}
               — Create a new project
             </li>
             <li>
@@ -222,19 +222,19 @@ export default function Home() {
               project directory
             </li>
             <li>
-              <code style={{ color: "#4ec9b0" }}>framework discover</code>{" "}
+              <code style={{ color: "#4ec9b0" }}>shirube discover</code>{" "}
               — Start idea validation (Stage 0-5)
             </li>
             <li>
-              <code style={{ color: "#4ec9b0" }}>framework generate</code>{" "}
+              <code style={{ color: "#4ec9b0" }}>shirube generate</code>{" "}
               — Generate SSOT documents
             </li>
             <li>
-              <code style={{ color: "#4ec9b0" }}>framework plan</code>{" "}
+              <code style={{ color: "#4ec9b0" }}>shirube plan</code>{" "}
               — Create implementation plan
             </li>
             <li>
-              <code style={{ color: "#4ec9b0" }}>framework run</code>{" "}
+              <code style={{ color: "#4ec9b0" }}>shirube run</code>{" "}
               — Start development
             </li>
           </ol>

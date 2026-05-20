@@ -1,5 +1,5 @@
 /**
- * framework improve — Self-improving knowledge management
+ * shirube improve — Self-improving knowledge management
  *
  * Displays LEARNINGS.md summary and guides to /self-improve skill.
  */
@@ -18,7 +18,7 @@ export function registerImproveCommand(program: Command): void {
 
       if (!fs.existsSync(learningsPath)) {
         logger.error("No .learnings/LEARNINGS.md found.");
-        logger.info("  Run 'framework init' or create .learnings/LEARNINGS.md manually.");
+        logger.info("  Run 'shirube init' or create .learnings/LEARNINGS.md manually.");
         return;
       }
 
