@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createDefaultFrameworkConfig,
+  ensureMissingRequiredRolePlaceholders,
   evaluatePublishWorkflow,
   resolveRequiredRoles,
   canGenerateLocalDraft,
@@ -72,6 +73,42 @@ describe("workflow config", () => {
       expect(result.missingRoles).toContain("worker_pool");
       expect(result.placeholderRoles).toEqual([]);
     }
+  });
+
+  it("fills only missing role placeholders without overwriting configured bindings", () => {
+    const config: FrameworkConfig = {
+      roles: {
+        bindings: {
+          architecture_owner: { type: "external", id: "discord-arc" },
+          reviewer: { type: "human", id: "lead-reviewer" },
+        },
+      },
+      workflow: {
+        publishPolicy: "approval_required",
+        outputs: ["github"],
+      },
+      custom: { keep: true },
+    };
+
+    const added = ensureMissingRequiredRolePlaceholders(config);
+
+    expect(added).toContain("l3_governance_owner");
+    expect(added).toContain("worker_pool");
+    expect(config.roles?.bindings?.architecture_owner).toEqual({
+      type: "external",
+      id: "discord-arc",
+    });
+    expect(config.roles?.bindings?.reviewer).toEqual({
+      type: "human",
+      id: "lead-reviewer",
+    });
+    expect(config.roles?.bindings?.l3_governance_owner).toEqual({
+      type: "external",
+      id: "todo-l3-governance-owner",
+      placeholder: true,
+    });
+    expect(config.workflow?.publishPolicy).toBe("approval_required");
+    expect(config.custom).toEqual({ keep: true });
   });
 
   it("resolves complete bindings", () => {

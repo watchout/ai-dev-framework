@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
-import { updateAgentTemplates, updateSkillTemplates } from "./update-engine.js";
+import {
+  updateAgentTemplates,
+  updateFrameworkConfigPlaceholders,
+  updateSkillTemplates,
+} from "./update-engine.js";
 import { AGENT_TEMPLATES } from "./templates.js";
 
 let tmpDir: string;
@@ -104,6 +108,84 @@ describe("updateAgentTemplates", () => {
     );
     // Should contain the tmp dir basename
     expect(content).toContain(path.basename(tmpDir));
+  });
+});
+
+// ─────────────────────────────────────────────
+// updateFrameworkConfigPlaceholders
+// ─────────────────────────────────────────────
+
+describe("updateFrameworkConfigPlaceholders", () => {
+  it("preserves concrete role bindings and fills only missing roles", () => {
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework", "config.json"),
+      JSON.stringify(
+        {
+          roles: {
+            bindings: {
+              architecture_owner: { type: "external", id: "discord-arc" },
+              implementation_lead: { type: "local_agent", id: "codex-adf" },
+              reviewer: { type: "external", id: "adf-lead" },
+            },
+          },
+          workflow: {
+            publishPolicy: "approval_required",
+            outputs: ["github"],
+          },
+          custom: {
+            operatorOwned: true,
+          },
+        },
+        null,
+        2,
+      ),
+      "utf-8",
+    );
+
+    const added = updateFrameworkConfigPlaceholders(tmpDir);
+    const config = JSON.parse(
+      fs.readFileSync(path.join(tmpDir, ".framework", "config.json"), "utf-8"),
+    );
+
+    expect(added).toContain("l3_governance_owner");
+    expect(config.roles.bindings.architecture_owner).toEqual({
+      type: "external",
+      id: "discord-arc",
+    });
+    expect(config.roles.bindings.implementation_lead).toEqual({
+      type: "local_agent",
+      id: "codex-adf",
+    });
+    expect(config.roles.bindings.reviewer).toEqual({
+      type: "external",
+      id: "adf-lead",
+    });
+    expect(config.roles.bindings.l3_governance_owner).toEqual({
+      type: "external",
+      id: "todo-l3-governance-owner",
+      placeholder: true,
+    });
+    expect(config.workflow).toEqual({
+      publishPolicy: "approval_required",
+      outputs: ["github"],
+    });
+    expect(config.custom.operatorOwned).toBe(true);
+  });
+
+  it("is idempotent after missing placeholders are filled", () => {
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework", "config.json"),
+      JSON.stringify({ roles: { bindings: {} } }),
+      "utf-8",
+    );
+
+    const first = updateFrameworkConfigPlaceholders(tmpDir);
+    const second = updateFrameworkConfigPlaceholders(tmpDir);
+
+    expect(first.length).toBeGreaterThan(0);
+    expect(second).toEqual([]);
   });
 });
 

@@ -98,11 +98,7 @@ export function createDefaultFrameworkConfig(): FrameworkConfig {
       bindings: Object.fromEntries(
         REQUIRED_ROLE_NAMES.map((role) => [
           role,
-          {
-            type: "external",
-            id: `todo-${role.split("_").join("-")}`,
-            placeholder: true,
-          },
+          createRolePlaceholder(role),
         ]),
       ) as Record<RequiredRoleName, RoleBinding>,
     },
@@ -111,6 +107,32 @@ export function createDefaultFrameworkConfig(): FrameworkConfig {
       outputs: DEFAULT_OUTPUTS,
     },
   };
+}
+
+export function createRolePlaceholder(role: RequiredRoleName): RoleBinding {
+  return {
+    type: "external",
+    id: `todo-${role.split("_").join("-")}`,
+    placeholder: true,
+  };
+}
+
+export function ensureMissingRequiredRolePlaceholders(
+  config: FrameworkConfig,
+  requiredRoles: readonly RequiredRoleName[] = REQUIRED_ROLE_NAMES,
+): RequiredRoleName[] {
+  config.roles ??= {};
+  config.roles.bindings ??= {};
+
+  const added: RequiredRoleName[] = [];
+  for (const role of requiredRoles) {
+    if (config.roles.bindings[role]) {
+      continue;
+    }
+    config.roles.bindings[role] = createRolePlaceholder(role);
+    added.push(role);
+  }
+  return added;
 }
 
 export function loadFrameworkConfig(projectDir: string): FrameworkConfig {
