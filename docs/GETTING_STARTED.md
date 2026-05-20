@@ -150,16 +150,21 @@ framework audit all
 `init` / `retrofit` / `update` は「適用・更新」であり、開発開始ではありません。
 `framework start` 実行後から、`/design`、`/implement`、`/gate-design`、`/gate-quality`、`/review` の phase authority に従って進めます。
 
-単一エージェント運用は許可されますが、Producer phase は自己チェックまでで、PASS/BLOCK 判定は Gate / Review phase だけが行えます。
-複数エージェント運用では producer と gate/review を分離しますが、必要な品質条件は同じです。
+Shirube の基本条件はフルオーケストラ運用です。
+デフォルトでは `qualityMode: "multi-agent"` として、producer と gate/review を別エージェントまたは別ロールに分離します。
+
+単一エージェント運用は、小変更、移行初期、dogfooding、外部エージェント未整備のリポジトリ向けの lightweight mode です。
+使う場合は `--quality-mode single-agent` を明示します。
+単一エージェントでも Producer phase は自己チェックまでで、PASS/BLOCK 判定は Gate / Review phase だけが行えます。
+`--audit-level strict` では単一エージェント運用は使えません。
 
 監査段数は `--audit-level` で選択します。
 
 | auditLevel | 必須監査 | 用途 |
 |------------|----------|------|
-| `minimal` | L0 + L1 | 小変更、低リスク修正 |
-| `standard` | L0 + L1 + L2 | 通常開発。デフォルト |
-| `strict` | L0 + L1 + L2 + L3 | framework変更、仕様変更、cross-cutting変更 |
+| `minimal` | L0 + L1 | 小変更、低リスク修正。単一エージェント可 |
+| `standard` | L0 + L1 + L2 | 通常開発。デフォルト。フルオーケストラ推奨 |
+| `strict` | L0 + L1 + L2 + L3 | framework変更、仕様変更、cross-cutting変更。フルオーケストラ必須 |
 
 L0 は CI、自動テスト、breaking-change check。
 L1 は lead review、L2 は独立 auditor review、L3 は CTO / architecture owner review。

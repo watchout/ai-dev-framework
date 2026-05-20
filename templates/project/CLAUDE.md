@@ -386,15 +386,20 @@ Gate / Review への遷移はユーザー承認後に行う。
 
 ### Quality Modes And Audit Levels
 
-単一エージェント運用は許可する。ただし品質担保は「同一エージェントの自己承認」ではなく、以下の構造で行う:
+Shirube の基本条件はフルオーケストラ運用とする。
+通常開発では producer と gate/review を別エージェントまたは別ロールに分離する。
+
+単一エージェント運用は、小変更、移行初期、dogfooding、外部エージェント未整備のリポジトリ向けの明示的な lightweight mode とする。
+ただし品質担保は「同一エージェントの自己承認」ではなく、以下の構造で行う:
 
 - Producer phase は証跡作成、テスト実行、自己チェック報告まで。
 - Producer phase は PASS / BLOCK / ready to merge を確定してはいけない。
 - Gate / Review phase を明示的に起動し、同じエージェントでも別フェーズ・別Authorityとして判定する。
 - `.framework/current-session.json` の `qualityMode: "single-agent"` は、複数エージェント不在時の運用モードであり、Gate省略ではない。
 
-複数エージェント運用では producer と gate/review を別エージェントに分離する。
-ただし最終的な品質条件は同じで、PASS / BLOCK を出せるのは Gate / Review phase のみ。
+`framework start` のデフォルトは `qualityMode: "multi-agent"` とする。
+`--audit-level strict` では `single-agent` を使ってはいけない。
+`single-agent` を使う場合は `--quality-mode single-agent` を明示し、原則 `--audit-level minimal` の小変更に限定する。
 
 `framework start --audit-level <level>` で監査段数を選択する。
 

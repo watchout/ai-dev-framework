@@ -47,7 +47,7 @@ export function registerStartCommand(program: Command): void {
     .option(
       "--quality-mode <mode>",
       "Quality mode: single-agent or multi-agent",
-      "single-agent",
+      "multi-agent",
     )
     .option(
       "--audit-level <level>",
@@ -68,6 +68,11 @@ export function registerStartCommand(program: Command): void {
       const auditLevel = parseAuditLevel(options.auditLevel);
       if (!auditLevel) {
         logger.error("--audit-level must be minimal, standard, or strict");
+        process.exit(1);
+      }
+      if (qualityMode === "single-agent" && auditLevel === "strict") {
+        logger.error("--quality-mode single-agent cannot be used with --audit-level strict");
+        logger.info("Use --quality-mode multi-agent for strict framework, spec, cross-cutting, or merge-authority changes.");
         process.exit(1);
       }
 
@@ -211,11 +216,12 @@ function printStartSummary(
 
   logger.info("Quality guarantee:");
   if (state.qualityMode === "single-agent") {
-    logger.info("  Single-agent is allowed only with mandatory phase stops.");
+    logger.info("  Single-agent is an explicit lightweight mode for minimal/small-change work.");
     logger.info("  The same agent must stop before gate/review and report Producer Self-check.");
-    logger.info("  Required L1/L2/L3 audit layers must be executed as separate authority passes.");
+    logger.info("  Required audit layers must still be executed as separate authority passes.");
   } else {
-    logger.info("  Multi-agent mode expects producer and gate/review roles to be separate.");
+    logger.info("  Multi-agent orchestration is the default Shirube quality model.");
+    logger.info("  Producer and gate/review roles must be separate for standard and strict work.");
     logger.info("  The producer prepares evidence; the gate/review role issues PASS/BLOCK.");
   }
   logger.info("");
