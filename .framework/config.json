@@ -13,15 +13,15 @@
     "bindings": {
       "architecture_owner": {
         "type": "external",
-        "id": "cto"
+        "id": "discord-arc"
       },
       "implementation_lead": {
         "type": "local_agent",
-        "id": "codex-implementation-lead"
+        "id": "codex-adf"
       },
       "reviewer": {
         "type": "external",
-        "id": "adf-lead"
+        "id": "codex-adf"
       },
       "auditor": {
         "type": "external",
@@ -37,7 +37,7 @@
       },
       "worker_pool": {
         "type": "local_agent",
-        "id": "dev-bot-pool"
+        "id": "dev_001"
       }
     }
   },
