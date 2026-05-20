@@ -178,6 +178,50 @@ describe("audit command", () => {
 });
 
 // ---------------------------------------------------------------------------
+// start
+// ---------------------------------------------------------------------------
+describe("start command", () => {
+  function withFrameworkProject<T>(fn: (dir: string) => T): T {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-start-test-"));
+    try {
+      fs.mkdirSync(path.join(dir, ".framework"), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, ".framework", "project.json"),
+        JSON.stringify({ name: "start-test", profileType: "cli" }),
+        "utf-8",
+      );
+      return fn(dir);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("blocks strict start when role bindings are missing", () => {
+    withFrameworkProject((cwd) => {
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("required orchestration roles");
+    });
+  });
+
+  it("allows standard start with missing roles as a warning", () => {
+    withFrameworkProject((cwd) => {
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level standard --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Readiness:    warning");
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // init
 // ---------------------------------------------------------------------------
 describe("init command", () => {

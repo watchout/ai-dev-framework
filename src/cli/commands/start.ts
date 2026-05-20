@@ -4,6 +4,11 @@ import { type Command } from "commander";
 import { loadProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
 import { activateFrameworkMode, getFrameworkMode } from "../lib/framework-mode.js";
+import {
+  loadFrameworkConfig,
+  resolveRequiredRoles,
+  type RequiredRoleName,
+} from "../lib/workflow-config.js";
 
 type QualityMode = "single-agent" | "multi-agent";
 type AuditLevel = "minimal" | "standard" | "strict";
@@ -24,6 +29,7 @@ interface SessionState {
   qualityMode: QualityMode;
   auditLevel: AuditLevel;
   reviewChain: ReviewLayer[];
+  readiness: StartReadiness;
   phase: "ready";
   authority: {
     producerCanApproveGate: false;
@@ -31,6 +37,13 @@ interface SessionState {
     userApprovalRequiredBeforeGate: true;
   };
   nextAction: string;
+}
+
+interface StartReadiness {
+  status: "ready" | "warning" | "blocked";
+  missingRoles: RequiredRoleName[];
+  placeholderRoles: RequiredRoleName[];
+  message: string;
 }
 
 interface ReviewLayer {
@@ -112,6 +125,12 @@ export function registerStartCommand(program: Command): void {
 
       if (fs.existsSync(sessionPath) && options.resume) {
         const existing = loadSessionState(sessionPath);
+        const readiness = evaluateStartReadiness(projectDir, existing.auditLevel);
+        if (readiness.status === "blocked") {
+          printReadinessBlock(readiness);
+          process.exit(1);
+        }
+        existing.readiness = readiness;
         const modeStatus = await ensureFrameworkModeActive(options.dryRun ?? false);
         printStartSummary(projectDir, existing, options.dryRun ?? false, "resumed", modeStatus);
         return;
@@ -140,6 +159,7 @@ export function registerStartCommand(program: Command): void {
         qualityMode,
         auditLevel,
         reviewChain: buildReviewChain(auditLevel),
+        readiness: evaluateStartReadiness(projectDir, auditLevel),
         phase: "ready",
         authority: {
           producerCanApproveGate: false,
@@ -148,6 +168,11 @@ export function registerStartCommand(program: Command): void {
         },
         nextAction,
       };
+
+      if (state.readiness.status === "blocked") {
+        printReadinessBlock(state.readiness);
+        process.exit(1);
+      }
 
       if (!options.dryRun) {
         fs.mkdirSync(frameworkDir, { recursive: true });
@@ -174,7 +199,65 @@ function loadSessionState(sessionPath: string): SessionState {
   if (parsed.mode !== "framework-led") {
     throw new Error(".framework/current-session.json is not a framework-led session");
   }
+  parsed.readiness ??= {
+    status: "warning",
+    missingRoles: [],
+    placeholderRoles: [],
+    message: "legacy session without readiness metadata",
+  };
   return parsed;
+}
+
+function evaluateStartReadiness(
+  projectDir: string,
+  auditLevel: AuditLevel,
+): StartReadiness {
+  const roles = resolveRequiredRoles(loadFrameworkConfig(projectDir));
+  if (roles.status === "ready") {
+    return {
+      status: "ready",
+      missingRoles: [],
+      placeholderRoles: [],
+      message: "required orchestration roles configured",
+    };
+  }
+
+  const message = "required orchestration roles are not fully configured";
+  if (auditLevel === "strict") {
+    return {
+      status: "blocked",
+      missingRoles: roles.missingRoles,
+      placeholderRoles: roles.placeholderRoles,
+      message,
+    };
+  }
+
+  return {
+    status: "warning",
+    missingRoles: roles.missingRoles,
+    placeholderRoles: roles.placeholderRoles,
+    message,
+  };
+}
+
+function printReadinessBlock(readiness: StartReadiness): void {
+  logger.header("Framework Start Blocked");
+  logger.error(readiness.message);
+  logger.info("");
+  logger.info("Strict MCP-quality starts require concrete role bindings.");
+  printRoleReadiness(readiness);
+  logger.info("");
+  logger.info("Configure .framework/config.json roles.bindings or use a lower audit level only for non-public lightweight work.");
+}
+
+function printRoleReadiness(readiness: StartReadiness): void {
+  logger.info(`  Readiness: ${readiness.status}`);
+  if (readiness.missingRoles.length > 0) {
+    logger.info(`  Missing roles: ${readiness.missingRoles.join(", ")}`);
+  }
+  if (readiness.placeholderRoles.length > 0) {
+    logger.info(`  Placeholder roles: ${readiness.placeholderRoles.join(", ")}`);
+  }
 }
 
 async function ensureFrameworkModeActive(dryRun: boolean): Promise<string> {
@@ -273,6 +356,7 @@ function printStartSummary(
   logger.info(`  Feature:      ${state.feature ?? "(not set)"}`);
   logger.info(`  Quality mode: ${state.qualityMode}`);
   logger.info(`  Audit level:  ${state.auditLevel}`);
+  logger.info(`  Readiness:    ${state.readiness.status}`);
   logger.info(`  Session file: ${dryRun ? "(dry-run)" : ".framework/current-session.json"}`);
   logger.info(`  Mode status:  ${modeStatus}`);
   logger.info("");
@@ -284,6 +368,13 @@ function printStartSummary(
   logger.info(`  ${mark(hasGateWorkflow)} GitHub gate workflow`);
   logger.info(`  ${mark(hasConfig)} .framework/config.json role/workflow config`);
   logger.info("");
+
+  if (state.readiness.status !== "ready") {
+    logger.info("Role readiness:");
+    logger.info(`  ${state.readiness.message}`);
+    printRoleReadiness(state.readiness);
+    logger.info("");
+  }
 
   logger.info("Start boundary:");
   logger.info("  Framework-led development begins at this session file.");

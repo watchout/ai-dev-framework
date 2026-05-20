@@ -395,6 +395,11 @@ L4 は \`route:ceo-approval\`、戦略判断、critical PR の場合のみ追加
 | L3 | CTO / architecture owner | governance, cross-cutting architecture, framework integrity, merge authority で block |
 | L4 | CEO / human approver | strategic approval で block |
 
+\`strict\` は世界公開しても恥ずかしくない MCP 品質の基準とする。
+そのため \`strict\` では \`.framework/config.json\` の \`roles.bindings\` に具体的な role binding が必要。
+role が未設定または placeholder のままなら \`framework start\` は BLOCK する。
+\`standard\` / \`minimal\` では warning として表示し、移行中・dogfooding 中の進行を許容する。
+
 Producer は \`framework gate check\` / \`framework trace verify\` を実行し、結果を報告してよい。
 ただし \`approved\`, \`audit passed\`, \`ready to implement\`, \`ready to merge\` などの承認表現を確定してはいけない。
 PASS / BLOCK / CONDITIONAL PASS を出せるのは \`/gate-design\`, \`/gate-quality\`, \`/review\` のみ。

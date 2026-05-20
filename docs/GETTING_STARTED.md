@@ -174,6 +174,11 @@ L0 は CI、自動テスト、breaking-change check。
 L1 は lead review、L2 は独立 auditor review、L3 は CTO / architecture owner review。
 L4 は `route:ceo-approval` や戦略判断が必要な場合だけ追加します。
 
+`strict` は世界公開しても恥ずかしくない MCP 品質の基準です。
+そのため `strict` では `.framework/config.json` の `roles.bindings` に具体的な role binding が必要です。
+role が未設定または placeholder のままなら `framework start` は BLOCK します。
+`standard` / `minimal` では warning として表示し、移行中・dogfooding 中の進行を許容します。
+
 ### 実行コマンドの状態遷移
 
 | コマンド | 使う条件 | 何をするか | 次の状態 |
