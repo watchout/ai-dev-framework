@@ -11,6 +11,13 @@ description: |
 
 実装完了後、PRマージ前に4つのValidatorが順次コードを検証し、PASS/BLOCKを判定するGateスキル。
 
+## Gate Authority
+
+`/gate-quality` は独立Gateであり、実装Producer (`/implement`) の成果物に対して PASS / BLOCK / CONDITIONAL PASS を出せる。
+Producer の I3 self-check やテスト実行結果は参考情報として扱い、Gate判定の代替とはしない。
+
+このスキルはユーザー承認後に実行する。`/implement` から自動遷移してはいけない。
+
 ## Agents（参照）
 
 4つのValidatorを順次実行する:
@@ -50,6 +57,7 @@ description: |
 | 全CRITICAL = 0、WARNING ≤ 5 | **PASS** → PR作成可 |
 | CRITICAL ≥ 1 | **BLOCK** → 修正優先 |
 | WARNING > 5 | **BLOCK** → 改善必要 |
+| 軽微な未解決事項のみ | **CONDITIONAL PASS** → 条件を明記して次工程可 |
 
 ### Phase別WARNING閾値
 

@@ -12,6 +12,24 @@ description: |
 ビジネス要件をプロダクト仕様に変換し（P1-P5）、
 それを実装可能な技術設計に落とし込む（T1-T5）専門家チーム。
 
+## Phase Authority
+
+`/design` は **Producer phase** であり、設計成果物を作成・更新する責務を持つ。
+自己チェックは行ってよいが、Gate PASS、監査承認、実装開始可否を確定してはいけない。
+
+許可されること:
+- docs/spec, docs/impl, docs/verify, docs/ops, SSOT を作成・更新する
+- 明らかな欠落や矛盾を自己チェックとして列挙する
+- `framework gate check` / `framework trace verify` を実行し、結果を事実として報告する
+- `/gate-design` や `/review` に渡すべき検証観点を整理する
+
+禁止されること:
+- `approved`, `audit passed`, `ready to implement` などの承認表現を確定する
+- Gate 判定者として PASS / BLOCK / CONDITIONAL PASS を出す
+- ユーザー承認なしに `/gate-design`, `/implement`, `/review` へ進む
+
+完了時は成果物、自己チェック結果、未解決事項を報告し、次に `/gate-design` を実行するかユーザー確認して停止する。
+
 ## ワークフロー
 
 ```
@@ -175,7 +193,7 @@ P5: UX Validator                   T5: Security Reviewer
 
 ### T5: Security Reviewer（セキュリティレビュアー）
 
-**役割**: セキュリティ観点から設計をレビュー
+**役割**: セキュリティ観点から設計を自己チェックする。独立Gate / Review の代替ではない。
 
 **レビュー観点**:
 - OWASP Top 10
@@ -184,7 +202,7 @@ P5: UX Validator                   T5: Security Reviewer
 - 入力検証
 - 依存関係の脆弱性
 
-**出力**: SECURITY_REVIEW、設計へのフィードバック
+**出力**: SECURITY_REVIEW、設計へのフィードバック。PASS / BLOCK 判定は `/gate-design` または `/review` に委ねる。
 
 ## Freeze 単位
 
@@ -215,6 +233,33 @@ Freeze 4: Non-functional → T5 完了後（リリース準備完了）
 - **Business**: ビジネスモデルを支えるか？スケーラブルか？
 
 視点間の緊張があれば、それを明記して解決策を示す。
+
+このチェックは Producer self-check であり、独立Gateの承認ではない。
+
+## Self-check Report Template
+
+```markdown
+## /design Self-check
+
+### 作成・更新した成果物
+- [ ] docs/spec/...
+- [ ] docs/impl/...
+- [ ] docs/verify/...
+- [ ] docs/ops/...
+
+### 自己チェック結果
+- Missing / unclear:
+- Trace / gate command results:
+- Risks to hand off:
+
+### 次の推奨アクション
+/gate-design を実行して独立Gate判定を受けるか確認してください。
+
+Authority: producer only
+Can self-check: yes
+Can approve gate: no
+Must stop before: /gate-design or /implement
+```
 
 ## TDD条件
 
