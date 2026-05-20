@@ -196,6 +196,34 @@ describe("claudemd-updater", () => {
       expect(second.reason).toContain("up to date");
     });
 
+    it("preserves following H2 sections when no separator exists", () => {
+      const claudeMd = [
+        "# CLAUDE.md",
+        "",
+        "## Workflow Orchestration",
+        "",
+        "Old workflow text.",
+        "",
+        "## Knowledge & Memory",
+        "",
+        "- Keep this section.",
+      ].join("\n");
+
+      fs.writeFileSync(path.join(tmpDir, "CLAUDE.md"), claudeMd);
+      const result = updateClaudeMdSkillSection(tmpDir);
+
+      expect(result.updated).toBe(true);
+      const updated = fs.readFileSync(
+        path.join(tmpDir, "CLAUDE.md"),
+        "utf-8",
+      );
+      expect(updated).toContain("## Workflow Orchestration");
+      expect(updated).toContain("framework gate check");
+      expect(updated).not.toContain("Old workflow text");
+      expect(updated).toContain("## Knowledge & Memory");
+      expect(updated).toContain("- Keep this section.");
+    });
+
     it("appends section when no skill section exists", () => {
       const claudeMd = [
         "# CLAUDE.md",

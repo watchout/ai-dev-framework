@@ -77,8 +77,8 @@ discovery → design → implement → review
  *
  * The section is defined as:
  * - Starts at a line matching SKILL_SECTION_HEADER_PATTERN
- * - Ends at the next line matching SECTION_SEPARATOR_PATTERN (---) after the header
- *   (the --- line itself is NOT included in the replacement range)
+ * - Ends at the next separator (---) or next H2 (## ...) after the header
+ *   (the boundary line itself is NOT included in the replacement range)
  */
 export function findSkillSection(
   lines: string[],
@@ -96,9 +96,11 @@ export function findSkillSection(
     return null;
   }
 
-  // Find the next --- separator after the header
+  // Find the next section boundary after the header. Older generated files do
+  // not always include --- separators, so stop at the next H2 to avoid deleting
+  // unrelated sections like "Knowledge & Memory".
   for (let i = headerIndex + 1; i < lines.length; i++) {
-    if (SECTION_SEPARATOR_PATTERN.test(lines[i])) {
+    if (SECTION_SEPARATOR_PATTERN.test(lines[i]) || /^##\s+/.test(lines[i])) {
       return { start: headerIndex, end: i };
     }
   }
