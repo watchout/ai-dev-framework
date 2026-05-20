@@ -65,6 +65,12 @@ export interface SetupRequired {
 
 export type RoleResolution = ReadyRoles | SetupRequired;
 
+export interface RoleSeparationViolation {
+  producerRole: RequiredRoleName;
+  authorityRole: RequiredRoleName;
+  target: string;
+}
+
 export interface WorkflowDecision {
   status: "allowed" | "blocked" | "setup_required";
   reason?: string;
@@ -73,6 +79,13 @@ export interface WorkflowDecision {
 }
 
 const DEFAULT_OUTPUTS = ["local_files"];
+const PRODUCER_ROLES: RequiredRoleName[] = ["implementation_lead", "worker_pool"];
+const AUTHORITY_ROLES: RequiredRoleName[] = [
+  "reviewer",
+  "auditor",
+  "release_owner",
+  "human_approver",
+];
 
 export function createDefaultFrameworkConfig(): FrameworkConfig {
   return {
@@ -218,6 +231,35 @@ export function evaluatePublishWorkflow(
   };
 }
 
+export function validateRoleSeparation(
+  bindings: Record<RequiredRoleName, RoleBinding>,
+): RoleSeparationViolation[] {
+  const violations: RoleSeparationViolation[] = [];
+
+  for (const producerRole of PRODUCER_ROLES) {
+    const producer = bindings[producerRole];
+    const producerTarget = roleTargetKey(producer);
+    for (const authorityRole of AUTHORITY_ROLES) {
+      const authority = bindings[authorityRole];
+      if (producerTarget === roleTargetKey(authority)) {
+        violations.push({
+          producerRole,
+          authorityRole,
+          target: producerTarget,
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+export function formatRoleSeparationViolation(
+  violation: RoleSeparationViolation,
+): string {
+  return `${violation.producerRole} and ${violation.authorityRole} share ${violation.target}`;
+}
+
 export function canGenerateLocalDraft(config: FrameworkConfig): WorkflowDecision {
   const outputs = config.workflow?.outputs ?? DEFAULT_OUTPUTS;
   if (!outputs.includes("local_files")) {
@@ -240,4 +282,8 @@ export function isValidRoleBinding(value: unknown): value is RoleBinding {
     typeof candidate.type === "string" &&
     (ROLE_TARGET_TYPES as readonly string[]).includes(candidate.type)
   );
+}
+
+function roleTargetKey(binding: RoleBinding): string {
+  return `${binding.type}:${binding.id}`;
 }

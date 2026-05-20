@@ -1,10 +1,12 @@
 import { type Command } from "commander";
 import {
+  formatRoleSeparationViolation,
   loadFrameworkConfig,
   REQUIRED_ROLE_NAMES,
   resolveRequiredRoles,
   ROLE_TARGET_TYPES,
   saveFrameworkConfig,
+  validateRoleSeparation,
   type RequiredRoleName,
   type RoleBinding,
   type RoleTargetType,
@@ -83,6 +85,17 @@ function doctorRoles(projectDir: string): boolean {
   logger.header("Shirube Role Readiness");
 
   if (result.status === "ready") {
+    const violations = validateRoleSeparation(result.bindings);
+    if (violations.length > 0) {
+      logger.error("Producer and gate/review roles are not separated.");
+      for (const violation of violations) {
+        logger.info(`  - ${formatRoleSeparationViolation(violation)}`);
+      }
+      logger.info("");
+      logger.info("Use distinct targets before `shirube start --audit-level standard|strict`.");
+      return false;
+    }
+
     logger.success("All required orchestration roles are configured.");
     return true;
   }

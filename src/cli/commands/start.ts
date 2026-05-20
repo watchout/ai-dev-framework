@@ -5,9 +5,12 @@ import { loadProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
 import { activateFrameworkMode, getFrameworkMode } from "../lib/framework-mode.js";
 import {
+  formatRoleSeparationViolation,
   loadFrameworkConfig,
   resolveRequiredRoles,
+  validateRoleSeparation,
   type RequiredRoleName,
+  type RoleSeparationViolation,
 } from "../lib/workflow-config.js";
 
 type QualityMode = "single-agent" | "multi-agent";
@@ -23,6 +26,7 @@ interface StartOptions {
 }
 
 interface SessionState {
+  version: 1;
   mode: "framework-led";
   startedAt: string;
   feature: string | null;
@@ -43,6 +47,7 @@ interface StartReadiness {
   status: "ready" | "warning" | "blocked";
   missingRoles: RequiredRoleName[];
   placeholderRoles: RequiredRoleName[];
+  roleSeparationViolations: RoleSeparationViolation[];
   message: string;
 }
 
@@ -131,8 +136,12 @@ export function registerStartCommand(program: Command): void {
           process.exit(1);
         }
         existing.readiness = readiness;
-        const modeStatus = await ensureFrameworkModeActive(options.dryRun ?? false);
-        printStartSummary(projectDir, existing, options.dryRun ?? false, "resumed", modeStatus);
+        const activation = await ensureFrameworkModeActive(options.dryRun ?? false);
+        if (!activation.ok) {
+          printActivationBlock(activation.message);
+          process.exit(1);
+        }
+        printStartSummary(projectDir, existing, options.dryRun ?? false, "resumed", activation.message);
         return;
       }
 
@@ -153,6 +162,7 @@ export function registerStartCommand(program: Command): void {
         ? `/design ${feature}`
         : "/design <feature-id>";
       const state: SessionState = {
+        version: 1,
         mode: "framework-led",
         startedAt: new Date().toISOString(),
         feature,
@@ -174,6 +184,12 @@ export function registerStartCommand(program: Command): void {
         process.exit(1);
       }
 
+      const activation = await ensureFrameworkModeActive(options.dryRun ?? false);
+      if (!activation.ok) {
+        printActivationBlock(activation.message);
+        process.exit(1);
+      }
+
       if (!options.dryRun) {
         fs.mkdirSync(frameworkDir, { recursive: true });
         fs.writeFileSync(
@@ -183,13 +199,12 @@ export function registerStartCommand(program: Command): void {
         );
       }
 
-      const modeStatus = await ensureFrameworkModeActive(options.dryRun ?? false);
       printStartSummary(
         projectDir,
         state,
         options.dryRun ?? false,
         options.force ? "replaced" : "started",
-        modeStatus,
+        activation.message,
       );
     });
 }
@@ -199,12 +214,15 @@ function loadSessionState(sessionPath: string): SessionState {
   if (parsed.mode !== "framework-led") {
     throw new Error(".framework/current-session.json is not a framework-led session");
   }
+  parsed.version ??= 1;
   parsed.readiness ??= {
     status: "warning",
     missingRoles: [],
     placeholderRoles: [],
+    roleSeparationViolations: [],
     message: "legacy session without readiness metadata",
   };
+  parsed.readiness.roleSeparationViolations ??= [];
   return parsed;
 }
 
@@ -214,10 +232,22 @@ function evaluateStartReadiness(
 ): StartReadiness {
   const roles = resolveRequiredRoles(loadFrameworkConfig(projectDir));
   if (roles.status === "ready") {
+    const roleSeparationViolations = validateRoleSeparation(roles.bindings);
+    if (roleSeparationViolations.length > 0) {
+      return {
+        status: auditLevel === "minimal" ? "warning" : "blocked",
+        missingRoles: [],
+        placeholderRoles: [],
+        roleSeparationViolations,
+        message: "producer and gate/review roles are not separated",
+      };
+    }
+
     return {
       status: "ready",
       missingRoles: [],
       placeholderRoles: [],
+      roleSeparationViolations: [],
       message: "required orchestration roles configured",
     };
   }
@@ -228,6 +258,7 @@ function evaluateStartReadiness(
       status: "blocked",
       missingRoles: roles.missingRoles,
       placeholderRoles: roles.placeholderRoles,
+      roleSeparationViolations: [],
       message,
     };
   }
@@ -236,6 +267,7 @@ function evaluateStartReadiness(
     status: "warning",
     missingRoles: roles.missingRoles,
     placeholderRoles: roles.placeholderRoles,
+    roleSeparationViolations: [],
     message,
   };
 }
@@ -244,7 +276,7 @@ function printReadinessBlock(readiness: StartReadiness): void {
   logger.header("Framework Start Blocked");
   logger.error(readiness.message);
   logger.info("");
-  logger.info("Strict MCP-quality starts require concrete role bindings.");
+  logger.info("MCP-quality starts require concrete role bindings and separated producer/review authority.");
   printRoleReadiness(readiness);
   logger.info("");
   logger.info("Configure .framework/config.json roles.bindings or use a lower audit level only for non-public lightweight work.");
@@ -258,26 +290,48 @@ function printRoleReadiness(readiness: StartReadiness): void {
   if (readiness.placeholderRoles.length > 0) {
     logger.info(`  Placeholder roles: ${readiness.placeholderRoles.join(", ")}`);
   }
+  if (readiness.roleSeparationViolations.length > 0) {
+    logger.info("  Role separation violations:");
+    for (const violation of readiness.roleSeparationViolations) {
+      logger.info(`    - ${formatRoleSeparationViolation(violation)}`);
+    }
+  }
 }
 
-async function ensureFrameworkModeActive(dryRun: boolean): Promise<string> {
+interface ActivationStatus {
+  ok: boolean;
+  message: string;
+}
+
+async function ensureFrameworkModeActive(dryRun: boolean): Promise<ActivationStatus> {
   if (dryRun) {
-    return "dry-run, activation skipped";
+    return { ok: true, message: "dry-run, activation skipped" };
   }
 
   const mode = await getFrameworkMode();
   if (mode === "active") {
-    return "active";
+    return { ok: true, message: "active" };
   }
 
   const result = await activateFrameworkMode();
   if (result.ok) {
-    return result.alreadyActive
-      ? "active"
-      : "activated (framework-managed topic)";
+    return {
+      ok: true,
+      message: result.alreadyActive
+        ? "active"
+        : "activated (framework-managed topic)",
+    };
   }
 
-  return `activation failed: ${result.error ?? "unknown"}`;
+  return { ok: false, message: result.error ?? "unknown" };
+}
+
+function printActivationBlock(message: string): void {
+  logger.header("Framework Start Blocked");
+  logger.error(`Framework mode activation failed: ${message}`);
+  logger.info("");
+  logger.info("A non-dry-run start cannot create or resume a framework-led session unless framework mode is active.");
+  logger.info("Fix GitHub CLI/repository access, or use --dry-run only for planning.");
 }
 
 function parseQualityMode(value: string | undefined): QualityMode | null {

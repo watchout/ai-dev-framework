@@ -1,6 +1,6 @@
 {
   "name": "@watchout/shirube",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
   "type": "module",
   "description": "Shirube - SSOT, CLI, Dashboard, and Skills for AI-driven development",

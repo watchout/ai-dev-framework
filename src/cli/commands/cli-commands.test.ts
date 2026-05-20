@@ -181,6 +181,28 @@ describe("audit command", () => {
 // start
 // ---------------------------------------------------------------------------
 describe("start command", () => {
+  const requiredRoles = [
+    "architecture_owner",
+    "implementation_lead",
+    "reviewer",
+    "auditor",
+    "release_owner",
+    "human_approver",
+    "worker_pool",
+  ];
+
+  function completeRoleBindings(): Record<string, { type: string; id: string }> {
+    return Object.fromEntries(
+      requiredRoles.map((role) => [
+        role,
+        {
+          type: role === "worker_pool" ? "local_agent" : "human",
+          id: `${role}-target`,
+        },
+      ]),
+    );
+  }
+
   function withFrameworkProject<T>(fn: (dir: string) => T): T {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-start-test-"));
     try {
@@ -188,6 +210,11 @@ describe("start command", () => {
       fs.writeFileSync(
         path.join(dir, ".framework", "project.json"),
         JSON.stringify({ name: "start-test", profileType: "cli" }),
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(dir, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: {} } }),
         "utf-8",
       );
       return fn(dir);
@@ -219,12 +246,74 @@ describe("start command", () => {
       expect(result.stdout).toContain("Readiness:    warning");
     });
   });
+
+  it("blocks strict start when producer and gate/review roles share a target", () => {
+    withFrameworkProject((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.reviewer = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("producer and gate/review roles");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and reviewer");
+    });
+  });
+
+  it("does not write a session when framework mode activation fails", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("Framework mode activation failed");
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(false);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
 // roles
 // ---------------------------------------------------------------------------
 describe("roles command", () => {
+  const requiredRoles = [
+    "architecture_owner",
+    "implementation_lead",
+    "reviewer",
+    "auditor",
+    "release_owner",
+    "human_approver",
+    "worker_pool",
+  ];
+
+  function completeRoleBindings(): Record<string, { type: string; id: string }> {
+    return Object.fromEntries(
+      requiredRoles.map((role) => [
+        role,
+        {
+          type: role === "worker_pool" ? "local_agent" : "human",
+          id: `${role}-target`,
+        },
+      ]),
+    );
+  }
+
   function withFrameworkConfig<T>(fn: (dir: string) => T): T {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-roles-test-"));
     try {
@@ -261,6 +350,24 @@ describe("roles command", () => {
       const list = runCliWithExit("roles list", { cwd });
       expect(list.exitCode).toBe(0);
       expect(list.stdout).toContain("auditor: mcp_agent:codex-auditor");
+    });
+  });
+
+  it("doctor exits non-zero when producer and gate/review roles share a target", () => {
+    withFrameworkConfig((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.auditor = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit("roles doctor", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("not separated");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and auditor");
     });
   });
 });
