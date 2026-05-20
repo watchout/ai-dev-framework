@@ -342,7 +342,7 @@ Producer phase と Gate / Review phase を明確に分ける。
 開始後の最初の実作業は \`/design <feature-id>\` または、既に SPEC/IMPL/VERIFY/OPS が揃っている場合のみ \`/implement <feature-id>\` とする。
 Gate / Review への遷移はユーザー承認後に行う。
 
-### Quality Modes
+### Quality Modes And Audit Levels
 
 単一エージェント運用は許可する。ただし品質担保は「同一エージェントの自己承認」ではなく、以下の構造で行う:
 
@@ -353,6 +353,24 @@ Gate / Review への遷移はユーザー承認後に行う。
 
 複数エージェント運用では producer と gate/review を別エージェントに分離する。
 ただし最終的な品質条件は同じで、PASS / BLOCK を出せるのは Gate / Review phase のみ。
+
+\`framework start --audit-level <level>\` で監査段数を選択する。
+
+| auditLevel | 必須監査 | 用途 |
+|------------|----------|------|
+| minimal | L0 + L1 | 小変更、低リスク修正。CI と lead review は必須 |
+| standard | L0 + L1 + L2 | 通常開発。独立 auditor の 6-axis review を必須 |
+| strict | L0 + L1 + L2 + L3 | 仕様変更、framework変更、cross-cutting変更、merge判断を伴う変更 |
+
+L4 は \`route:ceo-approval\`、戦略判断、critical PR の場合のみ追加する。
+
+| Layer | Owner | Authority |
+|-------|-------|-----------|
+| L0 | CI / deterministic checks | typecheck, lint, test, breaking-change check で block |
+| L1 | lead | scope, spec fit, PR description, Producer Self-check で block |
+| L2 | auditor | design intent, hidden risk, regression, SSOT, honesty で block |
+| L3 | CTO / architecture owner | governance, cross-cutting architecture, framework integrity, merge authority で block |
+| L4 | CEO / human approver | strategic approval で block |
 
 Producer は \`framework gate check\` / \`framework trace verify\` を実行し、結果を報告してよい。
 ただし \`approved\`, \`audit passed\`, \`ready to implement\`, \`ready to merge\` などの承認表現を確定してはいけない。

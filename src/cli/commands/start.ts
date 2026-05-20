@@ -5,10 +5,12 @@ import { loadProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
 
 type QualityMode = "single-agent" | "multi-agent";
+type AuditLevel = "minimal" | "standard" | "strict";
 
 interface StartOptions {
   feature?: string;
   qualityMode?: string;
+  auditLevel?: string;
   dryRun?: boolean;
 }
 
@@ -17,6 +19,8 @@ interface SessionState {
   startedAt: string;
   feature: string | null;
   qualityMode: QualityMode;
+  auditLevel: AuditLevel;
+  reviewChain: ReviewLayer[];
   phase: "ready";
   authority: {
     producerCanApproveGate: false;
@@ -24,6 +28,14 @@ interface SessionState {
     userApprovalRequiredBeforeGate: true;
   };
   nextAction: string;
+}
+
+interface ReviewLayer {
+  layer: "L0" | "L1" | "L2" | "L3" | "L4";
+  owner: string;
+  purpose: string;
+  required: boolean;
+  canBlock: boolean;
 }
 
 export function registerStartCommand(program: Command): void {
@@ -37,6 +49,11 @@ export function registerStartCommand(program: Command): void {
       "Quality mode: single-agent or multi-agent",
       "single-agent",
     )
+    .option(
+      "--audit-level <level>",
+      "Audit depth: minimal, standard, or strict",
+      "standard",
+    )
     .option("--dry-run", "Show start state without writing .framework/current-session.json")
     .action((targetPath: string | undefined, options: StartOptions) => {
       const projectDir = targetPath
@@ -46,6 +63,11 @@ export function registerStartCommand(program: Command): void {
       const qualityMode = parseQualityMode(options.qualityMode);
       if (!qualityMode) {
         logger.error("--quality-mode must be single-agent or multi-agent");
+        process.exit(1);
+      }
+      const auditLevel = parseAuditLevel(options.auditLevel);
+      if (!auditLevel) {
+        logger.error("--audit-level must be minimal, standard, or strict");
         process.exit(1);
       }
 
@@ -72,6 +94,8 @@ export function registerStartCommand(program: Command): void {
         startedAt: new Date().toISOString(),
         feature,
         qualityMode,
+        auditLevel,
+        reviewChain: buildReviewChain(auditLevel),
         phase: "ready",
         authority: {
           producerCanApproveGate: false,
@@ -101,6 +125,55 @@ function parseQualityMode(value: string | undefined): QualityMode | null {
   return null;
 }
 
+function parseAuditLevel(value: string | undefined): AuditLevel | null {
+  if (value === "minimal" || value === "standard" || value === "strict") {
+    return value;
+  }
+  return null;
+}
+
+function buildReviewChain(auditLevel: AuditLevel): ReviewLayer[] {
+  const layers: ReviewLayer[] = [
+    {
+      layer: "L0",
+      owner: "ci",
+      purpose: "Automated checks: typecheck, lint, tests, breaking-change detection",
+      required: true,
+      canBlock: true,
+    },
+    {
+      layer: "L1",
+      owner: "lead",
+      purpose: "Spec fit, task scope, PR description, and producer self-check review",
+      required: true,
+      canBlock: true,
+    },
+    {
+      layer: "L2",
+      owner: "auditor",
+      purpose: "Independent 6-axis audit: design intent, scope, hidden risks, regression, SSOT, honesty",
+      required: auditLevel !== "minimal",
+      canBlock: true,
+    },
+    {
+      layer: "L3",
+      owner: "cto",
+      purpose: "Governance, cross-cutting architecture, framework integrity, merge authority",
+      required: auditLevel === "strict",
+      canBlock: true,
+    },
+    {
+      layer: "L4",
+      owner: "ceo",
+      purpose: "Strategic approval for route:ceo-approval or critical product decisions",
+      required: false,
+      canBlock: true,
+    },
+  ];
+
+  return layers;
+}
+
 function printStartSummary(
   projectDir: string,
   state: SessionState,
@@ -118,6 +191,7 @@ function printStartSummary(
   logger.info(`  Profile:      ${profileType}`);
   logger.info(`  Feature:      ${state.feature ?? "(not set)"}`);
   logger.info(`  Quality mode: ${state.qualityMode}`);
+  logger.info(`  Audit level:  ${state.auditLevel}`);
   logger.info(`  Session file: ${dryRun ? "(dry-run)" : ".framework/current-session.json"}`);
   logger.info("");
 
@@ -139,10 +213,17 @@ function printStartSummary(
   if (state.qualityMode === "single-agent") {
     logger.info("  Single-agent is allowed only with mandatory phase stops.");
     logger.info("  The same agent must stop before gate/review and report Producer Self-check.");
-    logger.info("  Gate/review verdicts require an explicit /gate-design, /gate-quality, or /review step.");
+    logger.info("  Required L1/L2/L3 audit layers must be executed as separate authority passes.");
   } else {
     logger.info("  Multi-agent mode expects producer and gate/review roles to be separate.");
     logger.info("  The producer prepares evidence; the gate/review role issues PASS/BLOCK.");
+  }
+  logger.info("");
+
+  logger.info("Audit chain:");
+  for (const layer of state.reviewChain) {
+    const required = layer.required ? "required" : "conditional";
+    logger.info(`  ${layer.layer} ${required}: ${layer.owner} - ${layer.purpose}`);
   }
   logger.info("");
 

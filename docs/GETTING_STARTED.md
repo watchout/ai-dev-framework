@@ -67,7 +67,7 @@ framework init my-project --type=app
 cd my-project
 
 # Step 2: フレームワーク主導開発を開始
-framework start . --feature FEAT-001
+framework start . --feature FEAT-001 --audit-level standard
 # → .framework/current-session.json が作成される
 # → ここから「フレームワーク主導」として扱う
 
@@ -110,7 +110,7 @@ framework retrofit
 # → SSOT逆生成（ユーザー確認あり）
 
 # Step 3: フレームワーク主導開発を開始
-framework start . --feature FEAT-001
+framework start . --feature FEAT-001 --audit-level standard
 # → retrofit は導入、start は開発開始
 
 # Step 4: 以降は新規と同じ
@@ -152,6 +152,18 @@ framework audit all
 
 単一エージェント運用は許可されますが、Producer phase は自己チェックまでで、PASS/BLOCK 判定は Gate / Review phase だけが行えます。
 複数エージェント運用では producer と gate/review を分離しますが、必要な品質条件は同じです。
+
+監査段数は `--audit-level` で選択します。
+
+| auditLevel | 必須監査 | 用途 |
+|------------|----------|------|
+| `minimal` | L0 + L1 | 小変更、低リスク修正 |
+| `standard` | L0 + L1 + L2 | 通常開発。デフォルト |
+| `strict` | L0 + L1 + L2 + L3 | framework変更、仕様変更、cross-cutting変更 |
+
+L0 は CI、自動テスト、breaking-change check。
+L1 は lead review、L2 は独立 auditor review、L3 は CTO / architecture owner review。
+L4 は `route:ceo-approval` や戦略判断が必要な場合だけ追加します。
 
 ### framework discover
 対話形式でヒアリングを行い、アイデアを構造化します。
