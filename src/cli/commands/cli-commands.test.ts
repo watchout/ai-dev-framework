@@ -268,6 +268,45 @@ describe("start command", () => {
     });
   });
 
+  it("blocks strict start when implementation lead and architecture owner share a target", () => {
+    withFrameworkProject((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.architecture_owner = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("producer and gate/review roles");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and architecture_owner");
+    });
+  });
+
+  it("allows strict dry-run when all producer and authority roles are separated", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Readiness:    ready");
+    });
+  });
+
   it("does not write a session when framework mode activation fails", () => {
     withFrameworkProject((cwd) => {
       fs.writeFileSync(
@@ -368,6 +407,24 @@ describe("roles command", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr + result.stdout).toContain("not separated");
       expect(result.stderr + result.stdout).toContain("implementation_lead and auditor");
+    });
+  });
+
+  it("doctor exits non-zero when implementation lead and architecture owner share a target", () => {
+    withFrameworkConfig((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.architecture_owner = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit("roles doctor", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("not separated");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and architecture_owner");
     });
   });
 });

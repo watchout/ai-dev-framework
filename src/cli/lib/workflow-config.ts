@@ -81,6 +81,7 @@ export interface WorkflowDecision {
 const DEFAULT_OUTPUTS = ["local_files"];
 const PRODUCER_ROLES: RequiredRoleName[] = ["implementation_lead", "worker_pool"];
 const AUTHORITY_ROLES: RequiredRoleName[] = [
+  "architecture_owner",
   "reviewer",
   "auditor",
   "release_owner",
