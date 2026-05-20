@@ -130,6 +130,15 @@ describe("initProject", () => {
     const config = JSON.parse(raw);
     expect(config.provider.default).toBe("claude");
     expect(config.docs_layers.enabled).toBe(true);
+    expect(config.workflow.publishPolicy).toBe("draft_only");
+    expect(config.workflow.outputs).toEqual(["local_files"]);
+    expect(config.roles.bindings.architecture_owner).toEqual({
+      type: "external",
+      id: "todo-architecture-owner",
+      placeholder: true,
+    });
+    expect(raw).not.toMatch(/iyasaka|watchout|repo lead/i);
+    expect(raw).not.toMatch(/\b(ARC|CTO)\b/);
   });
 
   it("fetches framework docs into docs/standards/", async () => {
@@ -313,6 +322,12 @@ describe("initProject", () => {
       fs.readFileSync(path.join(root, ".framework/config.json"), "utf-8"),
     );
     expect(frameworkConfig.docs_layers.enabled).toBe(true);
+    expect(frameworkConfig.workflow.publishPolicy).toBe("draft_only");
+    expect(frameworkConfig.roles.bindings.worker_pool).toEqual({
+      type: "external",
+      id: "todo-worker-pool",
+      placeholder: true,
+    });
   });
 
   it("returns list of created files", async () => {

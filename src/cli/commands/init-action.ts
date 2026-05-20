@@ -38,6 +38,7 @@ import {
 import { installGitHubTemplates } from "../lib/github-templates.js";
 import { installMcpJson } from "../lib/mcp-installer.js";
 import { logger } from "../lib/logger.js";
+import { createDefaultFrameworkConfig } from "../lib/workflow-config.js";
 
 export interface InitOptions {
   projectName: string;
@@ -214,14 +215,7 @@ export async function initProject(options: InitOptions): Promise<InitResult> {
   const frameworkConfigPath = path.join(projectPath, ".framework/config.json");
   fs.writeFileSync(
     frameworkConfigPath,
-    `${JSON.stringify(
-      {
-        provider: { default: "claude" },
-        docs_layers: { enabled: true },
-      },
-      null,
-      2,
-    )}\n`,
+    `${JSON.stringify(createDefaultFrameworkConfig(), null, 2)}\n`,
     "utf-8",
   );
   createdFiles.push(".framework/config.json");
