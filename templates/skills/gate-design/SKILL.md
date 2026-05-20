@@ -11,6 +11,13 @@ description: |
 
 設計完了後、Planning（framework plan）開始前に3つのValidatorが設計書群の矛盾・不整合・欠落を検出するGateスキル。設計欠陥は実装後に10倍のコストがかかるため、Gate 2より厳格な基準を適用する。
 
+## Gate Authority
+
+`/gate-design` は独立Gateであり、設計Producer (`/design`) の成果物に対して PASS / BLOCK / CONDITIONAL PASS を出せる。
+Producer の自己チェック結果は参考情報として扱い、Gate判定の代替とはしない。
+
+このスキルはユーザー承認後に実行する。`/design` から自動遷移してはいけない。
+
 ## Agents（参照）
 
 3つのValidatorを順次実行する:
@@ -46,6 +53,7 @@ description: |
 | 全CRITICAL = 0、WARNING ≤ 5 | **PASS** → framework plan 実行可 |
 | CRITICAL ≥ 1 | **BLOCK** → 設計書修正優先 |
 | WARNING > 5 | **BLOCK** → 設計改善必要 |
+| 軽微な未解決事項のみ | **CONDITIONAL PASS** → 条件を明記して次工程可 |
 
 <!-- 閾値変更: ≤3 → ≤5（2026-03-26）
   根拠: haishin-puls-hub実戦テストで真陽性WARNING 20件中、

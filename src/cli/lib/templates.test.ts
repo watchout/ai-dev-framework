@@ -56,6 +56,12 @@ describe("generateClaudeMd", () => {
     expect(result).toContain("/design");
     expect(result).toContain("/implement");
     expect(result).toContain("/review");
+    expect(result).toContain("Phase Authority");
+    expect(result).toContain("Authority: producer only");
+    expect(result).toContain("Can approve gate: no");
+    expect(result).toContain("PASS / BLOCK / CONDITIONAL PASS");
+    expect(result).toContain("/gate-design");
+    expect(result).toContain("/gate-quality");
   });
 
   it("includes GitHub Integration section", () => {

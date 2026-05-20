@@ -310,6 +310,8 @@ chore: [description]
 | 「設計」「仕様を作って」「スペック」「アーキテクチャ」 | /design |
 | 「実装開始」「コードを書いて」「タスク分解」 | /implement |
 | 「レビュー」「監査」「audit」 | /review |
+| 「設計ゲート」「design gate」「gate-design」 | /gate-design |
+| 「品質ゲート」「quality gate」「gate-quality」 | /gate-quality |
 
 **タスク指示**（「DEV-XXXを実装して」「〇〇機能を作って」等）→ 適切なスキルの起動を提案:
 - 新機能の場合: 「/design で設計してから /implement で実装しますか？」
@@ -319,10 +321,44 @@ chore: [description]
 
 **軽微な作業**（typo修正、設定変更、1ファイルの小修正等）→ スキル不要。直接作業。
 
+### Phase Authority
+
+Producer phase と Gate / Review phase を明確に分ける。
+
+| スキル | Authority | 自己チェック | PASS/BLOCK判定 | 停止条件 |
+|--------|-----------|--------------|----------------|----------|
+| /discovery | producer | yes | no | /design 前にユーザー確認 |
+| /design | producer | yes | no | /gate-design または /implement 前にユーザー確認 |
+| /implement | producer | yes | no | /gate-quality または /review 前にユーザー確認 |
+| /gate-design | independent gate | n/a | yes | 判定を報告して停止 |
+| /gate-quality | independent gate | n/a | yes | 判定を報告して停止 |
+| /review | independent review | n/a | yes | 判定を報告して停止 |
+
+Producer は \`framework gate check\` / \`framework trace verify\` を実行し、結果を報告してよい。
+ただし \`approved\`, \`audit passed\`, \`ready to implement\`, \`ready to merge\` などの承認表現を確定してはいけない。
+PASS / BLOCK / CONDITIONAL PASS を出せるのは \`/gate-design\`, \`/gate-quality\`, \`/review\` のみ。
+
+Producer の完了報告は次の形にする:
+
+\\\`\\\`\\\`markdown
+## Producer Self-check
+- Created / updated:
+- Commands run:
+- Missing / risks:
+- Recommended next action:
+
+Authority: producer only
+Can self-check: yes
+Can approve gate: no
+Must stop before: /gate-design, /gate-quality, or /review
+\\\`\\\`\\\`
+
 ### フェーズ遷移
 各スキル完了後、次のフェーズを提案する:
 discovery → design → implement → review
 ユーザー承認後に次スキルを Skill ツールで起動。
+
+Gate / Review 系への遷移は必ずユーザー承認後に行う。Producer が自動で独立GateやReviewを開始してはいけない。
 
 ### Pre-Code Gate 連携
 「実装開始」の場合:

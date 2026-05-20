@@ -37,6 +37,10 @@ templates/skills/
 Discovery & Business → Design → Implementation → Review
 ```
 
+Producer phase (`discovery`, `design`, `implement`) は成果物作成と自己チェックまでを担当します。
+Gate / Review phase (`gate-design`, `gate-quality`, `gate-release`, `review`) だけが PASS / BLOCK / CONDITIONAL PASS を出せます。
+Producer から Gate / Review へ進む前にはユーザー承認が必要です。
+
 ## 利用方法
 
 ### Claude Code CLI

@@ -12,6 +12,24 @@ description: |
 技術設計を実際のコードに落とし込み、テストと品質保証を行う専門家チーム。
 Pre-Code Gate (A/B/C) が全て passed であることが前提。
 
+## Phase Authority
+
+`/implement` は **Producer phase** であり、実装、テスト、軽量自己確認までを担当する。
+自己チェックは行ってよいが、最終監査、Gate PASS、マージ可否、リリース可否を確定してはいけない。
+
+許可されること:
+- コード、テスト、実装メモ、関連ドキュメントを作成・更新する
+- `npm test`, `npm run build`, `framework gate check`, `framework trace verify` などを実行し、結果を事実として報告する
+- 明らかな不備を自己レビューとして修正する
+- `/gate-quality` や `/review` に渡すべき検証観点を整理する
+
+禁止されること:
+- `approved`, `audit passed`, `ready to merge`, `release ready` などの承認表現を確定する
+- I3 の結果を独立Gate / Review の代替として扱う
+- ユーザー承認なしに `/gate-quality` や `/review` へ自動遷移する
+
+完了時は実装内容、自己チェック結果、残リスクを報告し、次に `/gate-quality` または `/review` を実行するかユーザー確認して停止する。
+
 ## ワークフロー
 
 ```
@@ -125,7 +143,7 @@ describe('[機能ID] [機能名]', () => {
 
 ### I3: Code Auditor（コード監査者）
 
-**役割**: コード品質を監査（Adversarial Review）
+**役割**: 実装フェーズ内のコード自己監査（Adversarial self-check）。最終Review権限ではない。
 
 **監査チェックリスト**:
 - [ ] **SSOT準拠性**: 仕様通りに実装されているか
@@ -138,11 +156,13 @@ describe('[機能ID] [機能名]', () => {
 
 **出力形式**:
 ```markdown
-## 監査結果: [機能ID]
+## 実装 self-check 結果: [機能ID]
 - Critical: [件数] — 即時修正必須
 - Warning: [件数] — 修正推奨
 - Info: [件数] — 改善提案
 ```
+
+この結果は `/gate-quality` または `/review` への入力であり、PASS / BLOCK 判定ではない。
 
 ### I4: Integration Validator（統合検証者）
 
@@ -189,6 +209,37 @@ fix/[機能ID]-[説明]: バグ修正用
 - **Business**: パフォーマンスはビジネス要件を満たすか？
 
 視点間の緊張があれば、それを明記して解決策を示す。
+
+このチェックは Producer self-check であり、独立Reviewの承認ではない。
+
+## Self-check Report Template
+
+```markdown
+## /implement Self-check
+
+### 実装・更新した成果物
+- [ ] src/...
+- [ ] tests/...
+- [ ] docs/...
+
+### 実行した確認
+- build:
+- test:
+- gate / trace:
+
+### 独立Gate / Reviewに渡す観点
+- Risks:
+- Known limitations:
+- Reviewer focus:
+
+### 次の推奨アクション
+/gate-quality または /review を実行して独立判定を受けるか確認してください。
+
+Authority: producer only
+Can self-check: yes
+Can approve gate: no
+Must stop before: /gate-quality or /review
+```
 
 ## 実装中の知見記録
 

@@ -12,6 +12,13 @@ description: |
 実装完了後の最終品質ゲート。複数の専門家（R1-R5）がそれぞれの観点から
 レビューし、リリース可否を判定する。SSOT監査とコード監査も統合。
 
+## Review Authority
+
+`/review` は独立Review phaseであり、Producer (`/design`, `/implement`) の成果物に対して Approve / Reject / Block を出せる。
+Producer の自己チェック結果、I3 self-check、`framework gate check` / `framework trace verify` の実行結果は参考情報として扱う。
+
+`/review` はユーザー承認後に実行する。Producer phase から自動遷移してはいけない。
+
 ## ワークフロー
 
 ```
