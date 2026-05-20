@@ -65,6 +65,12 @@ export interface SetupRequired {
 
 export type RoleResolution = ReadyRoles | SetupRequired;
 
+export interface RoleSeparationViolation {
+  producerRole: RequiredRoleName;
+  authorityRole: RequiredRoleName;
+  target: string;
+}
+
 export interface WorkflowDecision {
   status: "allowed" | "blocked" | "setup_required";
   reason?: string;
@@ -73,6 +79,14 @@ export interface WorkflowDecision {
 }
 
 const DEFAULT_OUTPUTS = ["local_files"];
+const PRODUCER_ROLES: RequiredRoleName[] = ["implementation_lead", "worker_pool"];
+const AUTHORITY_ROLES: RequiredRoleName[] = [
+  "architecture_owner",
+  "reviewer",
+  "auditor",
+  "release_owner",
+  "human_approver",
+];
 
 export function createDefaultFrameworkConfig(): FrameworkConfig {
   return {
@@ -108,6 +122,21 @@ export function loadFrameworkConfig(projectDir: string): FrameworkConfig {
     throw new Error(".framework/config.json must contain a JSON object");
   }
   return parsed as FrameworkConfig;
+}
+
+export function saveFrameworkConfig(
+  projectDir: string,
+  config: FrameworkConfig,
+): void {
+  const frameworkDir = path.join(projectDir, ".framework");
+  if (!fs.existsSync(frameworkDir)) {
+    fs.mkdirSync(frameworkDir, { recursive: true });
+  }
+  fs.writeFileSync(
+    path.join(frameworkDir, "config.json"),
+    JSON.stringify(config, null, 2) + "\n",
+    "utf-8",
+  );
 }
 
 export function resolveRequiredRoles(
@@ -203,6 +232,35 @@ export function evaluatePublishWorkflow(
   };
 }
 
+export function validateRoleSeparation(
+  bindings: Record<RequiredRoleName, RoleBinding>,
+): RoleSeparationViolation[] {
+  const violations: RoleSeparationViolation[] = [];
+
+  for (const producerRole of PRODUCER_ROLES) {
+    const producer = bindings[producerRole];
+    const producerTarget = roleTargetKey(producer);
+    for (const authorityRole of AUTHORITY_ROLES) {
+      const authority = bindings[authorityRole];
+      if (producerTarget === roleTargetKey(authority)) {
+        violations.push({
+          producerRole,
+          authorityRole,
+          target: producerTarget,
+        });
+      }
+    }
+  }
+
+  return violations;
+}
+
+export function formatRoleSeparationViolation(
+  violation: RoleSeparationViolation,
+): string {
+  return `${violation.producerRole} and ${violation.authorityRole} share ${violation.target}`;
+}
+
 export function canGenerateLocalDraft(config: FrameworkConfig): WorkflowDecision {
   const outputs = config.workflow?.outputs ?? DEFAULT_OUTPUTS;
   if (!outputs.includes("local_files")) {
@@ -225,4 +283,8 @@ export function isValidRoleBinding(value: unknown): value is RoleBinding {
     typeof candidate.type === "string" &&
     (ROLE_TARGET_TYPES as readonly string[]).includes(candidate.type)
   );
+}
+
+function roleTargetKey(binding: RoleBinding): string {
+  return `${binding.type}:${binding.id}`;
 }

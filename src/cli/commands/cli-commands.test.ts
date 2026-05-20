@@ -178,6 +178,258 @@ describe("audit command", () => {
 });
 
 // ---------------------------------------------------------------------------
+// start
+// ---------------------------------------------------------------------------
+describe("start command", () => {
+  const requiredRoles = [
+    "architecture_owner",
+    "implementation_lead",
+    "reviewer",
+    "auditor",
+    "release_owner",
+    "human_approver",
+    "worker_pool",
+  ];
+
+  function completeRoleBindings(): Record<string, { type: string; id: string }> {
+    return Object.fromEntries(
+      requiredRoles.map((role) => [
+        role,
+        {
+          type: role === "worker_pool" ? "local_agent" : "human",
+          id: `${role}-target`,
+        },
+      ]),
+    );
+  }
+
+  function withFrameworkProject<T>(fn: (dir: string) => T): T {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-start-test-"));
+    try {
+      fs.mkdirSync(path.join(dir, ".framework"), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, ".framework", "project.json"),
+        JSON.stringify({ name: "start-test", profileType: "cli" }),
+        "utf-8",
+      );
+      fs.writeFileSync(
+        path.join(dir, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: {} } }),
+        "utf-8",
+      );
+      return fn(dir);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("blocks strict start when role bindings are missing", () => {
+    withFrameworkProject((cwd) => {
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("required orchestration roles");
+    });
+  });
+
+  it("allows standard start with missing roles as a warning", () => {
+    withFrameworkProject((cwd) => {
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level standard --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Readiness:    warning");
+    });
+  });
+
+  it("blocks strict start when producer and gate/review roles share a target", () => {
+    withFrameworkProject((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.reviewer = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("producer and gate/review roles");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and reviewer");
+    });
+  });
+
+  it("blocks strict start when implementation lead and architecture owner share a target", () => {
+    withFrameworkProject((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.architecture_owner = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("producer and gate/review roles");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and architecture_owner");
+    });
+  });
+
+  it("allows strict dry-run when all producer and authority roles are separated", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Readiness:    ready");
+    });
+  });
+
+  it("does not write a session when framework mode activation fails", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("Framework mode activation failed");
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(false);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// roles
+// ---------------------------------------------------------------------------
+describe("roles command", () => {
+  const requiredRoles = [
+    "architecture_owner",
+    "implementation_lead",
+    "reviewer",
+    "auditor",
+    "release_owner",
+    "human_approver",
+    "worker_pool",
+  ];
+
+  function completeRoleBindings(): Record<string, { type: string; id: string }> {
+    return Object.fromEntries(
+      requiredRoles.map((role) => [
+        role,
+        {
+          type: role === "worker_pool" ? "local_agent" : "human",
+          id: `${role}-target`,
+        },
+      ]),
+    );
+  }
+
+  function withFrameworkConfig<T>(fn: (dir: string) => T): T {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-roles-test-"));
+    try {
+      fs.mkdirSync(path.join(dir, ".framework"), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: {} } }),
+        "utf-8",
+      );
+      return fn(dir);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("doctor exits non-zero when roles are missing", () => {
+    withFrameworkConfig((cwd) => {
+      const result = runCliWithExit("roles doctor", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("Required orchestration roles");
+    });
+  });
+
+  it("sets and lists a role binding", () => {
+    withFrameworkConfig((cwd) => {
+      const setResult = runCliWithExit(
+        "roles set auditor --type mcp_agent --id codex-auditor",
+        { cwd },
+      );
+      expect(setResult.exitCode).toBe(0);
+      expect(setResult.stdout + setResult.stderr).toContain("Set auditor");
+
+      const list = runCliWithExit("roles list", { cwd });
+      expect(list.exitCode).toBe(0);
+      expect(list.stdout).toContain("auditor: mcp_agent:codex-auditor");
+    });
+  });
+
+  it("doctor exits non-zero when producer and gate/review roles share a target", () => {
+    withFrameworkConfig((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.auditor = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit("roles doctor", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("not separated");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and auditor");
+    });
+  });
+
+  it("doctor exits non-zero when implementation lead and architecture owner share a target", () => {
+    withFrameworkConfig((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.architecture_owner = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit("roles doctor", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("not separated");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and architecture_owner");
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // init
 // ---------------------------------------------------------------------------
 describe("init command", () => {

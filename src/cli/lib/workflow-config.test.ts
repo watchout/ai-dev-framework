@@ -83,6 +83,32 @@ describe("workflow config", () => {
     }
   });
 
+  it("detects producer and gate/review role separation violations", async () => {
+    const { validateRoleSeparation } = await import("./workflow-config.js");
+    const bindings = completeBindings();
+    bindings.reviewer = bindings.implementation_lead;
+    bindings.auditor = bindings.worker_pool;
+    bindings.architecture_owner = bindings.implementation_lead;
+
+    expect(validateRoleSeparation(bindings)).toEqual([
+      {
+        producerRole: "implementation_lead",
+        authorityRole: "architecture_owner",
+        target: "human:implementation_lead-target",
+      },
+      {
+        producerRole: "implementation_lead",
+        authorityRole: "reviewer",
+        target: "human:implementation_lead-target",
+      },
+      {
+        producerRole: "worker_pool",
+        authorityRole: "auditor",
+        target: "local_agent:worker_pool-target",
+      },
+    ]);
+  });
+
   it("allows local draft generation with local_files output", () => {
     expect(canGenerateLocalDraft(createDefaultFrameworkConfig())).toEqual({
       status: "allowed",
