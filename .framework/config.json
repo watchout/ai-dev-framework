@@ -8,5 +8,44 @@
   },
   "docs_layers": {
     "enabled": true
+  },
+  "roles": {
+    "bindings": {
+      "architecture_owner": {
+        "type": "external",
+        "id": "cto"
+      },
+      "implementation_lead": {
+        "type": "local_agent",
+        "id": "codex-implementation-lead"
+      },
+      "reviewer": {
+        "type": "external",
+        "id": "adf-lead"
+      },
+      "auditor": {
+        "type": "external",
+        "id": "codex-auditor"
+      },
+      "release_owner": {
+        "type": "human",
+        "id": "watchout"
+      },
+      "human_approver": {
+        "type": "human",
+        "id": "watchout"
+      },
+      "worker_pool": {
+        "type": "local_agent",
+        "id": "dev-bot-pool"
+      }
+    }
+  },
+  "workflow": {
+    "publishPolicy": "approval_required",
+    "outputs": [
+      "local_files",
+      "github"
+    ]
   }
 }
