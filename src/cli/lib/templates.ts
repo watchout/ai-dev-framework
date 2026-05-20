@@ -396,12 +396,14 @@ L4 は \`route:ceo-approval\`、戦略判断、critical PR の場合のみ追加
 | L0 | CI / deterministic checks | typecheck, lint, test, breaking-change check で block |
 | L1 | lead | scope, spec fit, PR description, Producer Self-check で block |
 | L2 | auditor | design intent, hidden risk, regression, SSOT, honesty で block |
-| L3 | CTO / architecture owner | governance, cross-cutting architecture, framework integrity, merge authority で block |
+| L3 | technical governance owner / CTO | governance, cross-cutting architecture, framework integrity, merge authority で block |
 | L4 | CEO / human approver | strategic approval で block |
 
 \`strict\` は世界公開しても恥ずかしくない MCP 品質の基準とする。
 そのため \`strict\` では \`.framework/config.json\` の \`roles.bindings\` に具体的な role binding が必要。
 role が未設定または placeholder のままなら \`framework start\` は BLOCK する。
+producer と gate/review/L3 authority が同一 target、または同一 actor label の場合も \`standard\` / \`strict\` は BLOCK する。
+\`architecture_owner\` は設計担当、\`l3_governance_owner\` は技術責任者 / L3 最終監査として分離する。
 \`standard\` / \`minimal\` では warning として表示し、移行中・dogfooding 中の進行を許容する。
 
 Producer は \`framework gate check\` / \`framework trace verify\` を実行し、結果を報告してよい。

@@ -3,6 +3,7 @@ import * as path from "node:path";
 
 export const REQUIRED_ROLE_NAMES = [
   "architecture_owner",
+  "l3_governance_owner",
   "implementation_lead",
   "reviewer",
   "auditor",
@@ -82,6 +83,7 @@ const DEFAULT_OUTPUTS = ["local_files"];
 const PRODUCER_ROLES: RequiredRoleName[] = ["implementation_lead", "worker_pool"];
 const AUTHORITY_ROLES: RequiredRoleName[] = [
   "architecture_owner",
+  "l3_governance_owner",
   "reviewer",
   "auditor",
   "release_owner",
@@ -240,13 +242,24 @@ export function validateRoleSeparation(
   for (const producerRole of PRODUCER_ROLES) {
     const producer = bindings[producerRole];
     const producerTarget = roleTargetKey(producer);
+    const producerActor = roleActorKey(producer);
     for (const authorityRole of AUTHORITY_ROLES) {
       const authority = bindings[authorityRole];
-      if (producerTarget === roleTargetKey(authority)) {
+      const authorityTarget = roleTargetKey(authority);
+      const authorityActor = roleActorKey(authority);
+      if (producerTarget === authorityTarget) {
         violations.push({
           producerRole,
           authorityRole,
           target: producerTarget,
+        });
+        continue;
+      }
+      if (producerActor === authorityActor) {
+        violations.push({
+          producerRole,
+          authorityRole,
+          target: `actor:${producerActor}`,
         });
       }
     }
@@ -287,4 +300,8 @@ export function isValidRoleBinding(value: unknown): value is RoleBinding {
 
 function roleTargetKey(binding: RoleBinding): string {
   return `${binding.type}:${binding.id}`;
+}
+
+function roleActorKey(binding: RoleBinding): string {
+  return binding.id.trim().toLowerCase();
 }

@@ -171,13 +171,14 @@ Shirube の基本条件はフルオーケストラ運用です。
 | `strict` | L0 + L1 + L2 + L3 | framework変更、仕様変更、cross-cutting変更。フルオーケストラ必須 |
 
 L0 は CI、自動テスト、breaking-change check。
-L1 は lead review、L2 は独立 auditor review、L3 は CTO / architecture owner review。
+L1 は lead review、L2 は独立 auditor review、L3 は technical governance owner / CTO review。
 L4 は `route:ceo-approval` や戦略判断が必要な場合だけ追加します。
 
 `strict` は世界公開しても恥ずかしくない MCP 品質の基準です。
 そのため `strict` では `.framework/config.json` の `roles.bindings` に具体的な role binding が必要です。
 role が未設定または placeholder のままなら `strict` は BLOCK し、`standard` / `minimal` では warning として表示して移行中・dogfooding 中の進行を許容します。
-producer と gate/review authority が同一 target の場合、`standard` / `strict` は BLOCK します。
+producer と gate/review/L3 authority が同一 target、または同一 actor label の場合、`standard` / `strict` は BLOCK します。
+`architecture_owner` は設計担当、`l3_governance_owner` は技術責任者 / L3 最終監査として分離します。
 
 ### 実行コマンドの状態遷移
 

@@ -61,6 +61,11 @@ MCP product として利用する場合、Shirube は内部エージェント名
         "type": "external",
         "id": "todo-architecture-owner",
         "placeholder": true
+      },
+      "l3_governance_owner": {
+        "type": "external",
+        "id": "todo-l3-governance-owner",
+        "placeholder": true
       }
     }
   },

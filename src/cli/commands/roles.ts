@@ -87,7 +87,7 @@ function doctorRoles(projectDir: string): boolean {
   if (result.status === "ready") {
     const violations = validateRoleSeparation(result.bindings);
     if (violations.length > 0) {
-      logger.error("Producer and gate/review roles are not separated.");
+      logger.error("Producer and gate/review/L3 authority roles are not separated.");
       for (const violation of violations) {
         logger.info(`  - ${formatRoleSeparationViolation(violation)}`);
       }

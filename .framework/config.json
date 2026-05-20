@@ -15,13 +15,17 @@
         "type": "external",
         "id": "discord-arc"
       },
+      "l3_governance_owner": {
+        "type": "external",
+        "id": "cto"
+      },
       "implementation_lead": {
         "type": "local_agent",
         "id": "codex-adf"
       },
       "reviewer": {
         "type": "external",
-        "id": "codex-adf"
+        "id": "adf-lead"
       },
       "auditor": {
         "type": "external",

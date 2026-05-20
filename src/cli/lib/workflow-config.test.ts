@@ -11,6 +11,7 @@ import {
 
 const roles: RequiredRoleName[] = [
   "architecture_owner",
+  "l3_governance_owner",
   "implementation_lead",
   "reviewer",
   "auditor",
@@ -67,6 +68,7 @@ describe("workflow config", () => {
     expect(result.status).toBe("setup_required");
     if (result.status === "setup_required") {
       expect(result.missingRoles).toContain("architecture_owner");
+      expect(result.missingRoles).toContain("l3_governance_owner");
       expect(result.missingRoles).toContain("worker_pool");
       expect(result.placeholderRoles).toEqual([]);
     }
@@ -83,12 +85,13 @@ describe("workflow config", () => {
     }
   });
 
-  it("detects producer and gate/review role separation violations", async () => {
+  it("detects producer and gate/review/L3 authority role separation violations", async () => {
     const { validateRoleSeparation } = await import("./workflow-config.js");
     const bindings = completeBindings();
     bindings.reviewer = bindings.implementation_lead;
     bindings.auditor = bindings.worker_pool;
     bindings.architecture_owner = bindings.implementation_lead;
+    bindings.l3_governance_owner = bindings.worker_pool;
 
     expect(validateRoleSeparation(bindings)).toEqual([
       {
@@ -103,8 +106,27 @@ describe("workflow config", () => {
       },
       {
         producerRole: "worker_pool",
+        authorityRole: "l3_governance_owner",
+        target: "local_agent:worker_pool-target",
+      },
+      {
+        producerRole: "worker_pool",
         authorityRole: "auditor",
         target: "local_agent:worker_pool-target",
+      },
+    ]);
+  });
+
+  it("detects producer and authority actor label reuse across target types", async () => {
+    const { validateRoleSeparation } = await import("./workflow-config.js");
+    const bindings = completeBindings();
+    bindings.reviewer = { type: "external", id: "implementation_lead-target" };
+
+    expect(validateRoleSeparation(bindings)).toEqual([
+      {
+        producerRole: "implementation_lead",
+        authorityRole: "reviewer",
+        target: "actor:implementation_lead-target",
       },
     ]);
   });

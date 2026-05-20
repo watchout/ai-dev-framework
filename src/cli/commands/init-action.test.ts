@@ -137,6 +137,11 @@ describe("initProject", () => {
       id: "todo-architecture-owner",
       placeholder: true,
     });
+    expect(config.roles.bindings.l3_governance_owner).toEqual({
+      type: "external",
+      id: "todo-l3-governance-owner",
+      placeholder: true,
+    });
     expect(raw).not.toMatch(/iyasaka|watchout|repo lead/i);
     expect(raw).not.toMatch(/\b(ARC|CTO)\b/);
   });
