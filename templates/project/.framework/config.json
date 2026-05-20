@@ -5,5 +5,53 @@
     "validation": "claude",
     "ingestion": "claude",
     "worktree": "claude"
+  },
+  "docs_layers": {
+    "enabled": true
+  },
+  "roles": {
+    "bindings": {
+      "architecture_owner": {
+        "type": "external",
+        "id": "todo-architecture-owner",
+        "placeholder": true
+      },
+      "implementation_lead": {
+        "type": "external",
+        "id": "todo-implementation-lead",
+        "placeholder": true
+      },
+      "reviewer": {
+        "type": "external",
+        "id": "todo-reviewer",
+        "placeholder": true
+      },
+      "auditor": {
+        "type": "external",
+        "id": "todo-auditor",
+        "placeholder": true
+      },
+      "release_owner": {
+        "type": "external",
+        "id": "todo-release-owner",
+        "placeholder": true
+      },
+      "human_approver": {
+        "type": "external",
+        "id": "todo-human-approver",
+        "placeholder": true
+      },
+      "worker_pool": {
+        "type": "external",
+        "id": "todo-worker-pool",
+        "placeholder": true
+      }
+    }
+  },
+  "workflow": {
+    "publishPolicy": "draft_only",
+    "outputs": [
+      "local_files"
+    ]
   }
 }

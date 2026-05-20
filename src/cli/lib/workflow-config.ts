@@ -1,0 +1,228 @@
+import * as fs from "node:fs";
+import * as path from "node:path";
+
+export const REQUIRED_ROLE_NAMES = [
+  "architecture_owner",
+  "implementation_lead",
+  "reviewer",
+  "auditor",
+  "release_owner",
+  "human_approver",
+  "worker_pool",
+] as const;
+
+export type RequiredRoleName = (typeof REQUIRED_ROLE_NAMES)[number];
+
+export const ROLE_TARGET_TYPES = [
+  "human",
+  "local_agent",
+  "mcp_agent",
+  "channel",
+  "github_team",
+  "external",
+] as const;
+
+export type RoleTargetType = (typeof ROLE_TARGET_TYPES)[number];
+
+export type PublishPolicy =
+  | "draft_only"
+  | "approval_required"
+  | "auto_publish";
+
+export interface RoleBinding {
+  type: RoleTargetType;
+  id: string;
+  placeholder?: boolean;
+}
+
+export interface RoleConfig {
+  bindings?: Partial<Record<RequiredRoleName, RoleBinding>>;
+}
+
+export interface WorkflowConfig {
+  publishPolicy?: PublishPolicy;
+  outputs?: string[];
+}
+
+export interface FrameworkConfig {
+  provider?: Record<string, unknown>;
+  docs_layers?: Record<string, unknown>;
+  roles?: RoleConfig;
+  workflow?: WorkflowConfig;
+  [key: string]: unknown;
+}
+
+export interface ReadyRoles {
+  status: "ready";
+  bindings: Record<RequiredRoleName, RoleBinding>;
+}
+
+export interface SetupRequired {
+  status: "setup_required";
+  missingRoles: RequiredRoleName[];
+  placeholderRoles: RequiredRoleName[];
+}
+
+export type RoleResolution = ReadyRoles | SetupRequired;
+
+export interface WorkflowDecision {
+  status: "allowed" | "blocked" | "setup_required";
+  reason?: string;
+  missingRoles?: RequiredRoleName[];
+  placeholderRoles?: RequiredRoleName[];
+}
+
+const DEFAULT_OUTPUTS = ["local_files"];
+
+export function createDefaultFrameworkConfig(): FrameworkConfig {
+  return {
+    provider: { default: "claude" },
+    docs_layers: { enabled: true },
+    roles: {
+      bindings: Object.fromEntries(
+        REQUIRED_ROLE_NAMES.map((role) => [
+          role,
+          {
+            type: "external",
+            id: `todo-${role.split("_").join("-")}`,
+            placeholder: true,
+          },
+        ]),
+      ) as Record<RequiredRoleName, RoleBinding>,
+    },
+    workflow: {
+      publishPolicy: "draft_only",
+      outputs: DEFAULT_OUTPUTS,
+    },
+  };
+}
+
+export function loadFrameworkConfig(projectDir: string): FrameworkConfig {
+  const configPath = path.join(projectDir, ".framework", "config.json");
+  if (!fs.existsSync(configPath)) {
+    return createDefaultFrameworkConfig();
+  }
+
+  const parsed = JSON.parse(fs.readFileSync(configPath, "utf-8")) as unknown;
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(".framework/config.json must contain a JSON object");
+  }
+  return parsed as FrameworkConfig;
+}
+
+export function resolveRequiredRoles(
+  config: FrameworkConfig,
+  requiredRoles: readonly RequiredRoleName[] = REQUIRED_ROLE_NAMES,
+): RoleResolution {
+  const bindings = config.roles?.bindings ?? {};
+  const missingRoles: RequiredRoleName[] = [];
+  const placeholderRoles: RequiredRoleName[] = [];
+  const resolved: Partial<Record<RequiredRoleName, RoleBinding>> = {};
+
+  for (const role of requiredRoles) {
+    const binding = bindings[role];
+    if (!binding) {
+      missingRoles.push(role);
+      continue;
+    }
+    if (!isValidRoleBinding(binding)) {
+      missingRoles.push(role);
+      continue;
+    }
+    if (binding.placeholder) {
+      placeholderRoles.push(role);
+      continue;
+    }
+    resolved[role] = binding;
+  }
+
+  if (missingRoles.length > 0 || placeholderRoles.length > 0) {
+    return {
+      status: "setup_required",
+      missingRoles,
+      placeholderRoles,
+    };
+  }
+
+  return {
+    status: "ready",
+    bindings: resolved as Record<RequiredRoleName, RoleBinding>,
+  };
+}
+
+export function evaluatePublishWorkflow(
+  config: FrameworkConfig,
+): WorkflowDecision {
+  const policy = config.workflow?.publishPolicy ?? "draft_only";
+  const outputs = config.workflow?.outputs ?? DEFAULT_OUTPUTS;
+
+  if (policy === "draft_only") {
+    return {
+      status: "blocked",
+      reason: "publish_policy_draft_only",
+    };
+  }
+
+  const roles = resolveRequiredRoles(config);
+  if (roles.status === "setup_required") {
+    return {
+      status: "setup_required",
+      missingRoles: roles.missingRoles,
+      placeholderRoles: roles.placeholderRoles,
+    };
+  }
+
+  if (policy === "approval_required") {
+    const approver = roles.bindings.human_approver;
+    if (!approver || approver.placeholder) {
+      return {
+        status: "setup_required",
+        missingRoles: ["human_approver"],
+        placeholderRoles: [],
+      };
+    }
+    return {
+      status: "blocked",
+      reason: "approval_required",
+    };
+  }
+
+  if (policy === "auto_publish") {
+    if (!outputs.includes("github")) {
+      return {
+        status: "blocked",
+        reason: "github_output_required",
+      };
+    }
+    return { status: "allowed" };
+  }
+
+  return {
+    status: "blocked",
+    reason: "unknown_publish_policy",
+  };
+}
+
+export function canGenerateLocalDraft(config: FrameworkConfig): WorkflowDecision {
+  const outputs = config.workflow?.outputs ?? DEFAULT_OUTPUTS;
+  if (!outputs.includes("local_files")) {
+    return {
+      status: "blocked",
+      reason: "local_files_output_required",
+    };
+  }
+  return { status: "allowed" };
+}
+
+export function isValidRoleBinding(value: unknown): value is RoleBinding {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+  const candidate = value as Partial<RoleBinding>;
+  return (
+    typeof candidate.id === "string" &&
+    candidate.id.length > 0 &&
+    typeof candidate.type === "string" &&
+    (ROLE_TARGET_TYPES as readonly string[]).includes(candidate.type)
+  );
+}
