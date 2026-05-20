@@ -239,7 +239,7 @@ function evaluateStartReadiness(
         missingRoles: [],
         placeholderRoles: [],
         roleSeparationViolations,
-        message: "producer and gate/review roles are not separated",
+        message: "producer and gate/review/L3 authority roles are not separated",
       };
     }
 
@@ -443,7 +443,7 @@ function printStartSummary(
     logger.info("  Required audit layers must still be executed as separate authority passes.");
   } else {
     logger.info("  Multi-agent orchestration is the default Shirube quality model.");
-    logger.info("  Producer and gate/review roles must be separate for standard and strict work.");
+    logger.info("  Producer and gate/review/L3 authority roles must be separate for standard and strict work.");
     logger.info("  The producer prepares evidence; the gate/review role issues PASS/BLOCK.");
   }
   logger.info("");

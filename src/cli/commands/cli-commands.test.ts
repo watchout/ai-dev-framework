@@ -183,6 +183,7 @@ describe("audit command", () => {
 describe("start command", () => {
   const requiredRoles = [
     "architecture_owner",
+    "l3_governance_owner",
     "implementation_lead",
     "reviewer",
     "auditor",
@@ -247,7 +248,7 @@ describe("start command", () => {
     });
   });
 
-  it("blocks strict start when producer and gate/review roles share a target", () => {
+  it("blocks strict start when producer and gate/review/L3 authority roles share a target", () => {
     withFrameworkProject((cwd) => {
       const bindings = completeRoleBindings();
       bindings.reviewer = bindings.implementation_lead;
@@ -263,7 +264,7 @@ describe("start command", () => {
       );
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr + result.stdout).toContain("producer and gate/review roles");
+      expect(result.stderr + result.stdout).toContain("producer and gate/review/L3 authority roles");
       expect(result.stderr + result.stdout).toContain("implementation_lead and reviewer");
     });
   });
@@ -284,8 +285,51 @@ describe("start command", () => {
       );
 
       expect(result.exitCode).toBe(1);
-      expect(result.stderr + result.stdout).toContain("producer and gate/review roles");
+      expect(result.stderr + result.stdout).toContain("producer and gate/review/L3 authority roles");
       expect(result.stderr + result.stdout).toContain("implementation_lead and architecture_owner");
+    });
+  });
+
+  it("blocks strict start when implementation lead and L3 governance owner share a target", () => {
+    withFrameworkProject((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.l3_governance_owner = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("producer and gate/review/L3 authority roles");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and l3_governance_owner");
+    });
+  });
+
+  it("blocks strict start when implementation lead and reviewer reuse the same actor label", () => {
+    withFrameworkProject((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.implementation_lead = { type: "local_agent", id: "codex-adf" };
+      bindings.reviewer = { type: "external", id: "codex-adf" };
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("implementation_lead and reviewer");
+      expect(result.stderr + result.stdout).toContain("actor:codex-adf");
     });
   });
 
@@ -333,6 +377,7 @@ describe("start command", () => {
 describe("roles command", () => {
   const requiredRoles = [
     "architecture_owner",
+    "l3_governance_owner",
     "implementation_lead",
     "reviewer",
     "auditor",
@@ -392,7 +437,7 @@ describe("roles command", () => {
     });
   });
 
-  it("doctor exits non-zero when producer and gate/review roles share a target", () => {
+  it("doctor exits non-zero when producer and gate/review/L3 authority roles share a target", () => {
     withFrameworkConfig((cwd) => {
       const bindings = completeRoleBindings();
       bindings.auditor = bindings.implementation_lead;
@@ -425,6 +470,43 @@ describe("roles command", () => {
       expect(result.exitCode).toBe(1);
       expect(result.stderr + result.stdout).toContain("not separated");
       expect(result.stderr + result.stdout).toContain("implementation_lead and architecture_owner");
+    });
+  });
+
+  it("doctor exits non-zero when implementation lead and L3 governance owner share a target", () => {
+    withFrameworkConfig((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.l3_governance_owner = bindings.implementation_lead;
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit("roles doctor", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("not separated");
+      expect(result.stderr + result.stdout).toContain("implementation_lead and l3_governance_owner");
+    });
+  });
+
+  it("doctor exits non-zero when implementation lead and reviewer reuse the same actor label", () => {
+    withFrameworkConfig((cwd) => {
+      const bindings = completeRoleBindings();
+      bindings.implementation_lead = { type: "local_agent", id: "codex-adf" };
+      bindings.reviewer = { type: "external", id: "codex-adf" };
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit("roles doctor", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("not separated");
+      expect(result.stderr + result.stdout).toContain("actor:codex-adf");
     });
   });
 });
