@@ -110,6 +110,21 @@ export function loadFrameworkConfig(projectDir: string): FrameworkConfig {
   return parsed as FrameworkConfig;
 }
 
+export function saveFrameworkConfig(
+  projectDir: string,
+  config: FrameworkConfig,
+): void {
+  const frameworkDir = path.join(projectDir, ".framework");
+  if (!fs.existsSync(frameworkDir)) {
+    fs.mkdirSync(frameworkDir, { recursive: true });
+  }
+  fs.writeFileSync(
+    path.join(frameworkDir, "config.json"),
+    JSON.stringify(config, null, 2) + "\n",
+    "utf-8",
+  );
+}
+
 export function resolveRequiredRoles(
   config: FrameworkConfig,
   requiredRoles: readonly RequiredRoleName[] = REQUIRED_ROLE_NAMES,

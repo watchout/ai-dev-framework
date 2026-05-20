@@ -183,15 +183,19 @@ role が未設定または placeholder のままなら `framework start` は BLO
 
 | コマンド | 使う条件 | 何をするか | 次の状態 |
 |----------|----------|------------|----------|
-| `framework init <name>` | 新規プロジェクト作成時 | `.framework/`、docs、hooks、templates を作成し framework mode を有効化 | applied |
-| `framework retrofit [path] --generate` | 既存リポジトリを Shirube 管理に入れる時 | 既存構造を分析し、不足 docs/hooks/templates を導入して framework mode を有効化 | applied |
-| `framework update [path]` | 適用済みリポジトリを最新 Shirube に追従させる時 | docs/templates/hooks/GitHub templates/gates cache を更新 | applied |
-| `framework start [path] --feature <id>` | applied だが active session がない時 | `.framework/current-session.json` を作成し framework-led development を開始、framework mode を有効化 | framework-led |
-| `framework start [path] --resume` | active session があり、継続または exit 後に戻る時 | 既存 session を読み、framework mode を再有効化 | framework-led |
-| `framework start [path] --force --feature <id>` | 既存 session を破棄して新しい feature で切り直す時 | `.framework/current-session.json` を明示的に置き換える | framework-led |
-| `framework gate check` | 実装前、または update 後 | Gate A/B/C を評価し `.framework/gates.json` を hook cache として再生成 | gate status refreshed |
-| `framework trace verify` | 4-layer docs の整合性確認時 | SPEC/IMPL/VERIFY/OPS の trace を検証 | trace checked |
-| `framework exit --reason <reason>` | CEO 承認で一時的に Shirube 管理を抜ける時 | `framework-managed` topic を外し、監査ログへ記録。session file は残す | exited |
+| `shirube init <name>` | 新規プロジェクト作成時 | `.framework/`、docs、hooks、templates を作成し framework mode を有効化 | applied |
+| `shirube retrofit [path] --generate` | 既存リポジトリを Shirube 管理に入れる時 | 既存構造を分析し、不足 docs/hooks/templates を導入して framework mode を有効化 | applied |
+| `shirube update [path]` | 適用済みリポジトリを最新 Shirube に追従させる時 | docs/templates/hooks/GitHub templates/gates cache を更新 | applied |
+| `shirube roles doctor` | init/retrofit 後、start 前 | role binding の未設定/placeholder を診断 | role readiness checked |
+| `shirube roles set <role> --type <type> --id <id>` | strict 開始前、または担当変更時 | `.framework/config.json` の role binding を更新 | roles configured |
+| `shirube start [path] --feature <id>` | applied だが active session がない時 | `.framework/current-session.json` を作成し framework-led development を開始、framework mode を有効化 | framework-led |
+| `shirube start [path] --resume` | active session があり、継続または exit 後に戻る時 | 既存 session を読み、framework mode を再有効化 | framework-led |
+| `shirube start [path] --force --feature <id>` | 既存 session を破棄して新しい feature で切り直す時 | `.framework/current-session.json` を明示的に置き換える | framework-led |
+| `shirube gate check` | 実装前、または update 後 | Gate A/B/C を評価し `.framework/gates.json` を hook cache として再生成 | gate status refreshed |
+| `shirube trace verify` | 4-layer docs の整合性確認時 | SPEC/IMPL/VERIFY/OPS の trace を検証 | trace checked |
+| `shirube exit --reason <reason>` | CEO 承認で一時的に Shirube 管理を抜ける時 | `framework-managed` topic を外し、監査ログへ記録。session file は残す | exited |
+
+`framework` は後方互換 alias です。新しいドキュメント、公開例、MCP 利用ガイドでは `shirube` を primary command とします。
 
 ### framework discover
 対話形式でヒアリングを行い、アイデアを構造化します。

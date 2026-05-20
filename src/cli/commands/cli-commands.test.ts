@@ -222,6 +222,50 @@ describe("start command", () => {
 });
 
 // ---------------------------------------------------------------------------
+// roles
+// ---------------------------------------------------------------------------
+describe("roles command", () => {
+  function withFrameworkConfig<T>(fn: (dir: string) => T): T {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-roles-test-"));
+    try {
+      fs.mkdirSync(path.join(dir, ".framework"), { recursive: true });
+      fs.writeFileSync(
+        path.join(dir, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: {} } }),
+        "utf-8",
+      );
+      return fn(dir);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("doctor exits non-zero when roles are missing", () => {
+    withFrameworkConfig((cwd) => {
+      const result = runCliWithExit("roles doctor", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("Required orchestration roles");
+    });
+  });
+
+  it("sets and lists a role binding", () => {
+    withFrameworkConfig((cwd) => {
+      const setResult = runCliWithExit(
+        "roles set auditor --type mcp_agent --id codex-auditor",
+        { cwd },
+      );
+      expect(setResult.exitCode).toBe(0);
+      expect(setResult.stdout + setResult.stderr).toContain("Set auditor");
+
+      const list = runCliWithExit("roles list", { cwd });
+      expect(list.exitCode).toBe(0);
+      expect(list.stdout).toContain("auditor: mcp_agent:codex-auditor");
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // init
 // ---------------------------------------------------------------------------
 describe("init command", () => {

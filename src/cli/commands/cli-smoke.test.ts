@@ -92,6 +92,13 @@ describe("CLI Smoke Tests", () => {
     expect(output).toContain("audit-level");
   });
 
+  it("shows help for roles command", () => {
+    const output = runCli("roles --help");
+    expect(output).toContain("roles");
+    expect(output).toContain("doctor");
+    expect(output).toContain("set");
+  });
+
   it("shows help for visual-test command", () => {
     const output = runCli("visual-test --help");
     expect(output).toContain("visual-test");
@@ -113,6 +120,7 @@ describe("CLI Smoke Tests", () => {
       "audit",
       "run",
       "start",
+      "roles",
       "status",
       "retrofit",
       "update",

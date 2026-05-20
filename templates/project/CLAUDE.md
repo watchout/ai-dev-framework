@@ -392,15 +392,19 @@ Gate / Review への遷移はユーザー承認後に行う。
 
 | Command | Condition | Behavior | Result |
 |---------|-----------|----------|--------|
-| `framework init <name>` | new project | create `.framework/`, docs, hooks, templates and activate framework mode | applied |
-| `framework retrofit [path] --generate` | existing repo adoption | analyze existing repo, install missing docs/hooks/templates and activate framework mode | applied |
-| `framework update [path]` | already applied repo | update docs/templates/hooks/GitHub templates and regenerate gates cache | applied |
-| `framework start [path] --feature <id>` | applied repo without active session | create `.framework/current-session.json` and activate framework mode | framework-led |
-| `framework start [path] --resume` | active session exists, or after `framework exit` | load existing session and reactivate framework mode | framework-led |
-| `framework start [path] --force --feature <id>` | intentionally replacing current session | replace `.framework/current-session.json` | framework-led |
-| `framework gate check` | before implementation or after update | evaluate Gate A/B/C and regenerate local hook cache | gate status refreshed |
-| `framework trace verify` | checking 4-layer docs | verify SPEC/IMPL/VERIFY/OPS traceability | trace checked |
-| `framework exit --reason <reason>` | CEO-approved temporary exit | remove `framework-managed` topic and log audit event; session file remains | exited |
+| `shirube init <name>` | new project | create `.framework/`, docs, hooks, templates and activate framework mode | applied |
+| `shirube retrofit [path] --generate` | existing repo adoption | analyze existing repo, install missing docs/hooks/templates and activate framework mode | applied |
+| `shirube update [path]` | already applied repo | update docs/templates/hooks/GitHub templates and regenerate gates cache | applied |
+| `shirube roles doctor` | after init/retrofit, before strict start | check missing or placeholder role bindings | role readiness checked |
+| `shirube roles set <role> --type <type> --id <id>` | before strict start or when rotating owners | update role binding in `.framework/config.json` | roles configured |
+| `shirube start [path] --feature <id>` | applied repo without active session | create `.framework/current-session.json` and activate framework mode | framework-led |
+| `shirube start [path] --resume` | active session exists, or after `shirube exit` | load existing session and reactivate framework mode | framework-led |
+| `shirube start [path] --force --feature <id>` | intentionally replacing current session | replace `.framework/current-session.json` | framework-led |
+| `shirube gate check` | before implementation or after update | evaluate Gate A/B/C and regenerate local hook cache | gate status refreshed |
+| `shirube trace verify` | checking 4-layer docs | verify SPEC/IMPL/VERIFY/OPS traceability | trace checked |
+| `shirube exit --reason <reason>` | CEO-approved temporary exit | remove `framework-managed` topic and log audit event; session file remains | exited |
+
+`framework` は後方互換 alias とする。新しい docs、公開例、MCP 利用ガイドでは `shirube` を primary command とする。
 
 ### Quality Modes And Audit Levels
 
