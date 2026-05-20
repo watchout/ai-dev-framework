@@ -3,6 +3,7 @@ import * as path from "node:path";
 import { type Command } from "commander";
 import { loadProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
+import { activateFrameworkMode, getFrameworkMode } from "../lib/framework-mode.js";
 
 type QualityMode = "single-agent" | "multi-agent";
 type AuditLevel = "minimal" | "standard" | "strict";
@@ -12,6 +13,8 @@ interface StartOptions {
   qualityMode?: string;
   auditLevel?: string;
   dryRun?: boolean;
+  resume?: boolean;
+  force?: boolean;
 }
 
 interface SessionState {
@@ -54,8 +57,10 @@ export function registerStartCommand(program: Command): void {
       "Audit depth: minimal, standard, or strict",
       "standard",
     )
+    .option("--resume", "Resume the existing framework-led session")
+    .option("--force", "Replace an existing framework-led session")
     .option("--dry-run", "Show start state without writing .framework/current-session.json")
-    .action((targetPath: string | undefined, options: StartOptions) => {
+    .action(async (targetPath: string | undefined, options: StartOptions) => {
       const projectDir = targetPath
         ? path.resolve(process.cwd(), targetPath)
         : process.cwd();
@@ -78,6 +83,7 @@ export function registerStartCommand(program: Command): void {
 
       const frameworkDir = path.join(projectDir, ".framework");
       const projectJsonPath = path.join(frameworkDir, "project.json");
+      const sessionPath = path.join(frameworkDir, "current-session.json");
       if (!fs.existsSync(projectJsonPath)) {
         logger.header("Framework Start");
         logger.warn("This project is not applied to Shirube yet.");
@@ -87,6 +93,39 @@ export function registerStartCommand(program: Command): void {
         logger.info("");
         logger.info("Then start framework-led development:");
         logger.info(`  framework start ${projectDir}${options.feature ? ` --feature ${options.feature}` : ""}`);
+        process.exit(1);
+      }
+
+      if (options.resume && options.force) {
+        logger.error("--resume and --force cannot be used together");
+        process.exit(1);
+      }
+
+      if (options.resume && !fs.existsSync(sessionPath)) {
+        logger.header("Framework Start");
+        logger.warn("No framework-led session exists to resume.");
+        logger.info("");
+        logger.info("Start a new session:");
+        logger.info(`  framework start ${projectDir}${options.feature ? ` --feature ${options.feature}` : " --feature <id>"}`);
+        process.exit(1);
+      }
+
+      if (fs.existsSync(sessionPath) && options.resume) {
+        const existing = loadSessionState(sessionPath);
+        const modeStatus = await ensureFrameworkModeActive(options.dryRun ?? false);
+        printStartSummary(projectDir, existing, options.dryRun ?? false, "resumed", modeStatus);
+        return;
+      }
+
+      if (fs.existsSync(sessionPath) && !options.force) {
+        logger.header("Framework Start");
+        logger.warn("A framework-led session already exists.");
+        logger.info("");
+        logger.info("Resume the current session:");
+        logger.info(`  framework start ${projectDir} --resume`);
+        logger.info("");
+        logger.info("Replace it with a new session:");
+        logger.info(`  framework start ${projectDir}${options.feature ? ` --feature ${options.feature}` : ""} --force`);
         process.exit(1);
       }
 
@@ -113,14 +152,49 @@ export function registerStartCommand(program: Command): void {
       if (!options.dryRun) {
         fs.mkdirSync(frameworkDir, { recursive: true });
         fs.writeFileSync(
-          path.join(frameworkDir, "current-session.json"),
+          sessionPath,
           JSON.stringify(state, null, 2) + "\n",
           "utf-8",
         );
       }
 
-      printStartSummary(projectDir, state, options.dryRun ?? false);
+      const modeStatus = await ensureFrameworkModeActive(options.dryRun ?? false);
+      printStartSummary(
+        projectDir,
+        state,
+        options.dryRun ?? false,
+        options.force ? "replaced" : "started",
+        modeStatus,
+      );
     });
+}
+
+function loadSessionState(sessionPath: string): SessionState {
+  const parsed = JSON.parse(fs.readFileSync(sessionPath, "utf-8")) as SessionState;
+  if (parsed.mode !== "framework-led") {
+    throw new Error(".framework/current-session.json is not a framework-led session");
+  }
+  return parsed;
+}
+
+async function ensureFrameworkModeActive(dryRun: boolean): Promise<string> {
+  if (dryRun) {
+    return "dry-run, activation skipped";
+  }
+
+  const mode = await getFrameworkMode();
+  if (mode === "active") {
+    return "active";
+  }
+
+  const result = await activateFrameworkMode();
+  if (result.ok) {
+    return result.alreadyActive
+      ? "active"
+      : "activated (framework-managed topic)";
+  }
+
+  return `activation failed: ${result.error ?? "unknown"}`;
 }
 
 function parseQualityMode(value: string | undefined): QualityMode | null {
@@ -183,6 +257,8 @@ function printStartSummary(
   projectDir: string,
   state: SessionState,
   dryRun: boolean,
+  action: "started" | "resumed" | "replaced",
+  modeStatus: string,
 ): void {
   const profileType = loadProfileType(projectDir) ?? "unknown";
   const hasClaudeMd = fs.existsSync(path.join(projectDir, "CLAUDE.md"));
@@ -191,13 +267,14 @@ function printStartSummary(
   const hasGateWorkflow = fs.existsSync(path.join(projectDir, ".github/workflows/gate-checks.yml"));
   const hasConfig = fs.existsSync(path.join(projectDir, ".framework/config.json"));
 
-  logger.header("Framework-led Development Started");
+  logger.header(`Framework-led Development ${capitalize(action)}`);
   logger.info(`  Project:      ${projectDir}`);
   logger.info(`  Profile:      ${profileType}`);
   logger.info(`  Feature:      ${state.feature ?? "(not set)"}`);
   logger.info(`  Quality mode: ${state.qualityMode}`);
   logger.info(`  Audit level:  ${state.auditLevel}`);
   logger.info(`  Session file: ${dryRun ? "(dry-run)" : ".framework/current-session.json"}`);
+  logger.info(`  Mode status:  ${modeStatus}`);
   logger.info("");
 
   logger.info("Applied components:");
@@ -235,6 +312,10 @@ function printStartSummary(
 
   logger.info("Next action:");
   logger.info(`  ${state.nextAction}`);
+}
+
+function capitalize(value: string): string {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function mark(ok: boolean): string {

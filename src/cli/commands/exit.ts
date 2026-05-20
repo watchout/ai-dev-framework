@@ -63,6 +63,6 @@ export function registerExitCommand(program: Command): void {
       console.log("   All hooks are now passthrough (no-ops).");
       console.log("   Exit event recorded in audit log.");
       console.log("");
-      console.log("To reactivate: framework init / framework retrofit");
+      console.log("To reactivate: framework start --resume");
     });
 }

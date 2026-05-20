@@ -150,6 +150,10 @@ framework audit all
 `init` / `retrofit` / `update` は「適用・更新」であり、開発開始ではありません。
 `framework start` 実行後から、`/design`、`/implement`、`/gate-design`、`/gate-quality`、`/review` の phase authority に従って進めます。
 
+既に `.framework/current-session.json` がある場合、`framework start` は勝手に上書きしません。
+既存セッションを続ける場合は `framework start --resume`、新しい feature として切り直す場合は `framework start --force --feature <id>` を使います。
+`framework exit` で framework mode を抜けた後も、適用済みプロジェクトであれば `framework start --resume` で再開・再アクティベートできます。
+
 Shirube の基本条件はフルオーケストラ運用です。
 デフォルトでは `qualityMode: "multi-agent"` として、producer と gate/review を別エージェントまたは別ロールに分離します。
 
@@ -169,6 +173,20 @@ Shirube の基本条件はフルオーケストラ運用です。
 L0 は CI、自動テスト、breaking-change check。
 L1 は lead review、L2 は独立 auditor review、L3 は CTO / architecture owner review。
 L4 は `route:ceo-approval` や戦略判断が必要な場合だけ追加します。
+
+### 実行コマンドの状態遷移
+
+| コマンド | 使う条件 | 何をするか | 次の状態 |
+|----------|----------|------------|----------|
+| `framework init <name>` | 新規プロジェクト作成時 | `.framework/`、docs、hooks、templates を作成し framework mode を有効化 | applied |
+| `framework retrofit [path] --generate` | 既存リポジトリを Shirube 管理に入れる時 | 既存構造を分析し、不足 docs/hooks/templates を導入して framework mode を有効化 | applied |
+| `framework update [path]` | 適用済みリポジトリを最新 Shirube に追従させる時 | docs/templates/hooks/GitHub templates/gates cache を更新 | applied |
+| `framework start [path] --feature <id>` | applied だが active session がない時 | `.framework/current-session.json` を作成し framework-led development を開始、framework mode を有効化 | framework-led |
+| `framework start [path] --resume` | active session があり、継続または exit 後に戻る時 | 既存 session を読み、framework mode を再有効化 | framework-led |
+| `framework start [path] --force --feature <id>` | 既存 session を破棄して新しい feature で切り直す時 | `.framework/current-session.json` を明示的に置き換える | framework-led |
+| `framework gate check` | 実装前、または update 後 | Gate A/B/C を評価し `.framework/gates.json` を hook cache として再生成 | gate status refreshed |
+| `framework trace verify` | 4-layer docs の整合性確認時 | SPEC/IMPL/VERIFY/OPS の trace を検証 | trace checked |
+| `framework exit --reason <reason>` | CEO 承認で一時的に Shirube 管理を抜ける時 | `framework-managed` topic を外し、監査ログへ記録。session file は残す | exited |
 
 ### framework discover
 対話形式でヒアリングを行い、アイデアを構造化します。

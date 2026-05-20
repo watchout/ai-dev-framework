@@ -339,8 +339,26 @@ Producer phase と Gate / Review phase を明確に分ける。
 \`framework start [path] --feature <id>\` が \`.framework/current-session.json\` を作成した時点を「フレームワーク主導開発の開始」とする。
 \`init\`, \`retrofit\`, \`update\` は適用・更新であり、開発開始ではない。
 
+既に \`.framework/current-session.json\` がある場合、\`framework start\` は勝手に上書きしない。
+既存セッションを続ける場合は \`framework start --resume\`、新しい feature として切り直す場合は \`framework start --force --feature <id>\` を使う。
+\`framework exit\` で framework mode を抜けた後も、適用済みプロジェクトであれば \`framework start --resume\` で再開・再アクティベートできる。
+
 開始後の最初の実作業は \`/design <feature-id>\` または、既に SPEC/IMPL/VERIFY/OPS が揃っている場合のみ \`/implement <feature-id>\` とする。
 Gate / Review への遷移はユーザー承認後に行う。
+
+### Command Lifecycle
+
+| Command | Condition | Behavior | Result |
+|---------|-----------|----------|--------|
+| \`framework init <name>\` | new project | create \`.framework/\`, docs, hooks, templates and activate framework mode | applied |
+| \`framework retrofit [path] --generate\` | existing repo adoption | analyze existing repo, install missing docs/hooks/templates and activate framework mode | applied |
+| \`framework update [path]\` | already applied repo | update docs/templates/hooks/GitHub templates and regenerate gates cache | applied |
+| \`framework start [path] --feature <id>\` | applied repo without active session | create \`.framework/current-session.json\` and activate framework mode | framework-led |
+| \`framework start [path] --resume\` | active session exists, or after \`framework exit\` | load existing session and reactivate framework mode | framework-led |
+| \`framework start [path] --force --feature <id>\` | intentionally replacing current session | replace \`.framework/current-session.json\` | framework-led |
+| \`framework gate check\` | before implementation or after update | evaluate Gate A/B/C and regenerate local hook cache | gate status refreshed |
+| \`framework trace verify\` | checking 4-layer docs | verify SPEC/IMPL/VERIFY/OPS traceability | trace checked |
+| \`framework exit --reason <reason>\` | CEO-approved temporary exit | remove \`framework-managed\` topic and log audit event; session file remains | exited |
 
 ### Quality Modes And Audit Levels
 
