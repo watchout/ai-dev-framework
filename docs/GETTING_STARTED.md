@@ -43,7 +43,7 @@ framework --version
 │
 ├─ ゼロから作る（コードも資料もない）
 │   → 新規プロジェクト
-│   → framework init → discover → generate → plan → run
+│   → framework init → framework start → discover → generate → plan → run
 │   → 詳細: GUIDE_NEW_PROJECT.md
 │
 ├─ 資料はあるがコードはない（README、ペルソナ等）
@@ -53,7 +53,7 @@ framework --version
 │
 └─ 既にコードがある
     → 既存プロジェクト
-    → framework retrofit
+    → framework retrofit → framework start
     → 詳細: GUIDE_EXISTING_PROJECT.md
 ```
 
@@ -66,27 +66,32 @@ framework --version
 framework init my-project --type=app
 cd my-project
 
-# Step 2: ディスカバリー（ヒアリング）
+# Step 2: フレームワーク主導開発を開始
+framework start . --feature FEAT-001
+# → .framework/current-session.json が作成される
+# → ここから「フレームワーク主導」として扱う
+
+# Step 3: ディスカバリー（ヒアリング）
 framework discover
 # → AIが対話形式で質問し、アイデアを構造化
 
-# Step 3: SSOT生成（仕様書一式）
+# Step 4: SSOT生成（仕様書一式）
 framework generate business    # 事業設計
 framework generate product     # プロダクト設計
 framework generate technical   # 技術設計
 
-# Step 4: 実装計画
+# Step 5: 実装計画
 framework plan
 
-# Step 5: 開発
+# Step 6: 開発
 framework run --auto           # 自動実行
 # or
 framework run FEAT-001         # 1タスクずつ
 
-# Step 6: 品質監査
+# Step 7: 品質監査
 framework audit all
 
-# Step 7: 進捗確認
+# Step 8: 進捗確認
 framework status
 ```
 
@@ -104,7 +109,11 @@ framework retrofit
 # → ギャップ分析レポート
 # → SSOT逆生成（ユーザー確認あり）
 
-# Step 3: 以降は新規と同じ
+# Step 3: フレームワーク主導開発を開始
+framework start . --feature FEAT-001
+# → retrofit は導入、start は開発開始
+
+# Step 4: 以降は新規と同じ
 framework plan
 framework run --auto
 framework audit all
@@ -133,6 +142,16 @@ framework audit all
 
 ### framework init
 プロジェクトのディレクトリ構造と初期ファイルを生成します。
+
+### framework start
+フレームワーク主導開発の開始境界を作ります。
+`.framework/current-session.json` を作成し、対象 feature、品質モード、次に実行すべき phase を明示します。
+
+`init` / `retrofit` / `update` は「適用・更新」であり、開発開始ではありません。
+`framework start` 実行後から、`/design`、`/implement`、`/gate-design`、`/gate-quality`、`/review` の phase authority に従って進めます。
+
+単一エージェント運用は許可されますが、Producer phase は自己チェックまでで、PASS/BLOCK 判定は Gate / Review phase だけが行えます。
+複数エージェント運用では producer と gate/review を分離しますが、必要な品質条件は同じです。
 
 ### framework discover
 対話形式でヒアリングを行い、アイデアを構造化します。

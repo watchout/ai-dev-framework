@@ -85,6 +85,12 @@ describe("CLI Smoke Tests", () => {
     expect(output).toContain("status");
   });
 
+  it("shows help for start command", () => {
+    const output = runCli("start --help");
+    expect(output).toContain("start");
+    expect(output).toContain("quality-mode");
+  });
+
   it("shows help for visual-test command", () => {
     const output = runCli("visual-test --help");
     expect(output).toContain("visual-test");
@@ -105,6 +111,7 @@ describe("CLI Smoke Tests", () => {
       "gate",
       "audit",
       "run",
+      "start",
       "status",
       "retrofit",
       "update",

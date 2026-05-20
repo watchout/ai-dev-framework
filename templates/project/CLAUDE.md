@@ -376,6 +376,26 @@ Producer phase と Gate / Review phase を明確に分ける。
 | /gate-quality | independent gate | n/a | yes | 判定を報告して停止 |
 | /review | independent review | n/a | yes | 判定を報告して停止 |
 
+### Framework Start Boundary
+
+`framework start [path] --feature <id>` が `.framework/current-session.json` を作成した時点を「フレームワーク主導開発の開始」とする。
+`init`, `retrofit`, `update` は適用・更新であり、開発開始ではない。
+
+開始後の最初の実作業は `/design <feature-id>` または、既に SPEC/IMPL/VERIFY/OPS が揃っている場合のみ `/implement <feature-id>` とする。
+Gate / Review への遷移はユーザー承認後に行う。
+
+### Quality Modes
+
+単一エージェント運用は許可する。ただし品質担保は「同一エージェントの自己承認」ではなく、以下の構造で行う:
+
+- Producer phase は証跡作成、テスト実行、自己チェック報告まで。
+- Producer phase は PASS / BLOCK / ready to merge を確定してはいけない。
+- Gate / Review phase を明示的に起動し、同じエージェントでも別フェーズ・別Authorityとして判定する。
+- `.framework/current-session.json` の `qualityMode: "single-agent"` は、複数エージェント不在時の運用モードであり、Gate省略ではない。
+
+複数エージェント運用では producer と gate/review を別エージェントに分離する。
+ただし最終的な品質条件は同じで、PASS / BLOCK を出せるのは Gate / Review phase のみ。
+
 Producer は `framework gate check` / `framework trace verify` を実行し、結果を報告してよい。
 ただし `approved`, `audit passed`, `ready to implement`, `ready to merge` などの承認表現を確定してはいけない。
 PASS / BLOCK / CONDITIONAL PASS を出せるのは `/gate-design`, `/gate-quality`, `/review` のみ。
