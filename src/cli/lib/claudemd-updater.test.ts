@@ -362,5 +362,14 @@ describe("claudemd-updater", () => {
       expect(content).toContain("framework gate check");
       expect(content).toContain("framework trace verify");
     });
+
+    it("contains LLM control and design thinking rules", () => {
+      const content = getWorkflowOrchestrationContent();
+      expect(content).toContain("LLM Control Policy");
+      expect(content).toContain("deterministic control");
+      expect(content).toContain("Design Thinking Flow");
+      expect(content).toContain("Runtime boundary");
+      expect(content).toContain("Hook justification");
+    });
   });
 });

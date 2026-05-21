@@ -57,6 +57,29 @@ export function getWorkflowOrchestrationContent(): string {
 
 **軽微な作業**（typo修正、設定変更、1ファイルの小修正等）→ スキル不要。直接作業。
 
+### LLM Control Policy
+
+Shirube の設計・実装では、LLMに進行制御を委ねず、deterministic control を基本とする。
+
+- default: script / daemon / queue runner / CI / GitHub Actions / DB trigger / 明示CLI
+- Hook fallback: \`PreToolUse\` block、\`SessionStart\` / \`UserPromptSubmit\` context injection、\`SessionStart\` state recovery、\`PostToolUse\` immediate verification、\`Stop\` completion-time verification のみ
+- queue進行、状態遷移、retry、finalize、外部投稿は Runner / deterministic service が持つ
+- LLM runtime adapter は runtime-specific invocation と structured result の返却だけを担当する
+- 起動時注入は bounded restart pack に限定し、全文memory dumpをしない
+- memory/context retrieval は provenance付きcontextとして扱い、secret / PII / local path をredactする
+
+### Design Thinking Flow
+
+\`/design\` で自動化、エージェント挙動、Hook、memory、queue、Issue/PR生成、runtime orchestration を扱う場合は、成果物作成前に以下を整理する。
+
+1. Source of Truth: どのartifact/stateが正か
+2. Control split: deterministic control と LLM judgment の分担
+3. Hook justification: Hook採用時の不可避ケース該当根拠
+4. Runtime boundary: Runner、LLM adapter、memory/context、delivery adapter の責務
+5. Startup context: SessionStartで入れるrestart packとon-demand検索に残す情報
+6. Mechanical gates: 実装前、完了前、CIでblockする条件
+7. Authority: Gate、CTO/L3、CEO判断が必要な変更
+
 ### フェーズ遷移
 各スキル完了後、次のフェーズを提案する:
 discovery → design → implement → review
