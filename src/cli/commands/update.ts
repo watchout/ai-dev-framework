@@ -19,6 +19,7 @@ import {
 } from "../lib/framework-fetch.js";
 import {
   updateAgentTemplates,
+  updateFrameworkConfigPlaceholders,
   updateSkillTemplates,
 } from "../lib/update-engine.js";
 import { updateClaudeMdSkillSection } from "../lib/claudemd-updater.js";
@@ -150,7 +151,7 @@ export function registerUpdateCommand(program: Command): void {
             );
           }
 
-          const totalSteps = 9;
+          const totalSteps = 10;
           const profileType = loadProfileType(projectDir) ?? undefined;
           logger.info("");
           logger.step(1, totalSteps, "Fetching latest framework docs...");
@@ -172,7 +173,15 @@ export function registerUpdateCommand(program: Command): void {
             logger.info(`  Previous standards archived: ${result.archivedPath}`);
           }
 
-          logger.step(2, totalSteps, "Updating Agent Teams templates...");
+          logger.step(2, totalSteps, "Preserving role/workflow config...");
+          const addedRoles = updateFrameworkConfigPlaceholders(projectDir);
+          if (addedRoles.length > 0) {
+            logger.success(`Added missing role placeholders: ${addedRoles.join(", ")}`);
+          } else {
+            logger.info("  Role/workflow config preserved");
+          }
+
+          logger.step(3, totalSteps, "Updating Agent Teams templates...");
           const agentUpdates = updateAgentTemplates(projectDir);
           if (agentUpdates > 0) {
             logger.success(
@@ -182,7 +191,7 @@ export function registerUpdateCommand(program: Command): void {
             logger.info("  Agent templates up to date (or not present)");
           }
 
-          logger.step(3, totalSteps, "Updating skill templates...");
+          logger.step(4, totalSteps, "Updating skill templates...");
           const fwRoot = findFrameworkRoot();
           const skillUpdates = fwRoot
             ? updateSkillTemplates(projectDir, fwRoot)
@@ -196,7 +205,7 @@ export function registerUpdateCommand(program: Command): void {
           }
 
           logger.step(
-            4,
+            5,
             totalSteps,
             "Updating CLAUDE.md skill section...",
           );
@@ -208,7 +217,7 @@ export function registerUpdateCommand(program: Command): void {
           }
 
           logger.step(
-            5,
+            6,
             totalSteps,
             "Updating hooks (skill-tracker + pre-code-gate)...",
           );
@@ -223,7 +232,7 @@ export function registerUpdateCommand(program: Command): void {
           }
 
           logger.step(
-            6,
+            7,
             totalSteps,
             "Updating .mcp.json (Playwright MCP)...",
           );
@@ -234,7 +243,7 @@ export function registerUpdateCommand(program: Command): void {
             logger.info(`  ${mcpResult.reason}`);
           }
 
-          logger.step(7, totalSteps, "Updating GitHub templates...");
+          logger.step(8, totalSteps, "Updating GitHub templates...");
           const ghResult = updateGitHubTemplates(projectDir, profileType);
           if (ghResult.installed.length > 0) {
             logger.success(`Updated ${ghResult.installed.length} GitHub templates`);
@@ -248,7 +257,7 @@ export function registerUpdateCommand(program: Command): void {
             logger.warn(`GitHub templates: ${err}`);
           }
 
-          logger.step(8, totalSteps, "Regenerating .framework/gates.json...");
+          logger.step(9, totalSteps, "Regenerating .framework/gates.json...");
           const gateResult = checkAllGates(projectDir, undefined, profileType);
           if (gateResult.allPassed) {
             logger.success("Gates regenerated: all passed");
@@ -256,7 +265,7 @@ export function registerUpdateCommand(program: Command): void {
             logger.warn("Gates regenerated with failures; inspect .framework/gates.json");
           }
 
-          logger.step(9, totalSteps, "Update complete.");
+          logger.step(10, totalSteps, "Update complete.");
           logger.info("");
           logger.success(
             `Updated ${result.copiedFiles.length} framework docs`,
@@ -302,6 +311,7 @@ function updateReusableProjectFiles(
   profileType?: ProfileType,
 ): void {
   const fwRoot = findFrameworkRoot();
+  updateFrameworkConfigPlaceholders(projectDir);
   updateAgentTemplates(projectDir);
   if (fwRoot) {
     updateSkillTemplates(projectDir, fwRoot);

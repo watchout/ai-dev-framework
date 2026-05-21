@@ -8,6 +8,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { AGENT_TEMPLATES, type ProjectConfig } from "./templates.js";
+import {
+  ensureMissingRequiredRolePlaceholders,
+  loadFrameworkConfig,
+  saveFrameworkConfig,
+  type RequiredRoleName,
+} from "./workflow-config.js";
 
 // ─────────────────────────────────────────────
 // Agent Templates
@@ -63,6 +69,17 @@ export function updateAgentTemplates(projectDir: string): number {
   }
 
   return updated;
+}
+
+export function updateFrameworkConfigPlaceholders(
+  projectDir: string,
+): RequiredRoleName[] {
+  const config = loadFrameworkConfig(projectDir);
+  const addedRoles = ensureMissingRequiredRolePlaceholders(config);
+  if (addedRoles.length > 0) {
+    saveFrameworkConfig(projectDir, config);
+  }
+  return addedRoles;
 }
 
 // ─────────────────────────────────────────────
