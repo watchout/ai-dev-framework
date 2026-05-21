@@ -4,7 +4,7 @@
  * Reads existing SSOT feature spec files and generates missing §3-E/F/G/H
  * section templates that can be filled in to pass Gate C.
  *
- * Usage: framework gate scaffold [--dry-run]
+ * Usage: shirube gate scaffold [--dry-run]
  */
 import * as fs from "node:fs";
 import * as path from "node:path";

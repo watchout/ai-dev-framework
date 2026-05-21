@@ -7,7 +7,7 @@ IMPLEMENTED
 sequential
 
 ## Trigger
-Design Phase（/design）完了後、Planning（framework plan）開始前
+Design Phase（/design）完了後、Planning（shirube plan）開始前
 
 ## Agents
 - feasibility-checker → 技術的実現可能性
@@ -23,7 +23,7 @@ Design Phase（/design）完了後、Planning（framework plan）開始前
 
 ## CLI
 ```
-framework gate design
+shirube gate design
 ```
 
 ## Skill
@@ -53,6 +53,6 @@ Design complete
 └─────────────────────────┘
   ↓ (sequential)
 Aggregate results
-  ├── Zero CRITICAL, ≤5 WARNING → PASS → framework plan
+  ├── Zero CRITICAL, ≤5 WARNING → PASS → shirube plan
   └── Any CRITICAL or >5 WARNING → BLOCK → 設計修正
 ```

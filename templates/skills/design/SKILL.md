@@ -20,7 +20,7 @@ description: |
 許可されること:
 - docs/spec, docs/impl, docs/verify, docs/ops, SSOT を作成・更新する
 - 明らかな欠落や矛盾を自己チェックとして列挙する
-- `framework gate check` / `framework trace verify` を実行し、結果を事実として報告する
+- `shirube gate check` / `shirube trace verify` を実行し、結果を事実として報告する
 - `/gate-design` や `/review` に渡すべき検証観点を整理する
 
 禁止されること:

@@ -13,13 +13,13 @@
 Layer 0: フレームワーク知識（汎用）
   場所: docs/standards/docs/marketing/, docs/standards/docs/knowledge/
   内容: PASONA, DRM等の汎用マーケティング理論 + プロジェクト知識テンプレート
-  配信: framework update
+  配信: shirube update
   変更: フレームワーク開発者のみ
 
 Layer 1: 会社知識（会社固有・プロジェクト横断）  ← ★ このディレクトリ
   場所: docs/knowledge/_company/KNOWLEDGE_DIGEST.md
   内容: 会社の戦略方針、トレンド分析、専門家の教え、経営判断の根拠
-  配信: framework sync-knowledge（原本から生成）
+  配信: shirube sync-knowledge（原本から生成）
   変更: 経営層 / CoS が原本を更新 → sync でプロジェクトに反映
 
 Layer 2: プロジェクト知識（プロジェクト固有）
@@ -37,7 +37,7 @@ docs/knowledge/_company/
 └── KNOWLEDGE_DIGEST.md        ← 会社ナレッジのダイジェスト（sync-knowledge で生成）
 ```
 
-- `README.md` は `framework update` で配布される（フレームワーク側で管理）
+- `README.md` は `shirube update` で配布される（フレームワーク側で管理）
 - `KNOWLEDGE_DIGEST.md` は会社の知識DBから生成される（プロジェクト側で管理）
 
 ## 設定
@@ -64,7 +64,7 @@ docs/knowledge/_company/
 会社の知識DB（SSOT・原本）
   例: Google Drive, Git repo, Notion等
   ↓
-  ↓  framework sync-knowledge
+  ↓  shirube sync-knowledge
   ↓  （原本を読み込み → このプロジェクトへの適用を生成）
   ↓
 プロジェクト: docs/knowledge/_company/KNOWLEDGE_DIGEST.md
@@ -94,10 +94,10 @@ VPS / CI / どこからでも参照可能
 
 ```bash
 # knowledgeSource から知識DBを読み込み、ダイジェストを自動生成
-framework sync-knowledge
+shirube sync-knowledge
 
 # 特定プロジェクト向けにカスタマイズされたダイジェストを生成
-framework sync-knowledge --project hotel-kanri
+shirube sync-knowledge --project hotel-kanri
 ```
 
 ## KNOWLEDGE_DIGEST.md の推奨構造

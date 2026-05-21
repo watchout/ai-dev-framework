@@ -71,7 +71,7 @@ jobs:
 ✅ Phase 3: 破壊的変更チェック
 
 GitHub で Approve → Squash \& Merge をお願いします。
-（停止する場合: \`framework block ${PR}\`）"
+（停止する場合: \`shirube block ${PR}\`）"
 
           curl -s -X POST \
             "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \

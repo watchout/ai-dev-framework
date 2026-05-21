@@ -7,14 +7,14 @@
 ## 全体フロー
 
 ```
-Step 1: 初期化          framework init --type=app
+Step 1: 初期化          shirube init --type=app
 Step 2: 知識データ準備    docs/knowledge/ に事前情報を配置（任意）
-Step 3: ディスカバリー    framework discover
-Step 4: 事業設計         framework generate business
-Step 5: プロダクト設計    framework generate product
-Step 6: 技術設計         framework generate technical
-Step 7: 実装計画         framework plan
-Step 8: 開発＆監査       framework run --auto && framework audit all
+Step 3: ディスカバリー    shirube discover
+Step 4: 事業設計         shirube generate business
+Step 5: プロダクト設計    shirube generate product
+Step 6: 技術設計         shirube generate technical
+Step 7: 実装計画         shirube plan
+Step 8: 開発＆監査       shirube run --auto && shirube audit all
 ```
 
 ---
@@ -22,7 +22,7 @@ Step 8: 開発＆監査       framework run --auto && framework audit all
 ## Step 1: プロジェクト初期化
 
 ```bash
-framework init my-project --type=app
+shirube init my-project --type=app
 cd my-project
 ```
 
@@ -30,11 +30,11 @@ cd my-project
 
 | やりたいこと | タイプ | コマンド |
 |------------|--------|---------|
-| SaaS、業務システム | `app` | `framework init my-app` |
-| β募集LP、キャンペーンLP | `lp` | `framework init my-lp --type=lp` |
-| 会社紹介サイト | `hp` | `framework init my-hp --type=hp` |
-| REST API、マイクロサービス | `api` | `framework init my-api --type=api` |
-| 開発者向けCLI | `cli` | `framework init my-cli --type=cli` |
+| SaaS、業務システム | `app` | `shirube init my-app` |
+| β募集LP、キャンペーンLP | `lp` | `shirube init my-lp --type=lp` |
+| 会社紹介サイト | `hp` | `shirube init my-hp --type=hp` |
+| REST API、マイクロサービス | `api` | `shirube init my-api --type=api` |
+| 開発者向けCLI | `cli` | `shirube init my-cli --type=cli` |
 
 ### 生成されるもの
 
@@ -75,7 +75,7 @@ Discovery の前に、既に持っている情報を `docs/knowledge/` に配置
 ## Step 3: ディスカバリー
 
 ```bash
-framework discover
+shirube discover
 ```
 
 AIが対話形式で質問します。
@@ -112,7 +112,7 @@ AIが対話形式で質問します。
 ## Step 4: 事業設計
 
 ```bash
-framework generate business
+shirube generate business
 ```
 
 Discovery の結果から事業設計ドキュメントを生成します。
@@ -133,7 +133,7 @@ Discovery の結果から事業設計ドキュメントを生成します。
 ## Step 5: プロダクト設計
 
 ```bash
-framework generate product
+shirube generate product
 ```
 
 ### Freeze 1: Domain（用語・スコープ確定）
@@ -168,7 +168,7 @@ Freeze 3-4 は実装と並行で進められます。
 ## Step 6: 技術設計
 
 ```bash
-framework generate technical
+shirube generate technical
 ```
 
 ```
@@ -186,7 +186,7 @@ framework generate technical
 ## Step 7: 実装計画
 
 ```bash
-framework plan
+shirube plan
 ```
 
 全SSOTの依存関係を分析し、実装順序を決定します。
@@ -208,30 +208,30 @@ framework plan
 
 ```bash
 # 自動実行（全タスクを順番に）
-framework run --auto
+shirube run --auto
 
 # または1タスクずつ
-framework run FEAT-001
-framework audit code
-framework run FEAT-002
-framework audit code
+shirube run FEAT-001
+shirube audit code
+shirube run FEAT-002
+shirube audit code
 # ...
 
 # 全体監査
-framework audit all
+shirube audit all
 
 # 進捗確認
-framework status
+shirube status
 ```
 
 ### 開発中のサイクル
 
 ```
-1. framework run FEAT-XXX     ← タスク実行
+1. shirube run FEAT-XXX     ← タスク実行
 2. → SSOT読み込み → 実装 → コード監査 → テスト生成
-3. framework audit code        ← 品質確認
+3. shirube audit code        ← 品質確認
 4. → 問題があれば修正
-5. framework status            ← 進捗確認
+5. shirube status            ← 進捗確認
 6. → 次のタスクへ
 ```
 
@@ -242,31 +242,31 @@ framework status
 ### lp（ランディングページ）
 
 ```
-Step 1: framework init my-lp --type=lp
-Step 3: framework discover          ← Stage 1-3 のみ
-Step 4: framework generate business  ← VALUE_PROPOSITION 重視
+Step 1: shirube init my-lp --type=lp
+Step 3: shirube discover          ← Stage 1-3 のみ
+Step 4: shirube generate business  ← VALUE_PROPOSITION 重視
     → LP_SPEC.md + SNS_STRATEGY.md も生成
-Step 5: framework generate product   ← UI_STATE のみ（API/DB不要）
+Step 5: shirube generate product   ← UI_STATE のみ（API/DB不要）
 Step 6: スキップ（技術設計は最小限）
-Step 8: framework audit code && framework audit visual
+Step 8: shirube audit code && shirube audit visual
 ```
 
 ### api（API/バックエンド）
 
 ```
-Step 1: framework init my-api --type=api
-Step 5: framework generate product   ← UI_STATE はスキップ
-Step 6: framework generate technical ← API_CONTRACT + DATA_MODEL 集中
-Step 8: framework audit code && framework audit test
+Step 1: shirube init my-api --type=api
+Step 5: shirube generate product   ← UI_STATE はスキップ
+Step 6: shirube generate technical ← API_CONTRACT + DATA_MODEL 集中
+Step 8: shirube audit code && shirube audit test
     ← visual 監査はスキップ
 ```
 
 ### cli（CLIツール）
 
 ```
-Step 1: framework init my-cli --type=cli
-Step 5: framework generate product
+Step 1: shirube init my-cli --type=cli
+Step 5: shirube generate product
     ← API_CONTRACT をCLIコマンド定義に読み替え
     ← UI_STATE, DATA_MODEL はスキップ
-Step 8: framework audit code && framework audit test
+Step 8: shirube audit code && shirube audit test
 ```

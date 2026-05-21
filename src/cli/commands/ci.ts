@@ -1,5 +1,5 @@
 /**
- * framework ci - CI/PR pipeline command
+ * shirube ci - CI/PR pipeline command
  *
  * Reference: 19_CI_PR_STANDARDS.md
  *

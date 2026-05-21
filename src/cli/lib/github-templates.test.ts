@@ -198,7 +198,7 @@ describe("installGitHubTemplates", () => {
     );
     expect(prContent).toContain("4-Layer Docs");
     expect(prContent).toContain("MCP Contract");
-    expect(prContent).toContain("framework trace verify");
+    expect(prContent).toContain("shirube trace verify");
     expect(prContent).not.toContain("FEAT-XXX");
 
     expect(

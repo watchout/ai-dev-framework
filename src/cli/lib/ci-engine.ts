@@ -59,7 +59,7 @@ function handleStatus(projectDir: string, io: CIIO): CIReport {
   const reports = loadCIReports(projectDir);
 
   if (reports.length === 0) {
-    io.print("\n  No CI reports found. Run 'framework ci' to check.\n");
+    io.print("\n  No CI reports found. Run 'shirube ci' to check.\n");
     return createEmptyReport();
   }
 
@@ -89,7 +89,7 @@ function handleChecklist(projectDir: string, io: CIIO): CIReport {
   const reports = loadCIReports(projectDir);
 
   if (reports.length === 0) {
-    io.print("\n  No CI reports found. Run 'framework ci' first.\n");
+    io.print("\n  No CI reports found. Run 'shirube ci' first.\n");
     return createEmptyReport();
   }
 

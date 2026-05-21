@@ -1,5 +1,5 @@
 /**
- * framework prune - Remove orphaned tasks from plan.json
+ * shirube prune - Remove orphaned tasks from plan.json
  *
  * Design: docs/TASK-SEQUENCE-DESIGN.md §9
  * Issue: #18

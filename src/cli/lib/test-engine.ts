@@ -261,7 +261,7 @@ function printTestStatus(projectDir: string, io: TestIO): void {
   const reports = loadTestReports(projectDir);
 
   if (reports.length === 0) {
-    io.print("  No test reports found. Run 'framework test' to audit.");
+    io.print("  No test reports found. Run 'shirube test' to audit.");
     return;
   }
 

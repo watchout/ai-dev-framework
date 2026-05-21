@@ -37,7 +37,7 @@ v1.2.0 完了 gate
   → ARC final review LGTM
   → CTO L3 sanity → merge
   → adf-lead が dev-001 に sub-PR A 起票 dispatch
-  → dev-001 sub-PR A impl (PreToolUse + framework hook init + 必要 lib)
+  → dev-001 sub-PR A impl (PreToolUse + shirube hook init + 必要 lib)
   → 4-layer chain: lead-ama L1 → auditor L2 → CTO L3 → CEO L4 (route:ceo-approval 該当時)
   → merge
   → sub-PR B (Stop hook) 着手

@@ -107,10 +107,10 @@ export function registerStartCommand(program: Command): void {
         logger.warn("This project is not applied to Shirube yet.");
         logger.info("");
         logger.info("Apply the framework first:");
-        logger.info(`  framework retrofit ${projectDir} --generate`);
+        logger.info(`  shirube retrofit ${projectDir} --generate`);
         logger.info("");
         logger.info("Then start framework-led development:");
-        logger.info(`  framework start ${projectDir}${options.feature ? ` --feature ${options.feature}` : ""}`);
+        logger.info(`  shirube start ${projectDir}${options.feature ? ` --feature ${options.feature}` : ""}`);
         process.exit(1);
       }
 
@@ -124,7 +124,7 @@ export function registerStartCommand(program: Command): void {
         logger.warn("No framework-led session exists to resume.");
         logger.info("");
         logger.info("Start a new session:");
-        logger.info(`  framework start ${projectDir}${options.feature ? ` --feature ${options.feature}` : " --feature <id>"}`);
+        logger.info(`  shirube start ${projectDir}${options.feature ? ` --feature ${options.feature}` : " --feature <id>"}`);
         process.exit(1);
       }
 
@@ -150,10 +150,10 @@ export function registerStartCommand(program: Command): void {
         logger.warn("A framework-led session already exists.");
         logger.info("");
         logger.info("Resume the current session:");
-        logger.info(`  framework start ${projectDir} --resume`);
+        logger.info(`  shirube start ${projectDir} --resume`);
         logger.info("");
         logger.info("Replace it with a new session:");
-        logger.info(`  framework start ${projectDir}${options.feature ? ` --feature ${options.feature}` : ""} --force`);
+        logger.info(`  shirube start ${projectDir}${options.feature ? ` --feature ${options.feature}` : ""} --force`);
         process.exit(1);
       }
 

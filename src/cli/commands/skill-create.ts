@@ -1,5 +1,5 @@
 /**
- * framework skill-create - Extract reusable skills from implementations
+ * shirube skill-create - Extract reusable skills from implementations
  *
  * Reference: 09_TOOLCHAIN.md Section 10
  *
@@ -99,7 +99,7 @@ function printSkillList(projectDir: string): void {
 
   if (index.skills.length === 0) {
     logger.info(
-      "No skills found. Run 'framework skill-create' to extract patterns.",
+      "No skills found. Run 'shirube skill-create' to extract patterns.",
     );
     return;
   }

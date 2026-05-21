@@ -199,7 +199,7 @@ function printAcceptanceStatus(
   const reports = loadAcceptanceReports(projectDir);
 
   if (reports.length === 0) {
-    io.print("  No acceptance reports found. Run 'framework accept <feature-id>' to check.");
+    io.print("  No acceptance reports found. Run 'shirube accept <feature-id>' to check.");
     return;
   }
 

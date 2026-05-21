@@ -1,5 +1,5 @@
 /**
- * Feedback engine - Business logic for framework feedback proposals
+ * Feedback engine - Business logic for shirube feedback proposals
  *
  * Manages proposal lifecycle: create, list, approve (with diff apply + git commit),
  * reject, and notify via openclaw system event.
@@ -193,8 +193,8 @@ export function sendTelegramApproval(proposal: Proposal): void {
     `影響: ${proposal.impact}`,
     `対象: ${proposal.proposedChange.target}`,
     ``,
-    `承認: framework feedback approve ${proposal.id}`,
-    `却下: framework feedback reject ${proposal.id}`,
+    `承認: shirube feedback approve ${proposal.id}`,
+    `却下: shirube feedback reject ${proposal.id}`,
   ].join("\n");
 
   spawnSync(

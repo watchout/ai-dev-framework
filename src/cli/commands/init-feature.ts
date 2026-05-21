@@ -1,5 +1,5 @@
 /**
- * framework init-feature — Generate 4-layer document templates for a feature.
+ * shirube init-feature — Generate 4-layer document templates for a feature.
  *
  * Part of ADF v1.2.0 (#92, SPEC-DOC4L-001/002).
  * Spec: IMPL §3.1, VERIFY §1.1/§2/§3.
@@ -128,7 +128,7 @@ export function registerInitFeatureCommand(program: Command): void {
         console.log(`    2. Fill in docs/impl/${featureId}.md (How to build)`);
         console.log(`    3. Fill in docs/verify/${featureId}.md (How to verify)`);
         console.log(`    4. Fill in docs/ops/${featureId}.md (How to operate)`);
-        console.log(`    5. Run 'framework trace verify' to check traceability`);
+        console.log(`    5. Run 'shirube trace verify' to check traceability`);
       } finally {
         // Release lock
         try {

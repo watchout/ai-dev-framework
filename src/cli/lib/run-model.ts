@@ -163,7 +163,7 @@ export function getNextPendingTask(
 }
 
 /**
- * Get the currently in-progress task (framework current).
+ * Get the currently in-progress task (shirube current).
  */
 export function getCurrentTask(
   state: RunState,
@@ -172,7 +172,7 @@ export function getCurrentTask(
 }
 
 /**
- * Get the next todo task by seq order (framework next).
+ * Get the next todo task by seq order (shirube next).
  * Returns the backlog task with the smallest seq value.
  * Falls back to insertion order if seq is not available.
  */

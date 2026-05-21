@@ -86,7 +86,7 @@ function buildFeatureIssueBody(feature: Feature, meta: AdfMeta): string {
 ${feature.ssotFile ? `| SSOT File | ${feature.ssotFile} |` : ""}
 
 ---
-_Migrated from plan.json by \`framework migrate plan-state\`_
+_Migrated from plan.json by \`shirube migrate plan-state\`_
 
 ${marker}`;
 }
@@ -109,7 +109,7 @@ function buildTaskIssueBody(task: Task, meta: AdfMeta): string {
 ${task.seq ? `| Seq | ${task.seq} |` : ""}
 
 ---
-_Migrated from plan.json by \`framework migrate plan-state\`_
+_Migrated from plan.json by \`shirube migrate plan-state\`_
 
 ${marker}`;
 }

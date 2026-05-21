@@ -1,6 +1,6 @@
 # docs/inbox/ — Design Ingest Pipeline
 
-設計書をこのディレクトリに配置すると、`framework ingest` コマンドで自動的にSSOT化できます。
+設計書をこのディレクトリに配置すると、`shirube ingest` コマンドで自動的にSSOT化できます。
 
 ## 対応フォーマット
 
@@ -16,25 +16,25 @@
 cp ~/Downloads/設計書.md docs/inbox/
 
 # 2. 取り込み実行（プレビュー）
-framework ingest --dry-run
+shirube ingest --dry-run
 
 # 3. 取り込み実行
-framework ingest
+shirube ingest
 
 # 4. 生成されたSSOTを確認・修正
 # docs/design/features/ に出力される
 
 # 5. 承認 → plan.json + GitHub Issues に統合
-framework ingest --approve
+shirube ingest --approve
 
 # 6. GitHub Issues 同期
-framework plan --sync
+shirube plan --sync
 ```
 
 ## ステータス確認
 
 ```bash
-framework ingest --status
+shirube ingest --status
 ```
 
 ## 注意事項

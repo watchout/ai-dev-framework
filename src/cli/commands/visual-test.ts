@@ -1,5 +1,5 @@
 /**
- * framework visual-test - Visual test audit command
+ * shirube visual-test - Visual test audit command
  *
  * Reference: 20_VISUAL_TEST.md
  *

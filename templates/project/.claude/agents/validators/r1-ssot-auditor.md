@@ -39,7 +39,7 @@ SSOT準拠性を監査する。
 - [ ] カスタマイズログの変更が反映されている
 - [ ] 追跡マトリクス（Traceability Matrix）が更新されている
 
-**SSOT監査（`framework audit ssot` 相当）**:
+**SSOT監査（`shirube audit ssot` 相当）**:
 - §3-E/F/G/H の充足率を計算
 - SSOT間の参照整合性を検証
 - [要確認] マーカーが残っていないか確認

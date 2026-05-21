@@ -33,7 +33,7 @@ jobs:
         run: test -d node_modules || (echo "::error::node_modules not found after npm ci" && exit 1)
 
       - name: Check .framework/ directory
-        run: test -d .framework || (echo "::error::.framework/ not found. Run 'framework init' or 'framework retrofit'" && exit 1)
+        run: test -d .framework || (echo "::error::.framework/ not found. Run 'shirube init' or 'shirube retrofit'" && exit 1)
 
       - name: Check CI configuration
         run: test -d .github/workflows || (echo "::error::.github/workflows/ not found" && exit 1)

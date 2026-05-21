@@ -1,5 +1,5 @@
 /**
- * framework discover - Interactive discovery flow command
+ * shirube discover - Interactive discovery flow command
  *
  * Reference: 08_DISCOVERY_FLOW.md
  *
@@ -65,7 +65,7 @@ export function registerDiscoverCommand(program: Command): void {
           const frameworkDir = path.join(projectDir, ".framework");
           if (!fs.existsSync(frameworkDir)) {
             logger.error(
-              "No .framework directory found. Run 'framework init' first.",
+              "No .framework directory found. Run 'shirube init' first.",
             );
             process.exit(1);
           }
@@ -84,7 +84,7 @@ export function registerDiscoverCommand(program: Command): void {
 
           if (result.paused) {
             logger.info(
-              "\nProgress saved. Run 'framework discover' to continue.",
+              "\nProgress saved. Run 'shirube discover' to continue.",
             );
           } else if (result.completed) {
             logger.success("Discovery flow completed.");
@@ -104,7 +104,7 @@ function printSessionStatus(projectDir: string): void {
 
   if (!session) {
     logger.info("No active discovery session.");
-    logger.info("Run 'framework discover' to start.");
+    logger.info("Run 'shirube discover' to start.");
     return;
   }
 

@@ -1,5 +1,5 @@
 /**
- * framework migrate-to-v1.2 — Convert v1.1 SSOT docs to v1.2 4-layer docs.
+ * shirube migrate-to-v1.2 — Convert v1.1 SSOT docs to v1.2 4-layer docs.
  */
 import type { Command } from 'commander';
 import { migrateToV12 } from '../lib/v12-migration-engine.js';

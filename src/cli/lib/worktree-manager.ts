@@ -319,7 +319,7 @@ export async function runParallel(
   // Acquire lock
   if (!acquireLock(rootDir)) {
     throw new Error(
-      "Another parallel run is in progress. Use 'framework run --cleanup' to reset.",
+      "Another parallel run is in progress. Use 'shirube run --cleanup' to reset.",
     );
   }
 

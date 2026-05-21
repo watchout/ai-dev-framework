@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 
 /**
- * CLI integration test for framework trace command.
+ * CLI integration test for shirube trace command.
  * Validates that the command module exports are correctly structured.
  */
 describe("trace command", () => {

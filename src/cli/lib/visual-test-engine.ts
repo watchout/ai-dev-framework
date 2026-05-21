@@ -365,7 +365,7 @@ function printVisualTestStatus(
   const reports = loadVisualTestReports(projectDir);
 
   if (reports.length === 0) {
-    io.print("  No visual test reports found. Run 'framework visual-test' to audit.");
+    io.print("  No visual test reports found. Run 'shirube visual-test' to audit.");
     return;
   }
 

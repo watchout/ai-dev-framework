@@ -1,5 +1,5 @@
 /**
- * framework session-save / session-load - Session persistence commands
+ * shirube session-save / session-load - Session persistence commands
  *
  * Reference: 21_AI_ESCALATION.md Memory Persistence
  *

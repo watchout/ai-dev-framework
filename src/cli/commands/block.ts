@@ -1,5 +1,5 @@
 /**
- * framework block / framework unblock
+ * shirube block / shirube unblock
  *
  * Add or remove the 'hold' label on a PR to prevent / resume auto-merge.
  *
@@ -27,7 +27,7 @@ export function registerBlockCommand(program: Command): void {
       try {
         await gh(["pr", "edit", pr, "--add-label", "hold"]);
         logger.success(`PR #${pr}: 'hold' ラベルを付与しました。自動マージは停止されます。`);
-        logger.info("  解除するには: framework unblock " + pr);
+        logger.info("  解除するには: shirube unblock " + pr);
       } catch (err) {
         logger.error(`PR #${pr} へのラベル付与に失敗しました: ${err}`);
         process.exit(1);

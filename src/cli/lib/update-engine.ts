@@ -1,5 +1,5 @@
 /**
- * update-engine.ts - Business logic for `framework update`
+ * update-engine.ts - Business logic for `shirube update`
  *
  * Extracted from commands/update.ts for testability.
  * Handles agent template updates, skill template updates,

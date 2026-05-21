@@ -1,5 +1,5 @@
 /**
- * framework accept - Feature acceptance command
+ * shirube accept - Feature acceptance command
  *
  * Reference: 22_FEATURE_ACCEPTANCE.md
  *

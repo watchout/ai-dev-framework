@@ -1,6 +1,6 @@
 /**
- * framework next  - Show the next task to work on (by seq order)
- * framework current - Show the currently in-progress task
+ * shirube next  - Show the next task to work on (by seq order)
+ * shirube current - Show the currently in-progress task
  *
  * Design: docs/TASK-SEQUENCE-DESIGN.md
  * Issue: #15
@@ -25,7 +25,7 @@ function appendAuditLog(projectDir: string, entry: object): void {
 }
 
 export function registerNextCommand(program: Command): void {
-  // ── framework next ──────────────────────────────────────────────────────
+  // ── shirube next ──────────────────────────────────────────────────────
   program
     .command("next")
     .description("Show the next task to work on (ordered by seq)")
@@ -37,7 +37,7 @@ export function registerNextCommand(program: Command): void {
 
       if (!state) {
         logger.error(
-          "No run state found. Run 'framework run' to initialize.",
+          "No run state found. Run 'shirube run' to initialize.",
         );
         process.exit(1);
       }
@@ -54,7 +54,7 @@ export function registerNextCommand(program: Command): void {
           logger.info(`  in_progress: ${t.taskId}${t.seq ? ` [${t.seq}]` : ""} — ${t.name}`);
         }
         logger.info("");
-        logger.info("  強制的に次のタスクを取得するには: framework next --force");
+        logger.info("  強制的に次のタスクを取得するには: shirube next --force");
         process.exit(1);
       }
 
@@ -92,11 +92,11 @@ export function registerNextCommand(program: Command): void {
       logger.info(`  Name    : ${next.name}`);
       logger.info(`  Status  : ${next.status}`);
       logger.info("");
-      logger.info(`  To start: framework run ${next.taskId}`);
+      logger.info(`  To start: shirube run ${next.taskId}`);
       logger.info("");
     });
 
-  // ── framework current ────────────────────────────────────────────────────
+  // ── shirube current ────────────────────────────────────────────────────
   program
     .command("current")
     .description("Show the currently in-progress task")
@@ -107,7 +107,7 @@ export function registerNextCommand(program: Command): void {
 
       if (!state) {
         logger.error(
-          "No run state found. Run 'framework run' to initialize.",
+          "No run state found. Run 'shirube run' to initialize.",
         );
         process.exit(1);
       }
@@ -116,7 +116,7 @@ export function registerNextCommand(program: Command): void {
 
       if (!current) {
         logger.info("作業中のタスクはありません。");
-        logger.info("  次のタスクを確認するには: framework next");
+        logger.info("  次のタスクを確認するには: shirube next");
         return;
       }
 

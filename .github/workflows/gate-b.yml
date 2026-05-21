@@ -14,7 +14,7 @@ jobs:
       - name: Check .framework/project.json
         run: |
           if [ ! -f .framework/project.json ]; then
-            echo "::error::.framework/project.json not found. Run 'framework init' or 'framework retrofit'"
+            echo "::error::.framework/project.json not found. Run 'shirube init' or 'shirube retrofit'"
             exit 1
           fi
           echo "Project profile configured"
@@ -34,17 +34,17 @@ jobs:
 
           # Check 2: local plan.json (legacy fallback)
           if [ -f .framework/plan.json ]; then
-            echo "::warning::plan.json found (legacy). Migrate to GitHub Issues with 'framework migrate plan-state --apply'"
+            echo "::warning::plan.json found (legacy). Migrate to GitHub Issues with 'shirube migrate plan-state --apply'"
             exit 0
           fi
 
           # Check 3: project.json alone is sufficient for initial setup
           if [ -f .framework/project.json ]; then
-            echo "::warning::No plan found but project configured. Run 'framework plan --sync' to create plan."
+            echo "::warning::No plan found but project configured. Run 'shirube plan --sync' to create plan."
             exit 0
           fi
 
-          echo "::error::No implementation plan found. Run 'framework plan --sync'"
+          echo "::error::No implementation plan found. Run 'shirube plan --sync'"
           exit 1
         env:
           GH_TOKEN: ${{ github.token }}

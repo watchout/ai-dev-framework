@@ -1,16 +1,16 @@
 /**
- * framework verify - Run targeted quality verification
+ * shirube verify - Run targeted quality verification
  * Reference: 25_VERIFICATION_LOOPS.md
  *
  * Verifies individual quality axes or all combined:
  * ssot, code, tests, types, or all (default).
  *
  * Usage:
- *   framework verify              Verify all targets
- *   framework verify code         Verify code quality only
- *   framework verify types        Verify type safety only
- *   framework verify --strict     Warnings become failures
- *   framework verify --fix        Placeholder for auto-fix
+ *   shirube verify              Verify all targets
+ *   shirube verify code         Verify code quality only
+ *   shirube verify types        Verify type safety only
+ *   shirube verify --strict     Warnings become failures
+ *   shirube verify --fix        Placeholder for auto-fix
  */
 import { type Command } from "commander";
 import {

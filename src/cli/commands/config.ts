@@ -1,8 +1,8 @@
 /**
- * framework config - Configuration management
+ * shirube config - Configuration management
  *
  * Subcommands:
- *   framework config testing  — View/update testing layer configuration
+ *   shirube config testing  — View/update testing layer configuration
  */
 import { type Command } from "commander";
 import {
@@ -38,7 +38,7 @@ export function registerConfigCommand(program: Command): void {
 function showTestingConfig(projectDir: string): void {
   const config = loadTestingConfig(projectDir);
   if (!config) {
-    logger.error("No testing config found. Run 'framework init' or 'framework config testing --reset'.");
+    logger.error("No testing config found. Run 'shirube init' or 'shirube config testing --reset'.");
     return;
   }
 

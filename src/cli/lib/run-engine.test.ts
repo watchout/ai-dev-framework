@@ -1120,7 +1120,7 @@ describe("run-engine", () => {
       expect(output).toContain("AUTH-001");
       expect(output).toContain("api");
       expect(output).toContain("2/8 (25%)");
-      expect(output).toContain("framework run AUTH-001-API --start-only");
+      expect(output).toContain("shirube run AUTH-001-API --start-only");
     });
 
     it("includes blockedBy when present", () => {

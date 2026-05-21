@@ -1,5 +1,5 @@
 /**
- * framework trace — Traceability verification + graph visualization.
+ * shirube trace — Traceability verification + graph visualization.
  *
  * Part of ADF v1.2.0 (#92, SPEC-DOC4L).
  * Spec: IMPL §3 (sequences).
@@ -130,7 +130,7 @@ export function registerTraceCommand(program: Command): void {
     .command("trace")
     .description("Traceability verification + graph visualization (doc4l)");
 
-  // framework trace verify [--dir <docsDir>]
+  // shirube trace verify [--dir <docsDir>]
   trace
     .command("verify")
     .description(
@@ -229,7 +229,7 @@ export function registerTraceCommand(program: Command): void {
       }
     });
 
-  // framework trace graph [--format mermaid] [--out <path>]
+  // shirube trace graph [--format mermaid] [--out <path>]
   trace
     .command("graph")
     .description("Generate traceability graph visualization")

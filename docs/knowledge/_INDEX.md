@@ -14,7 +14,7 @@
 docs/knowledge/
 ├── _INDEX.md              ← このファイル
 ├── _company/              ← Layer 1: 会社知識（会社固有・プロジェクト横断）
-│   ├── README.md          ← 仕組みの説明（framework update で配布）
+│   ├── README.md          ← 仕組みの説明（shirube update で配布）
 │   └── KNOWLEDGE_DIGEST.md← 会社ナレッジダイジェスト（sync-knowledge で生成）
 │
 ├── trends/                ← 業界トレンド・技術動向
@@ -25,7 +25,7 @@ docs/knowledge/
 └── users/                 ← ユーザー調査データ
 ```
 
-- **Layer 0**（フレームワーク知識）: `docs/standards/` 配下に存在。`framework update` で配布
+- **Layer 0**（フレームワーク知識）: `docs/standards/` 配下に存在。`shirube update` で配布
 - **Layer 1**（会社知識）: `_company/KNOWLEDGE_DIGEST.md`。会社の知識DBから生成
 - **Layer 2**（プロジェクト知識）: `domain/`, `market/`, `users/`, `trends/`, `competitors/`。プロジェクト固有
 

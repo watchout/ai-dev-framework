@@ -115,7 +115,7 @@ esac
 
 gates_file="$project_dir/.framework/gates.json"
 if [ ! -f "$gates_file" ]; then
-  echo "[Pre-Code Gate] .framework/gates.json not found. Run 'framework gate check'." >&2
+  echo "[Pre-Code Gate] .framework/gates.json not found. Run 'shirube gate check'." >&2
   exit 2
 fi
 
@@ -148,7 +148,7 @@ echo "  Gate A (Environment): ${gate_a:-error}" >&2
 echo "  Gate B (Planning):    ${gate_b:-error}" >&2
 echo "  Gate C (SSOT):        ${gate_c:-error}" >&2
 echo "" >&2
-echo "  Run: framework gate check" >&2
+echo "  Run: shirube gate check" >&2
 echo "=====================================" >&2
 exit 2
 ---pre-code-gate.sh ここまで---

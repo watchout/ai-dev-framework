@@ -499,7 +499,7 @@ export async function runIngest(options: IngestOptions): Promise<IngestResult> {
   io.print("");
 
   if (processedDocuments.some((d) => d.status === "review")) {
-    io.print("  Next: Review generated SSOTs, then run 'framework ingest --approve'");
+    io.print("  Next: Review generated SSOTs, then run 'shirube ingest --approve'");
   }
 
   return { state, processedDocuments, errors };
@@ -525,7 +525,7 @@ export interface ApproveResult {
 
 /**
  * Approve ingested documents and integrate into plan.json.
- * GitHub Issues creation is handled by `framework plan --sync`.
+ * GitHub Issues creation is handled by `shirube plan --sync`.
  */
 export async function approveIngest(options: ApproveOptions): Promise<ApproveResult> {
   const { projectDir, documentId, dryRun = false, io } = options;
@@ -542,7 +542,7 @@ export async function approveIngest(options: ApproveOptions): Promise<ApproveRes
     errors.push(
       documentId
         ? `Document ${documentId} not found or not in review status.`
-        : "No documents in review status. Run 'framework ingest' first.",
+        : "No documents in review status. Run 'shirube ingest' first.",
     );
     return { approvedDocuments: [], featuresAdded: 0, issuesCreated: 0, errors };
   }
@@ -630,7 +630,7 @@ export async function approveIngest(options: ApproveOptions): Promise<ApproveRes
 
   io.print("");
   io.print(`  Features added to plan: ${featuresAdded}`);
-  io.print("  Next: Run 'framework plan --sync' to create GitHub Issues");
+  io.print("  Next: Run 'shirube plan --sync' to create GitHub Issues");
 
   return {
     approvedDocuments: toApprove,
@@ -649,7 +649,7 @@ export function printIngestStatus(projectDir: string, io: IngestIO): void {
 
   if (state.documents.length === 0) {
     io.print("No ingested documents.");
-    io.print("Run 'framework ingest [path]' to start.");
+    io.print("Run 'shirube ingest [path]' to start.");
     return;
   }
 

@@ -1,5 +1,5 @@
 /**
- * framework sync — Bidirectional sync between plan.json and GitHub Issues
+ * shirube sync — Bidirectional sync between plan.json and GitHub Issues
  *
  * Design: docs/TASK-SEQUENCE-DESIGN.md §8-9
  * Issue: #16
@@ -229,7 +229,7 @@ export async function runSync(options: SyncOptions): Promise<SyncEngineResult> {
     if (!plan) {
       return {
         ok: false,
-        error: "plan.json が見つかりません。先に framework plan を実行してください。",
+        error: "plan.json が見つかりません。先に shirube plan を実行してください。",
         orphaned: [],
         updated: 0,
         warnings,
@@ -245,8 +245,8 @@ export async function runSync(options: SyncOptions): Promise<SyncEngineResult> {
       for (const o of orphaned) {
         warnings.push(
           `⚠️  Task ${o.taskId}${o.seq ? ` (${o.seq})` : ""} は GitHub Issues に存在しません。` +
-          `\n   削除: framework prune ${o.taskId}` +
-          `\n   維持: framework sync --keep-orphans`,
+          `\n   削除: shirube prune ${o.taskId}` +
+          `\n   維持: shirube sync --keep-orphans`,
         );
       }
     }

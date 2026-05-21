@@ -3,7 +3,7 @@
  *
  * Part of #63/#65 (09_ENFORCEMENT §2).
  *
- * Records bypass events (framework exit, gate reset, --no-verify)
+ * Records bypass events (shirube exit, gate reset, --no-verify)
  * to a dedicated `audit-log` GitHub Issue for immutable audit trail.
  */
 import { createHash } from "node:crypto";
@@ -117,7 +117,7 @@ export async function logFrameworkExit(reason: string, token?: string): Promise<
   return appendAuditLog({
     timestamp: new Date().toISOString(),
     actor: getActor(),
-    action: "framework exit",
+    action: "shirube exit",
     reason,
     tokenHashPrefix: token ? hashTokenPrefix(token) : undefined,
   });

@@ -1,15 +1,15 @@
 /**
- * framework checkpoint - Create quality checkpoints
+ * shirube checkpoint - Create quality checkpoints
  * Reference: 25_VERIFICATION_LOOPS.md
  *
  * Scans the project, scores 5 quality axes, and persists
  * a checkpoint for tracking quality over time.
  *
  * Usage:
- *   framework checkpoint                Create checkpoint
- *   framework checkpoint --name <name>  Label the checkpoint
- *   framework checkpoint --compare <id> Compare with previous
- *   framework checkpoint --status       Show checkpoint history
+ *   shirube checkpoint                Create checkpoint
+ *   shirube checkpoint --name <name>  Label the checkpoint
+ *   shirube checkpoint --compare <id> Compare with previous
+ *   shirube checkpoint --status       Show checkpoint history
  */
 import { type Command } from "commander";
 import {
@@ -80,7 +80,7 @@ function printCheckpointStatus(projectDir: string): void {
 
   if (index.checkpoints.length === 0) {
     logger.info(
-      "No checkpoints found. Run 'framework checkpoint' to create one.",
+      "No checkpoints found. Run 'shirube checkpoint' to create one.",
     );
     return;
   }

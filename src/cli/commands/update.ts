@@ -1,13 +1,13 @@
 /**
- * framework update - Update Shirube docs from the upstream repository
+ * shirube update - Update Shirube docs from the upstream repository
  *
  * Fetches the latest framework specification documents from the SSOT
  * repository and updates the project's docs/standards/ directory.
  *
  * Usage:
- *   framework update [path]           Update framework docs
- *   framework update [path] --status  Show current framework version
- *   framework update --all            Update all registered projects
+ *   shirube update [path]           Update framework docs
+ *   shirube update [path] --status  Show current framework version
+ *   shirube update --all            Update all registered projects
  */
 import * as path from "node:path";
 import { type Command } from "commander";
@@ -123,7 +123,7 @@ export function registerUpdateCommand(program: Command): void {
             const state = loadFrameworkState(projectDir);
             if (!state) {
               logger.info(
-                "No framework state found. Run 'framework init' or 'framework update' first.",
+                "No framework state found. Run 'shirube init' or 'shirube update' first.",
               );
               return;
             }

@@ -687,7 +687,7 @@ export async function syncStatusFromGitHub(
   const syncState = loadSyncState(projectDir);
   if (!syncState) {
     errors.push(
-      "No GitHub sync state found. Run 'framework plan --sync' first.",
+      "No GitHub sync state found. Run 'shirube plan --sync' first.",
     );
     return { updated, issues, errors };
   }

@@ -4,8 +4,8 @@
  * Part of ADF overhaul #61 sub-PR 2/7.
  *
  * Usage:
- *   framework migrate plan-state            # dry-run (default)
- *   framework migrate plan-state --apply    # create Issues + backup local files
+ *   shirube migrate plan-state            # dry-run (default)
+ *   shirube migrate plan-state --apply    # create Issues + backup local files
  */
 import type { Command } from "commander";
 import {
@@ -40,7 +40,7 @@ export function registerMigrateCommand(program: Command): void {
         if (!options.apply) {
           console.log(formatDryRunReport(report));
           console.log(
-            "\nThis was a dry-run. To execute, run: framework migrate plan-state --apply",
+            "\nThis was a dry-run. To execute, run: shirube migrate plan-state --apply",
           );
           return;
         }
@@ -63,7 +63,7 @@ export function registerMigrateCommand(program: Command): void {
             "plan.json is empty or template-only. No real data to migrate.",
           );
           console.log(
-            "To proceed anyway, run: framework migrate plan-state --apply --force",
+            "To proceed anyway, run: shirube migrate plan-state --apply --force",
           );
           return;
         }
