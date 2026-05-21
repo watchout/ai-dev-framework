@@ -133,6 +133,7 @@ describe("CLI Smoke Tests", () => {
       "deploy",
       "skill-create",
       "compact",
+      "merge-authority",
     ];
 
     for (const cmd of expectedCommands) {
