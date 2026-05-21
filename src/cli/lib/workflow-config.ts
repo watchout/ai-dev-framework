@@ -19,6 +19,7 @@ export const ROLE_TARGET_TYPES = [
   "local_agent",
   "mcp_agent",
   "channel",
+  "github_user",
   "github_team",
   "external",
 ] as const;
