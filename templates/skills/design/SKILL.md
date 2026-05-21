@@ -57,6 +57,33 @@ P5: UX Validator                   T5: Security Reviewer
 - 不明な情報は推測で埋めず「[要確認]」マーカーを付ける
 - Freeze 2（Contract）完了で実装開始可能
 
+## LLM Control Design
+
+自動化、エージェント挙動、Hook、memory、queue、Issue/PR生成、runtime orchestration を含む設計では、成果物作成前に制御機構を分類する。
+
+基本方針:
+- default は script / daemon / queue runner / CI / GitHub Actions / DB trigger / 明示CLI による deterministic control
+- Hook は不可避ケースだけに限定する: `PreToolUse` block、`SessionStart` / `UserPromptSubmit` context injection、`SessionStart` state recovery、`PostToolUse` immediate verification、`Stop` completion-time verification
+- queue進行、状態遷移、retry、finalize、外部投稿は Runner / deterministic service が持つ
+- LLM runtime adapter は runtime-specific invocation と structured result の返却だけを担当する
+- 起動時注入は restart pack に限定し、全文memory dumpをしない
+- memory / context retrieval は bounded、provenance付き、context扱いにし、secret / PII / local path をredactする
+
+設計時の思考フロー:
+1. Source of Truth: どのartifact/stateが正かを決める
+2. Control split: deterministic control と LLM judgment を分ける
+3. Hook justification: Hookが必要なら不可避ケースのどれかを明記する
+4. Runtime boundary: Runner、LLM adapter、memory/context、delivery adapter の責務を分ける
+5. Startup context: SessionStartで入れるrestart packと、on-demand検索に残す情報を分ける
+6. Mechanical gates: 実装前、完了前、CIで何を機械的にblockするか決める
+7. Authority: Gate、CTO/L3、CEO判断が必要な変更を明記する
+
+出力ルール:
+- SPEC には `§10 制御機構選定原則` を必ず埋める
+- OPS には `§9 制御機構の使い分け原則` を必ず埋める
+- Hookを採用する場合、不可避ケース該当根拠とscript代替不可の理由を明記する
+- LLMに状態遷移を任せる設計、TUI prompt注入を主経路にする設計、adapterにqueue repair/finalizeを持たせる設計は未解決リスクとして扱う
+
 ## Product エージェント詳細
 
 ### P1: PRD Author（PRD作成者）
@@ -250,6 +277,14 @@ Freeze 4: Non-functional → T5 完了後（リリース準備完了）
 ### 自己チェック結果
 - Missing / unclear:
 - Trace / gate command results:
+- LLM control:
+  - Source of Truth:
+  - Deterministic control:
+  - Hook usage and justification:
+  - Runtime adapter boundary:
+  - Startup/restart context:
+  - Mechanical gates:
+  - Authority / approval needed:
 - Risks to hand off:
 
 ### 次の推奨アクション

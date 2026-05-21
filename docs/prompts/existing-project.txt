@@ -59,6 +59,11 @@ Workflow Orchestration セクション:
 
 フェーズ遷移: 各スキル完了後、次のフェーズを提案（discovery → design → implement → review）
 
+LLM Control Policy:
+- LLMに進行制御を委ねず、script / daemon / queue runner / CI / GitHub Actions / DB trigger / 明示CLI を基本にする
+- Hookは `PreToolUse` block、`SessionStart` / `UserPromptSubmit` context injection、`SessionStart` state recovery、`PostToolUse` immediate verification、`Stop` completion-time verification のみに限定する
+- `/design` では Source of Truth、deterministic control と LLM judgment の分担、Hook採用根拠、runtime adapter boundary、startup context、mechanical gates、Authority を整理する
+
 Knowledge & Memory セクション:
 - セッション開始時: .claude/memory/（ADR、バグ教訓、改善記録）と docs/standards/KNOWLEDGE_DIGEST.md を参照
 - 実装中: 設計判断で迷った時 → .claude/memory/ の過去ADR、同じバグ回避 → バグ教訓、規約確認 → KNOWLEDGE_DIGEST.md

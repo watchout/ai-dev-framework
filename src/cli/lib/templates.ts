@@ -135,6 +135,9 @@ shirube status --github
 - Discovery/design work should update SSOT before code changes.
 - Implementation work should start from SPEC/IMPL/VERIFY/OPS docs.
 - Review work should check MCP contracts, data model drift, and tool behavior tests.
+- LLM-driven automation should use deterministic control by default.
+- Hooks are limited to tool blocking, bounded context injection, startup recovery, immediate post-tool verification, and completion-time verification.
+- Queue progress, state transitions, retries, finalization, and delivery belong to runners or deterministic services, not the LLM adapter.
 
 ## Knowledge & Memory
 
@@ -333,6 +336,29 @@ Producer phase と Gate / Review phase を明確に分ける。
 | /gate-design | independent gate | n/a | yes | 判定を報告して停止 |
 | /gate-quality | independent gate | n/a | yes | 判定を報告して停止 |
 | /review | independent review | n/a | yes | 判定を報告して停止 |
+
+### LLM Control Policy
+
+Shirube の設計・実装では、LLMに進行制御を委ねず、deterministic control を基本とする。
+
+- default: script / daemon / queue runner / CI / GitHub Actions / DB trigger / 明示CLI
+- Hook fallback: \`PreToolUse\` block、\`SessionStart\` / \`UserPromptSubmit\` context injection、\`SessionStart\` state recovery、\`PostToolUse\` immediate verification、\`Stop\` completion-time verification のみ
+- queue進行、状態遷移、retry、finalize、外部投稿は Runner / deterministic service が持つ
+- LLM runtime adapter は runtime-specific invocation と structured result の返却だけを担当する
+- 起動時注入は bounded restart pack に限定し、全文memory dumpをしない
+- memory/context retrieval は provenance付きcontextとして扱い、secret / PII / local path をredactする
+
+### Design Thinking Flow
+
+\`/design\` で自動化、エージェント挙動、Hook、memory、queue、Issue/PR生成、runtime orchestration を扱う場合は、成果物作成前に以下を整理する。
+
+1. Source of Truth: どのartifact/stateが正か
+2. Control split: deterministic control と LLM judgment の分担
+3. Hook justification: Hook採用時の不可避ケース該当根拠
+4. Runtime boundary: Runner、LLM adapter、memory/context、delivery adapter の責務
+5. Startup context: SessionStartで入れるrestart packとon-demand検索に残す情報
+6. Mechanical gates: 実装前、完了前、CIでblockする条件
+7. Authority: Gate、CTO/L3、CEO判断が必要な変更
 
 ### Framework Start Boundary
 

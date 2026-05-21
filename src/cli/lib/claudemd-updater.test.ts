@@ -362,5 +362,14 @@ describe("claudemd-updater", () => {
       expect(content).toContain("shirube gate check");
       expect(content).toContain("shirube trace verify");
     });
+
+    it("contains LLM control and design thinking rules", () => {
+      const content = getWorkflowOrchestrationContent();
+      expect(content).toContain("LLM Control Policy");
+      expect(content).toContain("deterministic control");
+      expect(content).toContain("Design Thinking Flow");
+      expect(content).toContain("Runtime boundary");
+      expect(content).toContain("Hook justification");
+    });
   });
 });
