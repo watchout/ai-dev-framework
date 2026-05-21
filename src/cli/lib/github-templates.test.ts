@@ -119,7 +119,7 @@ describe("installGitHubTemplates", () => {
     });
 
     expect(result.installed.length).toBeGreaterThan(0);
-    expect(result.skipped).toHaveLength(0);
+    expect(result.skipped).toEqual([".github/workflows/merge-authority.yml (exists)"]);
 
     const ciContent = fs.readFileSync(
       path.join(tmpDir, ".github/workflows/ci.yml"),
@@ -278,5 +278,71 @@ describe("installGitHubTemplates", () => {
     installGitHubTemplates(tmpDir, "app", frameworkRoot);
     const result2 = installGitHubTemplates(tmpDir, "app", frameworkRoot);
     expect(result2.skipped.some((s) => s.includes("ssot-audit.yml"))).toBe(true);
+  });
+
+  it("installs merge-authority workflow with review triggers", () => {
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+
+    const workflowPath = path.join(
+      tmpDir,
+      ".github/workflows/merge-authority.yml",
+    );
+    expect(fs.existsSync(workflowPath)).toBe(true);
+    expect(result.installed).toContain(".github/workflows/merge-authority.yml");
+
+    const content = fs.readFileSync(workflowPath, "utf-8");
+    expect(content).toContain("name: \"shirube merge-authority\"");
+    expect(content).toContain("pull_request_review:");
+    expect(content).toContain("types: [submitted, edited, dismissed]");
+    expect(content).not.toContain("review_submitted");
+  });
+
+  it("skips merge-authority workflow if already exists", () => {
+    installGitHubTemplates(tmpDir, "app", frameworkRoot);
+    const workflowPath = path.join(
+      tmpDir,
+      ".github/workflows/merge-authority.yml",
+    );
+    fs.writeFileSync(workflowPath, "operator-owned", "utf-8");
+
+    const result2 = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+
+    expect(result2.skipped.some((s) => s.includes("merge-authority.yml"))).toBe(true);
+    expect(fs.readFileSync(workflowPath, "utf-8")).toBe("operator-owned");
+  });
+
+  it("preserves existing merge-authority workflow even during force update", () => {
+    installGitHubTemplates(tmpDir, "app", frameworkRoot);
+    const workflowPath = path.join(
+      tmpDir,
+      ".github/workflows/merge-authority.yml",
+    );
+    fs.writeFileSync(workflowPath, "operator-owned", "utf-8");
+
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot, {
+      force: true,
+    });
+
+    expect(result.skipped.some((s) => s.includes("merge-authority.yml"))).toBe(true);
+    expect(fs.readFileSync(workflowPath, "utf-8")).toBe("operator-owned");
+  });
+
+  it("overwrites existing merge-authority workflow only with explicit workflow force", () => {
+    installGitHubTemplates(tmpDir, "app", frameworkRoot);
+    const workflowPath = path.join(
+      tmpDir,
+      ".github/workflows/merge-authority.yml",
+    );
+    fs.writeFileSync(workflowPath, "operator-owned", "utf-8");
+
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot, {
+      force: true,
+      forceMergeAuthorityWorkflow: true,
+    });
+
+    expect(result.installed).toContain(".github/workflows/merge-authority.yml");
+    expect(fs.readFileSync(workflowPath, "utf-8")).toContain(
+      "name: \"shirube merge-authority\"",
+    );
   });
 });
