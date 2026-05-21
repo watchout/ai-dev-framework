@@ -41,6 +41,7 @@ import { registerMigrateToV12Command } from "./commands/migrate-to-v12.js";
 import { registerExitCommand } from "./commands/exit.js";
 import { registerInitFeatureCommand } from "./commands/init-feature.js";
 import { registerTraceCommand } from "./commands/trace.js";
+import { registerMergeAuthorityCommand } from "./commands/merge-authority.js";
 import { setWriteThrough, type RunState } from "./lib/run-model.js";
 import { syncTaskStatusToGitHub, resolveIssueNumber } from "./lib/state-writer.js";
 
@@ -112,6 +113,7 @@ registerMigrateToV12Command(program);
 registerExitCommand(program);
 registerInitFeatureCommand(program);
 registerTraceCommand(program);
+registerMergeAuthorityCommand(program);
 
 // Connect write-through hook: sync RunState transitions to GitHub Issues (#61)
 setWriteThrough((state: RunState, prev: RunState | null) => {
