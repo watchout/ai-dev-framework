@@ -13,7 +13,8 @@ Design Phase（/design）完了後、Planning（framework plan）開始前
 - feasibility-checker → 技術的実現可能性
 - coherence-auditor → SSOT間の整合性
 - gap-detector → 仕様の漏れ検出
-- traceability-auditor → SSOT↔IMPL trace整合性（`framework trace verify` ラッパー）
+- traceability-auditor → SSOT↔IMPL trace整合性（`shirube trace verify` ラッパー）
+- llm-control-design-validator → automation 設計の Source of Truth / deterministic control / Hook / runtime adapter / startup / gates / authority を機械検証
 
 ## Pass criteria
 - Zero CRITICAL findings
@@ -24,7 +25,8 @@ Design Phase（/design）完了後、Planning（framework plan）開始前
 
 ## CLI
 ```
-framework gate design
+shirube gate design
+shirube gate design --strict
 ```
 
 ## Skill
@@ -57,9 +59,11 @@ Design complete
 │ coherence-auditor       │ → SSOT間の矛盾検出
 │ gap-detector            │ → 未定義事項の検出
 │ traceability-auditor    │ → SSOT↔IMPL trace整合性
+│ llm-control-design-     │ → automation 制御設計の機械検証
+│ validator               │
 └─────────────────────────┘
   ↓ (sequential)
 Aggregate results
   ├── Zero CRITICAL, ≤5 WARNING → PASS → framework plan
-  └── Any CRITICAL or >5 WARNING → BLOCK → 設計修正
+  └── Any CRITICAL, >5 WARNING, or LLM Control BLOCK → BLOCK → 設計修正
 ```

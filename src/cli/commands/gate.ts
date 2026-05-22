@@ -56,6 +56,7 @@ import {
   validateSpec,
   validateAllSpecs,
 } from "../lib/gate-spec-validator.js";
+import { validateLlmControlDesign } from "../lib/llm-control-design-validator.js";
 import { buildValidateCommand } from "./gate/cli.js";
 
 export function registerGateCommand(program: Command): void {
@@ -381,8 +382,9 @@ export function registerGateCommand(program: Command): void {
     .command("design")
     .description("Collect context for Gate 1 Design Validation (run /gate-design after)")
     .option("--project <name>", "Project name for report")
+    .option("--strict", "Block when automation-related designs omit LLM Control Design requirements")
     .action(
-      async (options: { project?: string }) => {
+      async (options: { project?: string; strict?: boolean }) => {
         const projectDir = process.cwd();
         const projectName = options.project ?? basename(projectDir);
 
@@ -407,19 +409,23 @@ export function registerGateCommand(program: Command): void {
           let contextBody = "";
           let found = 0;
           let missing = 0;
+          const llmControlDocs: { path: string; content: string }[] = [];
 
           for (const doc of designDocs) {
             let content: string | null = null;
+            let foundPath: string | null = null;
             for (const p of doc.paths) {
               const fp = path.join(projectDir, p);
               if (fs.existsSync(fp)) {
                 content = fs.readFileSync(fp, "utf-8");
+                foundPath = p;
                 break;
               }
             }
             if (content) {
               found++;
               contextBody += `\n### ${doc.name}\n\n${content}\n`;
+              llmControlDocs.push({ path: foundPath ?? doc.name, content });
               logger.info(`  Found: ${doc.name}`);
             } else {
               missing++;
@@ -435,8 +441,29 @@ export function registerGateCommand(program: Command): void {
             for (const f of features) {
               const content = fs.readFileSync(path.join(featureDir, f), "utf-8");
               contextBody += `\n### Feature: ${f}\n\n${content}\n`;
+              llmControlDocs.push({
+                path: path.join("docs/design/features", f),
+                content,
+              });
             }
             logger.info(`  Feature specs: ${features.length} files`);
+          }
+
+          const llmControlResult = validateLlmControlDesign(llmControlDocs);
+          if (llmControlResult.automationDetected) {
+            logger.info(
+              `  LLM Control Design: ${llmControlResult.status}`,
+            );
+            for (const finding of llmControlResult.findings) {
+              const line = `    ${finding.path}: ${finding.message}`;
+              if (finding.severity === "BLOCK") {
+                logger.error(line);
+              } else {
+                logger.warn(line);
+              }
+            }
+          } else {
+            logger.info("  LLM Control Design: no automation surface detected");
           }
 
           // Write context
@@ -458,16 +485,18 @@ ${found}/${designDocs.length} (${missing} missing)
 ${contextBody}
 
 ## Instructions
-以下の4つのValidatorを順次実行し、統合判定を行ってください:
+以下の5つのValidatorを順次実行し、統合判定を行ってください:
 
 1. **feasibility-checker**: PRD↔API/DB技術的実現可能性
 2. **coherence-auditor**: SSOT間の矛盾検出
 3. **gap-detector**: 設計欠落の検出
 4. **traceability-auditor**: SSOT↔IMPL trace整合性（\`shirube trace verify\` ラッパー）
+5. **llm-control-design-validator**: automation 設計の Source of Truth / deterministic control / Hook / runtime adapter / startup / gates / authority を機械検証
 
 判定基準:
 - PASS: 全CRITICAL = 0 かつ WARNING合計 ≤ 5
 - BLOCK: CRITICAL ≥ 1 または WARNING > 5
+- strict mode: LLM Control Design の BLOCK findings がある場合も BLOCK
 `;
 
           fs.writeFileSync(path.join(contextDir, "design-validation.md"), contextContent, "utf-8");
@@ -478,6 +507,10 @@ ${contextBody}
           logger.info("");
           logger.info("  Next: Run /gate-design to execute validators");
           logger.info("");
+          if (options.strict && llmControlResult.status === "BLOCK") {
+            logger.error("LLM Control Design validation failed in strict mode.");
+            process.exit(1);
+          }
         } catch (error) {
           if (error instanceof Error) {
             logger.error(`Gate design error: ${error.message}`);
