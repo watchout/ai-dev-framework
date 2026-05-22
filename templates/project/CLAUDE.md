@@ -376,6 +376,16 @@ Producer phase と Gate / Review phase を明確に分ける。
 | /gate-quality | independent gate | n/a | yes | 判定を報告して停止 |
 | /review | independent review | n/a | yes | 判定を報告して停止 |
 
+### Development Principles
+
+Shirube の開発判断は、直近の実用性と世界公開向け最終設計を同じ線上に置く。
+
+- すぐ動く tactical slice は、public MCP-quality / world release に向かう最小の前進でなければならない。
+- 後で捨てる前提の workaround は採用しない。暫定措置が必要な場合は scope、rollback、follow-up、証跡を明記する。
+- flow、state transition、validation、delivery、retry、finalize、merge gate は script / CLI / CI / daemon / runner が制御する。
+- ready / merge / status / design assertion は、実 file、コマンド出力、DB query、log、GitHub SSOT、公式 doc など再実行可能な証跡で判断する。
+- memory、口頭報告、過去 status は context であり、claim する前に外部 SSOT で確認する。
+
 ### LLM Control Policy
 
 Shirube の設計・実装では、LLMに進行制御を委ねず、deterministic control を基本とする。

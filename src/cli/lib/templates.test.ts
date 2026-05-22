@@ -62,6 +62,9 @@ describe("generateClaudeMd", () => {
     expect(result).toContain("PASS / BLOCK / CONDITIONAL PASS");
     expect(result).toContain("/gate-design");
     expect(result).toContain("/gate-quality");
+    expect(result).toContain("Development Principles");
+    expect(result).toContain("public MCP-quality");
+    expect(result).toContain("GitHub SSOT");
   });
 
   it("includes GitHub Integration section", () => {
@@ -103,6 +106,8 @@ describe("generateClaudeMd", () => {
     expect(result).toContain("storage/index adapters");
     expect(result).toContain("SSOT-4_DATA_MODEL");
     expect(result).toContain("4-layer docs implementation readiness");
+    expect(result).toContain("Development Principles");
+    expect(result).toContain("public-ready design");
     expect(result).not.toContain("Next.js");
     expect(result).not.toContain("React");
     expect(result).not.toContain("Vercel");

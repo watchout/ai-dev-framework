@@ -366,6 +366,9 @@ describe("claudemd-updater", () => {
     it("contains LLM control and design thinking rules", () => {
       const content = getWorkflowOrchestrationContent();
       expect(content).toContain("LLM Control Policy");
+      expect(content).toContain("Development Principles");
+      expect(content).toContain("public MCP-quality");
+      expect(content).toContain("GitHub SSOT");
       expect(content).toContain("deterministic control");
       expect(content).toContain("Design Thinking Flow");
       expect(content).toContain("Runtime boundary");

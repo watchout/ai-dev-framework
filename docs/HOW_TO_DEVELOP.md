@@ -10,6 +10,16 @@
 
 [文献確認: CEO directive `00cd7176`] 「誰がみても同じ進め方ができる様に GitHub ベースで手順を見える化」directive 受領。本 doc は **canonical** な開発手順 SoT。各 dev-bot / lead-bot / ARC は本 doc を起点に開発を進める。
 
+### 0.1 開発基本指針
+
+[文献確認: `docs/specs/09_ENFORCEMENT.md` §Principle + `docs/spec/v1.2.5-evidence-based-workflow.md` §1]
+
+ADF の設計・実装・監査は以下を基本線とする。
+
+1. **直近の実用性と世界公開向け最終設計を同じ線上に置く**: すぐ動く tactical slice は、public MCP-quality / world release に向かう最小の前進でなければならない。後で捨てる前提の workaround は採用しない。暫定措置が必要な場合は scope、rollback、follow-up、証跡を明記する。
+2. **制御は script default**: flow、state transition、validation、delivery、retry、finalize、merge gate は deterministic script / CLI / CI / daemon / runner が持つ。LLM / Hook は不可避ケースの adapter・validator・context injection に限定し、呼び出し順序・入力・timeout は script が制御する。
+3. **判断は証跡ベース**: ready / merge / status / design assertion は、実 file、コマンド出力、DB query、log、GitHub SSOT、公式 doc など再実行可能な証跡で判断する。memory、口頭報告、過去 status は context であり、claim する前に外部 SSOT で確認する。
+
 ---
 
 ## 1. ADF version 別の開発フロー
@@ -89,6 +99,7 @@ v1.2.1 dogfood 完了 gating
 
 - [ ] 対応 Issue を `gh issue list` で確認、本 PR と紐付ける
 - [ ] **対応 SPEC / IMPL / VERIFY / OPS 4 layer doc を読了** (memory `feedback_check_ssot_before_drafting` per、未 verify で起票禁止)
+- [ ] 直近の実用性が public MCP-quality / world release 向け最終設計への tactical slice になっていることを確認
 - [ ] 制御機構選定原則 (SPEC §10 / OPS §9) を確認、本 PR の機構が原則と整合しているか self-check
 - [ ] 1 PR 1 concern 原則確認 (混在は分離)
 

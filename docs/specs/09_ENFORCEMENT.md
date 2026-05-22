@@ -8,6 +8,10 @@
 > **Principle**: The framework enforces rules through code that can be audited,
 > tested, and reproduced. LLM-based review chains are project governance
 > concerns, not framework enforcement.
+>
+> **Development baseline**: near-term practical work must be a deployable slice
+> toward the final public-ready design. Readiness, merge, status, and design
+> decisions are made from reproducible evidence, not memory or reported intent.
 
 > **制御機構選定原則** (2026-05-10 追加、CEO directive `0eeb341e`):
 > - **default**: script 制御 (daemon / cron / launchd / pg trigger / GH Actions / CI workflow)
