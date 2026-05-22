@@ -32,12 +32,18 @@ export function installGitHubTemplates(
   projectDir: string,
   profileType: ProfileType,
   frameworkRoot: string,
-  options?: { projectName?: string; force?: boolean; pruneObsolete?: boolean },
+  options?: {
+    projectName?: string;
+    force?: boolean;
+    pruneObsolete?: boolean;
+    forceMergeAuthorityWorkflow?: boolean;
+  },
 ): GitHubTemplateResult {
   const installed: string[] = [];
   const skipped: string[] = [];
   const errors: string[] = [];
   const force = options?.force ?? false;
+  const forceMergeAuthorityWorkflow = options?.forceMergeAuthorityWorkflow ?? false;
   const pruneObsolete = options?.pruneObsolete ?? false;
   const projectName = options?.projectName ?? path.basename(projectDir);
 
@@ -91,6 +97,24 @@ export function installGitHubTemplates(
       installed.push(".github/workflows/ssot-audit.yml");
     } else {
       skipped.push(".github/workflows/ssot-audit.yml (exists)");
+    }
+  }
+
+  // 1c. Merge authority workflow
+  const mergeAuthoritySrc = path.join(
+    frameworkRoot,
+    "templates/ci/merge-authority.yml",
+  );
+  const mergeAuthorityDest = path.join(
+    projectDir,
+    ".github/workflows/merge-authority.yml",
+  );
+  if (fs.existsSync(mergeAuthoritySrc)) {
+    if (!fs.existsSync(mergeAuthorityDest) || forceMergeAuthorityWorkflow) {
+      fs.copyFileSync(mergeAuthoritySrc, mergeAuthorityDest);
+      installed.push(".github/workflows/merge-authority.yml");
+    } else {
+      skipped.push(".github/workflows/merge-authority.yml (exists)");
     }
   }
 
