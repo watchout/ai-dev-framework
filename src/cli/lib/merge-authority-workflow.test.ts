@@ -15,6 +15,9 @@ describe("merge authority workflow template", () => {
     expect(workflow).toContain("pull_request_review:");
     expect(workflow).toContain("types: [submitted, edited, dismissed]");
     expect(workflow).not.toContain("review_submitted");
-    expect(workflow).toContain("npm run shirube -- merge-authority");
+    expect(workflow).not.toContain("npm run shirube -- merge-authority");
+    expect(workflow).toContain("repository: watchout/ai-dev-framework");
+    expect(workflow).toContain("working-directory: target");
+    expect(workflow).toContain("node ../shirube-runtime/dist/cli/index.js merge-authority");
   });
 });

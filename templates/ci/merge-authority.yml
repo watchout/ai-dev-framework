@@ -15,23 +15,36 @@ jobs:
     name: shirube merge-authority
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          path: target
+
+      - name: Checkout Shirube runtime
+        uses: actions/checkout@v4
+        with:
+          repository: watchout/ai-dev-framework
+          path: shirube-runtime
+          ref: main
 
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      - name: Install dependencies
+      - name: Install Shirube runtime dependencies
+        working-directory: shirube-runtime
         run: npm ci
 
       - name: Build Shirube CLI
+        working-directory: shirube-runtime
         run: npm run build:cli
 
       - name: Evaluate merge authority
+        working-directory: target
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          npm run shirube -- merge-authority \
+          node ../shirube-runtime/dist/cli/index.js merge-authority \
             --repo "${{ github.repository }}" \
             --pr "${{ github.event.pull_request.number }}" \
             --audit-level strict \
