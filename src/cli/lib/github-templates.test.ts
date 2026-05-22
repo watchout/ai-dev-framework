@@ -18,6 +18,40 @@ let tmpDir: string;
 // Use the actual framework root for template source
 const frameworkRoot = path.resolve(__dirname, "../../..");
 
+function writeFrameworkConfig(
+  config: Record<string, unknown>,
+  projectDir = tmpDir,
+): void {
+  const frameworkDir = path.join(projectDir, ".framework");
+  fs.mkdirSync(frameworkDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(frameworkDir, "config.json"),
+    JSON.stringify(config, null, 2),
+    "utf-8",
+  );
+}
+
+function readyMergeAuthorityConfig(): Record<string, unknown> {
+  return {
+    roles: {
+      bindings: {
+        architecture_owner: { type: "external", id: "arc" },
+        l3_governance_owner: { type: "github_user", id: "cto-user" },
+        implementation_lead: { type: "local_agent", id: "codex-lead" },
+        reviewer: { type: "external", id: "reviewer" },
+        auditor: { type: "external", id: "auditor" },
+        release_owner: { type: "github_user", id: "release-user" },
+        human_approver: { type: "github_user", id: "human-user" },
+        worker_pool: { type: "local_agent", id: "worker-pool" },
+      },
+    },
+    workflow: {
+      publishPolicy: "approval_required",
+      outputs: ["github"],
+    },
+  };
+}
+
 beforeEach(() => {
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "gh-templates-test-"));
 });
@@ -119,7 +153,9 @@ describe("installGitHubTemplates", () => {
     });
 
     expect(result.installed.length).toBeGreaterThan(0);
-    expect(result.skipped).toEqual([".github/workflows/merge-authority.yml (exists)"]);
+    expect(result.skipped).toEqual([
+      ".github/workflows/merge-authority.yml (merge authority not installed: workflow.publishPolicy=draft_only)",
+    ]);
 
     const ciContent = fs.readFileSync(
       path.join(tmpDir, ".github/workflows/ci.yml"),
@@ -280,7 +316,69 @@ describe("installGitHubTemplates", () => {
     expect(result2.skipped.some((s) => s.includes("ssot-audit.yml"))).toBe(true);
   });
 
-  it("installs merge-authority workflow with review triggers", () => {
+  it("skips merge-authority workflow for draft or placeholder projects", () => {
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+
+    const workflowPath = path.join(
+      tmpDir,
+      ".github/workflows/merge-authority.yml",
+    );
+    expect(fs.existsSync(workflowPath)).toBe(false);
+    expect(result.skipped).toContain(
+      ".github/workflows/merge-authority.yml (merge authority not installed: workflow.publishPolicy=draft_only)",
+    );
+  });
+
+  it("skips merge-authority workflow when roles are placeholders", () => {
+    const config = readyMergeAuthorityConfig();
+    config.workflow = { publishPolicy: "approval_required", outputs: ["github"] };
+    config.roles = {
+      bindings: {
+        architecture_owner: { type: "external", id: "todo-architecture-owner", placeholder: true },
+        l3_governance_owner: { type: "external", id: "todo-l3-governance-owner", placeholder: true },
+        implementation_lead: { type: "external", id: "todo-implementation-lead", placeholder: true },
+        reviewer: { type: "external", id: "todo-reviewer", placeholder: true },
+        auditor: { type: "external", id: "todo-auditor", placeholder: true },
+        release_owner: { type: "external", id: "todo-release-owner", placeholder: true },
+        human_approver: { type: "external", id: "todo-human-approver", placeholder: true },
+        worker_pool: { type: "external", id: "todo-worker-pool", placeholder: true },
+      },
+    };
+    writeFrameworkConfig(config);
+
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+
+    expect(
+      fs.existsSync(path.join(tmpDir, ".github/workflows/merge-authority.yml")),
+    ).toBe(false);
+    expect(result.skipped).toContain(
+      ".github/workflows/merge-authority.yml (merge authority not installed: required roles are placeholders or missing)",
+    );
+  });
+
+  it("skips merge-authority workflow when authority roles are not GitHub identities", () => {
+    const config = readyMergeAuthorityConfig();
+    config.roles = {
+      ...(config.roles as Record<string, unknown>),
+      bindings: {
+        ...((config.roles as { bindings: Record<string, unknown> }).bindings),
+        l3_governance_owner: { type: "external", id: "cto" },
+      },
+    };
+    writeFrameworkConfig(config);
+
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+
+    expect(
+      fs.existsSync(path.join(tmpDir, ".github/workflows/merge-authority.yml")),
+    ).toBe(false);
+    expect(result.skipped).toContain(
+      ".github/workflows/merge-authority.yml (merge authority not installed: l3_governance_owner must be github_user or github_team)",
+    );
+  });
+
+  it("installs merge-authority workflow with review triggers when governance is ready", () => {
+    writeFrameworkConfig(readyMergeAuthorityConfig());
     const result = installGitHubTemplates(tmpDir, "app", frameworkRoot);
 
     const workflowPath = path.join(
@@ -298,6 +396,7 @@ describe("installGitHubTemplates", () => {
   });
 
   it("skips merge-authority workflow if already exists", () => {
+    writeFrameworkConfig(readyMergeAuthorityConfig());
     installGitHubTemplates(tmpDir, "app", frameworkRoot);
     const workflowPath = path.join(
       tmpDir,
@@ -312,6 +411,7 @@ describe("installGitHubTemplates", () => {
   });
 
   it("preserves existing merge-authority workflow even during force update", () => {
+    writeFrameworkConfig(readyMergeAuthorityConfig());
     installGitHubTemplates(tmpDir, "app", frameworkRoot);
     const workflowPath = path.join(
       tmpDir,
@@ -328,6 +428,7 @@ describe("installGitHubTemplates", () => {
   });
 
   it("overwrites existing merge-authority workflow only with explicit workflow force", () => {
+    writeFrameworkConfig(readyMergeAuthorityConfig());
     installGitHubTemplates(tmpDir, "app", frameworkRoot);
     const workflowPath = path.join(
       tmpDir,
