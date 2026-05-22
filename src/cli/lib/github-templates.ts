@@ -11,6 +11,12 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ProfileType } from "./profile-model.js";
+import {
+  loadFrameworkConfig,
+  resolveRequiredRoles,
+  type FrameworkConfig,
+  type RoleBinding,
+} from "./workflow-config.js";
 
 export interface GitHubTemplateResult {
   installed: string[];
@@ -110,7 +116,13 @@ export function installGitHubTemplates(
     ".github/workflows/merge-authority.yml",
   );
   if (fs.existsSync(mergeAuthoritySrc)) {
-    if (!fs.existsSync(mergeAuthorityDest) || forceMergeAuthorityWorkflow) {
+    const readiness = evaluateMergeAuthorityWorkflowReadiness(projectDir);
+    if (forceMergeAuthorityWorkflow) {
+      fs.copyFileSync(mergeAuthoritySrc, mergeAuthorityDest);
+      installed.push(".github/workflows/merge-authority.yml");
+    } else if (!readiness.ready) {
+      skipped.push(`.github/workflows/merge-authority.yml (${readiness.reason})`);
+    } else if (!fs.existsSync(mergeAuthorityDest)) {
       fs.copyFileSync(mergeAuthoritySrc, mergeAuthorityDest);
       installed.push(".github/workflows/merge-authority.yml");
     } else {
@@ -151,6 +163,57 @@ export function installGitHubTemplates(
   copyTemplateFile(codeownersSrc, codeownersDest, force, installed, skipped, errors);
 
   return { installed, skipped, errors };
+}
+
+function evaluateMergeAuthorityWorkflowReadiness(
+  projectDir: string,
+): { ready: true } | { ready: false; reason: string } {
+  let config: FrameworkConfig;
+  try {
+    config = loadFrameworkConfig(projectDir);
+  } catch {
+    return {
+      ready: false,
+      reason: "merge authority not installed: invalid .framework/config.json",
+    };
+  }
+
+  const publishPolicy = config.workflow?.publishPolicy ?? "draft_only";
+  if (publishPolicy === "draft_only") {
+    return {
+      ready: false,
+      reason: "merge authority not installed: workflow.publishPolicy=draft_only",
+    };
+  }
+
+  const roles = resolveRequiredRoles(config);
+  if (roles.status !== "ready") {
+    return {
+      ready: false,
+      reason: "merge authority not installed: required roles are placeholders or missing",
+    };
+  }
+
+  const authorityRoles = [
+    "l3_governance_owner",
+    "release_owner",
+    "human_approver",
+  ] as const;
+  for (const role of authorityRoles) {
+    const binding = roles.bindings[role];
+    if (!isGitHubAuthorityBinding(binding)) {
+      return {
+        ready: false,
+        reason: `merge authority not installed: ${role} must be github_user or github_team`,
+      };
+    }
+  }
+
+  return { ready: true };
+}
+
+function isGitHubAuthorityBinding(binding: RoleBinding): boolean {
+  return binding.type === "github_user" || binding.type === "github_team";
 }
 
 function pruneObsoleteIssueTemplates(
