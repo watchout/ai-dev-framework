@@ -134,6 +134,8 @@ shirube plan              実装計画作成（タスク分解）
 shirube audit [target]    品質監査（ssot|code|test|visual|all）
 shirube run <task-id>     タスク実行 / start-only / heartbeat / fail-task
 shirube status            進捗表示（--json でダッシュボード・ランナー連携）
+shirube workflow          Gate Engine 状態の観測・検査（status|doctor|check|explain）
+shirube workflow check    action別の停止判定（--action implementation_start 等）
 shirube retrofit          既存プロジェクト導入
 shirube update            フレームワーク更新
 ```
