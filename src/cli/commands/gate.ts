@@ -57,6 +57,7 @@ import {
   validateAllSpecs,
 } from "../lib/gate-spec-validator.js";
 import { validateLlmControlDesign } from "../lib/llm-control-design-validator.js";
+import { validateDataAuthorityDesign } from "../lib/data-authority-design-validator.js";
 import { buildValidateCommand } from "./gate/cli.js";
 
 export function registerGateCommand(program: Command): void {
@@ -466,6 +467,23 @@ export function registerGateCommand(program: Command): void {
             logger.info("  LLM Control Design: no automation surface detected");
           }
 
+          const dataAuthorityResult = validateDataAuthorityDesign(llmControlDocs);
+          if (dataAuthorityResult.dataSurfaceDetected) {
+            logger.info(
+              `  Data Authority Design: ${dataAuthorityResult.status}`,
+            );
+            for (const finding of dataAuthorityResult.findings) {
+              const line = `    ${finding.path}: ${finding.message}`;
+              if (finding.severity === "BLOCK") {
+                logger.error(line);
+              } else {
+                logger.warn(line);
+              }
+            }
+          } else {
+            logger.info("  Data Authority Design: no DB/state data surface detected");
+          }
+
           // Write context
           const contextDir = path.join(projectDir, ".framework/gate-context");
           if (!fs.existsSync(contextDir)) fs.mkdirSync(contextDir, { recursive: true });
@@ -485,18 +503,19 @@ ${found}/${designDocs.length} (${missing} missing)
 ${contextBody}
 
 ## Instructions
-以下の5つのValidatorを順次実行し、統合判定を行ってください:
+以下の6つのValidatorを順次実行し、統合判定を行ってください:
 
 1. **feasibility-checker**: PRD↔API/DB技術的実現可能性
 2. **coherence-auditor**: SSOT間の矛盾検出
 3. **gap-detector**: 設計欠落の検出
 4. **traceability-auditor**: SSOT↔IMPL trace整合性（\`shirube trace verify\` ラッパー）
 5. **llm-control-design-validator**: automation 設計の Source of Truth / deterministic control / Hook / runtime adapter / startup / gates / authority を機械検証
+6. **data-authority-design-validator**: DB/state 設計の mutable fact SSOT / 正規化 / 参照整合 / projection 派生規則を機械検証
 
 判定基準:
 - PASS: 全CRITICAL = 0 かつ WARNING合計 ≤ 5
 - BLOCK: CRITICAL ≥ 1 または WARNING > 5
-- strict mode: LLM Control Design の BLOCK findings がある場合も BLOCK
+- strict mode: LLM Control Design または Data Authority Design の BLOCK findings がある場合も BLOCK
 `;
 
           fs.writeFileSync(path.join(contextDir, "design-validation.md"), contextContent, "utf-8");
@@ -507,8 +526,12 @@ ${contextBody}
           logger.info("");
           logger.info("  Next: Run /gate-design to execute validators");
           logger.info("");
-          if (options.strict && llmControlResult.status === "BLOCK") {
-            logger.error("LLM Control Design validation failed in strict mode.");
+          if (
+            options.strict &&
+            (llmControlResult.status === "BLOCK" ||
+              dataAuthorityResult.status === "BLOCK")
+          ) {
+            logger.error("Gate design strict validation failed.");
             process.exit(1);
           }
         } catch (error) {

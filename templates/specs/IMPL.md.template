@@ -107,9 +107,19 @@ feature が外部世界 (UI / LLM / DB / Auth / Platform 等) と接する箇所
 env var 切替や文字列 config による多態は abstraction leak として検出する。
 adapter interface (port pattern) / variant 一覧 / 対称性確認 / failure mode 列挙を必須要素とする。
 詳細は `docs/specs/04b_IMPL_FORMAT.md` §7 参照。
+
+DB / registry / queue / identity / routing / state store / projection / cache / snapshot に触れる場合は
+`docs/standards/DATA_AUTHORITY_NORMALIZATION.md` に従い、Data Authority / Normalization 表を必ず追加する。
+同じ mutable fact を複数 table / registry / cache に独立正本として保持してはいけない。
 -->
 
 (empty)
+
+### §7.x Data Authority / Normalization [DB/state該当時]
+
+| Mutable fact | Canonical write path | Reference / resolver path | DB constraint / migration | Projection or snapshot rule |
+|---|---|---|---|---|
+|  |  |  |  |  |
 
 ---
 
@@ -179,4 +189,3 @@ IMPL.md 内のすべての substantive assertion (技術判断・実数値・設
 - governance: `.claude/rules/governance-flow.md` (lead 責任「IMPL doc authoring」)
 
 <!-- Note: feasibility 仕様 `docs/specs/04c_FEASIBILITY_POC_FORMAT.md` (Step 3.45 + Gate 3) は Sub-PR 0.4 で land 予定 (現在 not yet)。land 後に本 list へ追加する。 -->
-

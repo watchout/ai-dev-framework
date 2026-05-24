@@ -17,10 +17,11 @@ const REQUIRED_VALIDATORS = [
   "gap-detector",
   "traceability-auditor",
   "llm-control-design-validator",
+  "data-authority-design-validator",
 ];
 
 describe("Gate 1 design-validation registry", () => {
-  it("design-validation.md lists all 5 validators", () => {
+  it("design-validation.md lists all 6 validators", () => {
     const registry = fs.readFileSync(
       path.join(REPO_ROOT, ".claude/gates/design-validation.md"),
       "utf-8",
@@ -30,7 +31,7 @@ describe("Gate 1 design-validation registry", () => {
     }
   });
 
-  it("gate-design SKILL.md references all 5 validators", () => {
+  it("gate-design SKILL.md references all 6 validators", () => {
     const skill = fs.readFileSync(
       path.join(REPO_ROOT, ".claude/skills/gate-design/SKILL.md"),
       "utf-8",
@@ -40,7 +41,7 @@ describe("Gate 1 design-validation registry", () => {
     }
   });
 
-  it("gate.ts design context template enumerates all 5 validators", () => {
+  it("gate.ts design context template enumerates all 6 validators", () => {
     const cli = fs.readFileSync(
       path.join(REPO_ROOT, "src/cli/commands/gate.ts"),
       "utf-8",

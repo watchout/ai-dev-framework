@@ -9,17 +9,18 @@ description: |
 
 ## 概要
 
-設計完了後、Planning（shirube plan）開始前に5つのValidatorが設計書群の矛盾・不整合・欠落・制御設計漏れを検出するGateスキル。設計欠陥は実装後に10倍のコストがかかるため、Gate 2より厳格な基準を適用する。
+設計完了後、Planning（shirube plan）開始前に6つのValidatorが設計書群の矛盾・不整合・欠落・制御設計漏れ・DB/state正本設計漏れを検出するGateスキル。設計欠陥は実装後に10倍のコストがかかるため、Gate 2より厳格な基準を適用する。
 
 ## Agents（参照）
 
-5つのValidatorを順次実行する:
+6つのValidatorを順次実行する:
 
 1. @agents/validators/feasibility-checker.md → 技術的実現可能性の検証
 2. @agents/validators/coherence-auditor.md → 設計書間の矛盾検出
 3. @agents/validators/gap-detector.md → 設計欠落の検出
 4. @agents/validators/traceability-auditor.md → SSOT↔IMPL trace整合性検証（`shirube trace verify` ラッパー）
 5. llm-control-design-validator → automation 設計の Source of Truth / deterministic control / Hook / runtime adapter / startup / gates / authority を機械検証
+6. data-authority-design-validator → DB/state 設計の mutable fact SSOT / 正規化 / 参照整合 / projection 派生規則を機械検証
 
 ## 実行フロー
 
@@ -34,6 +35,7 @@ description: |
    gap-detector         │
    traceability-auditor ┘
    llm-control-design-validator → shirube gate design --strict
+   data-authority-design-validator → shirube gate design --strict
 
 3. 統合判定
    - PASS: 全CRITICAL = 0 かつ WARNING ≤ 5
@@ -52,6 +54,8 @@ description: |
 | WARNING > 5 | **BLOCK** → 設計改善必要 |
 | automation 設計で LLM Control Design section 欠落 | **BLOCK** → Source of Truth / deterministic control / Hook / runtime adapter / startup / gates / authority を補完 |
 | LLM adapter に queue state transition / finalize / delivery を割当 | **BLOCK** → Runner / deterministic service に責務を戻す |
+| DB/state 設計で Data Authority / Normalization section 欠落 | **BLOCK** → mutable fact のSSOT、正規化、参照整合、projection 派生規則を補完 |
+| 同じ mutable fact を複数 table / registry / cache に独立正本として保存 | **BLOCK** → canonical owner への参照、projection、または証跡 snapshot に戻す |
 
 <!-- 閾値変更: ≤3 → ≤5（2026-03-26）
   根拠: haishin-puls-hub実戦テストで真陽性WARNING 20件中、
@@ -122,6 +126,9 @@ shirube gate design --strict
 {findings}
 
 ### 5. LLM Control Design Validator
+{findings}
+
+### 6. Data Authority Design Validator
 {findings}
 
 ## Aggregate

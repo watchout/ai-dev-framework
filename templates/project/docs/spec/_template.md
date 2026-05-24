@@ -24,6 +24,18 @@ traces:
 ### 5.1 API契約（OpenAPI フラグメント推奨）
 ### 5.2 DBスキーマ
 ### 5.3 イベント/メッセージ [該当時]
+### 5.4 Data Authority / Normalization [DB/state該当時]
+
+> 参照規範: `docs/standards/DATA_AUTHORITY_NORMALIZATION.md`
+> DB schema / migration / registry / queue / identity / routing / state store / projection / cache / snapshot に触れる spec では必須。
+
+| Mutable fact | Canonical owner / SSOT | References / constraints | Projection or snapshot rule |
+|---|---|---|---|
+|  |  |  |  |
+
+- 同じ mutable fact を複数 table / registry / cache に独立正本として保持しない。
+- 参照側は canonical owner の stable key を参照し、DB制約または resolver/adapter 境界で整合性を守る。
+- projection / cache / snapshot は source、derivation、invalidation/regeneration、read-only/evidence 性質を明記する。
 
 ## 6. 非機能要件 (Detail) [必須]
 ### 6.1 性能

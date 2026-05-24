@@ -15,6 +15,7 @@ Design Phase（/design）完了後、Planning（framework plan）開始前
 - gap-detector → 仕様の漏れ検出
 - traceability-auditor → SSOT↔IMPL trace整合性（`shirube trace verify` ラッパー）
 - llm-control-design-validator → automation 設計の Source of Truth / deterministic control / Hook / runtime adapter / startup / gates / authority を機械検証
+- data-authority-design-validator → DB/state 設計の mutable fact SSOT / 正規化 / 参照整合 / projection 派生規則を機械検証
 
 ## Pass criteria
 - Zero CRITICAL findings
@@ -61,9 +62,11 @@ Design complete
 │ traceability-auditor    │ → SSOT↔IMPL trace整合性
 │ llm-control-design-     │ → automation 制御設計の機械検証
 │ validator               │
+│ data-authority-design-  │ → DB/state 正本・正規化の機械検証
+│ validator               │
 └─────────────────────────┘
   ↓ (sequential)
 Aggregate results
   ├── Zero CRITICAL, ≤5 WARNING → PASS → framework plan
-  └── Any CRITICAL, >5 WARNING, or LLM Control BLOCK → BLOCK → 設計修正
+  └── Any CRITICAL, >5 WARNING, LLM Control BLOCK, or Data Authority BLOCK → BLOCK → 設計修正
 ```

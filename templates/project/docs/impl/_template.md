@@ -25,6 +25,17 @@ traces:
 ### 3.1 正常系フロー（Mermaid sequenceDiagram）
 ### 3.2 トランザクション境界
 ### 3.3 並行性 [該当時]
+### 3.4 Data Authority / Normalization 実装 [DB/state該当時]
+
+> 対応: SPEC §5.4 / `docs/standards/DATA_AUTHORITY_NORMALIZATION.md`
+
+| Mutable fact | Canonical write path | Read resolver / reference path | DB constraint / migration | Projection invalidation |
+|---|---|---|---|---|
+|  |  |  |  |  |
+
+- 同じ mutable fact を複数 table / registry / cache に独立正本として書かない。
+- queue/event/evidence row に保存する snapshot は immutable evidence として扱い、現在値の参照には使わない。
+- projection / cache は source_version 等で出典を持ち、source 更新時に再生成または無効化する。
 
 ## 4. エラー処理 [必須]
 ### 4.1 例外分類（表形式：例外名 / 発生条件 / 伝播先 / ユーザー表示 / 終了コード）
