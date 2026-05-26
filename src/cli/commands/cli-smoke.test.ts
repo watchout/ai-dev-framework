@@ -99,6 +99,15 @@ describe("CLI Smoke Tests", () => {
     expect(output).toContain("set");
   });
 
+  it("shows help for workflow command", () => {
+    const output = runCli("workflow --help");
+    expect(output).toContain("workflow");
+    expect(output).toContain("status");
+    expect(output).toContain("doctor");
+    expect(output).toContain("check");
+    expect(output).toContain("explain");
+  });
+
   it("shows help for visual-test command", () => {
     const output = runCli("visual-test --help");
     expect(output).toContain("visual-test");
@@ -122,6 +131,7 @@ describe("CLI Smoke Tests", () => {
       "start",
       "roles",
       "status",
+      "workflow",
       "retrofit",
       "update",
       "checkpoint",
