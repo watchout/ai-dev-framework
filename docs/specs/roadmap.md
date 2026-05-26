@@ -176,11 +176,16 @@ Shirube can govern its own development and at least one internal project through
 | Work item | Level to implement in Phase 1 |
 |---|---|
 | Shirube self-dogfood | Shirube repo has workflow state, roles, goal contract, and gates visible through CLI. |
+| Carryover ledger | Findings from the previous phase are completed, assigned, deferred with rationale, or blocked before the next readiness claim. |
 | Goal Contract | V0/V1 goal artifact approved by configured governance/human role. |
 | Phase plan | Goal sufficient conditions decomposed into phases with exit criteria. |
 | Feature catalog | P0/P1 catalog traced to goal sufficient conditions. |
 | Task DAG | Tasks derive from approved features and preserve dependency order. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
+| Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
+| Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
+| Audit Ledger | Audit/approval evidence has a structured record shape beyond ad hoc comments. |
+| Action registry and wrapper semantics | Workflow actions have a canonical registry, and diagnostic vs enforcement command behavior is explicit. |
 | Pre-implementation audit | #123 behavior re-homed as Gate Engine G11 pre-impl audit or explicitly retired. |
 | Read receipts | #64/#91 re-homed as evidence, not authority. |
 | Bypass audit | #65 implemented enough that bypasses are tokened, logged, and visible. |
@@ -196,12 +201,28 @@ Shirube can govern its own development and at least one internal project through
 
 ### Sufficient exit conditions
 
+- Phase 0 carryover findings have a completed, assigned, deferred, blocked, or non-actionable disposition.
 - Shirube can run `workflow status --json` and show goal, phase, feature/task, evidence, role, and publish readiness.
 - Strict implementation start blocks or warns on missing Goal Contract, missing hearing, missing role readiness, missing SPEC/IMPL/VERIFY/OPS, missing pre-impl audit, and missing task trace according to profile.
+- The target development chain from intake through phase closure is represented as deterministic state or a reviewed implementation split.
+- Phase closure audit and audit ledger minimum records exist or are explicitly L3-dispositioned before Phase 1 completion is claimed.
 - Internal dogfood report exists with at least one real Shirube PR/change traced from goal to post-implementation evidence.
 - Bypass events are not invisible.
 - Hook/settings changes are not invisible.
 - Read receipts are recorded as provenance evidence, not treated as reviewer authority.
+
+### Phase 1 start artifacts
+
+| Task | Issue | Purpose |
+|---|---|---|
+| T0 | #223 | Phase 0 carryover ledger, task assignment, and completed-phase addendum policy. |
+| T1 | #222 | Internal dogfood start gate for `init/start/run` and required process evidence. |
+| T2 | #224 | Phase Closure Audit Gate. |
+| T3 | #225 | `AUDITLEDGER-001` Audit Evidence and Approval Ledger. |
+| T4 | #226 | Workflow Action Registry and Wrapper Semantics. |
+| T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain. |
+
+T0/T1 start artifact: [Phase 1 Internal Dogfood Start](./phase1-internal-dogfood-start.md).
 
 ### Verification
 
