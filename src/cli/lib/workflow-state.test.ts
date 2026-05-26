@@ -291,6 +291,164 @@ describe("workflow-state", () => {
       ]),
     );
   });
+
+  it("emits strict #222 BLOCK decisions for missing dogfood implementation-start evidence", () => {
+    saveFrameworkConfig(tmpDir, readyConfig());
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/project.json"),
+      JSON.stringify({ name: "dogfood-test" }),
+      "utf-8",
+    );
+
+    const state = buildWorkflowState(tmpDir, {
+      now: NOW,
+      profile: "strict",
+      feature: "FEAT-001",
+    });
+
+    expect(state.gate_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.goal_contract.approved",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G10.doc4l.readiness",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G11.pre_impl_audit.disposition",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G18.admin_notice.sink_ready",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G18.admin_notice.lifecycle_record",
+          decision: "OBSERVE",
+        }),
+      ]),
+    );
+  });
+
+  it("maps local dogfood evidence to PASS decisions", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, readyConfig());
+    writeDogfoodEvidence(tmpDir);
+
+    const state = buildWorkflowState(tmpDir, {
+      now: NOW,
+      profile: "strict",
+      feature: "FEAT-001",
+    });
+
+    expect(state.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "goal_contract" }),
+        expect.objectContaining({ kind: "phase_plan" }),
+        expect.objectContaining({ kind: "task_trace" }),
+        expect.objectContaining({ kind: "doc4l_readiness" }),
+        expect.objectContaining({ kind: "audit" }),
+        expect.objectContaining({ kind: "lifecycle_sink" }),
+      ]),
+    );
+    expect(state.gate_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.goal_contract.approved",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G10.phase_plan.present",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G10.task_trace.present",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G10.doc4l.readiness",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G11.pre_impl_audit.disposition",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("accepts boolean local evidence dispositions", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, readyConfig());
+    writeDogfoodEvidence(tmpDir);
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/goal-contract.json"),
+      JSON.stringify({ approved: true }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/doc4l-readiness.json"),
+      JSON.stringify({ readiness: true, feature: "FEAT-001" }),
+      "utf-8",
+    );
+
+    const state = buildWorkflowState(tmpDir, {
+      now: NOW,
+      profile: "strict",
+      feature: "FEAT-001",
+    });
+
+    expect(state.gate_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.goal_contract.approved",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G10.doc4l.readiness",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("accepts approved parent-scope evidence for selected-feature dogfood requirements", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, readyConfig());
+    writeDogfoodEvidence(tmpDir);
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/phase-plan.json"),
+      JSON.stringify({ phase: 1, scope: "phase", status: "approved" }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/doc4l-readiness.json"),
+      JSON.stringify({ scope: "parent_scope", readiness: "ready" }),
+      "utf-8",
+    );
+
+    const state = buildWorkflowState(tmpDir, {
+      now: NOW,
+      profile: "strict",
+      feature: "FEAT-001",
+    });
+
+    expect(state.gate_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.phase_plan.present",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G10.doc4l.readiness",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
 });
 
 function completedDiscoverSession(): DiscoverSessionData {
@@ -335,4 +493,38 @@ function readyConfig(): FrameworkConfig {
       outputs: ["local_files", "github"],
     },
   };
+}
+
+function writeDogfoodEvidence(projectDir: string, feature = "FEAT-001"): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/project.json"),
+    JSON.stringify({ name: "dogfood-test" }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/goal-contract.json"),
+    JSON.stringify({ status: "approved" }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/phase-plan.json"),
+    JSON.stringify({ phase: 1, feature }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/task-trace.json"),
+    JSON.stringify({ task: feature, feature, issue: 222 }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/doc4l-readiness.json"),
+    JSON.stringify({ status: "ready", feature }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/pre-impl-audit.json"),
+    JSON.stringify({ verdict: "PASS", feature }),
+    "utf-8",
+  );
 }

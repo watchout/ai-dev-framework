@@ -20,6 +20,7 @@ interface WorkflowOptions {
   profile?: string;
   failOn?: string;
   action?: string;
+  feature?: string;
 }
 
 export function registerWorkflowCommand(program: Command): void {
@@ -32,10 +33,12 @@ export function registerWorkflowCommand(program: Command): void {
     .description("Show synthesized workflow-state/v1")
     .option("--json", "Output machine-readable JSON")
     .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .action((options: WorkflowOptions) => {
       runWorkflowAction(options, () => {
         const state = buildWorkflowState(process.cwd(), {
           profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
         });
         if (options.json) {
           process.stdout.write(JSON.stringify(state, null, 2) + "\n");
@@ -50,10 +53,12 @@ export function registerWorkflowCommand(program: Command): void {
     .description("Summarize workflow findings and remediation")
     .option("--json", "Output machine-readable JSON")
     .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .action((options: WorkflowOptions) => {
       runWorkflowAction(options, () => {
         const state = buildWorkflowState(process.cwd(), {
           profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
         });
         const report = createWorkflowDoctorReport(state);
         if (options.json) {
@@ -69,6 +74,7 @@ export function registerWorkflowCommand(program: Command): void {
     .description("Fail when action-scoped workflow decisions cross a threshold")
     .option("--json", "Output machine-readable JSON")
     .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .option(
       "--action <action>",
       "Action to evaluate (design_draft|implementation_start|implementation_split|remote_publish|merge|release)",
@@ -78,6 +84,7 @@ export function registerWorkflowCommand(program: Command): void {
       runWorkflowAction(options, () => {
         const state = buildWorkflowState(process.cwd(), {
           profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
         });
         const action = parseAction(options.action);
         const failOn = parseFailOn(options.failOn);
@@ -106,10 +113,12 @@ export function registerWorkflowCommand(program: Command): void {
     .argument("<query>", "Rule id or action, such as G2.hearing.required_confirmation")
     .option("--json", "Output machine-readable JSON")
     .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .action((query: string, options: WorkflowOptions) => {
       runWorkflowAction(options, () => {
         const state = buildWorkflowState(process.cwd(), {
           profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
         });
         const explanation = explainWorkflowQuery(state, query);
         if (options.json) {
