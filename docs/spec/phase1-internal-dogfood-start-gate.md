@@ -78,16 +78,50 @@ For #222, lifecycle notification is satisfied by a deterministic record in local
 
 If no external adapter exists, a local append-only record is acceptable in strict mode only when it is referenced by workflow evidence. Silent omission is not acceptable.
 
-## 7. Non-Goals
+## 7. Acceptance Criteria
+Acceptance scenario for strict internal dogfood:
+
+```gherkin
+Given a Shirube project is started with the strict internal dogfood profile
+And required Goal Contract, phase plan, task trace, DOC4L readiness, pre-implementation audit, or lifecycle notification evidence is missing
+When the operator runs `shirube workflow check --action implementation_start --profile strict --json`
+Then the check fails with a deterministic BLOCK decision
+And the failed decision includes rule id, gate, message, evidence refs, and remediation
+```
+
+- `workflow status --json` exposes present and missing evidence for the #222 readiness set.
+- `workflow check --action implementation_start --profile strict --json` fails when any strict-required #222 evidence is missing.
+- `shirube start --audit-level strict` fails before session write/resume when the implementation-start check fails.
+- Fixtures prove strict mode cannot skip Goal Contract, phase plan, task trace, DOC4L readiness, pre-implementation audit, and lifecycle notification evidence.
+- Minimal/standard profiles retain migration-safe behavior and do not silently claim internal dogfood readiness.
+
+## 8. Non-Goals
 - Do not wire public GitHub Checks or branch protection.
 - Do not implement hook/MCP/runtime interception.
 - Do not make AUN, Discord, or any single communication adapter mandatory.
 - Do not claim Phase 1 completion.
 - Do not replace POSTMERGE-001 or phase closure audit.
 
-## 8. Acceptance Criteria
-- `workflow status --json` exposes present and missing evidence for the #222 readiness set.
-- `workflow check --action implementation_start --profile strict --json` fails when any strict-required #222 evidence is missing.
-- `shirube start --audit-level strict` fails before session write/resume when the implementation-start check fails.
-- Fixtures prove strict mode cannot skip Goal Contract, phase plan, task trace, DOC4L readiness, pre-implementation audit, and lifecycle notification evidence.
-- Minimal/standard profiles retain migration-safe behavior and do not silently claim internal dogfood readiness.
+## 9. Evidence Projection
+The initial evidence projection is local-first:
+
+- CLI JSON for `workflow status`, `workflow doctor`, `workflow check`, and `workflow explain`;
+- local files under `.framework/` for lifecycle records when no external adapter is configured;
+- GitHub issue or PR comments only when the operator explicitly records review, audit, or lifecycle evidence there.
+
+Private reasoning traces and transient agent memory are not evidence by default.
+
+## 10. 制御機構選定原則
+script 選定根拠: #222 gate decisions must be deterministic, replayable, and inspectable without LLM judgment. TypeScript workflow-state evaluators and CLI checks are the primary control mechanism because they can emit stable JSON, return non-zero on scoped BLOCK decisions, and be covered by unit, integration, and regression tests.
+
+Hook 選定根拠: hooks are intentionally not adopted in this slice. A later hook may call the same script-controlled `implementation_start` check only for unavoidable local interception, but hooks must not become canonical workflow state.
+
+MCP/GitHub 選定根拠: MCP and GitHub Checks remain downstream wrappers. They may project the same decisions later, but #222 does not use them as the source of truth.
+
+## 11. Testing Layer
+Runtime implementation must include:
+
+- unit tests for workflow-state rule evaluation;
+- integration tests for `workflow check --action implementation_start --profile strict --json`;
+- regression tests proving strict mode blocks missing Goal Contract, phase plan, task trace, DOC4L readiness, pre-implementation audit, and lifecycle notification evidence;
+- smoke tests for `shirube start --audit-level strict --dry-run` and non-dry-run session write blocking.
