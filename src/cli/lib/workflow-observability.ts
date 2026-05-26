@@ -17,6 +17,7 @@ export type WorkflowCheckAction =
   | "design_draft"
   | "implementation_start"
   | "implementation_split"
+  | "phase_closure"
   | "remote_publish"
   | "merge"
   | "release";
@@ -245,6 +246,13 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
     "G1.roles.required_bindings",
     "G1.roles.separation",
     "G2.hearing.required_confirmation",
+  ],
+  phase_closure: [
+    "G12.phase_closure.record.present",
+    "G12.phase_closure.required_fields",
+    "G12.phase_closure.blockers_cleared",
+    "G12.phase_closure.carryovers_justified",
+    "G12.phase_closure.postmerge_evidence",
   ],
   remote_publish: [
     "G1.roles.required_bindings",

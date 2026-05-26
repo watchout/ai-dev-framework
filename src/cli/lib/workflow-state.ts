@@ -50,6 +50,7 @@ export type WorkflowEvidenceKind =
   | "audit"
   | "read_receipt"
   | "merge_authority"
+  | "phase_closure"
   | "exception";
 
 export type WorkflowActorType = "human" | "agent" | "github_user" | "system";
@@ -180,6 +181,7 @@ export function buildWorkflowState(
     evidence,
     gateDecisions,
   );
+  applyPhaseClosureReadiness(projectDir, now, profile, evidence, gateDecisions);
 
   const currentSession = readJsonFile<CurrentSessionV1>(
     projectDir,
@@ -400,6 +402,83 @@ const DOGFOOD_EVIDENCE_REQUIREMENTS: LocalEvidenceRequirement[] = [
   },
 ];
 
+interface PhaseClosureFieldRequirement {
+  label: string;
+  keys: string[];
+  requireNonEmpty: boolean;
+}
+
+const PHASE_CLOSURE_EVIDENCE_PATHS = [
+  ".framework/phase-closure.json",
+  ".framework/phase-closure.md",
+  ".framework/phase-closures/latest.json",
+  "docs/management/phase-closure.md",
+];
+
+const PHASE_CLOSURE_REQUIRED_FIELDS: PhaseClosureFieldRequirement[] = [
+  { label: "phase", keys: ["phase", "phase_id"], requireNonEmpty: true },
+  {
+    label: "phase_objective",
+    keys: ["phase_objective", "objective"],
+    requireNonEmpty: true,
+  },
+  {
+    label: "readiness_claim",
+    keys: ["readiness_claim", "exact_readiness_claim", "claim"],
+    requireNonEmpty: true,
+  },
+  {
+    label: "completed_tasks",
+    keys: ["completed_tasks", "tasks_complete", "tasks"],
+    requireNonEmpty: true,
+  },
+  {
+    label: "merged_prs",
+    keys: ["merged_prs", "merged_pull_requests", "prs"],
+    requireNonEmpty: true,
+  },
+  {
+    label: "l0_evidence_summary",
+    keys: ["l0_evidence_summary", "l0", "l0_evidence"],
+    requireNonEmpty: true,
+  },
+  {
+    label: "audit_matrix",
+    keys: ["audit_matrix", "l1_l2_l3_coverage_matrix", "coverage_matrix"],
+    requireNonEmpty: true,
+  },
+  {
+    label: "unresolved_blockers",
+    keys: ["unresolved_blockers", "blockers"],
+    requireNonEmpty: false,
+  },
+  {
+    label: "deferred_items",
+    keys: ["deferred_items", "carryovers", "non_blocking_items"],
+    requireNonEmpty: false,
+  },
+  {
+    label: "residual_risks",
+    keys: ["residual_risks", "risk_register", "risks"],
+    requireNonEmpty: false,
+  },
+  {
+    label: "explicit_non_claims",
+    keys: ["explicit_non_claims", "non_claims"],
+    requireNonEmpty: true,
+  },
+  {
+    label: "next_phase_entry_conditions",
+    keys: ["next_phase_entry_conditions", "entry_conditions"],
+    requireNonEmpty: true,
+  },
+  {
+    label: "reopen_criteria",
+    keys: ["reopen_criteria", "reopen_escalation_criteria", "escalation_criteria"],
+    requireNonEmpty: true,
+  },
+];
+
 function applyProjectApplied(
   projectDir: string,
   now: string,
@@ -526,6 +605,147 @@ function applyDogfoodReadiness(
   );
 }
 
+function applyPhaseClosureReadiness(
+  projectDir: string,
+  now: string,
+  profile: WorkflowProfile,
+  evidence: WorkflowEvidenceRecord[],
+  gateDecisions: WorkflowGateDecision[],
+): void {
+  const artifact = findLocalEvidence(projectDir, PHASE_CLOSURE_EVIDENCE_PATHS);
+  if (!artifact) {
+    const missing = dogfoodMissingDecision(profile);
+    gateDecisions.push(
+      decision({
+        ruleId: "G12.phase_closure.record.present",
+        gate: "phase_closure",
+        decisionValue: missing.decision,
+        severity: missing.severity,
+        profile,
+        message: "Phase closure record is missing.",
+        evidenceRefs: [],
+        remediation:
+          "Create .framework/phase-closure.json before claiming phase completion.",
+      }),
+    );
+    return;
+  }
+
+  const missingFields = findMissingPhaseClosureFields(artifact.metadata);
+  const unresolvedBlockers = findUnresolvedPhaseClosureBlockers(artifact.metadata);
+  const unjustifiedCarryovers = findUnjustifiedPhaseClosureCarryovers(artifact.metadata);
+  const postmergeGaps = findPhaseClosurePostmergeGaps(artifact.metadata);
+  const hasClosureIssues =
+    missingFields.length > 0 ||
+    unresolvedBlockers.length > 0 ||
+    unjustifiedCarryovers.length > 0 ||
+    postmergeGaps.length > 0;
+
+  const closureEvidence = createEvidence({
+    projectDir,
+    now,
+    kind: "phase_closure",
+    artifactPath: artifact.path,
+    sourceUri: `file://${artifact.path}`,
+    summary: hasClosureIssues
+      ? "Phase closure record is present but incomplete."
+      : "Phase closure record is complete.",
+    validity: hasClosureIssues ? "invalid" : "current",
+    metadata: artifact.metadata,
+  });
+  evidence.push(closureEvidence);
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G12.phase_closure.record.present",
+      gate: "phase_closure",
+      decisionValue: "PASS",
+      severity: "info",
+      profile,
+      message: "Phase closure record is present.",
+      evidenceRefs: [closureEvidence.id],
+      remediation: "No action required.",
+    }),
+  );
+
+  const missing = dogfoodMissingDecision(profile);
+  gateDecisions.push(
+    decision({
+      ruleId: "G12.phase_closure.required_fields",
+      gate: "phase_closure",
+      decisionValue: missingFields.length === 0 ? "PASS" : missing.decision,
+      severity: missingFields.length === 0 ? "info" : missing.severity,
+      profile,
+      message:
+        missingFields.length === 0
+          ? "Phase closure required fields are complete."
+          : `Phase closure record is missing required fields: ${missingFields.join(", ")}.`,
+      evidenceRefs: [closureEvidence.id],
+      remediation:
+        missingFields.length === 0
+          ? "No action required."
+          : "Fill every required phase closure field, including audit coverage and non-claims.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G12.phase_closure.blockers_cleared",
+      gate: "phase_closure",
+      decisionValue: unresolvedBlockers.length === 0 ? "PASS" : missing.decision,
+      severity: unresolvedBlockers.length === 0 ? "info" : missing.severity,
+      profile,
+      message:
+        unresolvedBlockers.length === 0
+          ? "Phase closure has no unresolved blockers."
+          : `Phase closure still has unresolved blockers: ${unresolvedBlockers.join(", ")}.`,
+      evidenceRefs: [closureEvidence.id],
+      remediation:
+        unresolvedBlockers.length === 0
+          ? "No action required."
+          : "Resolve blockers or move non-blocking items to justified carryovers before claiming phase completion.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G12.phase_closure.carryovers_justified",
+      gate: "phase_closure",
+      decisionValue: unjustifiedCarryovers.length === 0 ? "PASS" : missing.decision,
+      severity: unjustifiedCarryovers.length === 0 ? "info" : missing.severity,
+      profile,
+      message:
+        unjustifiedCarryovers.length === 0
+          ? "Deferred or non-blocking carryovers are justified."
+          : `Deferred carryovers lack safety rationale: ${unjustifiedCarryovers.join(", ")}.`,
+      evidenceRefs: [closureEvidence.id],
+      remediation:
+        unjustifiedCarryovers.length === 0
+          ? "No action required."
+          : "Add owner, target phase/task, and why each carryover is safe to defer.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G12.phase_closure.postmerge_evidence",
+      gate: "phase_closure",
+      decisionValue: postmergeGaps.length === 0 ? "PASS" : missing.decision,
+      severity: postmergeGaps.length === 0 ? "info" : missing.severity,
+      profile,
+      message:
+        postmergeGaps.length === 0
+          ? "POSTMERGE evidence is present for phase-exit PRs."
+          : `POSTMERGE evidence is missing for: ${postmergeGaps.join(", ")}.`,
+      evidenceRefs: [closureEvidence.id],
+      remediation:
+        postmergeGaps.length === 0
+          ? "No action required."
+          : "Link POSTMERGE-001 evidence for every merged PR that supports the phase closure claim.",
+    }),
+  );
+}
+
 function applyLocalEvidenceRequirement(
   projectDir: string,
   now: string,
@@ -628,6 +848,272 @@ function validateLocalEvidenceRequirement(
   }
 
   return { valid: true, reason: "" };
+}
+
+function findMissingPhaseClosureFields(
+  metadata: Record<string, unknown>,
+): string[] {
+  const missing: string[] = [];
+  for (const requirement of PHASE_CLOSURE_REQUIRED_FIELDS) {
+    const value = findFirstMetadataValue(metadata, requirement.keys);
+    if (
+      value === undefined ||
+      (requirement.requireNonEmpty && !hasNonEmptyRegisterValue(value))
+    ) {
+      missing.push(requirement.label);
+    }
+  }
+
+  if (!phaseClosureAuditMatrixHasCoverage(metadata)) {
+    missing.push("audit_matrix.l1_l2_l3");
+  }
+
+  return missing;
+}
+
+function findUnresolvedPhaseClosureBlockers(
+  metadata: Record<string, unknown>,
+): string[] {
+  const blockers = findFirstMetadataValue(metadata, [
+    "unresolved_blockers",
+    "blockers",
+  ]);
+  if (blockers === undefined || isEmptyRegisterValue(blockers)) {
+    return [];
+  }
+  return phaseClosureItems(blockers).map((item, index) =>
+    describePhaseClosureItem(item, `blocker_${index + 1}`),
+  );
+}
+
+function findUnjustifiedPhaseClosureCarryovers(
+  metadata: Record<string, unknown>,
+): string[] {
+  const carryovers = findFirstMetadataValue(metadata, [
+    "deferred_items",
+    "carryovers",
+    "non_blocking_items",
+  ]);
+  if (carryovers === undefined || isEmptyRegisterValue(carryovers)) {
+    return [];
+  }
+  return phaseClosureItems(carryovers)
+    .map((item, index) => ({ item, label: describePhaseClosureItem(item, `carryover_${index + 1}`) }))
+    .filter(({ item }) => !phaseClosureCarryoverHasRationale(item))
+    .map(({ label }) => label);
+}
+
+function findPhaseClosurePostmergeGaps(
+  metadata: Record<string, unknown>,
+): string[] {
+  const topLevelEvidence = findFirstMetadataValue(metadata, [
+    "postmerge_evidence",
+    "post_merge_evidence",
+    "postmerge_001_evidence",
+  ]);
+  if (topLevelEvidence !== undefined && hasNonEmptyRegisterValue(topLevelEvidence)) {
+    return [];
+  }
+
+  const prs = findFirstMetadataValue(metadata, [
+    "merged_prs",
+    "merged_pull_requests",
+    "prs",
+  ]);
+  if (prs === undefined || isEmptyRegisterValue(prs)) {
+    return ["merged_prs"];
+  }
+
+  return phaseClosureItems(prs)
+    .map((item, index) => ({ item, label: describePhaseClosureItem(item, `pr_${index + 1}`) }))
+    .filter(({ item }) => !phaseClosurePrHasPostmergeEvidence(item))
+    .map(({ label }) => label);
+}
+
+function phaseClosureAuditMatrixHasCoverage(
+  metadata: Record<string, unknown>,
+): boolean {
+  const matrix = findFirstMetadataValue(metadata, [
+    "audit_matrix",
+    "l1_l2_l3_coverage_matrix",
+    "coverage_matrix",
+  ]);
+  if (matrix === undefined || !hasNonEmptyRegisterValue(matrix)) {
+    return false;
+  }
+
+  return (
+    metadataValueHasNonEmptyKey(matrix, ["l1", "l1_review", "l1_audit"]) &&
+    metadataValueHasNonEmptyKey(matrix, ["l2", "l2_review", "l2_audit"]) &&
+    metadataValueHasNonEmptyKey(matrix, ["l3", "l3_review", "l3_audit"])
+  );
+}
+
+function phaseClosureCarryoverHasRationale(item: unknown): boolean {
+  if (!item || typeof item !== "object" || Array.isArray(item)) {
+    return false;
+  }
+  const value = findFirstMetadataValue(item as Record<string, unknown>, [
+    "justification",
+    "rationale",
+    "safety_rationale",
+    "why_safe",
+    "safe_to_carry",
+    "reason",
+  ]);
+  return value !== undefined && hasNonEmptyRegisterValue(value);
+}
+
+function phaseClosurePrHasPostmergeEvidence(item: unknown): boolean {
+  if (!item || typeof item !== "object" || Array.isArray(item)) {
+    return false;
+  }
+  const value = findFirstMetadataValue(item as Record<string, unknown>, [
+    "postmerge_evidence",
+    "post_merge_evidence",
+    "postmerge_001_evidence",
+    "postmerge_evidence_ref",
+    "postmerge_url",
+  ]);
+  return value !== undefined && hasNonEmptyRegisterValue(value);
+}
+
+function findFirstMetadataValue(
+  value: Record<string, unknown>,
+  keys: string[],
+): unknown {
+  const keySet = new Set(keys.map(normalizeMetadataKey));
+  return findFirstMetadataValueByKeySet(value, keySet);
+}
+
+function findFirstMetadataValueByKeySet(
+  value: unknown,
+  keys: Set<string>,
+): unknown {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findFirstMetadataValueByKeySet(item, keys);
+      if (found !== undefined) {
+        return found;
+      }
+    }
+    return undefined;
+  }
+
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (keys.has(normalizeMetadataKey(key))) {
+      return child;
+    }
+  }
+
+  for (const child of Object.values(value as Record<string, unknown>)) {
+    const found = findFirstMetadataValueByKeySet(child, keys);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+
+  return undefined;
+}
+
+function metadataValueHasNonEmptyKey(value: unknown, keys: string[]): boolean {
+  if (value && typeof value === "object") {
+    const found = findFirstMetadataValueByKeySet(
+      value,
+      new Set(keys.map(normalizeMetadataKey)),
+    );
+    return found !== undefined && hasNonEmptyRegisterValue(found);
+  }
+  return false;
+}
+
+function hasNonEmptyRegisterValue(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0 && !isEmptyRegisterString(value);
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0 && value.some(hasNonEmptyRegisterValue);
+  }
+  if (typeof value === "object") {
+    return Object.keys(value).length > 0 &&
+      Object.values(value as Record<string, unknown>).some(hasNonEmptyRegisterValue);
+  }
+  return false;
+}
+
+function isEmptyRegisterValue(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return value.trim().length === 0 || isEmptyRegisterString(value);
+  }
+  if (Array.isArray(value)) {
+    return value.length === 0 || value.every(isEmptyRegisterValue);
+  }
+  if (typeof value === "object") {
+    return Object.keys(value).length === 0 ||
+      Object.values(value as Record<string, unknown>).every(isEmptyRegisterValue);
+  }
+  return false;
+}
+
+function isEmptyRegisterString(value: string): boolean {
+  return ["none", "no", "n/a", "na", "[]", "{}", "empty"].includes(
+    normalizeDisposition(value),
+  );
+}
+
+function phaseClosureItems(value: unknown): unknown[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  if (isEmptyRegisterValue(value)) {
+    return [];
+  }
+  if (value && typeof value === "object") {
+    const nestedItems = findFirstMetadataValue(value as Record<string, unknown>, [
+      "items",
+      "entries",
+      "prs",
+      "tasks",
+    ]);
+    if (nestedItems !== undefined && nestedItems !== value) {
+      return phaseClosureItems(nestedItems);
+    }
+  }
+  return [value];
+}
+
+function describePhaseClosureItem(item: unknown, fallback: string): string {
+  if (typeof item === "string" && item.trim().length > 0) {
+    return item.trim();
+  }
+  if (item && typeof item === "object" && !Array.isArray(item)) {
+    const metadata = item as Record<string, unknown>;
+    const value = findFirstMetadataValue(metadata, [
+      "id",
+      "number",
+      "pr",
+      "issue",
+      "title",
+      "name",
+    ]);
+    if (typeof value === "string" || typeof value === "number") {
+      return String(value);
+    }
+  }
+  return fallback;
 }
 
 function dogfoodMissingDecision(profile: WorkflowProfile): {

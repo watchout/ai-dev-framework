@@ -298,6 +298,107 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict phase_closure fails when the closure record is missing", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+
+    const result = runWorkflow("check --action phase_closure --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.record.present",
+          decision: "BLOCK",
+        }),
+      ]),
+    );
+  });
+
+  it("strict phase_closure blocks incomplete closure evidence", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writePhaseClosureRecord(tmpDir, {
+      phase: "Phase 1",
+      phase_objective: "Internal dogfood",
+      readiness_claim: "Phase 1 complete",
+      merged_prs: [{ number: 231 }],
+      l0_evidence_summary: "",
+      audit_matrix: { l1: "pass" },
+      unresolved_blockers: [{ id: "#999", title: "open blocker" }],
+      deferred_items: [{ id: "#233", target_phase: "Phase 1" }],
+      residual_risks: [],
+      explicit_non_claims: ["No public readiness claim"],
+      next_phase_entry_conditions: ["T2 accepted"],
+      reopen_criteria: ["Evidence drift"],
+    });
+
+    const result = runWorkflow("check --action phase_closure --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThanOrEqual(4);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.required_fields",
+          decision: "BLOCK",
+          message: expect.stringContaining("completed_tasks"),
+        }),
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.blockers_cleared",
+          decision: "BLOCK",
+          message: expect.stringContaining("#999"),
+        }),
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.carryovers_justified",
+          decision: "BLOCK",
+          message: expect.stringContaining("#233"),
+        }),
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.postmerge_evidence",
+          decision: "BLOCK",
+          message: expect.stringContaining("231"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict phase_closure passes with a complete closure record", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writePhaseClosureRecord(tmpDir, completePhaseClosureRecord());
+
+    const result = runWorkflow("check --action phase_closure --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBe(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.required_fields",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.postmerge_evidence",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
   it("remote_publish fails on remote publish blocks", () => {
     saveSession(tmpDir, completedDiscoverSession());
     saveFrameworkConfig(tmpDir, readyConfig());
@@ -553,4 +654,59 @@ function writeDogfoodEvidence(
     JSON.stringify({ verdict: "PASS", feature }),
     "utf-8",
   );
+}
+
+function writePhaseClosureRecord(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/phase-closure.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
+function completePhaseClosureRecord(): Record<string, unknown> {
+  return {
+    phase: "Phase 1",
+    phase_objective: "Apply Shirube to its own development workflow.",
+    readiness_claim: "Phase 1 closure gate fixture is complete.",
+    completed_tasks: [
+      { id: "T0", issue: 223 },
+      { id: "T1", issue: 222 },
+    ],
+    merged_prs: [
+      {
+        number: 231,
+        merge_commit: "2f820c59518a22e1e6436176a59252753b12a824",
+        postmerge_evidence:
+          "https://github.com/watchout/ai-dev-framework/pull/231#issuecomment-4549558867",
+      },
+    ],
+    l0_evidence_summary: "build, type-check, lint, tests, and trace verify passed.",
+    audit_matrix: {
+      l1: "PASS",
+      l2: "PASS",
+      l3: "PASS",
+    },
+    unresolved_blockers: [],
+    deferred_items: [
+      {
+        id: "#233",
+        target_phase: "Phase 1",
+        owner: "adf-lead",
+        justification: "Tracked as non-blocking test hygiene follow-up.",
+      },
+    ],
+    residual_risks: [],
+    explicit_non_claims: [
+      "No public MVP readiness claim.",
+      "No OSS quality claim.",
+      "No enterprise readiness claim.",
+    ],
+    next_phase_entry_conditions: ["T2 audit gate remains green."],
+    reopen_criteria: ["Merged PR evidence becomes stale or invalid."],
+  };
 }
