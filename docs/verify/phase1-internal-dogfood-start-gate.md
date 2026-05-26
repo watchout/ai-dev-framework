@@ -31,12 +31,17 @@ The implementation PR must include fixtures proving strict `implementation_start
 | missing task trace | BLOCK `G10.task_trace.present` |
 | missing SPEC/IMPL/VERIFY/OPS readiness | BLOCK `G10.doc4l.readiness` |
 | missing pre-implementation audit | BLOCK `G11.pre_impl_audit.disposition` |
-| missing lifecycle notification record | BLOCK `G18.admin_notice.lifecycle_record` |
+| missing lifecycle evidence sink readiness | BLOCK `G18.admin_notice.sink_ready` |
+| lifecycle write failure on strict pass | BLOCK `G18.admin_notice.lifecycle_record` and no session write |
+| lifecycle write failure on strict block | BLOCK `G18.admin_notice.lifecycle_record` and no silent blocked exit |
 | missing role binding | BLOCK existing role rule |
 | role separation violation | BLOCK existing separation rule |
 | missing hearing/intake confirmation | BLOCK existing hearing rule |
 
 Each fixture must assert the rule id, decision, remediation, and action-scoped failure result.
+Lifecycle fixtures must also assert that `task_start` is emitted by the same
+transition that writes/resumes the session, and `blocked` is emitted by the same
+transition that exits non-zero.
 
 ## 3. Start Command Verification
 Required cases:
@@ -46,6 +51,11 @@ Required cases:
 3. `shirube start --audit-level standard` does not claim strict dogfood readiness when #222 evidence is missing.
 4. `shirube start --resume --audit-level strict` re-checks current evidence before resuming.
 5. An existing role/separation block still produces actionable output.
+6. Strict successful start writes `task_start` lifecycle evidence before
+   `.framework/current-session.json` mutation.
+7. Strict blocked start writes `blocked` lifecycle evidence with blocking rule
+   ids before exit.
+8. Lifecycle write failure prevents session mutation.
 
 ## 4. Trace Verification
 The #222 4-layer docs must remain trace-complete:

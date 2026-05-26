@@ -19,10 +19,13 @@ For Phase 1 internal dogfood work:
 2. Confirm the task traces to the Goal Contract and Phase 1 plan.
 3. Create SPEC/IMPL/VERIFY/OPS or explicit non-applicability evidence.
 4. Request pre-implementation audit when the task changes workflow control behavior.
-5. Run `shirube workflow check --action implementation_start --profile strict --json`.
-6. Start or resume only when scoped strict decisions are not BLOCK.
-7. Record lifecycle notification evidence for `task_start` or `blocked`.
-8. After merge, record POSTMERGE-001 evidence when the PR contributes to phase exit claims.
+5. Confirm lifecycle evidence sink readiness, using local fallback when no
+   external adapter is configured.
+6. Run `shirube workflow check --action implementation_start --profile strict --json`.
+7. Start or resume only when scoped strict decisions are not BLOCK.
+8. Let `shirube start` record lifecycle evidence in the same transition:
+   `task_start` before session mutation, or `blocked` before non-zero exit.
+9. After merge, record POSTMERGE-001 evidence when the PR contributes to phase exit claims.
 
 ## 2. What BLOCK Means
 A strict BLOCK means ordinary framework-led implementation must not continue until the missing evidence is supplied or an authority-approved exception is recorded.
@@ -52,6 +55,16 @@ Acceptable interim records:
 
 AUN/Discord delivery is optional adapter behavior and belongs to #229 unless pulled into scope by a reviewed implementation change.
 
+Timing rule:
+
+- `workflow check` validates that lifecycle evidence can be recorded; it does
+  not require a pre-existing `task_start` record.
+- `task_start` is written by the same successful strict start transition that
+  creates or resumes the session.
+- `blocked` is written by the same failed strict start transition that reports
+  blocking rule ids.
+- If the lifecycle evidence sink cannot write, strict start fails closed.
+
 ## 4. Incident Handling
 | Incident | Response |
 |----------|----------|
@@ -59,6 +72,7 @@ AUN/Discord delivery is optional adapter behavior and belongs to #229 unless pul
 | standard/minimal users are unexpectedly blocked during migration | Re-check profile mapping; downgrade to WARN unless the project is unapplied or role authority is invalid. |
 | GitHub Issue is treated as Goal Contract approval | Block rollout; Issue intake is not approval evidence. |
 | notification adapter is missing | Use local/GitHub record fallback and keep external delivery in #229. |
+| lifecycle record cannot be written during strict start | Fail closed and do not mutate the session. |
 | POSTMERGE-001 evidence is missing for phase-exit PR | Do not claim phase exit until the record is added or L3 approves disposition. |
 
 ## 5. Rollback
