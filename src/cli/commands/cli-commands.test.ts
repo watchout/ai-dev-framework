@@ -224,6 +224,54 @@ describe("start command", () => {
     }
   }
 
+  function writeStrictDogfoodEvidence(dir: string): void {
+    fs.writeFileSync(
+      path.join(dir, ".framework", "discover-session.json"),
+      JSON.stringify({
+        id: "discover-1",
+        status: "completed",
+        currentStage: 5,
+        startedAt: "2026-05-23T00:00:00.000Z",
+        updatedAt: "2026-05-23T00:00:00.000Z",
+        completedAt: "2026-05-23T00:00:00.000Z",
+        stages: [
+          { stageNumber: 1, status: "confirmed", summary: "stage 1" },
+          { stageNumber: 2, status: "confirmed", summary: "stage 2" },
+          { stageNumber: 3, status: "confirmed", summary: "stage 3" },
+          { stageNumber: 4, status: "confirmed", summary: "stage 4" },
+          { stageNumber: 5, status: "confirmed", summary: "stage 5" },
+        ],
+        answers: { "Q1-1": "strict dogfood" },
+      }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "goal-contract.json"),
+      JSON.stringify({ status: "approved" }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "phase-plan.json"),
+      JSON.stringify({ phase: 1, goalContract: "approved" }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "task-trace.json"),
+      JSON.stringify({ task: "FEAT-001", issue: 222, phase: 1 }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "doc4l-readiness.json"),
+      JSON.stringify({ status: "ready" }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "pre-impl-audit.json"),
+      JSON.stringify({ verdict: "PASS" }),
+      "utf-8",
+    );
+  }
+
   it("blocks strict start when role bindings are missing", () => {
     withFrameworkProject((cwd) => {
       const result = runCliWithExit(
@@ -340,6 +388,7 @@ describe("start command", () => {
         JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
         "utf-8",
       );
+      writeStrictDogfoodEvidence(cwd);
 
       const result = runCliWithExit(
         "start . --feature FEAT-001 --audit-level strict --dry-run",
@@ -351,6 +400,37 @@ describe("start command", () => {
     });
   });
 
+  it("blocks strict start when dogfood evidence is missing and records a blocked lifecycle event", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("Strict implementation_start workflow check failed");
+      const lifecyclePath = path.join(cwd, ".framework", "lifecycle-events.jsonl");
+      expect(fs.existsSync(lifecyclePath)).toBe(true);
+      const record = JSON.parse(fs.readFileSync(lifecyclePath, "utf-8").trim()) as {
+        event: string;
+        task_id: string;
+        blocking_rule_ids: string[];
+      };
+      expect(record.event).toBe("blocked");
+      expect(record.task_id).toBe("FEAT-001");
+      expect(record.blocking_rule_ids).toEqual(
+        expect.arrayContaining(["G10.goal_contract.approved"]),
+      );
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(false);
+    });
+  });
+
   it("does not write a session when framework mode activation fails", () => {
     withFrameworkProject((cwd) => {
       fs.writeFileSync(
@@ -358,6 +438,7 @@ describe("start command", () => {
         JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
         "utf-8",
       );
+      writeStrictDogfoodEvidence(cwd);
 
       const result = runCliWithExit(
         "start . --feature FEAT-001 --audit-level strict",

@@ -183,6 +183,61 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict implementation_start fails on missing #222 dogfood evidence", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, readyConfig());
+
+    const result = runWorkflow("check --action implementation_start --profile strict --feature FEAT-001 --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.goal_contract.approved",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G11.pre_impl_audit.disposition",
+          decision: "BLOCK",
+        }),
+      ]),
+    );
+  });
+
+  it("strict implementation_start passes when #222 dogfood evidence is present", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDogfoodEvidence(tmpDir);
+
+    const result = runWorkflow("check --action implementation_start --profile strict --feature FEAT-001 --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBe(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.goal_contract.approved",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G18.admin_notice.sink_ready",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
   it("remote_publish fails on remote publish blocks", () => {
     saveSession(tmpDir, completedDiscoverSession());
     saveFrameworkConfig(tmpDir, readyConfig());
@@ -398,4 +453,38 @@ function autoPublishConfig(): FrameworkConfig {
     outputs: ["local_files", "github"],
   };
   return config;
+}
+
+function writeDogfoodEvidence(projectDir: string): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/project.json"),
+    JSON.stringify({ name: "dogfood-test" }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/goal-contract.json"),
+    JSON.stringify({ status: "approved" }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/phase-plan.json"),
+    JSON.stringify({ phase: 1 }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/task-trace.json"),
+    JSON.stringify({ task: "FEAT-001", issue: 222 }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/doc4l-readiness.json"),
+    JSON.stringify({ status: "ready" }),
+    "utf-8",
+  );
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/pre-impl-audit.json"),
+    JSON.stringify({ verdict: "PASS" }),
+    "utf-8",
+  );
 }

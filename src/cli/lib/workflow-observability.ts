@@ -230,9 +230,16 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
     "G2.hearing.required_confirmation",
   ],
   implementation_start: [
+    "G0.start_boundary.project_applied",
     "G1.roles.required_bindings",
     "G1.roles.separation",
     "G2.hearing.required_confirmation",
+    "G10.goal_contract.approved",
+    "G10.phase_plan.present",
+    "G10.task_trace.present",
+    "G10.doc4l.readiness",
+    "G11.pre_impl_audit.disposition",
+    "G18.admin_notice.sink_ready",
   ],
   implementation_split: [
     "G1.roles.required_bindings",
