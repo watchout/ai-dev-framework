@@ -223,6 +223,11 @@ Shirube can govern its own development and at least one internal project through
 | T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain. |
 
 T0/T1 start artifact: [Phase 1 Internal Dogfood Start](./phase1-internal-dogfood-start.md).
+T1 4-layer artifact set:
+SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
+`docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
+`docs/verify/phase1-internal-dogfood-start-gate.md`, OPS
+`docs/ops/phase1-internal-dogfood-start-gate.md`.
 
 ### Verification
 
