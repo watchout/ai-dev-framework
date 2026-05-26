@@ -1,7 +1,7 @@
 # Phase 1 Internal Dogfood Start
 
 > Status: Phase 1 T0/T1 start artifact
-> Updated: 2026-05-26
+> Updated: 2026-05-27
 > Tracking: #223, #222
 > Related: #217, #224, #225, #226, #227, POSTMERGE-001
 
@@ -34,6 +34,13 @@ unclaimed until the Phase 1 sufficient exit conditions in `roadmap.md` are met.
 | T3 | #225 | `AUDITLEDGER-001` Audit Evidence and Approval Ledger | Structure L0/L1/L2/L3/L4 evidence and approver records. |
 | T4 | #226 | Workflow Action Registry and Wrapper Semantics | Prevent action drift and diagnostic/enforcement wrapper misuse. |
 | T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain | Model the full development chain as deterministic state transitions. |
+
+T1 artifact set:
+
+- SPEC: `docs/spec/phase1-internal-dogfood-start-gate.md`
+- IMPL: `docs/impl/phase1-internal-dogfood-start-gate.md`
+- VERIFY: `docs/verify/phase1-internal-dogfood-start-gate.md`
+- OPS: `docs/ops/phase1-internal-dogfood-start-gate.md`
 
 ### 2.3 Operating Rules
 
@@ -108,7 +115,8 @@ Implementation order:
 
 1. Update the roadmap so #223-#227 are visible Phase 1 tasks.
 2. Use #223 to close the Phase 0 carryover ledger gap.
-3. Use #222 to define and wire the first internal start/run gate checks.
+3. Use #222 to define the first internal start/run gate checks, request
+   pre-implementation audit, then wire the approved checks.
 4. Define #227 chain state and transition checks after the first start gate
    baseline is scoped.
 5. Connect #224, #225, and #226 as inputs to the chain rather than duplicating
