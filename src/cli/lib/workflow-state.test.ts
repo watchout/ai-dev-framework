@@ -391,7 +391,7 @@ describe("workflow-state", () => {
     );
     fs.writeFileSync(
       path.join(tmpDir, ".framework/doc4l-readiness.json"),
-      JSON.stringify({ readiness: true }),
+      JSON.stringify({ readiness: true, feature: "FEAT-001" }),
       "utf-8",
     );
 
@@ -405,6 +405,41 @@ describe("workflow-state", () => {
       expect.arrayContaining([
         expect.objectContaining({
           rule_id: "G10.goal_contract.approved",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G10.doc4l.readiness",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("accepts approved parent-scope evidence for selected-feature dogfood requirements", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, readyConfig());
+    writeDogfoodEvidence(tmpDir);
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/phase-plan.json"),
+      JSON.stringify({ phase: 1, scope: "phase", status: "approved" }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/doc4l-readiness.json"),
+      JSON.stringify({ scope: "parent_scope", readiness: "ready" }),
+      "utf-8",
+    );
+
+    const state = buildWorkflowState(tmpDir, {
+      now: NOW,
+      profile: "strict",
+      feature: "FEAT-001",
+    });
+
+    expect(state.gate_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.phase_plan.present",
           decision: "PASS",
         }),
         expect.objectContaining({
@@ -460,7 +495,7 @@ function readyConfig(): FrameworkConfig {
   };
 }
 
-function writeDogfoodEvidence(projectDir: string): void {
+function writeDogfoodEvidence(projectDir: string, feature = "FEAT-001"): void {
   fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
   fs.writeFileSync(
     path.join(projectDir, ".framework/project.json"),
@@ -474,22 +509,22 @@ function writeDogfoodEvidence(projectDir: string): void {
   );
   fs.writeFileSync(
     path.join(projectDir, ".framework/phase-plan.json"),
-    JSON.stringify({ phase: 1 }),
+    JSON.stringify({ phase: 1, feature }),
     "utf-8",
   );
   fs.writeFileSync(
     path.join(projectDir, ".framework/task-trace.json"),
-    JSON.stringify({ task: "FEAT-001", issue: 222 }),
+    JSON.stringify({ task: feature, feature, issue: 222 }),
     "utf-8",
   );
   fs.writeFileSync(
     path.join(projectDir, ".framework/doc4l-readiness.json"),
-    JSON.stringify({ status: "ready" }),
+    JSON.stringify({ status: "ready", feature }),
     "utf-8",
   );
   fs.writeFileSync(
     path.join(projectDir, ".framework/pre-impl-audit.json"),
-    JSON.stringify({ verdict: "PASS" }),
+    JSON.stringify({ verdict: "PASS", feature }),
     "utf-8",
   );
 }

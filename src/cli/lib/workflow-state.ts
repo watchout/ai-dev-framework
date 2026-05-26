@@ -311,6 +311,7 @@ interface LocalEvidenceRequirement {
   missingMessage: string;
   remediation: string;
   validator?: (artifact: LocalEvidenceArtifact) => boolean;
+  requireSelectedFeatureScope?: boolean;
 }
 
 interface LocalEvidenceArtifact {
@@ -350,6 +351,7 @@ const DOGFOOD_EVIDENCE_REQUIREMENTS: LocalEvidenceRequirement[] = [
     passMessage: "Phase plan evidence is present.",
     missingMessage: "Phase plan evidence is missing.",
     remediation: "Create a phase plan that traces to the Goal Contract.",
+    requireSelectedFeatureScope: true,
   },
   {
     ruleId: "G10.task_trace.present",
@@ -364,6 +366,7 @@ const DOGFOOD_EVIDENCE_REQUIREMENTS: LocalEvidenceRequirement[] = [
     passMessage: "Task trace evidence is present.",
     missingMessage: "Task trace evidence is missing.",
     remediation: "Link the selected task to phase, issue, and feature/task decomposition.",
+    requireSelectedFeatureScope: true,
   },
   {
     ruleId: "G10.doc4l.readiness",
@@ -377,6 +380,7 @@ const DOGFOOD_EVIDENCE_REQUIREMENTS: LocalEvidenceRequirement[] = [
     missingMessage: "SPEC/IMPL/VERIFY/OPS readiness evidence is missing.",
     remediation: "Add SPEC/IMPL/VERIFY/OPS docs or explicit non-applicability.",
     validator: hasReadyDisposition,
+    requireSelectedFeatureScope: true,
   },
   {
     ruleId: "G11.pre_impl_audit.disposition",
@@ -392,6 +396,7 @@ const DOGFOOD_EVIDENCE_REQUIREMENTS: LocalEvidenceRequirement[] = [
     missingMessage: "Pre-implementation audit disposition evidence is missing.",
     remediation: "Record pre-implementation audit PASS or an approved non-applicability rationale.",
     validator: hasPassOrApprovedDisposition,
+    requireSelectedFeatureScope: true,
   },
 ];
 
@@ -404,8 +409,8 @@ function applyProjectApplied(
 ): void {
   const projectPath = path.join(projectDir, PROJECT_PATH);
   const configPath = path.join(projectDir, CONFIG_PATH);
-  if (fs.existsSync(projectPath) || fs.existsSync(configPath)) {
-    const artifactPath = fs.existsSync(projectPath) ? PROJECT_PATH : CONFIG_PATH;
+  if (fs.existsSync(projectPath)) {
+    const artifactPath = PROJECT_PATH;
     const projectEvidence = createEvidence({
       projectDir,
       now,
@@ -441,7 +446,9 @@ function applyProjectApplied(
       decisionValue: "BLOCK",
       severity: "error",
       profile,
-      message: "Project application state is missing.",
+      message: fs.existsSync(configPath)
+        ? "Project application state is incomplete: .framework/project.json is missing."
+        : "Project application state is missing.",
       evidenceRefs: [],
       remediation: "Run shirube retrofit or shirube init to create project state.",
     }),
@@ -529,7 +536,10 @@ function applyLocalEvidenceRequirement(
   gateDecisions: WorkflowGateDecision[],
 ): void {
   const artifact = findLocalEvidence(projectDir, requirement.paths);
-  if (artifact && (requirement.validator?.(artifact) ?? true)) {
+  const validation = artifact
+    ? validateLocalEvidenceRequirement(artifact, requirement, feature)
+    : { valid: false, reason: requirement.missingMessage };
+  if (artifact && validation.valid) {
     const record = createEvidence({
       projectDir,
       now,
@@ -565,7 +575,7 @@ function applyLocalEvidenceRequirement(
         kind: requirement.kind,
         artifactPath: artifact.path,
         sourceUri: `file://${artifact.path}`,
-        summary: `${requirement.missingMessage} Existing artifact is not approved or ready.`,
+        summary: `${requirement.missingMessage} ${validation.reason}`,
         validity: "invalid",
         metadata: {
           ...artifact.metadata,
@@ -586,12 +596,38 @@ function applyLocalEvidenceRequirement(
       severity: missing.severity,
       profile,
       message: artifact
-        ? `${requirement.missingMessage} Existing artifact is not approved or ready.`
+        ? `${requirement.missingMessage} ${validation.reason}`
         : requirement.missingMessage,
       evidenceRefs: invalidRecord ? [invalidRecord.id] : [],
       remediation: requirement.remediation,
     }),
   );
+}
+
+function validateLocalEvidenceRequirement(
+  artifact: LocalEvidenceArtifact,
+  requirement: LocalEvidenceRequirement,
+  feature: string | null,
+): { valid: boolean; reason: string } {
+  if (requirement.validator && !requirement.validator(artifact)) {
+    return {
+      valid: false,
+      reason: "Existing artifact is not approved or ready.",
+    };
+  }
+
+  if (
+    requirement.requireSelectedFeatureScope &&
+    feature &&
+    !isEvidenceScopedToSelectedFeature(artifact.metadata, feature)
+  ) {
+    return {
+      valid: false,
+      reason: `Existing artifact is not scoped to selected feature/task ${feature}.`,
+    };
+  }
+
+  return { valid: true, reason: "" };
 }
 
 function dogfoodMissingDecision(profile: WorkflowProfile): {
@@ -693,7 +729,14 @@ function hasAnyDisposition(
   artifact: LocalEvidenceArtifact,
   accepted: string[],
 ): boolean {
-  const values = collectDispositionValues(artifact.metadata).map(normalizeDisposition);
+  return metadataHasAnyDisposition(artifact.metadata, accepted);
+}
+
+function metadataHasAnyDisposition(
+  metadata: Record<string, unknown>,
+  accepted: string[],
+): boolean {
+  const values = collectDispositionValues(metadata).map(normalizeDisposition);
   return values.some((value) => accepted.includes(value));
 }
 
@@ -726,6 +769,158 @@ function collectDispositionValues(metadata: Record<string, unknown>): string[] {
 
 function normalizeDisposition(value: string): string {
   return value.trim().toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+const FEATURE_SCOPE_KEYS = new Set([
+  "feature",
+  "feature_id",
+  "featureid",
+  "features",
+  "feature_ids",
+  "featureids",
+  "selected_feature",
+  "selected_feature_id",
+  "task",
+  "task_id",
+  "taskid",
+  "tasks",
+  "task_ids",
+  "taskids",
+  "selected_task",
+  "selected_task_id",
+]);
+
+const PARENT_SCOPE_KEYS = new Set([
+  "scope",
+  "scope_type",
+  "evidence_scope",
+  "applicability",
+  "applies_to",
+]);
+
+const APPROVED_PARENT_SCOPES = new Set([
+  "global",
+  "parent",
+  "parent_scope",
+  "phase",
+  "phase_scope",
+  "cross_feature",
+  "cross_task",
+  "not_applicable",
+  "non_applicable",
+  "n/a",
+]);
+
+function isEvidenceScopedToSelectedFeature(
+  metadata: Record<string, unknown>,
+  feature: string,
+): boolean {
+  const selected = normalizeScopeValue(feature);
+  const scopedValues = collectValuesForKeys(metadata, FEATURE_SCOPE_KEYS)
+    .map(normalizeScopeValue)
+    .filter(Boolean);
+
+  if (scopedValues.includes(selected)) {
+    return true;
+  }
+
+  return hasApprovedParentScope(metadata);
+}
+
+function hasApprovedParentScope(metadata: Record<string, unknown>): boolean {
+  const parentScopes = collectValuesForKeys(metadata, PARENT_SCOPE_KEYS)
+    .map(normalizeDisposition)
+    .filter(Boolean);
+  if (!parentScopes.some((scope) => APPROVED_PARENT_SCOPES.has(scope))) {
+    return false;
+  }
+
+  if (
+    metadataHasAnyDisposition(metadata, [
+      "approved",
+      "pass",
+      "passed",
+      "accepted",
+      "ready",
+      "not_applicable",
+      "non_applicable",
+      "n/a",
+      "true",
+    ])
+  ) {
+    return true;
+  }
+
+  return collectValuesForKeys(
+    metadata,
+    new Set([
+      "approved_parent_scope",
+      "parent_scope_approved",
+      "non_applicability_approved",
+      "scope_approved",
+    ]),
+  )
+    .map(normalizeDisposition)
+    .some((value) => value === "true" || value === "approved" || value === "accepted");
+}
+
+function collectValuesForKeys(
+  value: unknown,
+  keys: Set<string>,
+  currentKey: string | null = null,
+): string[] {
+  const values: string[] = [];
+  const normalizedKey = currentKey ? normalizeMetadataKey(currentKey) : null;
+  const keyMatches = normalizedKey ? keys.has(normalizedKey) : false;
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    if (keyMatches) {
+      values.push(String(value));
+    }
+    return values;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      values.push(...collectValuesForKeys(item, keys, currentKey));
+    }
+    return values;
+  }
+
+  if (value && typeof value === "object") {
+    if (keyMatches) {
+      values.push(...collectPrimitiveLeafValues(value));
+      return values;
+    }
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      values.push(...collectValuesForKeys(child, keys, key));
+    }
+  }
+
+  return values;
+}
+
+function collectPrimitiveLeafValues(value: unknown): string[] {
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return [String(value)];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => collectPrimitiveLeafValues(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).flatMap((item) =>
+      collectPrimitiveLeafValues(item),
+    );
+  }
+  return [];
+}
+
+function normalizeMetadataKey(key: string): string {
+  return key.trim().toLowerCase().replace(/[\s.-]+/g, "_");
+}
+
+function normalizeScopeValue(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s_.-]+/g, "");
 }
 
 function loadDiscoverSession(projectDir: string): DiscoverSessionData | null {

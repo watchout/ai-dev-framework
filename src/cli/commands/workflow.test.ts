@@ -155,6 +155,12 @@ describe("workflow command", () => {
   it("implementation_start ignores remote_publish-only blocks", () => {
     saveSession(tmpDir, completedDiscoverSession());
     saveFrameworkConfig(tmpDir, readyConfig());
+    fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, ".framework/project.json"),
+      JSON.stringify({ name: "workflow-test" }),
+      "utf-8",
+    );
 
     const result = runWorkflow("check --action implementation_start --json");
     const report = parseJson<{
@@ -233,6 +239,60 @@ describe("workflow command", () => {
         expect.objectContaining({
           rule_id: "G18.admin_notice.sink_ready",
           decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("strict implementation_start blocks evidence scoped to a different selected feature", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDogfoodEvidence(tmpDir, "OTHER-FEATURE");
+
+    const result = runWorkflow("check --action implementation_start --profile strict --feature FEAT-001 --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.phase_plan.present",
+          decision: "BLOCK",
+          message: expect.stringContaining("selected feature/task FEAT-001"),
+        }),
+        expect.objectContaining({
+          rule_id: "G10.task_trace.present",
+          decision: "BLOCK",
+          message: expect.stringContaining("selected feature/task FEAT-001"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict implementation_start uses the same project-applied boundary as start", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDogfoodEvidence(tmpDir, "FEAT-001", { project: false });
+
+    const result = runWorkflow("check --action implementation_start --profile strict --feature FEAT-001 --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G0.start_boundary.project_applied",
+          decision: "BLOCK",
+          message: expect.stringContaining(".framework/project.json"),
         }),
       ]),
     );
@@ -455,13 +515,19 @@ function autoPublishConfig(): FrameworkConfig {
   return config;
 }
 
-function writeDogfoodEvidence(projectDir: string): void {
+function writeDogfoodEvidence(
+  projectDir: string,
+  feature = "FEAT-001",
+  options: { project?: boolean } = {},
+): void {
   fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
-  fs.writeFileSync(
-    path.join(projectDir, ".framework/project.json"),
-    JSON.stringify({ name: "dogfood-test" }),
-    "utf-8",
-  );
+  if (options.project !== false) {
+    fs.writeFileSync(
+      path.join(projectDir, ".framework/project.json"),
+      JSON.stringify({ name: "dogfood-test" }),
+      "utf-8",
+    );
+  }
   fs.writeFileSync(
     path.join(projectDir, ".framework/goal-contract.json"),
     JSON.stringify({ status: "approved" }),
@@ -469,22 +535,22 @@ function writeDogfoodEvidence(projectDir: string): void {
   );
   fs.writeFileSync(
     path.join(projectDir, ".framework/phase-plan.json"),
-    JSON.stringify({ phase: 1 }),
+    JSON.stringify({ phase: 1, feature }),
     "utf-8",
   );
   fs.writeFileSync(
     path.join(projectDir, ".framework/task-trace.json"),
-    JSON.stringify({ task: "FEAT-001", issue: 222 }),
+    JSON.stringify({ task: feature, feature, issue: 222 }),
     "utf-8",
   );
   fs.writeFileSync(
     path.join(projectDir, ".framework/doc4l-readiness.json"),
-    JSON.stringify({ status: "ready" }),
+    JSON.stringify({ status: "ready", feature }),
     "utf-8",
   );
   fs.writeFileSync(
     path.join(projectDir, ".framework/pre-impl-audit.json"),
-    JSON.stringify({ verdict: "PASS" }),
+    JSON.stringify({ verdict: "PASS", feature }),
     "utf-8",
   );
 }

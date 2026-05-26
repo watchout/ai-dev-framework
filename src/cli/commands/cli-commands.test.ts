@@ -28,7 +28,7 @@ function runCli(args: string): string {
 
 function runCliWithExit(
   args: string,
-  options: { cwd?: string } = {},
+  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {},
 ): {
   stdout: string;
   exitCode: number;
@@ -40,6 +40,7 @@ function runCliWithExit(
       timeout: 15000,
       stdio: ["pipe", "pipe", "pipe"],
       cwd: options.cwd,
+      env: options.env ? { ...process.env, ...options.env } : process.env,
     });
     return { stdout, exitCode: 0, stderr: "" };
   } catch (error) {
@@ -204,6 +205,38 @@ describe("start command", () => {
     );
   }
 
+  function withFakeActiveGh<T>(fn: (env: NodeJS.ProcessEnv) => T): T {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-fake-gh-"));
+    try {
+      const binDir = path.join(dir, "bin");
+      fs.mkdirSync(binDir, { recursive: true });
+      const ghPath = path.join(binDir, "gh");
+      fs.writeFileSync(
+        ghPath,
+        [
+          "#!/bin/sh",
+          "if [ \"$1\" = \"api\" ]; then",
+          "  printf '[\"framework-managed\"]\\n'",
+          "  exit 0",
+          "fi",
+          "if [ \"$1\" = \"repo\" ] && [ \"$2\" = \"edit\" ]; then",
+          "  exit 0",
+          "fi",
+          "printf 'unexpected gh invocation: %s\\n' \"$*\" >&2",
+          "exit 1",
+          "",
+        ].join("\n"),
+        "utf-8",
+      );
+      fs.chmodSync(ghPath, 0o755);
+      return fn({
+        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
   function withFrameworkProject<T>(fn: (dir: string) => T): T {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-start-test-"));
     try {
@@ -224,7 +257,7 @@ describe("start command", () => {
     }
   }
 
-  function writeStrictDogfoodEvidence(dir: string): void {
+  function writeStrictDogfoodEvidence(dir: string, feature = "FEAT-001"): void {
     fs.writeFileSync(
       path.join(dir, ".framework", "discover-session.json"),
       JSON.stringify({
@@ -252,22 +285,22 @@ describe("start command", () => {
     );
     fs.writeFileSync(
       path.join(dir, ".framework", "phase-plan.json"),
-      JSON.stringify({ phase: 1, goalContract: "approved" }),
+      JSON.stringify({ phase: 1, feature, goalContract: "approved" }),
       "utf-8",
     );
     fs.writeFileSync(
       path.join(dir, ".framework", "task-trace.json"),
-      JSON.stringify({ task: "FEAT-001", issue: 222, phase: 1 }),
+      JSON.stringify({ task: feature, feature, issue: 222, phase: 1 }),
       "utf-8",
     );
     fs.writeFileSync(
       path.join(dir, ".framework", "doc4l-readiness.json"),
-      JSON.stringify({ status: "ready" }),
+      JSON.stringify({ status: "ready", feature }),
       "utf-8",
     );
     fs.writeFileSync(
       path.join(dir, ".framework", "pre-impl-audit.json"),
-      JSON.stringify({ verdict: "PASS" }),
+      JSON.stringify({ verdict: "PASS", feature }),
       "utf-8",
     );
   }
@@ -397,6 +430,100 @@ describe("start command", () => {
 
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain("Readiness:    ready");
+    });
+  });
+
+  it("keeps workflow check and start dry-run aligned for config-only projects", () => {
+    withFrameworkProject((cwd) => {
+      fs.rmSync(path.join(cwd, ".framework", "project.json"));
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({
+          roles: { bindings: completeRoleBindings() },
+          workflow: { publishPolicy: "auto_publish", outputs: ["local_files", "github"] },
+        }),
+        "utf-8",
+      );
+      writeStrictDogfoodEvidence(cwd);
+
+      const check = runCliWithExit(
+        "workflow check --action implementation_start --profile strict --feature FEAT-001 --json",
+        { cwd },
+      );
+      const start = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(check.exitCode).toBe(1);
+      expect(start.exitCode).toBe(1);
+      expect(check.stdout + check.stderr).toContain(".framework/project.json");
+      expect(start.stdout + start.stderr).toContain("not applied to Shirube");
+    });
+  });
+
+  it("records strict task_start lifecycle evidence before writing the session", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({
+          roles: { bindings: completeRoleBindings() },
+          workflow: { publishPolicy: "auto_publish", outputs: ["local_files", "github"] },
+        }),
+        "utf-8",
+      );
+      writeStrictDogfoodEvidence(cwd);
+
+      withFakeActiveGh((env) => {
+        const result = runCliWithExit(
+          "start . --feature FEAT-001 --audit-level strict",
+          { cwd, env },
+        );
+
+        expect(result.exitCode).toBe(0);
+      });
+
+      const lifecyclePath = path.join(cwd, ".framework", "lifecycle-events.jsonl");
+      expect(fs.existsSync(lifecyclePath)).toBe(true);
+      const record = JSON.parse(fs.readFileSync(lifecyclePath, "utf-8").trim()) as {
+        event: string;
+        task_id: string;
+        result: string;
+      };
+      expect(record.event).toBe("task_start");
+      expect(record.task_id).toBe("FEAT-001");
+      expect(record.result).toBe("recorded");
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(true);
+    });
+  });
+
+  it("blocks strict start when task_start lifecycle append fails before session write", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({
+          roles: { bindings: completeRoleBindings() },
+          workflow: {
+            publishPolicy: "auto_publish",
+            outputs: ["local_files", "github"],
+            lifecycleSink: { path: ".framework" },
+          },
+        }),
+        "utf-8",
+      );
+      writeStrictDogfoodEvidence(cwd);
+
+      withFakeActiveGh((env) => {
+        const result = runCliWithExit(
+          "start . --feature FEAT-001 --audit-level strict",
+          { cwd, env },
+        );
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr + result.stdout).toContain("Lifecycle evidence write failed");
+      });
+
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(false);
     });
   });
 
