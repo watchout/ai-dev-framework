@@ -372,6 +372,98 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict phase_closure rejects explicit false closure evidence", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const record = completePhaseClosureRecord();
+    record.audit_matrix = { l1: false, l2: false, l3: false };
+    record.deferred_items = [
+      { id: "#233", target_phase: "Phase 1", justification: false },
+    ];
+    record.merged_prs = [{ number: 231, postmerge_evidence: false }];
+    writePhaseClosureRecord(tmpDir, record);
+
+    const result = runWorkflow("check --action phase_closure --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThanOrEqual(3);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.required_fields",
+          decision: "BLOCK",
+          message: expect.stringContaining("audit_matrix.l1_l2_l3"),
+        }),
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.carryovers_justified",
+          decision: "BLOCK",
+          message: expect.stringContaining("#233"),
+        }),
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.postmerge_evidence",
+          decision: "BLOCK",
+          message: expect.stringContaining("231"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict phase_closure does not satisfy root registers from nested aliases", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const record = completePhaseClosureRecord();
+    delete record.completed_tasks;
+    delete record.merged_prs;
+    record.deferred_items = [
+      {
+        id: "#233",
+        target_phase: "Phase 1",
+        justification: "Tracked as non-blocking test hygiene follow-up.",
+        tasks: [{ id: "T0", issue: 223 }],
+        prs: [
+          {
+            number: 231,
+            postmerge_evidence:
+              "https://github.com/watchout/ai-dev-framework/pull/231#issuecomment-4549558867",
+          },
+        ],
+      },
+    ];
+    writePhaseClosureRecord(tmpDir, record);
+
+    const result = runWorkflow("check --action phase_closure --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThanOrEqual(2);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.required_fields",
+          decision: "BLOCK",
+          message: expect.stringContaining("completed_tasks"),
+        }),
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.required_fields",
+          decision: "BLOCK",
+          message: expect.stringContaining("merged_prs"),
+        }),
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.postmerge_evidence",
+          decision: "BLOCK",
+          message: expect.stringContaining("merged_prs"),
+        }),
+      ]),
+    );
+  });
+
   it("strict phase_closure passes with a complete closure record", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writePhaseClosureRecord(tmpDir, completePhaseClosureRecord());

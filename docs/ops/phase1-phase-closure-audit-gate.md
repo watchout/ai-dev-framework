@@ -26,6 +26,11 @@ SPEC-PHASECLOSURE-224.
 9. Run `shirube workflow check --action phase_closure --profile strict --json`.
 10. Request L1/L2/L3 review before using the result as a phase transition claim.
 
+The required registers must be present at the closure record root. Do not rely
+on nested `tasks`, `prs`, or `postmerge_evidence` fields inside unrelated
+carryover objects to satisfy the closure claim. Boolean `false` and placeholder
+values such as `missing`, `pending`, `todo`, or `tbd` are treated as absent.
+
 ## 2. What BLOCK Means
 A strict BLOCK means Shirube must not claim the phase complete.
 

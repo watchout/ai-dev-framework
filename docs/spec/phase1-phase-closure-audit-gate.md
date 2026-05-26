@@ -45,6 +45,16 @@ The normative local shape is JSON at `.framework/phase-closure.json`.
 Markdown is acceptable only when equivalent front matter or key-value metadata
 can be parsed deterministically.
 
+Required closure registers are resolved from the closure record root. Aliases
+such as `tasks` or `prs` are valid only when they are root fields or explicit
+containers inside the matching top-level register. Unrelated nested fields must
+not satisfy `completed_tasks`, `merged_prs`, audit coverage, or POSTMERGE
+requirements.
+
+Empty placeholders do not count as evidence. This includes empty strings,
+empty arrays or objects, explicit boolean `false`, and common placeholder
+strings such as `none`, `missing`, `pending`, `todo`, or `tbd`.
+
 ## 3. Gate Rules
 | Rule | Gate | Strict decision when missing or invalid | Remediation |
 |------|------|------------------------------------------|-------------|
@@ -69,6 +79,10 @@ messages, or unstructured prose that lacks deterministic fields.
   `G12.phase_closure.record.present`.
 - A partial record missing completed tasks, L0 evidence, audit coverage,
   carryover rationale, or POSTMERGE evidence produces strict BLOCK decisions.
+- Explicit `false` audit, carryover rationale, or POSTMERGE values produce
+  strict BLOCK decisions.
+- Nested unrelated `tasks` or `prs` aliases do not satisfy root closure
+  registers.
 - A complete closure record passes the `phase_closure` action in strict mode.
 - `workflow explain` can explain the phase closure rules and their evidence.
 - Trace verification remains complete across SPEC/IMPL/VERIFY/OPS.

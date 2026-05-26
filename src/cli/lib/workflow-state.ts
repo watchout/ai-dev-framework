@@ -855,7 +855,7 @@ function findMissingPhaseClosureFields(
 ): string[] {
   const missing: string[] = [];
   for (const requirement of PHASE_CLOSURE_REQUIRED_FIELDS) {
-    const value = findFirstMetadataValue(metadata, requirement.keys);
+    const value = findDirectMetadataValue(metadata, requirement.keys);
     if (
       value === undefined ||
       (requirement.requireNonEmpty && !hasNonEmptyRegisterValue(value))
@@ -874,7 +874,7 @@ function findMissingPhaseClosureFields(
 function findUnresolvedPhaseClosureBlockers(
   metadata: Record<string, unknown>,
 ): string[] {
-  const blockers = findFirstMetadataValue(metadata, [
+  const blockers = findDirectMetadataValue(metadata, [
     "unresolved_blockers",
     "blockers",
   ]);
@@ -889,7 +889,7 @@ function findUnresolvedPhaseClosureBlockers(
 function findUnjustifiedPhaseClosureCarryovers(
   metadata: Record<string, unknown>,
 ): string[] {
-  const carryovers = findFirstMetadataValue(metadata, [
+  const carryovers = findDirectMetadataValue(metadata, [
     "deferred_items",
     "carryovers",
     "non_blocking_items",
@@ -906,7 +906,7 @@ function findUnjustifiedPhaseClosureCarryovers(
 function findPhaseClosurePostmergeGaps(
   metadata: Record<string, unknown>,
 ): string[] {
-  const topLevelEvidence = findFirstMetadataValue(metadata, [
+  const topLevelEvidence = findDirectMetadataValue(metadata, [
     "postmerge_evidence",
     "post_merge_evidence",
     "postmerge_001_evidence",
@@ -915,7 +915,7 @@ function findPhaseClosurePostmergeGaps(
     return [];
   }
 
-  const prs = findFirstMetadataValue(metadata, [
+  const prs = findDirectMetadataValue(metadata, [
     "merged_prs",
     "merged_pull_requests",
     "prs",
@@ -933,7 +933,7 @@ function findPhaseClosurePostmergeGaps(
 function phaseClosureAuditMatrixHasCoverage(
   metadata: Record<string, unknown>,
 ): boolean {
-  const matrix = findFirstMetadataValue(metadata, [
+  const matrix = findDirectMetadataValue(metadata, [
     "audit_matrix",
     "l1_l2_l3_coverage_matrix",
     "coverage_matrix",
@@ -953,7 +953,7 @@ function phaseClosureCarryoverHasRationale(item: unknown): boolean {
   if (!item || typeof item !== "object" || Array.isArray(item)) {
     return false;
   }
-  const value = findFirstMetadataValue(item as Record<string, unknown>, [
+  const value = findDirectMetadataValue(item as Record<string, unknown>, [
     "justification",
     "rationale",
     "safety_rationale",
@@ -968,7 +968,7 @@ function phaseClosurePrHasPostmergeEvidence(item: unknown): boolean {
   if (!item || typeof item !== "object" || Array.isArray(item)) {
     return false;
   }
-  const value = findFirstMetadataValue(item as Record<string, unknown>, [
+  const value = findDirectMetadataValue(item as Record<string, unknown>, [
     "postmerge_evidence",
     "post_merge_evidence",
     "postmerge_001_evidence",
@@ -984,6 +984,19 @@ function findFirstMetadataValue(
 ): unknown {
   const keySet = new Set(keys.map(normalizeMetadataKey));
   return findFirstMetadataValueByKeySet(value, keySet);
+}
+
+function findDirectMetadataValue(
+  value: Record<string, unknown>,
+  keys: string[],
+): unknown {
+  const keySet = new Set(keys.map(normalizeMetadataKey));
+  for (const [key, child] of Object.entries(value)) {
+    if (keySet.has(normalizeMetadataKey(key))) {
+      return child;
+    }
+  }
+  return undefined;
 }
 
 function findFirstMetadataValueByKeySet(
@@ -1021,11 +1034,8 @@ function findFirstMetadataValueByKeySet(
 }
 
 function metadataValueHasNonEmptyKey(value: unknown, keys: string[]): boolean {
-  if (value && typeof value === "object") {
-    const found = findFirstMetadataValueByKeySet(
-      value,
-      new Set(keys.map(normalizeMetadataKey)),
-    );
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const found = findDirectMetadataValue(value as Record<string, unknown>, keys);
     return found !== undefined && hasNonEmptyRegisterValue(found);
   }
   return false;
@@ -1038,8 +1048,11 @@ function hasNonEmptyRegisterValue(value: unknown): boolean {
   if (typeof value === "string") {
     return value.trim().length > 0 && !isEmptyRegisterString(value);
   }
-  if (typeof value === "number" || typeof value === "boolean") {
+  if (typeof value === "number") {
     return true;
+  }
+  if (typeof value === "boolean") {
+    return value === true;
   }
   if (Array.isArray(value)) {
     return value.length > 0 && value.some(hasNonEmptyRegisterValue);
@@ -1058,6 +1071,9 @@ function isEmptyRegisterValue(value: unknown): boolean {
   if (typeof value === "string") {
     return value.trim().length === 0 || isEmptyRegisterString(value);
   }
+  if (typeof value === "boolean") {
+    return value === false;
+  }
   if (Array.isArray(value)) {
     return value.length === 0 || value.every(isEmptyRegisterValue);
   }
@@ -1069,9 +1085,21 @@ function isEmptyRegisterValue(value: unknown): boolean {
 }
 
 function isEmptyRegisterString(value: string): boolean {
-  return ["none", "no", "n/a", "na", "[]", "{}", "empty"].includes(
-    normalizeDisposition(value),
-  );
+  return [
+    "none",
+    "no",
+    "n/a",
+    "na",
+    "[]",
+    "{}",
+    "empty",
+    "false",
+    "missing",
+    "pending",
+    "todo",
+    "tbd",
+    "not_ready",
+  ].includes(normalizeDisposition(value));
 }
 
 function phaseClosureItems(value: unknown): unknown[] {
@@ -1082,7 +1110,7 @@ function phaseClosureItems(value: unknown): unknown[] {
     return [];
   }
   if (value && typeof value === "object") {
-    const nestedItems = findFirstMetadataValue(value as Record<string, unknown>, [
+    const nestedItems = findDirectMetadataValue(value as Record<string, unknown>, [
       "items",
       "entries",
       "prs",
@@ -1101,7 +1129,7 @@ function describePhaseClosureItem(item: unknown, fallback: string): string {
   }
   if (item && typeof item === "object" && !Array.isArray(item)) {
     const metadata = item as Record<string, unknown>;
-    const value = findFirstMetadataValue(metadata, [
+    const value = findDirectMetadataValue(metadata, [
       "id",
       "number",
       "pr",

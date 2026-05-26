@@ -55,6 +55,11 @@ Validation is deterministic and local-first:
 - deferred/carryover items must include a justification or safety rationale;
 - each merged PR must carry POSTMERGE evidence, or the record must provide an
   explicit top-level POSTMERGE evidence register.
+- root closure registers are read only from the closure record root. Nested
+  `tasks` or `prs` aliases inside unrelated objects do not satisfy
+  `completed_tasks` or `merged_prs`;
+- explicit `false`, empty collections, and placeholder strings such as
+  `missing`, `pending`, `todo`, or `tbd` are invalid evidence values.
 
 ## 2. File-Level Impact
 - `src/cli/lib/workflow-state.ts`;

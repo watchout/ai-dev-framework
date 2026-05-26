@@ -31,6 +31,8 @@ The implementation must prove:
 | unresolved blockers remain | BLOCK `G12.phase_closure.blockers_cleared` |
 | deferred carryover lacks rationale | BLOCK `G12.phase_closure.carryovers_justified` |
 | merged PR lacks POSTMERGE evidence | BLOCK `G12.phase_closure.postmerge_evidence` |
+| explicit `false` audit/rationale/POSTMERGE evidence | strict BLOCK on the matching G12 rules |
+| nested unrelated `tasks` or `prs` aliases | BLOCK root required fields and POSTMERGE evidence |
 | complete closure record | `phase_closure` check passes |
 
 ## 3. Trace Verification
