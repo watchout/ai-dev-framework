@@ -28,7 +28,7 @@ function runCli(args: string): string {
 
 function runCliWithExit(
   args: string,
-  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {},
+  options: { cwd?: string; env?: Record<string, string | undefined> } = {},
 ): {
   stdout: string;
   exitCode: number;
@@ -205,7 +205,9 @@ describe("start command", () => {
     );
   }
 
-  function withFakeActiveGh<T>(fn: (env: NodeJS.ProcessEnv) => T): T {
+  function withFakeActiveGh<T>(
+    fn: (env: Record<string, string | undefined>) => T,
+  ): T {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-fake-gh-"));
     try {
       const binDir = path.join(dir, "bin");
