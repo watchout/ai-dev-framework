@@ -134,8 +134,11 @@ Phase 0 execution tasks:
 | T2 | #214 | Disposition matrix and re-home decisions |
 | T3 | #215 | Action-to-surface map for `workflow check` |
 | T4 | #216 | Baseline verification and L1/L2/L3 review evidence |
+| T5 | #217 | Dogfood feedback intake and phase assignment loop |
+| T6 | #220 | Formal post-merge verification gate addendum |
 
 T3 artifact: [Phase 0 Action-To-Surface Map](./phase0-action-to-surface-map.md).
+T6 artifact: [POSTMERGE-001: Post-Merge Verification Gate](./postmerge-001.md).
 
 ### Sufficient exit conditions
 
@@ -144,6 +147,7 @@ T3 artifact: [Phase 0 Action-To-Surface Map](./phase0-action-to-surface-map.md).
 - PR #200/#208 observability surface is merged or has an explicit blocking reason.
 - #212 tracks the Script Control Completion Baseline.
 - #64/#65/#67/#68/#69/#91/#123/#126/#127/#136/#139/#200/#201/#202/#203/#204 each has a disposition.
+- `POSTMERGE-001` defines the post-merge verification record required for PRs that contribute to phase exit claims.
 - No new strict enforcement is wired before the action-to-surface map is reviewed.
 
 ### Verification
@@ -152,12 +156,14 @@ T3 artifact: [Phase 0 Action-To-Surface Map](./phase0-action-to-surface-map.md).
 - targeted workflow tests for `workflow status/doctor/check/explain`
 - `git diff --check`
 - manual GitHub issue/PR inventory attached to the baseline issue
+- post-merge records or post-merge evidence for PRs that contribute to the Phase 0 exit claim
 
 ### Not complete if
 
 - The roadmap only lists next tasks but does not define phase exit conditions.
 - Runtime wiring is introduced before the action-to-surface map is approved.
 - Existing open issues remain duplicated under different names without disposition.
+- A PR contributes to a phase exit claim without post-merge verification or explicit L3 disposition.
 
 ## 5. Phase 1: Internal Applied Dogfood
 
@@ -385,6 +391,8 @@ Shirube can be evaluated by large engineering organizations as an AI PR safety g
 | G18 change_intake | Phase 1 |
 
 Phase 4 hardens all gates for enterprise use. The table above names the first phase where a gate must be useful and enforceable for its intended profile.
+
+Phase 0 addendum #220 defines the `POSTMERGE-001` record schema before Phase 1 implementation expansion. This does not make G16 enforceable in Phase 0; it makes the evidence record explicit so Phase Closure Audit can require it.
 
 ## 10. Existing Issue Disposition
 
