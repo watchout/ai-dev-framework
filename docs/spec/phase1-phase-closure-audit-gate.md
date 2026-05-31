@@ -39,7 +39,8 @@ A phase closure claim requires a record with:
 11. explicit non-claims;
 12. next-phase entry conditions;
 13. reopen or escalation criteria;
-14. POSTMERGE-001 evidence for PRs that contribute to the phase exit claim.
+14. POSTMERGE-001 evidence for PRs that contribute to the phase exit claim;
+15. audit ledger record ids for L1/L2/L3 closure coverage after #225.
 
 The normative local shape is JSON at `.framework/phase-closure.json`.
 Markdown is acceptable only when equivalent front matter or key-value metadata
@@ -63,6 +64,7 @@ strings such as `none`, `missing`, `pending`, `todo`, or `tbd`.
 | `G12.phase_closure.blockers_cleared` | phase_closure | BLOCK | Resolve blockers or move them to justified non-blocking carryovers. |
 | `G12.phase_closure.carryovers_justified` | phase_closure | BLOCK | Add a safety rationale for every deferred/non-blocking carryover. |
 | `G12.phase_closure.postmerge_evidence` | phase_closure | BLOCK | Link POSTMERGE-001 evidence for every merged PR that supports the phase claim. |
+| `G12.phase_closure.audit_ledger_refs` | phase_closure | BLOCK | Cite machine-readable audit ledger record ids for L1/L2/L3 closure coverage. |
 
 Minimal and standard profiles may emit WARN while Phase 1 migration is in
 progress. Strict mode is required for any Shirube-internal phase closure claim.
@@ -81,6 +83,7 @@ messages, or unstructured prose that lacks deterministic fields.
   carryover rationale, or POSTMERGE evidence produces strict BLOCK decisions.
 - Explicit `false` audit, carryover rationale, or POSTMERGE values produce
   strict BLOCK decisions.
+- Missing L1/L2/L3 audit ledger citations produce strict BLOCK decisions.
 - Nested unrelated `tasks` or `prs` aliases do not satisfy root closure
   registers.
 - A complete closure record passes the `phase_closure` action in strict mode.
@@ -152,6 +155,7 @@ Runtime implementation must include:
 - fixtures for unresolved blockers;
 - fixtures for deferred carryovers without safety rationale;
 - fixtures for merged PRs without POSTMERGE evidence;
+- fixtures for missing audit ledger citations;
 - a positive fixture where strict `phase_closure` passes.
 
 The test layer must prove action scoping: `phase_closure` must not be treated

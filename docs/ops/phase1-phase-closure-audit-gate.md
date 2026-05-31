@@ -23,8 +23,9 @@ SPEC-PHASECLOSURE-224.
 7. Record residual risks, explicit non-claims, next entry conditions, and
    reopen/escalation criteria.
 8. Attach POSTMERGE-001 evidence for every PR that supports the phase claim.
-9. Run `shirube workflow check --action phase_closure --profile strict --json`.
-10. Request L1/L2/L3 review before using the result as a phase transition claim.
+9. Cite audit ledger record ids for L1/L2/L3 closure coverage.
+10. Run `shirube workflow check --action phase_closure --profile strict --json`.
+11. Request L1/L2/L3 review before using the result as a phase transition claim.
 
 The required registers must be present at the closure record root. Do not rely
 on nested `tasks`, `prs`, or `postmerge_evidence` fields inside unrelated
@@ -55,6 +56,7 @@ Not allowed while blocked:
 | unresolved blockers remain | Keep the phase open or get L3-approved disposition. |
 | carryover has no safety rationale | Add owner, reason, target phase/task, and non-claim. |
 | POSTMERGE evidence missing | Add PR post-merge evidence before closure. |
+| audit ledger refs missing | Add root `audit_ledger_refs` or per-level audit matrix refs. |
 | phase closure check passes but evidence is stale | Reopen/escalate under the closure record criteria. |
 
 ## 4. Rollback

@@ -51,6 +51,7 @@ export type WorkflowEvidenceKind =
   | "read_receipt"
   | "merge_authority"
   | "phase_closure"
+  | "audit_ledger"
   | "exception";
 
 export type WorkflowActorType = "human" | "agent" | "github_user" | "system";
@@ -182,6 +183,7 @@ export function buildWorkflowState(
     gateDecisions,
   );
   applyPhaseClosureReadiness(projectDir, now, profile, evidence, gateDecisions);
+  applyAuditLedgerReadiness(projectDir, now, profile, evidence, gateDecisions);
 
   const currentSession = readJsonFile<CurrentSessionV1>(
     projectDir,
@@ -479,6 +481,22 @@ const PHASE_CLOSURE_REQUIRED_FIELDS: PhaseClosureFieldRequirement[] = [
   },
 ];
 
+interface AuditLedgerValidation {
+  missingFields: string[];
+  invalidRecords: string[];
+  nextActionGaps: string[];
+  recordCount: number;
+}
+
+const AUDIT_LEDGER_EVIDENCE_PATHS = [
+  ".framework/audit-ledger.json",
+  ".framework/audit-ledger.md",
+  ".framework/audit/ledger.json",
+  ".framework/audit-ledger/latest.json",
+  ".framework/audits/ledger.json",
+  "docs/management/audit-ledger.md",
+];
+
 function applyProjectApplied(
   projectDir: string,
   now: string,
@@ -635,11 +653,13 @@ function applyPhaseClosureReadiness(
   const unresolvedBlockers = findUnresolvedPhaseClosureBlockers(artifact.metadata);
   const unjustifiedCarryovers = findUnjustifiedPhaseClosureCarryovers(artifact.metadata);
   const postmergeGaps = findPhaseClosurePostmergeGaps(artifact.metadata);
+  const auditLedgerGaps = findPhaseClosureAuditLedgerGaps(artifact.metadata);
   const hasClosureIssues =
     missingFields.length > 0 ||
     unresolvedBlockers.length > 0 ||
     unjustifiedCarryovers.length > 0 ||
-    postmergeGaps.length > 0;
+    postmergeGaps.length > 0 ||
+    auditLedgerGaps.length > 0;
 
   const closureEvidence = createEvidence({
     projectDir,
@@ -742,6 +762,148 @@ function applyPhaseClosureReadiness(
         postmergeGaps.length === 0
           ? "No action required."
           : "Link POSTMERGE-001 evidence for every merged PR that supports the phase closure claim.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G12.phase_closure.audit_ledger_refs",
+      gate: "phase_closure",
+      decisionValue: auditLedgerGaps.length === 0 ? "PASS" : missing.decision,
+      severity: auditLedgerGaps.length === 0 ? "info" : missing.severity,
+      profile,
+      message:
+        auditLedgerGaps.length === 0
+          ? "Phase closure cites audit ledger records."
+          : `Phase closure is missing audit ledger references for: ${auditLedgerGaps.join(", ")}.`,
+      evidenceRefs: [closureEvidence.id],
+      remediation:
+        auditLedgerGaps.length === 0
+          ? "No action required."
+          : "Cite machine-readable audit ledger record ids for L1/L2/L3 closure coverage.",
+    }),
+  );
+}
+
+function applyAuditLedgerReadiness(
+  projectDir: string,
+  now: string,
+  profile: WorkflowProfile,
+  evidence: WorkflowEvidenceRecord[],
+  gateDecisions: WorkflowGateDecision[],
+): void {
+  const artifact = findLocalEvidence(projectDir, AUDIT_LEDGER_EVIDENCE_PATHS);
+  if (!artifact) {
+    const missing = dogfoodMissingDecision(profile);
+    gateDecisions.push(
+      decision({
+        ruleId: "G19.audit_ledger.record.present",
+        gate: "audit_ledger",
+        decisionValue: missing.decision,
+        severity: missing.severity,
+        profile,
+        message: "Audit ledger record is missing.",
+        evidenceRefs: [],
+        remediation:
+          "Create .framework/audit-ledger.json before relying on audit approval evidence.",
+      }),
+    );
+    return;
+  }
+
+  const validation = validateAuditLedgerMetadata(artifact.metadata);
+  const hasLedgerIssues =
+    validation.missingFields.length > 0 ||
+    validation.invalidRecords.length > 0 ||
+    validation.nextActionGaps.length > 0;
+  const ledgerEvidence = createEvidence({
+    projectDir,
+    now,
+    kind: "audit_ledger",
+    artifactPath: artifact.path,
+    sourceUri: `file://${artifact.path}`,
+    summary: hasLedgerIssues
+      ? "Audit ledger is present but incomplete."
+      : "Audit ledger is present and valid.",
+    validity: hasLedgerIssues ? "invalid" : "current",
+    metadata: {
+      ...artifact.metadata,
+      validation,
+    },
+  });
+  evidence.push(ledgerEvidence);
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G19.audit_ledger.record.present",
+      gate: "audit_ledger",
+      decisionValue: "PASS",
+      severity: "info",
+      profile,
+      message: "Audit ledger record is present.",
+      evidenceRefs: [ledgerEvidence.id],
+      remediation: "No action required.",
+    }),
+  );
+
+  const missing = dogfoodMissingDecision(profile);
+  gateDecisions.push(
+    decision({
+      ruleId: "G19.audit_ledger.required_fields",
+      gate: "audit_ledger",
+      decisionValue:
+        validation.missingFields.length === 0 ? "PASS" : missing.decision,
+      severity: validation.missingFields.length === 0 ? "info" : missing.severity,
+      profile,
+      message:
+        validation.missingFields.length === 0
+          ? "Audit ledger root fields are complete."
+          : `Audit ledger is missing root fields: ${validation.missingFields.join(", ")}.`,
+      evidenceRefs: [ledgerEvidence.id],
+      remediation:
+        validation.missingFields.length === 0
+          ? "No action required."
+          : "Fill schema_version, ledger_id, and records at the audit ledger root.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G19.audit_ledger.record_shape",
+      gate: "audit_ledger",
+      decisionValue:
+        validation.invalidRecords.length === 0 ? "PASS" : missing.decision,
+      severity: validation.invalidRecords.length === 0 ? "info" : missing.severity,
+      profile,
+      message:
+        validation.invalidRecords.length === 0
+          ? "Audit ledger records have the required shape."
+          : `Audit ledger records are incomplete: ${validation.invalidRecords.join(", ")}.`,
+      evidenceRefs: [ledgerEvidence.id],
+      remediation:
+        validation.invalidRecords.length === 0
+          ? "No action required."
+          : "Add audit id, artifact reference, level, reviewer, verdict, timestamp, evidence, scope, non-claims, conditions, supersedes/amends, commands, and phase/task/goal linkage to every record.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G19.audit_ledger.next_action_derivable",
+      gate: "audit_ledger",
+      decisionValue:
+        validation.nextActionGaps.length === 0 ? "PASS" : missing.decision,
+      severity: validation.nextActionGaps.length === 0 ? "info" : missing.severity,
+      profile,
+      message:
+        validation.nextActionGaps.length === 0
+          ? "Audit ledger records can drive next-action derivation."
+          : `Audit ledger records lack next-action derivation data: ${validation.nextActionGaps.join(", ")}.`,
+      evidenceRefs: [ledgerEvidence.id],
+      remediation:
+        validation.nextActionGaps.length === 0
+          ? "No action required."
+          : "Add recommended_next_action, unresolved findings, or downstream gate data for each audit record.",
     }),
   );
 }
@@ -930,6 +1092,290 @@ function findPhaseClosurePostmergeGaps(
     .map(({ label }) => label);
 }
 
+function findPhaseClosureAuditLedgerGaps(
+  metadata: Record<string, unknown>,
+): string[] {
+  const topLevelRefs = findDirectMetadataValue(metadata, [
+    "audit_ledger_refs",
+    "audit_ledger",
+    "audit_records",
+    "approval_ledger",
+  ]);
+  if (topLevelRefs !== undefined && hasNonEmptyRegisterValue(topLevelRefs)) {
+    return [];
+  }
+
+  const matrix = findDirectMetadataValue(metadata, [
+    "audit_matrix",
+    "l1_l2_l3_coverage_matrix",
+    "coverage_matrix",
+  ]);
+  if (!matrix || typeof matrix !== "object" || Array.isArray(matrix)) {
+    return ["audit_matrix"];
+  }
+
+  const gaps: string[] = [];
+  for (const [level, aliases] of Object.entries({
+    l1: ["l1", "l1_review", "l1_audit"],
+    l2: ["l2", "l2_review", "l2_audit"],
+    l3: ["l3", "l3_review", "l3_audit"],
+  })) {
+    const entry = findDirectMetadataValue(matrix as Record<string, unknown>, aliases);
+    if (!auditMatrixEntryHasLedgerRef(entry)) {
+      gaps.push(level);
+    }
+  }
+  return gaps;
+}
+
+function auditMatrixEntryHasLedgerRef(entry: unknown): boolean {
+  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    return false;
+  }
+  return metadataValueHasNonEmptyKey(entry, [
+    "audit_id",
+    "audit_ref",
+    "ledger_ref",
+    "ledger_record_id",
+    "record_id",
+  ]);
+}
+
+function validateAuditLedgerMetadata(
+  metadata: Record<string, unknown>,
+): AuditLedgerValidation {
+  const missingFields: string[] = [];
+  const schemaVersion = findDirectMetadataValue(metadata, [
+    "schema_version",
+    "schema",
+    "version",
+  ]);
+  if (!hasNonEmptyRegisterValue(schemaVersion)) {
+    missingFields.push("schema_version");
+  }
+
+  const ledgerId = findDirectMetadataValue(metadata, ["ledger_id", "id"]);
+  if (!hasNonEmptyRegisterValue(ledgerId)) {
+    missingFields.push("ledger_id");
+  }
+
+  const recordsValue = findDirectMetadataValue(metadata, [
+    "records",
+    "audit_records",
+    "entries",
+  ]);
+  const records = auditLedgerRecords(recordsValue);
+  if (records.length === 0) {
+    missingFields.push("records");
+  }
+
+  const invalidRecords: string[] = [];
+  const nextActionGaps: string[] = [];
+  records.forEach((record, index) => {
+    const missingRecordFields = findMissingAuditLedgerRecordFields(record);
+    if (missingRecordFields.length > 0) {
+      invalidRecords.push(
+        `${describeAuditLedgerRecord(record, index)}(${missingRecordFields.join("|")})`,
+      );
+    }
+    if (!auditLedgerRecordHasNextAction(record)) {
+      nextActionGaps.push(describeAuditLedgerRecord(record, index));
+    }
+  });
+
+  return {
+    missingFields,
+    invalidRecords,
+    nextActionGaps,
+    recordCount: records.length,
+  };
+}
+
+function auditLedgerRecords(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (item): item is Record<string, unknown> =>
+      Boolean(item) && typeof item === "object" && !Array.isArray(item),
+  );
+}
+
+function findMissingAuditLedgerRecordFields(
+  record: Record<string, unknown>,
+): string[] {
+  const missing: string[] = [];
+  if (!metadataValueHasNonEmptyKey(record, ["audit_id", "id"])) {
+    missing.push("audit_id");
+  }
+  if (!auditLedgerRecordHasArtifact(record)) {
+    missing.push("artifact");
+  }
+  if (!auditLedgerRecordHasLevel(record)) {
+    missing.push("audit_level");
+  }
+  if (!auditLedgerRecordHasReviewer(record)) {
+    missing.push("reviewer");
+  }
+  if (!auditLedgerRecordHasVerdict(record)) {
+    missing.push("verdict");
+  }
+  if (!metadataValueHasNonEmptyKey(record, ["timestamp", "created_at", "audited_at"])) {
+    missing.push("timestamp");
+  }
+  if (!auditLedgerRecordHasEvidence(record)) {
+    missing.push("evidence");
+  }
+  if (!metadataValueHasNonEmptyKey(record, ["approved_scope", "scope"])) {
+    missing.push("approved_scope");
+  }
+  if (!metadataValueHasNonEmptyKey(record, ["explicit_non_claims", "non_claims"])) {
+    missing.push("explicit_non_claims");
+  }
+  if (
+    !metadataValueHasAuditLedgerTraceKey(record, [
+      "conditions",
+      "required_followups",
+      "followups",
+    ], { allowEmptyArray: true })
+  ) {
+    missing.push("conditions");
+  }
+  if (
+    !metadataValueHasAuditLedgerTraceKey(record, [
+      "supersedes",
+      "amends",
+      "supersedes_or_amends",
+    ], { allowEmptyArray: true })
+  ) {
+    missing.push("supersedes_or_amends");
+  }
+  if (!metadataValueHasNonEmptyKey(record, ["commands", "checks_reproduced", "reproduced_checks"])) {
+    missing.push("commands");
+  }
+  if (!auditLedgerRecordHasLinkage(record)) {
+    missing.push("phase_task_goal_linkage");
+  }
+  return missing;
+}
+
+function auditLedgerRecordHasArtifact(record: Record<string, unknown>): boolean {
+  const artifact = findDirectMetadataValue(record, ["artifact"]);
+  if (artifact && typeof artifact === "object" && !Array.isArray(artifact)) {
+    return (
+      metadataValueHasNonEmptyKey(artifact, ["type", "artifact_type"]) &&
+      metadataValueHasNonEmptyKey(artifact, [
+        "ref",
+        "url",
+        "path",
+        "artifact_ref",
+      ])
+    );
+  }
+  return (
+    metadataValueHasNonEmptyKey(record, ["artifact_type"]) &&
+    metadataValueHasNonEmptyKey(record, ["artifact_ref", "artifact_url", "artifact_path"])
+  );
+}
+
+function auditLedgerRecordHasLevel(record: Record<string, unknown>): boolean {
+  const level = findDirectMetadataValue(record, ["audit_level", "level"]);
+  return (
+    typeof level === "string" &&
+    ["L0", "L1", "L2", "L3", "L4"].includes(level.trim().toUpperCase())
+  );
+}
+
+function auditLedgerRecordHasReviewer(record: Record<string, unknown>): boolean {
+  const reviewer = findDirectMetadataValue(record, [
+    "reviewer",
+    "approver",
+    "actor",
+  ]);
+  if (reviewer && typeof reviewer === "object" && !Array.isArray(reviewer)) {
+    return (
+      metadataValueHasNonEmptyKey(reviewer, ["id", "handle", "agent_id"]) &&
+      metadataValueHasNonEmptyKey(reviewer, ["role", "source", "source_system"])
+    );
+  }
+  return (
+    metadataValueHasNonEmptyKey(record, ["reviewer_id", "approver_id"]) &&
+    metadataValueHasNonEmptyKey(record, ["reviewer_role", "approver_role"])
+  );
+}
+
+function auditLedgerRecordHasVerdict(record: Record<string, unknown>): boolean {
+  const verdict = findDirectMetadataValue(record, [
+    "verdict",
+    "decision",
+    "result",
+  ]);
+  return (
+    typeof verdict === "string" &&
+    ["PASS", "WARN", "BLOCK", "CONDITIONALLY_PASS"].includes(
+      verdict.trim().toUpperCase(),
+    )
+  );
+}
+
+function auditLedgerRecordHasEvidence(record: Record<string, unknown>): boolean {
+  return metadataValueHasNonEmptyKey(record, [
+    "evidence",
+    "evidence_refs",
+    "evidence_urls",
+    "aun_message_ids",
+    "source_urls",
+  ]);
+}
+
+function auditLedgerRecordHasLinkage(record: Record<string, unknown>): boolean {
+  return (
+    metadataValueHasNonEmptyKey(record, ["phase", "phase_id"]) &&
+    metadataValueHasNonEmptyKey(record, ["task", "task_id", "issue"]) &&
+    metadataValueHasNonEmptyKey(record, ["goal", "goal_ref", "goal_contract"])
+  );
+}
+
+function auditLedgerRecordHasNextAction(record: Record<string, unknown>): boolean {
+  if (
+    metadataValueHasNonEmptyKey(record, [
+      "recommended_next_action",
+      "next_action",
+      "next_allowed_action",
+    ])
+  ) {
+    return true;
+  }
+  const verdict = String(
+    findDirectMetadataValue(record, ["verdict", "decision", "result"]) ?? "",
+  )
+    .trim()
+    .toUpperCase();
+  if (verdict === "BLOCK") {
+    return metadataValueHasNonEmptyKey(record, [
+      "unresolved_findings",
+      "blocking_findings",
+      "findings",
+    ]);
+  }
+  return metadataValueHasAuditLedgerTraceKey(record, [
+    "downstream_gates_remaining",
+    "remaining_gates",
+    "next_required_gates",
+  ]);
+}
+
+function describeAuditLedgerRecord(
+  record: Record<string, unknown>,
+  index: number,
+): string {
+  const id = findDirectMetadataValue(record, ["audit_id", "id"]);
+  if (typeof id === "string" || typeof id === "number") {
+    return String(id);
+  }
+  return `record_${index + 1}`;
+}
+
 function phaseClosureAuditMatrixHasCoverage(
   metadata: Record<string, unknown>,
 ): boolean {
@@ -1037,6 +1483,51 @@ function metadataValueHasNonEmptyKey(value: unknown, keys: string[]): boolean {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const found = findDirectMetadataValue(value as Record<string, unknown>, keys);
     return found !== undefined && hasNonEmptyRegisterValue(found);
+  }
+  return false;
+}
+
+function metadataValueHasAuditLedgerTraceKey(
+  value: unknown,
+  keys: string[],
+  options: { allowEmptyArray?: boolean } = {},
+): boolean {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    const found = findDirectMetadataValue(value as Record<string, unknown>, keys);
+    return found !== undefined && hasAuditLedgerTraceValue(found, options);
+  }
+  return false;
+}
+
+function hasAuditLedgerTraceValue(
+  value: unknown,
+  options: { allowEmptyArray?: boolean },
+): boolean {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "string") {
+    return value.trim().length > 0 && !isEmptyRegisterString(value);
+  }
+  if (typeof value === "number") {
+    return true;
+  }
+  if (typeof value === "boolean") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    if (options.allowEmptyArray && value.length === 0) {
+      return true;
+    }
+    return value.length > 0 && value.every((item) =>
+      hasAuditLedgerTraceValue(item, { allowEmptyArray: false }),
+    );
+  }
+  if (typeof value === "object") {
+    const nested = Object.values(value as Record<string, unknown>);
+    return nested.length > 0 && nested.some((item) =>
+      hasAuditLedgerTraceValue(item, options),
+    );
   }
   return false;
 }
