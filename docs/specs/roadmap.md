@@ -223,6 +223,7 @@ Shirube can govern its own development and at least one internal project through
 | T3 | #225 | `AUDITLEDGER-001` Audit Evidence and Approval Ledger. |
 | T4a0 | #244 | Work Order contract and warning gate for AUN/runtime/report dispatch. |
 | T4a | #240 | Runtime command adapter and injection policy pack for Delivery Graph steps. |
+| T4b | #242 | Kodama context-pack evidence and MCP structured-output contract gate. |
 | T4 | #226 | Workflow Action Registry and Wrapper Semantics. |
 | T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain. |
 
@@ -242,6 +243,11 @@ SPEC `docs/spec/phase1-work-order-contract.md`, IMPL
 `docs/impl/phase1-work-order-contract.md`, VERIFY
 `docs/verify/phase1-work-order-contract.md`, OPS
 `docs/ops/phase1-work-order-contract.md`.
+Kodama context-pack evidence child artifact:
+SPEC `docs/spec/phase1-kodama-context-pack-evidence.md`, IMPL
+`docs/impl/phase1-kodama-context-pack-evidence.md`, VERIFY
+`docs/verify/phase1-kodama-context-pack-evidence.md`, OPS
+`docs/ops/phase1-kodama-context-pack-evidence.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
@@ -424,7 +430,7 @@ Shirube can be evaluated by large engineering organizations as an AI PR safety g
 | G6 feature_catalog | Phase 1 |
 | G7 task_dag | Phase 1 |
 | G8 spec_impl_readiness | Phase 1 |
-| G9 context_pack | Phase 2 |
+| G9 context_pack | Phase 1 evidence bootstrap / Phase 2 strict E2E |
 | G10 provider_tool_policy | Phase 2 |
 | G11 pre_impl_audit | Phase 1 |
 | G12 implementation_audit | Phase 2 |

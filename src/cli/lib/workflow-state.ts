@@ -53,6 +53,9 @@ export type WorkflowEvidenceKind =
   | "phase_closure"
   | "audit_ledger"
   | "work_order"
+  | "context_pack"
+  | "mcp_tool_contract"
+  | "public_readiness"
   | "runtime_adapter"
   | "injection_policy"
   | "runtime_step"
@@ -189,6 +192,7 @@ export function buildWorkflowState(
   applyPhaseClosureReadiness(projectDir, now, profile, evidence, gateDecisions);
   applyAuditLedgerReadiness(projectDir, now, profile, evidence, gateDecisions);
   applyWorkOrderReadiness(projectDir, now, profile, evidence, gateDecisions);
+  applyContextPackReadiness(projectDir, now, profile, evidence, gateDecisions);
   applyRuntimeStepReadiness(projectDir, now, profile, evidence, gateDecisions);
 
   const currentSession = readJsonFile<CurrentSessionV1>(
@@ -534,6 +538,24 @@ interface WorkOrderValidation {
   promotionGaps: string[];
 }
 
+interface ContextPackValidation {
+  missingFields: string[];
+  invalidFields: string[];
+  provenanceGaps: string[];
+  instructionViolations: string[];
+}
+
+interface McpToolContractValidation {
+  missingFields: string[];
+  invalidFields: string[];
+  structuredOutputGaps: string[];
+  errorBoundaryGaps: string[];
+}
+
+interface PublicEnterpriseReadinessValidation {
+  missingCategories: string[];
+}
+
 const WORK_ORDER_EVIDENCE_PATHS = [
   ".framework/work-order.json",
   ".framework/work-order/latest.json",
@@ -562,6 +584,28 @@ const RUNTIME_STEP_EVIDENCE_PATHS = [
   ".framework/runtime-step.json",
   ".framework/runtime/step.json",
   ".framework/delivery-graph/step.json",
+];
+
+const CONTEXT_PACK_EVIDENCE_PATHS = [
+  ".framework/context-pack.json",
+  ".framework/context-pack/latest.json",
+  ".framework/context-packs/latest.json",
+  ".framework/kodama-context-pack.json",
+  ".framework/kodama/context-pack.json",
+];
+
+const MCP_TOOL_CONTRACT_EVIDENCE_PATHS = [
+  ".framework/mcp-tool-contract.json",
+  ".framework/mcp/server-contract.json",
+  ".framework/mcp/tool-contract.json",
+  ".framework/kodama/mcp-tool-contract.json",
+];
+
+const PUBLIC_ENTERPRISE_READINESS_EVIDENCE_PATHS = [
+  ".framework/public-enterprise-readiness.json",
+  ".framework/oss-enterprise-readiness.json",
+  ".framework/context-pack-readiness.json",
+  ".framework/kodama/readiness.json",
 ];
 
 const RUNTIME_ADAPTER_FEATURES = new Set([
@@ -682,6 +726,16 @@ const WORK_ORDER_AUTHORITY_GRANT_VALUES = new Set([
   "enabled",
   "permitted",
 ]);
+
+const PUBLIC_ENTERPRISE_READINESS_CATEGORIES = [
+  { label: "auth", keys: ["auth", "authentication", "authorization"] },
+  { label: "redaction", keys: ["redaction", "privacy_redaction", "data_redaction"] },
+  { label: "token_handling", keys: ["token_handling", "token_policy", "secret_handling"] },
+  { label: "public_install", keys: ["public_install", "install", "installation"] },
+  { label: "compatibility_matrix", keys: ["compatibility_matrix", "compatibility"] },
+  { label: "audit_retention", keys: ["audit_retention", "audit", "retention"] },
+  { label: "deployment_mode_docs", keys: ["deployment_mode_docs", "deployment_modes", "deployment"] },
+];
 
 function applyProjectApplied(
   projectDir: string,
@@ -1271,6 +1325,299 @@ function applyWorkOrderReadiness(
         validation.promotionGaps.length === 0
           ? "No action required."
           : "Declare enforcement mode and criteria for later promotion from WARN to BLOCK.",
+    }),
+  );
+}
+
+function applyContextPackReadiness(
+  projectDir: string,
+  now: string,
+  profile: WorkflowProfile,
+  evidence: WorkflowEvidenceRecord[],
+  gateDecisions: WorkflowGateDecision[],
+): void {
+  const missing = dogfoodMissingDecision(profile);
+  const contextArtifact = findLocalEvidence(projectDir, CONTEXT_PACK_EVIDENCE_PATHS);
+  const mcpArtifact = findLocalEvidence(projectDir, MCP_TOOL_CONTRACT_EVIDENCE_PATHS);
+  const readinessArtifact = findLocalEvidence(
+    projectDir,
+    PUBLIC_ENTERPRISE_READINESS_EVIDENCE_PATHS,
+  );
+
+  const contextMetadata = contextArtifact
+    ? selectContextPackMetadata(contextArtifact.metadata)
+    : null;
+  const mcpMetadata = mcpArtifact
+    ? selectMcpToolContractMetadata(mcpArtifact.metadata)
+    : null;
+  const readinessMetadata = readinessArtifact
+    ? selectPublicEnterpriseReadinessMetadata(readinessArtifact.metadata)
+    : null;
+
+  const contextValidation = contextMetadata
+    ? validateContextPackMetadata(contextMetadata)
+    : null;
+  const mcpValidation = mcpMetadata
+    ? validateMcpToolContractMetadata(mcpMetadata)
+    : null;
+  const readinessValidation = readinessMetadata
+    ? validatePublicEnterpriseReadinessMetadata(readinessMetadata)
+    : null;
+
+  const contextEvidence = contextArtifact
+    ? createEvidence({
+        projectDir,
+        now,
+        kind: "context_pack",
+        artifactPath: contextArtifact.path,
+        sourceUri: `file://${contextArtifact.path}`,
+        summary:
+          contextValidation && contextPackValidationHasIssues(contextValidation)
+            ? "Kodama context-pack evidence is present but invalid."
+            : "Kodama context-pack evidence is present.",
+        validity:
+          contextValidation && contextPackValidationHasIssues(contextValidation)
+            ? "invalid"
+            : "current",
+        metadata: {
+          ...contextArtifact.metadata,
+          selected_context_pack: contextMetadata,
+          validation: contextValidation,
+        },
+      })
+    : null;
+  if (contextEvidence) {
+    evidence.push(contextEvidence);
+  }
+
+  const mcpEvidence = mcpArtifact
+    ? createEvidence({
+        projectDir,
+        now,
+        kind: "mcp_tool_contract",
+        artifactPath: mcpArtifact.path,
+        sourceUri: `file://${mcpArtifact.path}`,
+        summary:
+          mcpValidation && mcpToolContractValidationHasIssues(mcpValidation)
+            ? "MCP tool contract evidence is present but invalid."
+            : "MCP tool contract evidence is present.",
+        validity:
+          mcpValidation && mcpToolContractValidationHasIssues(mcpValidation)
+            ? "invalid"
+            : "current",
+        metadata: {
+          ...mcpArtifact.metadata,
+          selected_mcp_tool_contract: mcpMetadata,
+          validation: mcpValidation,
+        },
+      })
+    : null;
+  if (mcpEvidence) {
+    evidence.push(mcpEvidence);
+  }
+
+  const readinessEvidence = readinessArtifact
+    ? createEvidence({
+        projectDir,
+        now,
+        kind: "public_readiness",
+        artifactPath: readinessArtifact.path,
+        sourceUri: `file://${readinessArtifact.path}`,
+        summary:
+          readinessValidation && readinessValidation.missingCategories.length > 0
+            ? "Public/enterprise context-pack readiness evidence is present but incomplete."
+            : "Public/enterprise context-pack readiness evidence is present.",
+        validity:
+          readinessValidation && readinessValidation.missingCategories.length > 0
+            ? "invalid"
+            : "current",
+        metadata: {
+          ...readinessArtifact.metadata,
+          selected_readiness: readinessMetadata,
+          validation: readinessValidation,
+        },
+      })
+    : null;
+  if (readinessEvidence) {
+    evidence.push(readinessEvidence);
+  }
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G9.context_pack.evidence.present",
+      gate: "context_pack",
+      decisionValue: contextMetadata ? "PASS" : missing.decision,
+      severity: contextMetadata ? "info" : missing.severity,
+      profile,
+      message: contextMetadata
+        ? "Kodama context-pack evidence is present."
+        : "Kodama context-pack evidence is missing.",
+      evidenceRefs: contextEvidence ? [contextEvidence.id] : [],
+      remediation: contextMetadata
+        ? "No action required."
+        : "Create .framework/context-pack.json or .framework/kodama/context-pack.json with context-pack/v1 reference metadata.",
+    }),
+  );
+
+  if (contextValidation) {
+    const requiredIssues = [
+      ...contextValidation.missingFields.map((field) => `missing:${field}`),
+      ...contextValidation.invalidFields.map((field) => `invalid:${field}`),
+    ];
+    gateDecisions.push(
+      decision({
+        ruleId: "G9.context_pack.required_fields",
+        gate: "context_pack",
+        decisionValue: requiredIssues.length === 0 ? "PASS" : missing.decision,
+        severity: requiredIssues.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          requiredIssues.length === 0
+            ? "Context-pack evidence required fields are complete."
+            : `Context-pack evidence has field issues: ${requiredIssues.join(", ")}.`,
+        evidenceRefs: contextEvidence ? [contextEvidence.id] : [],
+        remediation:
+          requiredIssues.length === 0
+            ? "No action required."
+            : "Fill pack_id, schema_version, schema evidence, selected item ids, citations, omitted counts, risk labels, sensitivity/redaction labels, and generated_at.",
+      }),
+    );
+
+    gateDecisions.push(
+      decision({
+        ruleId: "G9.context_pack.provenance_bounds",
+        gate: "context_pack",
+        decisionValue:
+          contextValidation.provenanceGaps.length === 0 ? "PASS" : missing.decision,
+        severity:
+          contextValidation.provenanceGaps.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          contextValidation.provenanceGaps.length === 0
+            ? "Context-pack evidence is bounded by citations and does not carry unbounded raw source text."
+            : `Context-pack provenance has gaps: ${contextValidation.provenanceGaps.join(", ")}.`,
+        evidenceRefs: contextEvidence ? [contextEvidence.id] : [],
+        remediation:
+          contextValidation.provenanceGaps.length === 0
+            ? "No action required."
+            : "Reference source ids/citations and bounded excerpts instead of copying full raw source text into evidence.",
+      }),
+    );
+
+    gateDecisions.push(
+      decision({
+        ruleId: "G9.context_pack.data_not_instruction",
+        gate: "context_pack",
+        decisionValue:
+          contextValidation.instructionViolations.length === 0
+            ? "PASS"
+            : missing.decision,
+        severity:
+          contextValidation.instructionViolations.length === 0
+            ? "info"
+            : missing.severity,
+        profile,
+        message:
+          contextValidation.instructionViolations.length === 0
+            ? "Context-pack item text is treated as source data, not trusted instruction."
+            : `Context-pack item text is promoted to instruction: ${contextValidation.instructionViolations.join(", ")}.`,
+        evidenceRefs: contextEvidence ? [contextEvidence.id] : [],
+        remediation:
+          contextValidation.instructionViolations.length === 0
+            ? "No action required."
+            : "Deliver Kodama summary and quoted_excerpt as data-only or citation-only source context.",
+      }),
+    );
+  }
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G9.mcp_tool_contract.present",
+      gate: "mcp_server",
+      decisionValue: mcpMetadata ? "PASS" : missing.decision,
+      severity: mcpMetadata ? "info" : missing.severity,
+      profile,
+      message: mcpMetadata
+        ? "MCP structured output contract evidence is present."
+        : "MCP structured output contract evidence is missing.",
+      evidenceRefs: mcpEvidence ? [mcpEvidence.id] : [],
+      remediation: mcpMetadata
+        ? "No action required."
+        : "Create .framework/mcp-tool-contract.json declaring tool outputSchema, structuredContent success results, and isError tool-result failures.",
+    }),
+  );
+
+  if (mcpValidation) {
+    const structuredIssues = [
+      ...mcpValidation.missingFields.map((field) => `missing:${field}`),
+      ...mcpValidation.invalidFields.map((field) => `invalid:${field}`),
+      ...mcpValidation.structuredOutputGaps.map((field) => `structured:${field}`),
+    ];
+    gateDecisions.push(
+      decision({
+        ruleId: "G9.mcp_tool_contract.structured_output",
+        gate: "mcp_server",
+        decisionValue: structuredIssues.length === 0 ? "PASS" : missing.decision,
+        severity: structuredIssues.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          structuredIssues.length === 0
+            ? "MCP tools declare outputSchema and successful structuredContent results."
+            : `MCP structured output contract has issues: ${structuredIssues.join(", ")}.`,
+        evidenceRefs: mcpEvidence ? [mcpEvidence.id] : [],
+        remediation:
+          structuredIssues.length === 0
+            ? "No action required."
+            : "Declare outputSchema for structured tools and successful structuredContent result fixtures.",
+      }),
+    );
+
+    gateDecisions.push(
+      decision({
+        ruleId: "G9.mcp_tool_contract.error_boundary",
+        gate: "mcp_server",
+        decisionValue:
+          mcpValidation.errorBoundaryGaps.length === 0 ? "PASS" : missing.decision,
+        severity:
+          mcpValidation.errorBoundaryGaps.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          mcpValidation.errorBoundaryGaps.length === 0
+            ? "MCP execution failures use isError tool results and JSON-RPC errors remain protocol-level."
+            : `MCP error boundary has gaps: ${mcpValidation.errorBoundaryGaps.join(", ")}.`,
+        evidenceRefs: mcpEvidence ? [mcpEvidence.id] : [],
+        remediation:
+          mcpValidation.errorBoundaryGaps.length === 0
+            ? "No action required."
+            : "Use isError: true tool results for execution failures and reserve JSON-RPC errors for malformed requests, unknown tools, and invalid arguments before execution.",
+      }),
+    );
+  }
+
+  const publicClaim = hasPublicEnterpriseReadinessClaim(contextMetadata) ||
+    hasPublicEnterpriseReadinessClaim(readinessMetadata);
+  const readinessComplete =
+    !publicClaim ||
+    (readinessValidation !== null &&
+      readinessValidation.missingCategories.length === 0);
+  gateDecisions.push(
+    decision({
+      ruleId: "G9.context_pack.public_enterprise_readiness",
+      gate: "context_pack_public_readiness",
+      decisionValue: readinessComplete ? "PASS" : missing.decision,
+      severity: readinessComplete ? "info" : missing.severity,
+      profile,
+      message: !publicClaim
+        ? "No public, OSS, or enterprise context-pack readiness claim is present."
+        : readinessComplete
+          ? "Public/enterprise context-pack readiness evidence is complete."
+          : `Public/enterprise context-pack readiness evidence is incomplete: ${readinessValidation?.missingCategories.join(", ") ?? "record_missing"}.`,
+      evidenceRefs: [contextEvidence?.id, readinessEvidence?.id].filter(
+        (id): id is string => Boolean(id),
+      ),
+      remediation: readinessComplete
+        ? "No action required."
+        : "Record auth, redaction, token handling, public install, compatibility matrix, audit/retention, and deployment mode docs before making public/enterprise context-pack claims.",
     }),
   );
 }
@@ -2060,6 +2407,46 @@ function selectWorkOrderMetadata(
   ], ["work_orders", "orders"]);
 }
 
+function selectContextPackMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> | null {
+  return selectNestedObject(metadata, [
+    "context_pack",
+    "context_pack_v1",
+    "kodama_context_pack",
+    "pack",
+  ], ["context_packs", "packs"]);
+}
+
+function selectMcpToolContractMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> | null {
+  const explicit = selectNestedObject(metadata, [
+    "mcp_tool_contract",
+    "mcp_server_contract",
+    "tool_contract",
+    "contract",
+  ], ["mcp_tool_contracts", "tool_contracts"]);
+  if (explicit) {
+    return explicit;
+  }
+  if (Array.isArray(findDirectMetadataValue(metadata, ["tools"]))) {
+    return metadata;
+  }
+  return Object.keys(metadata).length > 0 ? metadata : null;
+}
+
+function selectPublicEnterpriseReadinessMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> | null {
+  return selectNestedObject(metadata, [
+    "public_enterprise_readiness",
+    "oss_enterprise_readiness",
+    "context_pack_readiness",
+    "readiness",
+  ], ["readiness_records"]);
+}
+
 function selectRuntimeAdapterMetadata(
   metadata: Record<string, unknown>,
 ): Record<string, unknown> | null {
@@ -2196,6 +2583,144 @@ function validateWorkOrderMetadata(
     contextPackGaps,
     authorityGaps,
     promotionGaps,
+  };
+}
+
+function validateContextPackMetadata(
+  pack: Record<string, unknown>,
+): ContextPackValidation {
+  const missingFields: string[] = [];
+  const invalidFields: string[] = [];
+  const provenanceGaps: string[] = [];
+  const instructionViolations: string[] = [];
+
+  if (!metadataValueHasNonEmptyKey(pack, ["pack_id", "id"])) {
+    missingFields.push("pack_id");
+  }
+
+  const schemaVersion = stringValue(
+    findDirectMetadataValue(pack, ["schema_version", "version"]),
+  );
+  if (!schemaVersion) {
+    missingFields.push("schema_version");
+  } else if (normalizeSchemaVersion(schemaVersion) !== "contextpackv1") {
+    invalidFields.push(`schema_version:${schemaVersion}`);
+  }
+
+  if (
+    !metadataValueHasNonEmptyKey(pack, [
+      "schema_hash",
+      "schema_evidence",
+      "schema_version_evidence",
+      "schema_ref",
+    ])
+  ) {
+    missingFields.push("schema_hash_or_evidence");
+  }
+
+  if (selectedContextPackItemIds(pack).length === 0) {
+    missingFields.push("selected_item_ids");
+  }
+
+  if (
+    !metadataValueHasNonEmptyKey(pack, [
+      "citations",
+      "source_refs",
+      "source_references",
+      "citation_metadata",
+    ])
+  ) {
+    missingFields.push("citations_or_source_refs");
+    provenanceGaps.push("citations_or_source_refs");
+  }
+
+  if (!hasNonEmptyObjectValue(pack, ["omitted_reason_counts", "omitted_counts"])) {
+    missingFields.push("omitted_reason_counts");
+  }
+
+  if (
+    !metadataValueHasNonEmptyKey(pack, [
+      "risk_labels",
+      "high_risk_labels",
+      "injection_risk_labels",
+    ])
+  ) {
+    missingFields.push("risk_labels");
+  }
+
+  if (
+    !metadataValueHasNonEmptyKey(pack, [
+      "sensitivity_labels",
+      "redaction_labels",
+      "sensitivity_redaction_labels",
+    ])
+  ) {
+    missingFields.push("sensitivity_or_redaction_labels");
+  }
+
+  if (!metadataValueHasNonEmptyKey(pack, ["generated_at", "created_at"])) {
+    missingFields.push("generated_at");
+  }
+
+  provenanceGaps.push(...findRawSourceTextGaps(pack));
+  instructionViolations.push(...findContextPackInstructionViolations(pack));
+
+  return {
+    missingFields,
+    invalidFields,
+    provenanceGaps,
+    instructionViolations,
+  };
+}
+
+function validateMcpToolContractMetadata(
+  contract: Record<string, unknown>,
+): McpToolContractValidation {
+  const missingFields: string[] = [];
+  const invalidFields: string[] = [];
+  const structuredOutputGaps: string[] = [];
+  const errorBoundaryGaps: string[] = [];
+  const tools = mcpContractTools(contract);
+
+  if (tools.length === 0) {
+    missingFields.push("tools");
+  }
+
+  for (const [index, tool] of tools.entries()) {
+    const label = describeMcpTool(tool, index);
+    if (!metadataValueHasNonEmptyKey(tool, ["name", "tool_name", "id"])) {
+      missingFields.push(`${label}.name`);
+    }
+    if (!metadataValueHasNonEmptyKey(tool, ["outputSchema", "output_schema"])) {
+      structuredOutputGaps.push(`${label}.outputSchema`);
+    }
+    if (!hasStructuredContentSuccessResult(tool, contract)) {
+      structuredOutputGaps.push(`${label}.structuredContent`);
+    }
+    if (!hasIsErrorExecutionFailure(tool, contract)) {
+      errorBoundaryGaps.push(`${label}.isError`);
+    }
+  }
+
+  const boundary = validateJsonRpcErrorBoundary(contract);
+  invalidFields.push(...boundary.invalidFields);
+  errorBoundaryGaps.push(...boundary.errorBoundaryGaps);
+
+  return {
+    missingFields,
+    invalidFields,
+    structuredOutputGaps,
+    errorBoundaryGaps,
+  };
+}
+
+function validatePublicEnterpriseReadinessMetadata(
+  readiness: Record<string, unknown>,
+): PublicEnterpriseReadinessValidation {
+  return {
+    missingCategories: PUBLIC_ENTERPRISE_READINESS_CATEGORIES
+      .filter((category) => !metadataValueHasNonEmptyKey(readiness, category.keys))
+      .map((category) => category.label),
   };
 }
 
@@ -3074,6 +3599,412 @@ function containsWorkOrderShellCommand(value: unknown): boolean {
     if (containsWorkOrderShellCommand(child)) {
       return true;
     }
+  }
+  return false;
+}
+
+function contextPackValidationHasIssues(
+  validation: ContextPackValidation,
+): boolean {
+  return (
+    validation.missingFields.length > 0 ||
+    validation.invalidFields.length > 0 ||
+    validation.provenanceGaps.length > 0 ||
+    validation.instructionViolations.length > 0
+  );
+}
+
+function mcpToolContractValidationHasIssues(
+  validation: McpToolContractValidation,
+): boolean {
+  return (
+    validation.missingFields.length > 0 ||
+    validation.invalidFields.length > 0 ||
+    validation.structuredOutputGaps.length > 0 ||
+    validation.errorBoundaryGaps.length > 0
+  );
+}
+
+function selectedContextPackItemIds(pack: Record<string, unknown>): string[] {
+  const directIds = primitiveStringArray(
+    findDirectMetadataValue(pack, ["selected_item_ids", "item_ids"]),
+  );
+  if (directIds.length > 0) {
+    return directIds;
+  }
+  const selectedItems = findDirectMetadataValue(pack, ["selected_items"]);
+  const selectedItemIds = primitiveStringArray(selectedItems);
+  if (selectedItemIds.length > 0) {
+    return selectedItemIds;
+  }
+  return contextPackItems(pack)
+    .map((item, index) => describeContextPackItem(item, index))
+    .filter((item) => !item.startsWith("item_"));
+}
+
+function contextPackItems(pack: Record<string, unknown>): Record<string, unknown>[] {
+  for (const key of ["items", "selected_items", "context_items", "sources"]) {
+    const value = findDirectMetadataValue(pack, [key]);
+    const items = objectArray(value);
+    if (items.length > 0) {
+      return items;
+    }
+  }
+  return [];
+}
+
+function describeContextPackItem(
+  item: Record<string, unknown>,
+  index: number,
+): string {
+  const id = findDirectMetadataValue(item, ["item_id", "id", "source_id"]);
+  if (typeof id === "string" || typeof id === "number") {
+    return String(id);
+  }
+  return `item_${index + 1}`;
+}
+
+function hasNonEmptyObjectValue(
+  metadata: Record<string, unknown>,
+  keys: string[],
+): boolean {
+  const value = objectValue(findDirectMetadataValue(metadata, keys));
+  return Boolean(
+    value &&
+      Object.keys(value).length > 0 &&
+      Object.values(value).some(hasNonEmptyRegisterValue),
+  );
+}
+
+function findRawSourceTextGaps(
+  value: unknown,
+  pathLabel = "context_pack",
+): string[] {
+  const rawKeys = new Set([
+    "raw_source_text",
+    "full_source_text",
+    "raw_text",
+    "full_text",
+    "source_text",
+    "unbounded_raw_text",
+  ]);
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) =>
+      findRawSourceTextGaps(item, `${pathLabel}[${index}]`),
+    );
+  }
+  if (!value || typeof value !== "object") {
+    return [];
+  }
+  const gaps: string[] = [];
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    const normalizedKey = normalizeMetadataKey(key);
+    const childPath = `${pathLabel}.${key}`;
+    if (rawKeys.has(normalizedKey) && hasNonEmptyRegisterValue(child)) {
+      gaps.push(childPath);
+      continue;
+    }
+    gaps.push(...findRawSourceTextGaps(child, childPath));
+  }
+  return gaps;
+}
+
+function findContextPackInstructionViolations(
+  pack: Record<string, unknown>,
+): string[] {
+  const violations: string[] = [];
+  if (contextPackRecordPromotesInstruction(pack)) {
+    violations.push("context_pack");
+  }
+  contextPackItems(pack).forEach((item, index) => {
+    if (contextPackRecordPromotesInstruction(item)) {
+      violations.push(describeContextPackItem(item, index));
+    }
+  });
+  return violations;
+}
+
+function contextPackRecordPromotesInstruction(
+  record: Record<string, unknown>,
+): boolean {
+  if (
+    booleanishTrue(
+      findDirectMetadataValue(record, [
+        "trusted_instruction",
+        "treat_as_instruction",
+        "as_instruction",
+        "instruction",
+        "is_instruction",
+      ]),
+    )
+  ) {
+    return true;
+  }
+  const delivery = normalizedString(
+    findDirectMetadataValue(record, ["delivery", "prompt_delivery"]),
+  );
+  if (delivery === "instruction") {
+    return true;
+  }
+  const segment = normalizedString(
+    findDirectMetadataValue(record, [
+      "segment",
+      "prompt_segment",
+      "target_segment",
+      "role",
+    ]),
+  );
+  return segment === "system" || segment === "developer";
+}
+
+function mcpContractTools(
+  contract: Record<string, unknown>,
+): Record<string, unknown>[] {
+  const tools = objectArray(findDirectMetadataValue(contract, ["tools"]));
+  if (tools.length > 0) {
+    return tools;
+  }
+  const tool = objectValue(findDirectMetadataValue(contract, ["tool"]));
+  if (tool) {
+    return [tool];
+  }
+  if (
+    metadataValueHasNonEmptyKey(contract, [
+      "name",
+      "tool_name",
+      "outputSchema",
+      "output_schema",
+    ])
+  ) {
+    return [contract];
+  }
+  return [];
+}
+
+function describeMcpTool(
+  tool: Record<string, unknown>,
+  index: number,
+): string {
+  const id = findDirectMetadataValue(tool, ["name", "tool_name", "id"]);
+  if (typeof id === "string" || typeof id === "number") {
+    return String(id);
+  }
+  return `tool_${index + 1}`;
+}
+
+function hasStructuredContentSuccessResult(
+  tool: Record<string, unknown>,
+  contract: Record<string, unknown>,
+): boolean {
+  if (
+    booleanishTrue(
+      findFirstMetadataValue(tool, [
+        "successful_results_have_structured_content",
+        "success_has_structuredContent",
+        "success_has_structured_content",
+      ]),
+    ) ||
+    booleanishTrue(
+      findFirstMetadataValue(contract, [
+        "successful_results_have_structured_content",
+        "success_has_structuredContent",
+        "success_has_structured_content",
+      ]),
+    )
+  ) {
+    return true;
+  }
+  const result = findDirectMetadataValue(tool, [
+    "success_result",
+    "successful_result",
+    "success_fixture",
+    "result_contract",
+    "tool_result_success",
+  ]) ?? findDirectMetadataValue(contract, [
+    "success_result",
+    "successful_result",
+    "success_fixture",
+    "result_contract",
+    "tool_result_success",
+  ]);
+  return resultHasStructuredContent(result);
+}
+
+function resultHasStructuredContent(value: unknown): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some(resultHasStructuredContent);
+  }
+  return metadataValueHasNonEmptyKey(value, [
+    "structuredContent",
+    "structured_content",
+  ]);
+}
+
+function hasIsErrorExecutionFailure(
+  tool: Record<string, unknown>,
+  contract: Record<string, unknown>,
+): boolean {
+  if (
+    booleanishTrue(
+      findFirstMetadataValue(tool, [
+        "execution_failures_use_isError",
+        "execution_failures_use_is_error",
+        "execution_failure_uses_is_error",
+      ]),
+    ) ||
+    booleanishTrue(
+      findFirstMetadataValue(contract, [
+        "execution_failures_use_isError",
+        "execution_failures_use_is_error",
+        "execution_failure_uses_is_error",
+      ]),
+    )
+  ) {
+    return true;
+  }
+  const result = findDirectMetadataValue(tool, [
+    "execution_error_result",
+    "execution_failure_result",
+    "error_result",
+    "tool_error_result",
+  ]) ?? findDirectMetadataValue(contract, [
+    "execution_error_result",
+    "execution_failure_result",
+    "error_result",
+    "tool_error_result",
+  ]);
+  return resultHasIsErrorTrue(result);
+}
+
+function resultHasIsErrorTrue(value: unknown): boolean {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.some(resultHasIsErrorTrue);
+  }
+  const metadata = value as Record<string, unknown>;
+  return booleanishTrue(findDirectMetadataValue(metadata, ["isError", "is_error"]));
+}
+
+function validateJsonRpcErrorBoundary(contract: Record<string, unknown>): {
+  invalidFields: string[];
+  errorBoundaryGaps: string[];
+} {
+  const invalidFields: string[] = [];
+  const errorBoundaryGaps: string[] = [];
+  if (
+    booleanishTrue(
+      findFirstMetadataValue(contract, [
+        "jsonrpc_errors_reserved_for_protocol",
+        "json_rpc_errors_reserved_for_protocol",
+      ]),
+    )
+  ) {
+    return { invalidFields, errorBoundaryGaps };
+  }
+  const policy = objectValue(
+    findDirectMetadataValue(contract, [
+      "jsonrpc_error_policy",
+      "json_rpc_error_policy",
+      "protocol_error_policy",
+      "error_boundary",
+    ]),
+  );
+  if (!policy) {
+    return {
+      invalidFields,
+      errorBoundaryGaps: ["jsonrpc_error_policy"],
+    };
+  }
+  const requiredProtocolErrors: Array<{ label: string; keys: string[] }> = [
+    { label: "malformed_request", keys: ["malformed_request", "parse_error"] },
+    { label: "unknown_tool", keys: ["unknown_tool", "method_not_found"] },
+    {
+      label: "invalid_arguments",
+      keys: ["invalid_arguments", "invalid_args", "invalid_params"],
+    },
+  ];
+  for (const { label, keys } of requiredProtocolErrors) {
+    if (!metadataValueHasNonEmptyKey(policy, keys)) {
+      errorBoundaryGaps.push(label);
+    }
+  }
+  const executionFailure = findDirectMetadataValue(policy, [
+    "execution_failure",
+    "tool_execution_failure",
+    "runtime_failure",
+  ]);
+  if (jsonRpcPolicyUsesProtocolErrorForExecutionFailure(executionFailure)) {
+    invalidFields.push("jsonrpc_error_policy.execution_failure");
+    errorBoundaryGaps.push("execution_failure");
+  }
+  return { invalidFields, errorBoundaryGaps };
+}
+
+function jsonRpcPolicyUsesProtocolErrorForExecutionFailure(value: unknown): boolean {
+  if (value === undefined || value === null || value === false) {
+    return false;
+  }
+  if (value === true) {
+    return true;
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const normalized = normalizeDisposition(String(value));
+    return (
+      normalized.includes("jsonrpc") ||
+      normalized.includes("json_rpc") ||
+      normalized.includes("protocol_error")
+    );
+  }
+  return false;
+}
+
+function hasPublicEnterpriseReadinessClaim(value: unknown): boolean {
+  return hasPublicEnterpriseReadinessClaimAtKey(value, null);
+}
+
+function hasPublicEnterpriseReadinessClaimAtKey(
+  value: unknown,
+  key: string | null,
+): boolean {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  const normalizedKey = key ? normalizeMetadataKey(key) : "";
+  if (typeof value === "boolean") {
+    return value && /(public|oss|enterprise|big_tech).*readiness/.test(normalizedKey);
+  }
+  if (typeof value === "string" || typeof value === "number") {
+    const text = String(value).toLowerCase();
+    if (/(no|non|not)\s+(public|oss|enterprise|big[- ]tech)/.test(text)) {
+      return false;
+    }
+    return (
+      /(public|oss|enterprise|big[- ]tech)/.test(text) &&
+      /(ready|readiness|alpha|adoption|claim|release|marketing)/.test(text)
+    );
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => hasPublicEnterpriseReadinessClaimAtKey(item, key));
+  }
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>).some(([childKey, child]) =>
+      hasPublicEnterpriseReadinessClaimAtKey(child, childKey),
+    );
+  }
+  return false;
+}
+
+function booleanishTrue(value: unknown): boolean {
+  if (value === true) {
+    return true;
+  }
+  if (typeof value === "string") {
+    return ["true", "yes", "instruction"].includes(normalizeDisposition(value));
   }
   return false;
 }

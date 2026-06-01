@@ -15,9 +15,11 @@ export interface WorkflowDecisionCounts {
 
 export type WorkflowCheckAction =
   | "audit_ledger"
+  | "context_pack"
   | "design_draft"
   | "implementation_start"
   | "implementation_split"
+  | "mcp_server"
   | "phase_closure"
   | "runtime_step"
   | "work_order"
@@ -234,6 +236,16 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
     "G19.audit_ledger.record_shape",
     "G19.audit_ledger.next_action_derivable",
   ],
+  context_pack: [
+    "G9.context_pack.evidence.present",
+    "G9.context_pack.required_fields",
+    "G9.context_pack.provenance_bounds",
+    "G9.context_pack.data_not_instruction",
+    "G9.mcp_tool_contract.present",
+    "G9.mcp_tool_contract.structured_output",
+    "G9.mcp_tool_contract.error_boundary",
+    "G9.context_pack.public_enterprise_readiness",
+  ],
   design_draft: [
     "G1.roles.required_bindings",
     "G1.roles.separation",
@@ -255,6 +267,11 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
     "G1.roles.required_bindings",
     "G1.roles.separation",
     "G2.hearing.required_confirmation",
+  ],
+  mcp_server: [
+    "G9.mcp_tool_contract.present",
+    "G9.mcp_tool_contract.structured_output",
+    "G9.mcp_tool_contract.error_boundary",
   ],
   phase_closure: [
     "G12.phase_closure.record.present",

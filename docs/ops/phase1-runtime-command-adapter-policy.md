@@ -24,10 +24,12 @@ SPEC-RUNTIMEADAPTER-240.
 5. Create a Delivery Graph step runtime binding that names adapter, policy,
    expected result schema, write scope, evidence sink, and fallback behavior.
 6. Run `shirube workflow check --action work_order --profile strict --json`.
-7. Run `shirube workflow check --action runtime_step --profile strict --json`.
-8. Execute the runtime only after Work Order warnings are dispositioned and G20
-   rules pass.
-9. Validate the final structured output against the expected schema before
+7. If the step consumes a Kodama context pack, run
+   `shirube workflow check --action context_pack --profile strict --json`.
+8. Run `shirube workflow check --action runtime_step --profile strict --json`.
+9. Execute the runtime only after Work Order warnings are dispositioned and
+   G9/G20 rules pass.
+10. Validate the final structured output against the expected schema before
    updating graph state, gate state, PR/issue state, audit ledger, or merge
    authority.
 

@@ -149,3 +149,7 @@ non-claims before runtime_step consumes a dispatch request.
 Later Delivery Graph runner slices should attach the final structured runtime
 result to AI Change Record, audit ledger, GitHub projection, and post-merge
 verification evidence.
+
+#242 should validate Kodama context-pack evidence and MCP structured-output
+contracts before runtime steps consume context packs through stdin/context-pack
+mode as strict Shirube evidence.

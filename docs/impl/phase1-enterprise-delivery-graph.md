@@ -71,6 +71,13 @@ structured invocation, Shirube gate/report output, runtime adapter selection,
 and Kodama context-pack refs share a verifiable request contract instead of a
 prompt template.
 
+### Slice H: #242 Kodama Context-Pack Evidence Placement
+Document that #242 is a child/follow-up slice under #238, #244, and #240. #242
+defines G9 context-pack evidence and MCP structured-output contract validation
+so Kodama context packs can be referenced by bounded metadata without becoming
+trusted instruction, runtime authority, or public/enterprise readiness proof by
+themselves.
+
 ## 2. File-Level Impact
 This PR A slice is documentation-only:
 
@@ -94,10 +101,11 @@ changes it:
 
 1. #244 Work Order contract and warning gate;
 2. #240 runtime command adapter and injection policy pack;
-3. #226 action registry and wrapper semantics;
-4. #227 local/script-controlled workflow chain;
-5. delivery graph read model and status projection;
-6. position registry and workflow template contracts;
-7. PR/phase/goal runners;
-8. GitHub/MCP projection;
-9. AI Change Record and enterprise export/reporting.
+3. #242 Kodama context-pack evidence and MCP structured-output contract;
+4. #226 action registry and wrapper semantics;
+5. #227 local/script-controlled workflow chain;
+6. delivery graph read model and status projection;
+7. position registry and workflow template contracts;
+8. PR/phase/goal runners;
+9. GitHub/MCP projection;
+10. AI Change Record and enterprise export/reporting.

@@ -14,7 +14,7 @@ traces:
 - Phase: Phase 1 parent spec / enterprise control-plane convergence
 - Parent direction: #197, #211
 - Related implementation slices: #222, #223, #224, #225, #226, #227, #229,
-  #232, #240, #244
+  #232, #240, #242, #244
 - Related Gate Engine rollout: #201, #202, #203
 
 ## 1. Purpose
@@ -216,6 +216,11 @@ Before full phase/PR runner automation, agent handoffs must converge on
 AUN dispatch, Codex/Claude structured invocation, Shirube gate/report output,
 runtime adapter expectations, and Kodama context-pack evidence, but it cannot
 approve gates, merge readiness, phase transitions, or goal progress.
+When a strict/public PR uses `context-pack/v1`, the pack must be referenced by
+bounded evidence metadata, MCP structured-output contract evidence, and
+data-not-instruction handling. Public, OSS, enterprise, Kodama, or Totonoe
+claims require separate readiness evidence rather than ordinary context-pack
+gate pass.
 
 ## 7. Acceptance Criteria
 - `delivery-graph/v1` and the Goal -> Phase -> Work Package -> PR -> Gate
@@ -229,6 +234,8 @@ approve gates, merge readiness, phase transitions, or goal progress.
 - #244 Work Order contract freezes the verifiable request format before #227
   script-controlled chain automation and before runtime/context-pack consumers
   depend on prompt-template inference.
+- #242 context-pack evidence keeps Kodama context bounded, citation-backed, and
+  data-only under the Work Order/runtime adapter boundaries.
 - Strict mode cannot claim phase completion merely because PRs merged; phase
   exit criteria and carryover must be evaluated.
 - Strict mode cannot claim goal completion merely because phases closed; goal

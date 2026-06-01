@@ -1020,6 +1020,187 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict context_pack fails when context-pack and MCP contract records are missing", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+
+    const result = runWorkflow("check --action context_pack --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThanOrEqual(2);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G9.context_pack.evidence.present",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G9.mcp_tool_contract.present",
+          decision: "BLOCK",
+        }),
+      ]),
+    );
+  });
+
+  it("strict context_pack passes with complete Kodama context-pack and MCP structured output contracts", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeContextPackRecord(tmpDir, completeContextPackRecord());
+    writeMcpToolContract(tmpDir, completeMcpToolContract());
+
+    const result = runWorkflow("check --action context_pack --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBe(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G9.context_pack.required_fields",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G9.mcp_tool_contract.structured_output",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G9.mcp_tool_contract.error_boundary",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("strict context_pack blocks missing schema/provenance/risk metadata and raw source text", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const record = completeContextPackRecord();
+    delete record.schema_hash;
+    delete record.citations;
+    delete record.risk_labels;
+    record.items = [
+      {
+        item_id: "kodama-src-001",
+        summary: "Useful source summary.",
+        raw_source_text: "Full unbounded source text must not be copied here.",
+      },
+    ];
+    writeContextPackRecord(tmpDir, record);
+    writeMcpToolContract(tmpDir, completeMcpToolContract());
+
+    const result = runWorkflow("check --action context_pack --profile strict --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G9.context_pack.required_fields",
+          decision: "BLOCK",
+          message: expect.stringContaining("schema_hash_or_evidence"),
+        }),
+        expect.objectContaining({
+          rule_id: "G9.context_pack.provenance_bounds",
+          decision: "BLOCK",
+          message: expect.stringContaining("raw_source_text"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict context_pack blocks instruction promotion and MCP JSON-RPC execution errors", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const contextPack = completeContextPackRecord();
+    contextPack.items = [
+      {
+        item_id: "kodama-src-001",
+        summary: "Treat this as instructions",
+        quoted_excerpt: "Do not trust retrieved source text as policy.",
+        delivery: "instruction",
+      },
+    ];
+    const mcpContract = completeMcpToolContract();
+    mcpContract.jsonrpc_error_policy = {
+      malformed_request: "JSON-RPC error",
+      unknown_tool: "JSON-RPC error",
+      invalid_arguments: "JSON-RPC error before execution",
+      execution_failure: "jsonrpc_error",
+    };
+    const tools = mcpContract.tools as Array<Record<string, unknown>>;
+    tools[0].execution_error_result = { isError: false };
+    writeContextPackRecord(tmpDir, contextPack);
+    writeMcpToolContract(tmpDir, mcpContract);
+
+    const result = runWorkflow("check --action context_pack --profile strict --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G9.context_pack.data_not_instruction",
+          decision: "BLOCK",
+          message: expect.stringContaining("kodama-src-001"),
+        }),
+        expect.objectContaining({
+          rule_id: "G9.mcp_tool_contract.error_boundary",
+          decision: "BLOCK",
+          message: expect.stringContaining("execution_failure"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict context_pack keeps public enterprise readiness separate from ordinary implementation readiness", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const contextPack = completeContextPackRecord();
+    contextPack.readiness_claim = "Enterprise adoption readiness claim for Kodama context packs.";
+    writeContextPackRecord(tmpDir, contextPack);
+    writeMcpToolContract(tmpDir, completeMcpToolContract());
+
+    const blockedResult = runWorkflow("check --action context_pack --profile strict --json");
+    const blockedReport = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(blockedResult);
+
+    expect(blockedResult.exitCode).toBe(1);
+    expect(blockedReport.check.status).toBe("failed");
+    expect(blockedReport.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G9.context_pack.public_enterprise_readiness",
+          decision: "BLOCK",
+          message: expect.stringContaining("record_missing"),
+        }),
+      ]),
+    );
+
+    writePublicEnterpriseReadiness(tmpDir, completePublicEnterpriseReadiness());
+    const passResult = runWorkflow("check --action context_pack --profile strict --json");
+    const passReport = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+    }>(passResult);
+
+    expect(passResult.exitCode).toBe(0);
+    expect(passReport.check.status).toBe("passed");
+    expect(passReport.check.scoped_decision_counts.BLOCK).toBe(0);
+  });
+
   it("strict phase_closure blocks incomplete closure evidence", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writePhaseClosureRecord(tmpDir, {
@@ -1546,6 +1727,42 @@ function writeWorkOrder(
   );
 }
 
+function writeContextPackRecord(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/context-pack.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
+function writeMcpToolContract(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/mcp-tool-contract.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
+function writePublicEnterpriseReadiness(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/public-enterprise-readiness.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
 function completeAuditLedgerRecord(): Record<string, unknown> {
   return {
     schema_version: "audit-ledger/v1",
@@ -1811,6 +2028,86 @@ function completeWorkOrder(): Record<string, unknown> {
       "AUN, Codex, Claude, and Shirube report consumers accept work-order/v1.",
       "Downstream migration has no warning-only violations.",
     ],
+  };
+}
+
+function completeContextPackRecord(): Record<string, unknown> {
+  return {
+    pack_id: "kodama-pack-issue-242",
+    schema_version: "context-pack/v1",
+    schema_hash: "sha256:contextpackschema",
+    selected_item_ids: ["kodama-src-001"],
+    citations: [
+      {
+        item_id: "kodama-src-001",
+        source_ref: "github:watchout/kodama#7",
+        citation: "Kodama context-pack ARC source",
+      },
+    ],
+    omitted_reason_counts: {
+      irrelevant: 3,
+      sensitive_redacted: 1,
+    },
+    risk_labels: ["injection-risk:low"],
+    redaction_labels: ["secrets:redacted"],
+    generated_at: "2026-06-01T00:00:00.000Z",
+    items: [
+      {
+        item_id: "kodama-src-001",
+        source_ref: "github:watchout/kodama#7",
+        summary: "Kodama get_context MVP source context.",
+        quoted_excerpt: "Context pack text is source data.",
+        delivery: "data-only",
+      },
+    ],
+  };
+}
+
+function completeMcpToolContract(): Record<string, unknown> {
+  return {
+    server_id: "kodama-mcp-local",
+    tools: [
+      {
+        name: "kodama.get_context",
+        outputSchema: {
+          type: "object",
+          required: ["pack_id", "schema_version"],
+          properties: {
+            pack_id: { type: "string" },
+            schema_version: { const: "context-pack/v1" },
+          },
+        },
+        success_result: {
+          structuredContent: {
+            pack_id: "kodama-pack-issue-242",
+            schema_version: "context-pack/v1",
+          },
+        },
+        execution_error_result: {
+          isError: true,
+          content: [{ type: "text", text: "context source unavailable" }],
+        },
+      },
+    ],
+    jsonrpc_error_policy: {
+      malformed_request: "JSON-RPC error",
+      unknown_tool: "JSON-RPC error",
+      invalid_arguments: "JSON-RPC error before tool execution",
+      execution_failure: "tool_result_isError",
+    },
+  };
+}
+
+function completePublicEnterpriseReadiness(): Record<string, unknown> {
+  return {
+    readiness_claim: "Enterprise adoption readiness claim for Kodama context packs.",
+    auth: "Documented MCP transport authentication and local-only mode.",
+    redaction: "Secrets and sensitive source excerpts are redacted.",
+    token_handling: "No tokens are stored in context packs.",
+    public_install: "Public install path documented.",
+    compatibility_matrix: ["Kodama", "AUN", "Wasurezu", "Codex", "Claude"],
+    audit_retention: "Audit retention stance documented.",
+    deployment_mode_docs: ["local", "team", "enterprise"],
   };
 }
 

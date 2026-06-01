@@ -13,7 +13,7 @@ traces:
 - Origin Issue: #240
 - Parent: #238 / PR #239 Enterprise Delivery Graph
 - Phase: Phase 1 child/follow-up spec and minimum runner validation
-- Complements: #226, #227, #244, #204, #168
+- Complements: #226, #227, #242, #244, #204, #168
 
 ## 1. Purpose
 Add deterministic execution contracts for Delivery Graph steps so Shirube can
@@ -131,6 +131,8 @@ Strict policy packs must:
 - keep trusted instructions and trusted policy sources explicit;
 - list user/GitHub/tool/retrieval context as untrusted where applicable;
 - deliver untrusted context as `data-only`, `citation-only`, or `omit`;
+- treat Kodama `context-pack/v1` item `summary` and `quoted_excerpt` as
+  source data, not system/developer/runtime instructions;
 - forbid untrusted shell interpolation;
 - require schema validation;
 - fail on schema mismatch;
@@ -224,6 +226,9 @@ Security requirements:
 - User, GitHub, tool, and retrieval content must not be interpolated directly
   into shell commands, workflow YAML, or privileged instruction segments.
 - External context must be delivered as data with provenance, not authority.
+- Context packs consumed through stdin/context-pack mode must pass the G9
+  context-pack and MCP structured-output contract checks before they are used
+  as strict Shirube evidence.
 - Runtime output must be schema-validated before it can update graph state,
   gate state, PR status, issue state, or merge authority.
 - Hooks may enforce immediate guardrails but must not be the sole authority for
