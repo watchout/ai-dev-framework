@@ -960,6 +960,66 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict work_order warns when authority values grant transition authority", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const order = completeWorkOrder();
+    order.authority_boundary = {
+      forbidden: [
+        "merge approval",
+        "phase transition",
+        "gate pass",
+        "goal completion",
+      ],
+      merge_authority: "granted",
+      phase_transition_authority: "allowed",
+      gate_authority: true,
+      goal_completion_authority: "approved",
+    };
+    order.non_claims = [
+      "merge authority granted",
+      "phase transition authority allowed",
+    ];
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.authority_boundary",
+          decision: "WARN",
+          message: expect.stringContaining("merge_authority:granted"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.authority_boundary",
+          decision: "WARN",
+          message: expect.stringContaining("phase_transition_authority:allowed"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.authority_boundary",
+          decision: "WARN",
+          message: expect.stringContaining("gate_authority:true"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.authority_boundary",
+          decision: "WARN",
+          message: expect.stringContaining("goal_completion_authority:approved"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.authority_boundary",
+          decision: "WARN",
+          message: expect.stringContaining("non_claims.authority_claim"),
+        }),
+      ]),
+    );
+  });
+
   it("strict phase_closure blocks incomplete closure evidence", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writePhaseClosureRecord(tmpDir, {

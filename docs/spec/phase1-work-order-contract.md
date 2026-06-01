@@ -168,6 +168,16 @@ Then all G21 Work Order rules pass
 And downstream dispatch can consume the same contract without prompt-template inference
 ```
 
+Acceptance scenario for authority denial:
+
+```gherkin
+Given a work-order/v1 artifact sets merge_authority or phase_transition_authority to granted
+Or it grants gate pass or goal completion authority
+When the strict work_order workflow check runs with --fail-on warn
+Then G21.work_order.authority_boundary warns
+And the migration audit fails
+```
+
 ## 8. Non-Goals
 - Do not implement phase/PR runner automation.
 - Do not own AUN queue dispatch internals.

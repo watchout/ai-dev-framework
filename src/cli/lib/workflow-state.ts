@@ -658,6 +658,30 @@ const WORK_ORDER_ENFORCEMENT_MODES = new Set([
   "block-ready",
   "hard-block-ready",
 ]);
+const WORK_ORDER_CANONICAL_NO_AUTHORITY_VALUE = "notgranted";
+const WORK_ORDER_NO_AUTHORITY_VALUES = new Set([
+  "notgranted",
+  "notallowed",
+  "none",
+  "no",
+  "false",
+  "denied",
+  "forbidden",
+  "prohibited",
+]);
+const WORK_ORDER_AUTHORITY_GRANT_VALUES = new Set([
+  "granted",
+  "allowed",
+  "allow",
+  "true",
+  "yes",
+  "approved",
+  "approve",
+  "passed",
+  "pass",
+  "enabled",
+  "permitted",
+]);
 
 function applyProjectApplied(
   projectDir: string,
@@ -2803,27 +2827,143 @@ function findWorkOrderAuthorityGaps(workOrder: Record<string, unknown>): string[
     ) {
       gaps.push("authority_boundary.forbidden");
     }
-    if (
-      !metadataValueHasNonEmptyKey(authorityBoundary, [
-        "merge_authority",
-        "phase_transition_authority",
-        "gate_authority",
-      ])
-    ) {
-      gaps.push("authority_boundary.transition_authority");
-    }
+    gaps.push(
+      ...findRequiredWorkOrderNoAuthorityGaps(authorityBoundary, [
+        { keys: ["merge_authority"], label: "merge_authority" },
+        {
+          keys: ["phase_transition_authority"],
+          label: "phase_transition_authority",
+        },
+      ]),
+      ...findOptionalWorkOrderAuthorityGrantGaps(authorityBoundary, [
+        {
+          keys: ["gate_authority", "gate_pass_authority", "gate_decision_authority"],
+          label: "gate_authority",
+        },
+        {
+          keys: ["goal_completion_authority", "goal_authority", "complete_goal"],
+          label: "goal_completion_authority",
+        },
+      ], "authority_boundary"),
+    );
   }
-  if (
-    metadataValueHasNonEmptyKey(workOrder, [
-      "approve_merge",
-      "approve_phase",
-      "complete_goal",
-      "gate_pass",
-    ])
-  ) {
-    gaps.push("authority_self_approval");
+  const rootAuthorityGaps = findOptionalWorkOrderAuthorityGrantGaps(workOrder, [
+    { keys: ["approve_merge", "merge_authority"], label: "approve_merge" },
+    { keys: ["approve_phase", "phase_transition_authority"], label: "approve_phase" },
+    { keys: ["complete_goal", "goal_completion_authority"], label: "complete_goal" },
+    { keys: ["gate_pass", "gate_authority"], label: "gate_pass" },
+  ], "authority_self_approval");
+  gaps.push(...rootAuthorityGaps);
+  if (workOrderNonClaimsGrantAuthority(workOrder)) {
+    gaps.push("non_claims.authority_claim");
   }
   return gaps;
+}
+
+function findRequiredWorkOrderNoAuthorityGaps(
+  metadata: Record<string, unknown>,
+  fields: Array<{ keys: string[]; label: string }>,
+): string[] {
+  const gaps: string[] = [];
+  for (const field of fields) {
+    const value = findDirectMetadataValue(metadata, field.keys);
+    if (value === undefined || isEmptyRegisterValue(value)) {
+      gaps.push(`authority_boundary.${field.label}`);
+      continue;
+    }
+    const normalizedValues = normalizeWorkOrderAuthorityValues(value);
+    if (
+      normalizedValues.length !== 1 ||
+      normalizedValues[0] !== WORK_ORDER_CANONICAL_NO_AUTHORITY_VALUE
+    ) {
+      gaps.push(`authority_boundary.${field.label}:${describeAuthorityValue(value)}`);
+    }
+  }
+  return gaps;
+}
+
+function findOptionalWorkOrderAuthorityGrantGaps(
+  metadata: Record<string, unknown>,
+  fields: Array<{ keys: string[]; label: string }>,
+  prefix: string,
+): string[] {
+  const gaps: string[] = [];
+  for (const field of fields) {
+    const value = findDirectMetadataValue(metadata, field.keys);
+    if (value === undefined || isEmptyRegisterValue(value)) {
+      continue;
+    }
+    if (workOrderAuthorityValueGrantsAuthority(value)) {
+      gaps.push(`${prefix}.${field.label}:${describeAuthorityValue(value)}`);
+    }
+  }
+  return gaps;
+}
+
+function normalizeWorkOrderAuthorityValues(value: unknown): string[] {
+  return collectPrimitiveLeafValues(value)
+    .map((item) => normalizeScopeValue(item))
+    .filter((item) => item.length > 0);
+}
+
+function describeAuthorityValue(value: unknown): string {
+  const values = collectPrimitiveLeafValues(value)
+    .map((item) => String(item).trim())
+    .filter((item) => item.length > 0);
+  return values.length > 0 ? values.join("|") : "non_scalar";
+}
+
+function workOrderAuthorityValueGrantsAuthority(value: unknown): boolean {
+  const normalizedValues = normalizeWorkOrderAuthorityValues(value);
+  return normalizedValues.some((item) => {
+    if (WORK_ORDER_NO_AUTHORITY_VALUES.has(item)) {
+      return false;
+    }
+    if (WORK_ORDER_AUTHORITY_GRANT_VALUES.has(item)) {
+      return true;
+    }
+    return (
+      (item.includes("granted") && !item.includes("notgranted")) ||
+      (item.includes("allowed") && !item.includes("notallowed")) ||
+      item.includes("canapprove") ||
+      item.includes("canmerge") ||
+      item.includes("canpass") ||
+      item.includes("cancomplete")
+    );
+  });
+}
+
+function workOrderNonClaimsGrantAuthority(workOrder: Record<string, unknown>): boolean {
+  const nonClaims = findDirectMetadataValue(workOrder, [
+    "non_claims",
+    "explicit_non_claims",
+  ]);
+  return collectPrimitiveLeafValues(nonClaims).some(workOrderTextClaimsAuthority);
+}
+
+function workOrderTextClaimsAuthority(text: string): boolean {
+  const normalized = normalizeScopeValue(text);
+  const mentionsAuthority =
+    normalized.includes("merge") ||
+    normalized.includes("phase") ||
+    normalized.includes("gate") ||
+    normalized.includes("goal") ||
+    normalized.includes("authority") ||
+    normalized.includes("approve") ||
+    normalized.includes("complete");
+  if (!mentionsAuthority) {
+    return false;
+  }
+  const hasNegativeBoundary =
+    normalized.includes("no") ||
+    normalized.includes("not") ||
+    normalized.includes("without") ||
+    normalized.includes("cannot") ||
+    normalized.includes("cant") ||
+    normalized.includes("forbidden") ||
+    normalized.includes("denied") ||
+    normalized.includes("prohibited");
+  return !hasNegativeBoundary && workOrderAuthorityValueGrantsAuthority(text);
 }
 
 function findWorkOrderPromotionGaps(workOrder: Record<string, unknown>): string[] {

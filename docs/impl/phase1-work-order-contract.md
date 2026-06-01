@@ -65,7 +65,13 @@ explicit non-applicability. If context packs are cited, the Work Order must
 declare data-only/citation-only/omit delivery and must not promote context-pack
 item text to instruction.
 
-### Slice G: Warning-First Workflow Check
+### Slice G: Authority Boundary Validation
+Validate authority values, not just authority keys. `merge_authority` and
+`phase_transition_authority` must use the canonical `not_granted` value. Any
+gate, merge, phase, or goal-completion field that grants authority must warn,
+including contradictory `non_claims` entries.
+
+### Slice H: Warning-First Workflow Check
 Add `work_order` to `workflow check --action`.
 
 Scoped rules:
