@@ -1,0 +1,136 @@
+{
+  "schema_version": "work-order/v1",
+  "work_order_id": "WO-WASUREZU-SHIRUBE-001",
+  "repo": "watchout/wasurezu",
+  "issue": "WASUREZU-SHIRUBE-001",
+  "feature_id": "WASUREZU-SHIRUBE-001",
+  "work_package_id": "wasurezu-lightweight-adoption",
+  "objective": "Adopt Shirube discipline for Wasurezu development in single-agent minimal audit mode.",
+  "scope": [
+    "Add Wasurezu Shirube adoption scaffolding.",
+    "Record producer, gate, and review sections separately.",
+    "Require standard audit for recovery, memory, MCP, host-runtime, redaction, provenance, token, migration, or data-model behavior changes."
+  ],
+  "non_goals": [
+    "No full multi-agent Shirube operation.",
+    "No state_daemon automation requirement.",
+    "No AUN auto-runner requirement.",
+    "No merge-authority enforcement in the first adoption PR.",
+    "No unofficial lightweight CLI mode."
+  ],
+  "quality_mode": "single-agent",
+  "audit_level": "minimal",
+  "handoff_target": "codex",
+  "dispatch_surfaces": [
+    "codex",
+    "shirube_report"
+  ],
+  "inputs": [
+    {
+      "type": "github_issue",
+      "ref": "github:watchout/ai-dev-framework#246"
+    }
+  ],
+  "evidence_refs": [
+    "github:watchout/ai-dev-framework#238",
+    "github:watchout/ai-dev-framework#244",
+    "github:watchout/ai-dev-framework#246"
+  ],
+  "affected_mcp_tools": [],
+  "affected_schemas": [
+    "work-order/v1"
+  ],
+  "data_migration_impact": {
+    "level": "none",
+    "notes": "Adoption scaffolding does not change Wasurezu data models."
+  },
+  "recovery_behavior_impact": {
+    "level": "none",
+    "notes": "First adoption PR documents recovery continuity requirements without changing recovery behavior."
+  },
+  "host_runtime_impact": {
+    "level": "none",
+    "notes": "No host invocation or restart behavior change in the first adoption PR."
+  },
+  "redaction_provenance_impact": {
+    "level": "documentation",
+    "notes": "Reports must identify source/provenance handling and avoid projecting secrets or private reasoning."
+  },
+  "context_pack_non_applicability": "No Kodama context-pack is required for the first Wasurezu adoption scaffolding PR.",
+  "context_pack_policy": {
+    "data_not_instruction": true,
+    "delivery": "citation-only"
+  },
+  "structured_invocation": {
+    "runtime": "codex",
+    "output_mode": "jsonl",
+    "output_schema": "wasurezu-adoption-report/v1"
+  },
+  "expected_output_schema": "wasurezu-adoption-report/v1",
+  "write_scope": "workspace-write",
+  "required_gates": [
+    "work_order",
+    "test",
+    "typecheck",
+    "build"
+  ],
+  "tests_required": [
+    "npm run type-check",
+    "npm run build",
+    "project-specific focused tests for changed recovery, memory, MCP, host, redaction, provenance, token, migration, or data-model behavior"
+  ],
+  "rollback_plan": [
+    "Revert docs/scaffolding PR for first adoption step.",
+    "For later behavior changes, restore previous schema or migration state using the documented rollback procedure."
+  ],
+  "report_sink": "manual-shirube-report",
+  "evidence_report_format": {
+    "producer": [
+      "work_order",
+      "feature",
+      "objective",
+      "scope",
+      "non_goals",
+      "changes"
+    ],
+    "gate": [
+      "risk_classification",
+      "quality_mode",
+      "audit_level",
+      "commands",
+      "gate_decisions",
+      "warnings"
+    ],
+    "review": [
+      "findings",
+      "residual_risks",
+      "missing_evidence",
+      "non_claims",
+      "next_action"
+    ]
+  },
+  "authority_boundary": {
+    "forbidden": [
+      "merge approval",
+      "phase transition",
+      "gate pass without evidence",
+      "goal completion",
+      "recovery correctness claim without deterministic evidence"
+    ],
+    "merge_authority": "not_granted",
+    "phase_transition_authority": "not_granted"
+  },
+  "non_claims": [
+    "This Work Order does not grant merge authority.",
+    "This Work Order does not grant phase transition authority.",
+    "This Work Order does not make Wasurezu recovery behavior correct by itself.",
+    "This Work Order does not enable full runner automation, state_daemon automation, or AUN auto-runner operation."
+  ],
+  "enforcement_mode": "warning",
+  "promotion_criteria": [
+    "Wasurezu dogfoods the profile on adoption scaffolding.",
+    "Standard audit covers at least one behavior-changing recovery or MCP task.",
+    "Missing Wasurezu Work Order field warnings are resolved in real usage.",
+    "A later Shirube PR receives review approval to promote dispatch gaps from WARN to BLOCK."
+  ]
+}
