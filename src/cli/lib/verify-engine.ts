@@ -17,6 +17,7 @@ import {
   saveVerifyResult,
 } from "./verification-model.js";
 import {
+  collectTestFiles,
   collectSourceFiles,
   scoreSSOTAlignment,
   scoreCodeQuality,
@@ -122,7 +123,7 @@ function runSingleCheck(
   issues: CheckpointIssue[],
 ): number {
   const srcFiles = collectSourceFiles(projectDir, "src");
-  const testFiles = srcFiles.filter((f) => f.includes(".test."));
+  const testFiles = collectTestFiles(projectDir);
   const nonTestFiles = srcFiles.filter((f) => !f.includes(".test."));
 
   switch (target) {
