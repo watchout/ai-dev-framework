@@ -285,6 +285,11 @@ SPEC `docs/spec/phase1-m0-user-outcome-gate.md`, IMPL
 `docs/impl/phase1-m0-user-outcome-gate.md`, VERIFY
 `docs/verify/phase1-m0-user-outcome-gate.md`, OPS
 `docs/ops/phase1-m0-user-outcome-gate.md`.
+Workflow action registry child artifact:
+SPEC `docs/spec/phase1-workflow-action-registry.md`, IMPL
+`docs/impl/phase1-workflow-action-registry.md`, VERIFY
+`docs/verify/phase1-workflow-action-registry.md`, OPS
+`docs/ops/phase1-workflow-action-registry.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY

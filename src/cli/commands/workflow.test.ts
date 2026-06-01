@@ -11,6 +11,7 @@ import {
   type RequiredRoleName,
   type RoleBinding,
 } from "../lib/workflow-config.js";
+import { getWorkflowActionRuleIds } from "../lib/workflow-action-registry.js";
 
 const REPO_ROOT = process.cwd();
 const CLI_PATH = path.resolve(REPO_ROOT, "src/cli/index.ts");
@@ -116,6 +117,7 @@ describe("workflow command", () => {
         status: string;
         action: string;
         fail_on: string;
+        applicable_rule_ids: string[];
         scoped_decision_counts: { BLOCK: number };
       };
       decision_counts: { BLOCK: number };
@@ -125,6 +127,9 @@ describe("workflow command", () => {
     expect(report.check.status).toBe("failed");
     expect(report.check.action).toBe("implementation_start");
     expect(report.check.fail_on).toBe("block");
+    expect(report.check.applicable_rule_ids).toEqual([
+      ...getWorkflowActionRuleIds("implementation_start"),
+    ]);
     expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
     expect(report.decision_counts.BLOCK).toBeGreaterThan(0);
   });

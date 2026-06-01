@@ -10,9 +10,13 @@ import {
   formatWorkflowDoctor,
   formatWorkflowExplanation,
   formatWorkflowStatus,
-  type WorkflowCheckAction,
   type WorkflowCheckFailOn,
 } from "../lib/workflow-observability.js";
+import {
+  formatWorkflowActionRegistryList,
+  parseWorkflowCheckAction,
+  type WorkflowCheckAction,
+} from "../lib/workflow-action-registry.js";
 import { logger } from "../lib/logger.js";
 
 interface WorkflowOptions {
@@ -77,7 +81,7 @@ export function registerWorkflowCommand(program: Command): void {
     .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .option(
       "--action <action>",
-      "Action to evaluate (audit_ledger|design_draft|implementation_start|implementation_split|phase_closure|runtime_step|work_order|remote_publish|merge|release)",
+      `Action to evaluate (${formatWorkflowActionRegistryList()})`,
     )
     .option("--fail-on <decision>", "Decision threshold (block|warn|observe)", "block")
     .action((options: WorkflowOptions) => {
@@ -170,21 +174,11 @@ function parseFailOn(value: string | undefined): WorkflowCheckFailOn {
 }
 
 function parseAction(value: string | undefined): WorkflowCheckAction {
-  if (
-    value === "audit_ledger" ||
-    value === "design_draft" ||
-    value === "implementation_start" ||
-    value === "implementation_split" ||
-    value === "phase_closure" ||
-    value === "runtime_step" ||
-    value === "work_order" ||
-    value === "remote_publish" ||
-    value === "merge" ||
-    value === "release"
-  ) {
-    return value;
+  const action = parseWorkflowCheckAction(value);
+  if (action) {
+    return action;
   }
   throw new Error(
-    `Invalid or missing workflow action: ${value ?? "(missing)"}`,
+    `Invalid or missing workflow action: ${value ?? "(missing)"}. Expected one of: ${formatWorkflowActionRegistryList()}`,
   );
 }
