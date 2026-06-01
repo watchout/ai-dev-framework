@@ -2,17 +2,17 @@
 
 > Status: Canonical roadmap draft
 > Updated: 2026-05-26
-> Direction source: Issue #211, Gate Engine SPEC-DOC4L-020, GitHub-backed strict workflow, and script-control completion audit.
+> Direction source: Issues #211 and #238, Gate Engine SPEC-DOC4L-020, GitHub-backed strict workflow, and script-control completion audit.
 
 ## 1. Roadmap Goal
 
 Shirube's end state is:
 
 ```text
-Shirube = AI PR Safety Gate + Evidence Control Plane
+Shirube = Agentic SDLC Control Plane
 ```
 
-The roadmap therefore does not optimize for "more AI coding features" first. It builds the control plane that lets AI coding agents work toward explicit product goals without skipping design, evidence, audit, merge authority, or post-merge verification.
+The roadmap therefore does not optimize for "more AI coding features" first. It builds the control plane that lets AI coding agents work toward explicit product goals without skipping design, evidence, audit, merge authority, post-merge verification, phase closure, or goal progress verification.
 
 The release ladder is:
 
@@ -67,6 +67,7 @@ Unify the existing v1.2.x, framework-overhaul, Gate Engine, distribution, and #2
 - #136/#139: spec-audit implementation and cleanup.
 - #197-#204: Gate Engine alignment and rollout.
 - #211: structural intelligence / enterprise positioning.
+- #238: Agentic SDLC Control Plane parent spec and enterprise delivery graph.
 - #212: Phase 0 Script Control Completion Baseline.
 - PR #208 / #200: workflow observability PR C.
 
@@ -181,6 +182,7 @@ Shirube can govern its own development and at least one internal project through
 | Phase plan | Goal sufficient conditions decomposed into phases with exit criteria. |
 | Feature catalog | P0/P1 catalog traced to goal sufficient conditions. |
 | Task DAG | Tasks derive from approved features and preserve dependency order. |
+| Enterprise Delivery Graph | Parent `delivery-graph/v1` contract links goal, phase, work package/task, PR, gate, evidence, and progress without runtime enforcement in PR A. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
 | Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
 | Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
@@ -223,6 +225,11 @@ Shirube can govern its own development and at least one internal project through
 | T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain. |
 
 T0/T1 start artifact: [Phase 1 Internal Dogfood Start](./phase1-internal-dogfood-start.md).
+Parent enterprise control-plane artifact:
+SPEC `docs/spec/phase1-enterprise-delivery-graph.md`, IMPL
+`docs/impl/phase1-enterprise-delivery-graph.md`, VERIFY
+`docs/verify/phase1-enterprise-delivery-graph.md`, OPS
+`docs/ops/phase1-enterprise-delivery-graph.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
