@@ -35,6 +35,7 @@ Add the `G12.phase_closure.*` rule family to the workflow state builder:
 - blockers cleared;
 - carryovers justified;
 - POSTMERGE evidence present.
+- audit ledger refs present for L1/L2/L3 coverage after #225.
 
 Strict mode emits BLOCK for invalid closure evidence. Minimal and standard emit
 WARN during migration.
@@ -55,6 +56,8 @@ Validation is deterministic and local-first:
 - deferred/carryover items must include a justification or safety rationale;
 - each merged PR must carry POSTMERGE evidence, or the record must provide an
   explicit top-level POSTMERGE evidence register.
+- L1/L2/L3 coverage must cite audit ledger record ids either through root
+  `audit_ledger_refs` or per-level audit matrix refs.
 - root closure registers are read only from the closure record root. Nested
   `tasks` or `prs` aliases inside unrelated objects do not satisfy
   `completed_tasks` or `merged_prs`;

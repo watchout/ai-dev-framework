@@ -14,6 +14,7 @@ export interface WorkflowDecisionCounts {
 }
 
 export type WorkflowCheckAction =
+  | "audit_ledger"
   | "design_draft"
   | "implementation_start"
   | "implementation_split"
@@ -225,6 +226,12 @@ export function formatWorkflowExplanation(
 }
 
 const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
+  audit_ledger: [
+    "G19.audit_ledger.record.present",
+    "G19.audit_ledger.required_fields",
+    "G19.audit_ledger.record_shape",
+    "G19.audit_ledger.next_action_derivable",
+  ],
   design_draft: [
     "G1.roles.required_bindings",
     "G1.roles.separation",
@@ -253,6 +260,7 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
     "G12.phase_closure.blockers_cleared",
     "G12.phase_closure.carryovers_justified",
     "G12.phase_closure.postmerge_evidence",
+    "G12.phase_closure.audit_ledger_refs",
   ],
   remote_publish: [
     "G1.roles.required_bindings",

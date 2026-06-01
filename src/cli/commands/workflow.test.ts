@@ -320,6 +320,167 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict audit_ledger fails when the ledger record is missing", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+
+    const result = runWorkflow("check --action audit_ledger --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.record.present",
+          decision: "BLOCK",
+        }),
+      ]),
+    );
+  });
+
+  it("strict audit_ledger blocks incomplete audit records", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeAuditLedgerRecord(tmpDir, {
+      schema_version: "audit-ledger/v1",
+      ledger_id: "phase1-ledger",
+      records: [
+        {
+          audit_id: "AUDIT-1",
+          level: "L2",
+          artifact: { type: "pr", ref: "https://github.example/pr/1" },
+          reviewer: { id: "codex-audit", role: "auditor" },
+          verdict: "PASS",
+          timestamp: "2026-05-27T00:00:00.000Z",
+          evidence_urls: ["https://github.example/pr/1#comment"],
+          approved_scope: "code/runtime slice only",
+          explicit_non_claims: ["No phase closure claim"],
+          conditions: [],
+          supersedes: [],
+          phase: "Phase 1",
+          task: "T3 #225",
+          goal: "internal dogfood",
+        },
+      ],
+    });
+
+    const result = runWorkflow("check --action audit_ledger --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.record_shape",
+          decision: "BLOCK",
+          message: expect.stringContaining("commands"),
+        }),
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.next_action_derivable",
+          decision: "BLOCK",
+          message: expect.stringContaining("AUDIT-1"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict audit_ledger rejects placeholder trace fields", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const baseRecord = (completeAuditLedgerRecord().records as Record<string, unknown>[])[0];
+    const falseRecord: Record<string, unknown> = {
+      ...baseRecord,
+      audit_id: "AUDIT-PLACEHOLDER-FALSE",
+      conditions: false,
+      supersedes: "pending",
+      downstream_gates_remaining: false,
+    };
+    const emptyRecord: Record<string, unknown> = {
+      ...baseRecord,
+      audit_id: "AUDIT-PLACEHOLDER-EMPTY",
+      conditions: null,
+      supersedes: {},
+      downstream_gates_remaining: "",
+    };
+    delete falseRecord.recommended_next_action;
+    delete emptyRecord.recommended_next_action;
+    writeAuditLedgerRecord(tmpDir, {
+      schema_version: "audit-ledger/v1",
+      ledger_id: "phase1-ledger",
+      records: [falseRecord, emptyRecord],
+    });
+
+    const result = runWorkflow("check --action audit_ledger --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.record_shape",
+          decision: "BLOCK",
+          message: expect.stringContaining(
+            "AUDIT-PLACEHOLDER-FALSE(conditions|supersedes_or_amends)",
+          ),
+        }),
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.record_shape",
+          decision: "BLOCK",
+          message: expect.stringContaining(
+            "AUDIT-PLACEHOLDER-EMPTY(conditions|supersedes_or_amends)",
+          ),
+        }),
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.next_action_derivable",
+          decision: "BLOCK",
+          message: expect.stringContaining("AUDIT-PLACEHOLDER-FALSE"),
+        }),
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.next_action_derivable",
+          decision: "BLOCK",
+          message: expect.stringContaining("AUDIT-PLACEHOLDER-EMPTY"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict audit_ledger passes with complete machine-readable records", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeAuditLedgerRecord(tmpDir, completeAuditLedgerRecord());
+
+    const result = runWorkflow("check --action audit_ledger --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBe(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.record_shape",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G19.audit_ledger.next_action_derivable",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
   it("strict phase_closure blocks incomplete closure evidence", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writePhaseClosureRecord(tmpDir, {
@@ -367,6 +528,32 @@ describe("workflow command", () => {
           rule_id: "G12.phase_closure.postmerge_evidence",
           decision: "BLOCK",
           message: expect.stringContaining("231"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict phase_closure blocks closure records that cannot cite the audit ledger", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const record = completePhaseClosureRecord();
+    delete record.audit_ledger_refs;
+    record.audit_matrix = { l1: "PASS", l2: "PASS", l3: "PASS" };
+    writePhaseClosureRecord(tmpDir, record);
+
+    const result = runWorkflow("check --action phase_closure --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.audit_ledger_refs",
+          decision: "BLOCK",
+          message: expect.stringContaining("l1"),
         }),
       ]),
     );
@@ -760,6 +947,59 @@ function writePhaseClosureRecord(
   );
 }
 
+function writeAuditLedgerRecord(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/audit-ledger.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
+function completeAuditLedgerRecord(): Record<string, unknown> {
+  return {
+    schema_version: "audit-ledger/v1",
+    ledger_id: "phase1-t3-ledger",
+    records: [
+      {
+        audit_id: "AUDIT-P1-T3-L2",
+        artifact: {
+          type: "pr",
+          ref: "https://github.com/watchout/ai-dev-framework/pull/999",
+        },
+        level: "L2",
+        reviewer: {
+          type: "agent",
+          id: "codex-audit",
+          role: "auditor",
+          source: "github",
+        },
+        verdict: "PASS",
+        timestamp: "2026-05-27T00:00:00.000Z",
+        evidence_urls: [
+          "https://github.com/watchout/ai-dev-framework/pull/999#issuecomment-1",
+        ],
+        aun_message_ids: ["85000"],
+        commands: ["npm run type-check", "npm test -- src/cli/commands/workflow.test.ts"],
+        approved_scope: "AUDITLEDGER-001 runtime and documentation slice only",
+        explicit_non_claims: ["No Phase 1 closure claim", "No public readiness claim"],
+        conditions: [],
+        required_followups: [],
+        supersedes: [],
+        amends: [],
+        phase: "Phase 1",
+        task: "T3 #225",
+        goal: "internal applied dogfood",
+        downstream_gates_remaining: ["L3", "merge", "postmerge"],
+        recommended_next_action: "request_l3_review",
+      },
+    ],
+  };
+}
+
 function completePhaseClosureRecord(): Record<string, unknown> {
   return {
     phase: "Phase 1",
@@ -779,10 +1019,15 @@ function completePhaseClosureRecord(): Record<string, unknown> {
     ],
     l0_evidence_summary: "build, type-check, lint, tests, and trace verify passed.",
     audit_matrix: {
-      l1: "PASS",
-      l2: "PASS",
-      l3: "PASS",
+      l1: { verdict: "PASS", audit_id: "AUDIT-P1-CLOSE-L1" },
+      l2: { verdict: "PASS", audit_id: "AUDIT-P1-CLOSE-L2" },
+      l3: { verdict: "PASS", audit_id: "AUDIT-P1-CLOSE-L3" },
     },
+    audit_ledger_refs: [
+      "AUDIT-P1-CLOSE-L1",
+      "AUDIT-P1-CLOSE-L2",
+      "AUDIT-P1-CLOSE-L3",
+    ],
     unresolved_blockers: [],
     deferred_items: [
       {
