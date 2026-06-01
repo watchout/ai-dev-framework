@@ -221,6 +221,7 @@ Shirube can govern its own development and at least one internal project through
 | T1 | #222 | Internal dogfood start gate for `init/start/run` and required process evidence. |
 | T2 | #224 | Phase Closure Audit Gate. |
 | T3 | #225 | `AUDITLEDGER-001` Audit Evidence and Approval Ledger. |
+| T4a | #240 | Runtime command adapter and injection policy pack for Delivery Graph steps. |
 | T4 | #226 | Workflow Action Registry and Wrapper Semantics. |
 | T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain. |
 
@@ -230,6 +231,11 @@ SPEC `docs/spec/phase1-enterprise-delivery-graph.md`, IMPL
 `docs/impl/phase1-enterprise-delivery-graph.md`, VERIFY
 `docs/verify/phase1-enterprise-delivery-graph.md`, OPS
 `docs/ops/phase1-enterprise-delivery-graph.md`.
+Runtime adapter and injection policy child artifact:
+SPEC `docs/spec/phase1-runtime-command-adapter-policy.md`, IMPL
+`docs/impl/phase1-runtime-command-adapter-policy.md`, VERIFY
+`docs/verify/phase1-runtime-command-adapter-policy.md`, OPS
+`docs/ops/phase1-runtime-command-adapter-policy.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY

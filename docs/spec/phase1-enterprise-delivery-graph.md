@@ -14,7 +14,7 @@ traces:
 - Phase: Phase 1 parent spec / enterprise control-plane convergence
 - Parent direction: #197, #211
 - Related implementation slices: #222, #223, #224, #225, #226, #227, #229,
-  #232
+  #232, #240
 - Related Gate Engine rollout: #201, #202, #203
 
 ## 1. Purpose
@@ -182,6 +182,8 @@ Declarative artifacts:
 - `position-registry/v1`;
 - `workflow-template/v1`;
 - `policy-pack/v1`;
+- `runtime-command-adapter/v1`;
+- `injection-policy-pack/v1`;
 - `context-pack/v1`;
 - `ai-change-record/v1`;
 - `audit-ledger/v1`;
@@ -202,6 +204,11 @@ Deterministic runners:
 
 GitHub, MCP, hooks, AUN, Discord, and local reports are adapters over this
 state/rule model. They must not become independent control planes.
+
+Each executable strict Delivery Graph step must also bind a reviewed
+`runtime-command-adapter/v1`, `injection-policy-pack/v1`, expected result
+schema, write scope, evidence sink, and timeout/non-zero/malformed-output
+fallback behavior before runtime output can update graph state or gate state.
 
 ## 7. Acceptance Criteria
 - `delivery-graph/v1` and the Goal -> Phase -> Work Package -> PR -> Gate
@@ -302,6 +309,9 @@ Future runtime implementation under this spec must include:
 - regression tests proving merged PRs cannot close phases without closure
   evidence and goal conditions cannot be completed by phase closure alone;
 - smoke tests for CLI, JSON, GitHub, MCP, and report adapter projection shape;
+- runtime adapter and injection policy fixtures proving untrusted context,
+  unsafe shell interpolation, schema mismatch, text fallback, timeout,
+  non-zero exit, and malformed output cannot advance a gate;
 - e2e dogfood tests that trace at least one Shirube PR from goal condition to
   post-merge verification and goal progress.
 

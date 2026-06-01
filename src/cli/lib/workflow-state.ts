@@ -52,6 +52,9 @@ export type WorkflowEvidenceKind =
   | "merge_authority"
   | "phase_closure"
   | "audit_ledger"
+  | "runtime_adapter"
+  | "injection_policy"
+  | "runtime_step"
   | "exception";
 
 export type WorkflowActorType = "human" | "agent" | "github_user" | "system";
@@ -184,6 +187,7 @@ export function buildWorkflowState(
   );
   applyPhaseClosureReadiness(projectDir, now, profile, evidence, gateDecisions);
   applyAuditLedgerReadiness(projectDir, now, profile, evidence, gateDecisions);
+  applyRuntimeStepReadiness(projectDir, now, profile, evidence, gateDecisions);
 
   const currentSession = readJsonFile<CurrentSessionV1>(
     projectDir,
@@ -495,6 +499,117 @@ const AUDIT_LEDGER_EVIDENCE_PATHS = [
   ".framework/audit-ledger/latest.json",
   ".framework/audits/ledger.json",
   "docs/management/audit-ledger.md",
+];
+
+interface RuntimeAdapterValidation {
+  missingFields: string[];
+  invalidFields: string[];
+  unsafeArgv: string[];
+  evidenceMappingGaps: string[];
+}
+
+interface InjectionPolicyValidation {
+  missingFields: string[];
+  invalidFields: string[];
+  unsafeRules: string[];
+}
+
+interface RuntimeStepValidation {
+  missingFields: string[];
+  invalidFields: string[];
+  referenceGaps: string[];
+  outputSchemaGaps: string[];
+  permissionGaps: string[];
+}
+
+const RUNTIME_ADAPTER_EVIDENCE_PATHS = [
+  ".framework/runtime-command-adapter.json",
+  ".framework/runtime-adapter.json",
+  ".framework/runtime/adapter.json",
+  ".framework/runtime/adapters.json",
+  ".framework/delivery-graph/runtime-command-adapter.json",
+];
+
+const INJECTION_POLICY_EVIDENCE_PATHS = [
+  ".framework/injection-policy-pack.json",
+  ".framework/injection-policy.json",
+  ".framework/runtime/injection-policy-pack.json",
+  ".framework/delivery-graph/injection-policy-pack.json",
+];
+
+const RUNTIME_STEP_EVIDENCE_PATHS = [
+  ".framework/delivery-graph-step.json",
+  ".framework/runtime-step.json",
+  ".framework/runtime/step.json",
+  ".framework/delivery-graph/step.json",
+];
+
+const RUNTIME_ADAPTER_FEATURES = new Set([
+  "jsonl_stream",
+  "stream_json",
+  "json_schema_final",
+  "tool_allowlist",
+  "sandbox",
+  "mcp_config",
+  "session_resume",
+]);
+
+const RUNTIME_VALUES = new Set(["codex", "claude", "custom"]);
+const STDIN_MODES = new Set(["none", "prompt", "json-envelope", "context-pack"]);
+const OUTPUT_MODES = new Set(["jsonl", "json", "text"]);
+const SANDBOX_MODES = new Set([
+  "read-only",
+  "workspace-write",
+  "danger-full-access",
+  "host-specific",
+]);
+const STEP_WRITE_SCOPES = new Set([
+  "none",
+  "read-only",
+  "workspace-write",
+  "repo-write",
+  "host-specific",
+]);
+const PROMPT_SEGMENTS = new Set([
+  "system",
+  "developer",
+  "task",
+  "context",
+  "tool_output",
+  "retrieved_source",
+]);
+const PROMPT_DELIVERIES = new Set([
+  "instruction",
+  "data-only",
+  "citation-only",
+  "omit",
+]);
+
+const CODEX_VALUE_FLAGS = [
+  "--output-schema",
+  "--output-last-message",
+  "--sandbox",
+  "--cd",
+];
+
+const CLAUDE_REQUIRED_VALUE_FLAGS = [
+  "--output-format",
+  "--json-schema",
+  "--permission-mode",
+];
+
+const CLAUDE_OPTIONAL_VALUE_FLAGS = [
+  "--allowedTools",
+  "--disallowedTools",
+  "--mcp-config",
+];
+
+const REQUIRED_RUNTIME_EVIDENCE_MAPPING_KEYS = [
+  "argv",
+  "runtime_version",
+  "schema_hash",
+  "final_result",
+  "gate_decision",
 ];
 
 function applyProjectApplied(
@@ -906,6 +1021,313 @@ function applyAuditLedgerReadiness(
           : "Add recommended_next_action, unresolved findings, or downstream gate data for each audit record.",
     }),
   );
+}
+
+function applyRuntimeStepReadiness(
+  projectDir: string,
+  now: string,
+  profile: WorkflowProfile,
+  evidence: WorkflowEvidenceRecord[],
+  gateDecisions: WorkflowGateDecision[],
+): void {
+  const missing = dogfoodMissingDecision(profile);
+  const adapterArtifact = findLocalEvidence(projectDir, RUNTIME_ADAPTER_EVIDENCE_PATHS);
+  const policyArtifact = findLocalEvidence(projectDir, INJECTION_POLICY_EVIDENCE_PATHS);
+  const stepArtifact = findLocalEvidence(projectDir, RUNTIME_STEP_EVIDENCE_PATHS);
+
+  const adapterMetadata = adapterArtifact
+    ? selectRuntimeAdapterMetadata(adapterArtifact.metadata)
+    : null;
+  const policyMetadata = policyArtifact
+    ? selectInjectionPolicyMetadata(policyArtifact.metadata)
+    : null;
+  const stepMetadata = stepArtifact
+    ? selectRuntimeStepMetadata(stepArtifact.metadata)
+    : null;
+
+  const adapterValidation = adapterMetadata
+    ? validateRuntimeAdapterMetadata(adapterMetadata)
+    : null;
+  const policyValidation = policyMetadata
+    ? validateInjectionPolicyMetadata(policyMetadata)
+    : null;
+  const stepValidation = stepMetadata
+    ? validateRuntimeStepMetadata(stepMetadata, adapterMetadata, policyMetadata)
+    : null;
+
+  const adapterEvidence = adapterArtifact
+    ? createEvidence({
+        projectDir,
+        now,
+        kind: "runtime_adapter",
+        artifactPath: adapterArtifact.path,
+        sourceUri: `file://${adapterArtifact.path}`,
+        summary:
+          adapterValidation && runtimeAdapterValidationHasIssues(adapterValidation)
+            ? "Runtime command adapter is present but invalid."
+            : "Runtime command adapter is present.",
+        validity:
+          adapterValidation && runtimeAdapterValidationHasIssues(adapterValidation)
+            ? "invalid"
+            : "current",
+        metadata: {
+          ...adapterArtifact.metadata,
+          selected_adapter: adapterMetadata,
+          validation: adapterValidation,
+        },
+      })
+    : null;
+  if (adapterEvidence) {
+    evidence.push(adapterEvidence);
+  }
+
+  const policyEvidence = policyArtifact
+    ? createEvidence({
+        projectDir,
+        now,
+        kind: "injection_policy",
+        artifactPath: policyArtifact.path,
+        sourceUri: `file://${policyArtifact.path}`,
+        summary:
+          policyValidation && injectionPolicyValidationHasIssues(policyValidation)
+            ? "Injection policy pack is present but invalid."
+            : "Injection policy pack is present.",
+        validity:
+          policyValidation && injectionPolicyValidationHasIssues(policyValidation)
+            ? "invalid"
+            : "current",
+        metadata: {
+          ...policyArtifact.metadata,
+          selected_policy: policyMetadata,
+          validation: policyValidation,
+        },
+      })
+    : null;
+  if (policyEvidence) {
+    evidence.push(policyEvidence);
+  }
+
+  const stepEvidence = stepArtifact
+    ? createEvidence({
+        projectDir,
+        now,
+        kind: "runtime_step",
+        artifactPath: stepArtifact.path,
+        sourceUri: `file://${stepArtifact.path}`,
+        summary:
+          stepValidation && runtimeStepValidationHasIssues(stepValidation)
+            ? "Delivery Graph runtime step is present but invalid."
+            : "Delivery Graph runtime step is present.",
+        validity:
+          stepValidation && runtimeStepValidationHasIssues(stepValidation)
+            ? "invalid"
+            : "current",
+        metadata: {
+          ...stepArtifact.metadata,
+          selected_step: stepMetadata,
+          validation: stepValidation,
+        },
+      })
+    : null;
+  if (stepEvidence) {
+    evidence.push(stepEvidence);
+  }
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G20.runtime_step.adapter.present",
+      gate: "runtime_step",
+      decisionValue: adapterMetadata ? "PASS" : missing.decision,
+      severity: adapterMetadata ? "info" : missing.severity,
+      profile,
+      message: adapterMetadata
+        ? "Runtime command adapter profile is present."
+        : "Runtime command adapter profile is missing.",
+      evidenceRefs: adapterEvidence ? [adapterEvidence.id] : [],
+      remediation: adapterMetadata
+        ? "No action required."
+        : "Create .framework/runtime-command-adapter.json before executing a Delivery Graph runtime step.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G20.runtime_step.injection_policy.present",
+      gate: "runtime_step",
+      decisionValue: policyMetadata ? "PASS" : missing.decision,
+      severity: policyMetadata ? "info" : missing.severity,
+      profile,
+      message: policyMetadata
+        ? "Injection policy pack is present."
+        : "Injection policy pack is missing.",
+      evidenceRefs: policyEvidence ? [policyEvidence.id] : [],
+      remediation: policyMetadata
+        ? "No action required."
+        : "Create .framework/injection-policy-pack.json before executing a Delivery Graph runtime step.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G20.runtime_step.step_contract.present",
+      gate: "runtime_step",
+      decisionValue: stepMetadata ? "PASS" : missing.decision,
+      severity: stepMetadata ? "info" : missing.severity,
+      profile,
+      message: stepMetadata
+        ? "Delivery Graph runtime step contract is present."
+        : "Delivery Graph runtime step contract is missing.",
+      evidenceRefs: stepEvidence ? [stepEvidence.id] : [],
+      remediation: stepMetadata
+        ? "No action required."
+        : "Create .framework/delivery-graph-step.json with runtime adapter, injection policy, schema, write scope, evidence sink, and fallback behavior.",
+    }),
+  );
+
+  if (adapterValidation) {
+    const adapterIssues = [
+      ...adapterValidation.missingFields.map((field) => `missing:${field}`),
+      ...adapterValidation.invalidFields.map((field) => `invalid:${field}`),
+      ...adapterValidation.evidenceMappingGaps.map((field) => `evidence_mapping:${field}`),
+    ];
+    gateDecisions.push(
+      decision({
+        ruleId: "G20.runtime_step.adapter.contract",
+        gate: "runtime_step",
+        decisionValue: adapterIssues.length === 0 ? "PASS" : missing.decision,
+        severity: adapterIssues.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          adapterIssues.length === 0
+            ? "Runtime command adapter contract is complete."
+            : `Runtime command adapter contract has issues: ${adapterIssues.join(", ")}.`,
+        evidenceRefs: adapterEvidence ? [adapterEvidence.id] : [],
+        remediation:
+          adapterIssues.length === 0
+            ? "No action required."
+            : "Fill adapter id, runtime, feature detection, invocation template, permission profile, and evidence mapping fields.",
+      }),
+    );
+
+    gateDecisions.push(
+      decision({
+        ruleId: "G20.runtime_step.shell_interpolation",
+        gate: "runtime_step",
+        decisionValue:
+          adapterValidation.unsafeArgv.length === 0 ? "PASS" : missing.decision,
+        severity:
+          adapterValidation.unsafeArgv.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          adapterValidation.unsafeArgv.length === 0
+            ? "Runtime argv contains no detected untrusted shell interpolation."
+            : `Runtime argv contains unsafe untrusted interpolation: ${adapterValidation.unsafeArgv.join(", ")}.`,
+        evidenceRefs: adapterEvidence ? [adapterEvidence.id] : [],
+        remediation:
+          adapterValidation.unsafeArgv.length === 0
+            ? "No action required."
+            : "Pass untrusted context through stdin/context packs with provenance, not through argv or shell interpolation.",
+      }),
+    );
+  }
+
+  if (policyValidation) {
+    const policyIssues = [
+      ...policyValidation.missingFields.map((field) => `missing:${field}`),
+      ...policyValidation.invalidFields.map((field) => `invalid:${field}`),
+      ...policyValidation.unsafeRules.map((field) => `unsafe:${field}`),
+    ];
+    gateDecisions.push(
+      decision({
+        ruleId: "G20.runtime_step.injection_policy.contract",
+        gate: "runtime_step",
+        decisionValue: policyIssues.length === 0 ? "PASS" : missing.decision,
+        severity: policyIssues.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          policyIssues.length === 0
+            ? "Injection policy pack contract is complete."
+            : `Injection policy pack has issues: ${policyIssues.join(", ")}.`,
+        evidenceRefs: policyEvidence ? [policyEvidence.id] : [],
+        remediation:
+          policyIssues.length === 0
+            ? "No action required."
+            : "Keep trusted instruction/policy sources separate, deliver untrusted context as data, forbid untrusted shell interpolation, and require schema validation.",
+      }),
+    );
+  }
+
+  if (stepValidation) {
+    const stepIssues = [
+      ...stepValidation.missingFields.map((field) => `missing:${field}`),
+      ...stepValidation.invalidFields.map((field) => `invalid:${field}`),
+      ...stepValidation.referenceGaps.map((field) => `reference:${field}`),
+    ];
+    gateDecisions.push(
+      decision({
+        ruleId: "G20.runtime_step.step_contract.shape",
+        gate: "runtime_step",
+        decisionValue: stepIssues.length === 0 ? "PASS" : missing.decision,
+        severity: stepIssues.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          stepIssues.length === 0
+            ? "Delivery Graph runtime step shape is complete."
+            : `Delivery Graph runtime step shape has issues: ${stepIssues.join(", ")}.`,
+        evidenceRefs: stepEvidence ? [stepEvidence.id] : [],
+        remediation:
+          stepIssues.length === 0
+            ? "No action required."
+            : "Declare step id, position, adapter, injection policy, expected output schema, write scope, evidence sink, and fallback behavior.",
+      }),
+    );
+
+    gateDecisions.push(
+      decision({
+        ruleId: "G20.runtime_step.output_schema",
+        gate: "runtime_step",
+        decisionValue:
+          stepValidation.outputSchemaGaps.length === 0 ? "PASS" : missing.decision,
+        severity:
+          stepValidation.outputSchemaGaps.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          stepValidation.outputSchemaGaps.length === 0
+            ? "Runtime step output is schema-validated before gate/state update."
+            : `Runtime step output schema validation has gaps: ${stepValidation.outputSchemaGaps.join(", ")}.`,
+        evidenceRefs: [adapterEvidence?.id, policyEvidence?.id, stepEvidence?.id].filter(
+          (id): id is string => Boolean(id),
+        ),
+        remediation:
+          stepValidation.outputSchemaGaps.length === 0
+            ? "No action required."
+            : "Require a final structured schema, fail on schema mismatch, and disallow text fallback before updating graph state or gates.",
+      }),
+    );
+
+    gateDecisions.push(
+      decision({
+        ruleId: "G20.runtime_step.permission_scope",
+        gate: "runtime_step",
+        decisionValue:
+          stepValidation.permissionGaps.length === 0 ? "PASS" : missing.decision,
+        severity:
+          stepValidation.permissionGaps.length === 0 ? "info" : missing.severity,
+        profile,
+        message:
+          stepValidation.permissionGaps.length === 0
+            ? "Runtime permission profile matches the Delivery Graph step write scope."
+            : `Runtime permission scope has gaps: ${stepValidation.permissionGaps.join(", ")}.`,
+        evidenceRefs: [adapterEvidence?.id, stepEvidence?.id].filter(
+          (id): id is string => Boolean(id),
+        ),
+        remediation:
+          stepValidation.permissionGaps.length === 0
+            ? "No action required."
+            : "Use least-privilege sandbox and tool/env allowlists that match the step write scope.",
+      }),
+    );
+  }
 }
 
 function applyLocalEvidenceRequirement(
@@ -1374,6 +1796,649 @@ function describeAuditLedgerRecord(
     return String(id);
   }
   return `record_${index + 1}`;
+}
+
+function selectRuntimeAdapterMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> | null {
+  return selectNestedObject(metadata, [
+    "runtime_command_adapter",
+    "runtime_adapter",
+    "adapter",
+  ], ["runtime_command_adapters", "runtime_adapters", "adapters"]);
+}
+
+function selectInjectionPolicyMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> | null {
+  return selectNestedObject(metadata, [
+    "injection_policy_pack",
+    "injection_policy",
+    "policy",
+  ], ["injection_policy_packs", "injection_policies", "policies"]);
+}
+
+function selectRuntimeStepMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> | null {
+  return selectNestedObject(metadata, [
+    "runtime_step",
+    "delivery_graph_step",
+    "step",
+  ], ["runtime_steps", "delivery_graph_steps", "steps"]);
+}
+
+function selectNestedObject(
+  metadata: Record<string, unknown>,
+  objectKeys: string[],
+  arrayKeys: string[],
+): Record<string, unknown> | null {
+  for (const key of objectKeys) {
+    const value = findDirectMetadataValue(metadata, [key]);
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+  }
+
+  for (const key of arrayKeys) {
+    const value = findDirectMetadataValue(metadata, [key]);
+    if (Array.isArray(value)) {
+      const first = value.find(
+        (item): item is Record<string, unknown> =>
+          Boolean(item) && typeof item === "object" && !Array.isArray(item),
+      );
+      if (first) {
+        return first;
+      }
+    }
+  }
+
+  return Object.keys(metadata).length > 0 ? metadata : null;
+}
+
+function validateRuntimeAdapterMetadata(
+  adapter: Record<string, unknown>,
+): RuntimeAdapterValidation {
+  const missingFields: string[] = [];
+  const invalidFields: string[] = [];
+  const unsafeArgv: string[] = [];
+  const evidenceMappingGaps: string[] = [];
+
+  const adapterId = findDirectMetadataValue(adapter, ["adapter_id", "id"]);
+  if (!hasNonEmptyRegisterValue(adapterId)) {
+    missingFields.push("adapter_id");
+  }
+
+  const runtime = normalizedString(findDirectMetadataValue(adapter, ["runtime"]));
+  if (!runtime) {
+    missingFields.push("runtime");
+  } else if (!RUNTIME_VALUES.has(runtime)) {
+    invalidFields.push(`runtime:${runtime}`);
+  }
+
+  const features = primitiveStringArray(
+    findDirectMetadataValue(adapter, ["feature_detection", "features"]),
+  );
+  if (features.length === 0) {
+    missingFields.push("feature_detection");
+  }
+  for (const feature of features) {
+    if (!RUNTIME_ADAPTER_FEATURES.has(feature)) {
+      invalidFields.push(`feature_detection:${feature}`);
+    }
+  }
+
+  const invocation = objectValue(
+    findDirectMetadataValue(adapter, ["invocation_template", "invocation"]),
+  );
+  if (!invocation) {
+    missingFields.push("invocation_template");
+  } else {
+    const argv = primitiveStringArray(findDirectMetadataValue(invocation, ["argv"]));
+    if (argv.length === 0) {
+      missingFields.push("invocation_template.argv");
+    } else {
+      unsafeArgv.push(...argv.filter(containsUnsafeShellInterpolation));
+      validateRuntimeSpecificArgv(runtime, argv, invalidFields);
+    }
+
+    const stdinMode = normalizedString(findDirectMetadataValue(invocation, ["stdin_mode"]));
+    if (!stdinMode) {
+      missingFields.push("invocation_template.stdin_mode");
+    } else if (!STDIN_MODES.has(stdinMode)) {
+      invalidFields.push(`stdin_mode:${stdinMode}`);
+    }
+
+    const outputMode = normalizedString(findDirectMetadataValue(invocation, ["output_mode"]));
+    if (!outputMode) {
+      missingFields.push("invocation_template.output_mode");
+    } else if (!OUTPUT_MODES.has(outputMode)) {
+      invalidFields.push(`output_mode:${outputMode}`);
+    } else if (outputMode === "text") {
+      invalidFields.push("output_mode:text");
+    }
+  }
+
+  const permission = objectValue(
+    findDirectMetadataValue(adapter, ["permission_profile", "permissions"]),
+  );
+  if (!permission) {
+    missingFields.push("permission_profile");
+  } else {
+    const sandbox = normalizedString(findDirectMetadataValue(permission, ["sandbox"]));
+    if (!sandbox) {
+      missingFields.push("permission_profile.sandbox");
+    } else if (!SANDBOX_MODES.has(sandbox)) {
+      invalidFields.push(`sandbox:${sandbox}`);
+    }
+    const envAllowlist = findDirectMetadataValue(permission, [
+      "env_allowlist",
+      "environment_allowlist",
+    ]);
+    if (!Array.isArray(envAllowlist)) {
+      missingFields.push("permission_profile.env_allowlist");
+    }
+    validateOptionalStringArray(permission, "allowed_tools", invalidFields);
+    validateOptionalStringArray(permission, "disallowed_tools", invalidFields);
+  }
+
+  const evidenceMapping = objectValue(
+    findDirectMetadataValue(adapter, ["evidence_mapping", "evidence"]),
+  );
+  if (!evidenceMapping) {
+    missingFields.push("evidence_mapping");
+  } else {
+    for (const key of REQUIRED_RUNTIME_EVIDENCE_MAPPING_KEYS) {
+      if (!metadataValueHasNonEmptyKey(evidenceMapping, [key])) {
+        evidenceMappingGaps.push(key);
+      }
+    }
+  }
+
+  return {
+    missingFields,
+    invalidFields,
+    unsafeArgv,
+    evidenceMappingGaps,
+  };
+}
+
+function validateRuntimeSpecificArgv(
+  runtime: string | null,
+  argv: string[],
+  invalidFields: string[],
+): void {
+  if (runtime === "codex") {
+    const hasCodex = argv.some((value) => value.includes("codex"));
+    const required = ["exec", "--json"];
+    const missingValueFlags = CODEX_VALUE_FLAGS.filter(
+      (flag) => !argvHasFlagWithValue(argv, flag),
+    );
+    if (!hasCodex || required.some((flag) => !argv.includes(flag))) {
+      invalidFields.push("codex_argv");
+    }
+    invalidFields.push(
+      ...missingValueFlags.map((flag) => `codex_argv:${flag}:value`),
+    );
+  }
+
+  if (runtime === "claude") {
+    const hasClaude = argv.some((value) => value.includes("claude"));
+    const outputFormat = argvFlagValue(argv, "--output-format");
+    const hasOutputFormat = outputFormat === "stream-json" || outputFormat === "json";
+    const missingValueFlags = CLAUDE_REQUIRED_VALUE_FLAGS.filter(
+      (flag) => !argvHasFlagWithValue(argv, flag),
+    );
+    const optionalValueGaps = CLAUDE_OPTIONAL_VALUE_FLAGS.filter(
+      (flag) => argvHasFlag(argv, flag) && !argvHasFlagWithValue(argv, flag),
+    );
+    if (!hasClaude || !argv.includes("-p") || !hasOutputFormat) {
+      invalidFields.push("claude_argv");
+    }
+    invalidFields.push(
+      ...missingValueFlags.map((flag) => `claude_argv:${flag}:value`),
+      ...optionalValueGaps.map((flag) => `claude_argv:${flag}:value`),
+    );
+  }
+}
+
+function argvHasFlag(argv: string[], flag: string): boolean {
+  return argv.some((value) => value === flag || value.startsWith(`${flag}=`));
+}
+
+function argvHasFlagWithValue(argv: string[], flag: string): boolean {
+  return argv.some((value, index) => {
+    if (value.startsWith(`${flag}=`)) {
+      return isRuntimeCliOptionValue(value.slice(flag.length + 1));
+    }
+    if (value === flag) {
+      return isRuntimeCliOptionValue(argv[index + 1]);
+    }
+    return false;
+  });
+}
+
+function argvFlagValue(argv: string[], flag: string): string | null {
+  for (let index = 0; index < argv.length; index += 1) {
+    const value = argv[index];
+    if (value.startsWith(`${flag}=`)) {
+      const inlineValue = value.slice(flag.length + 1);
+      if (isRuntimeCliOptionValue(inlineValue)) {
+        return inlineValue;
+      }
+    } else if (value === flag && isRuntimeCliOptionValue(argv[index + 1])) {
+      return argv[index + 1] ?? null;
+    }
+  }
+  return null;
+}
+
+function isRuntimeCliOptionValue(value: string | undefined): boolean {
+  return typeof value === "string" && value.trim().length > 0 && !value.startsWith("-");
+}
+
+function validateInjectionPolicyMetadata(
+  policy: Record<string, unknown>,
+): InjectionPolicyValidation {
+  const missingFields: string[] = [];
+  const invalidFields: string[] = [];
+  const unsafeRules: string[] = [];
+
+  if (!metadataValueHasNonEmptyKey(policy, ["policy_id", "id"])) {
+    missingFields.push("policy_id");
+  }
+
+  const trustedInstructionSources = primitiveStringArray(
+    findDirectMetadataValue(policy, ["trusted_instruction_sources"]),
+  );
+  if (trustedInstructionSources.length === 0) {
+    missingFields.push("trusted_instruction_sources");
+  }
+
+  const trustedPolicySources = primitiveStringArray(
+    findDirectMetadataValue(policy, ["trusted_policy_sources"]),
+  );
+  if (trustedPolicySources.length === 0) {
+    missingFields.push("trusted_policy_sources");
+  }
+
+  const untrustedContextSources = primitiveStringArray(
+    findDirectMetadataValue(policy, ["untrusted_context_sources"]),
+  );
+  if (untrustedContextSources.length === 0) {
+    missingFields.push("untrusted_context_sources");
+  }
+
+  const promptRules = objectArray(
+    findDirectMetadataValue(policy, ["prompt_assembly_rules", "assembly_rules"]),
+  );
+  if (promptRules.length === 0) {
+    missingFields.push("prompt_assembly_rules");
+  }
+
+  const untrustedOrigins = new Set(untrustedContextSources.map(normalizeScopeValue));
+  promptRules.forEach((rule, index) => {
+    const label = describePromptRule(rule, index);
+    const segment = normalizedString(findDirectMetadataValue(rule, ["segment"]));
+    const delivery = normalizedString(findDirectMetadataValue(rule, ["delivery"]));
+    const allowedOrigin = primitiveStringArray(
+      findDirectMetadataValue(rule, ["allowed_origin", "allowed_origins"]),
+    );
+    if (!segment) {
+      invalidFields.push(`${label}.segment`);
+    } else if (!PROMPT_SEGMENTS.has(segment)) {
+      invalidFields.push(`${label}.segment:${segment}`);
+    }
+    if (!delivery) {
+      invalidFields.push(`${label}.delivery`);
+    } else if (!PROMPT_DELIVERIES.has(delivery)) {
+      invalidFields.push(`${label}.delivery:${delivery}`);
+    }
+    if (allowedOrigin.length === 0) {
+      invalidFields.push(`${label}.allowed_origin`);
+    }
+
+    const originIsUntrusted = allowedOrigin
+      .map(normalizeScopeValue)
+      .some((origin) => untrustedOrigins.has(origin));
+    if (
+      delivery === "instruction" &&
+      (originIsUntrusted ||
+        segment === "context" ||
+        segment === "tool_output" ||
+        segment === "retrieved_source")
+    ) {
+      unsafeRules.push(label);
+    }
+  });
+
+  const shellPolicy = normalizedString(
+    findDirectMetadataValue(policy, ["shell_interpolation_policy"]),
+  );
+  if (!shellPolicy) {
+    missingFields.push("shell_interpolation_policy");
+  } else if (shellPolicy !== "no-untrusted-interpolation") {
+    invalidFields.push(`shell_interpolation_policy:${shellPolicy}`);
+  }
+
+  const outputValidation = objectValue(
+    findDirectMetadataValue(policy, ["output_validation"]),
+  );
+  if (!outputValidation) {
+    missingFields.push("output_validation");
+  } else {
+    if (findDirectMetadataValue(outputValidation, ["required_schema"]) !== true) {
+      invalidFields.push("output_validation.required_schema");
+    }
+    if (findDirectMetadataValue(outputValidation, ["fail_on_schema_mismatch"]) !== true) {
+      invalidFields.push("output_validation.fail_on_schema_mismatch");
+    }
+    if (findDirectMetadataValue(outputValidation, ["allow_text_fallback"]) !== false) {
+      invalidFields.push("output_validation.allow_text_fallback");
+    }
+  }
+
+  return { missingFields, invalidFields, unsafeRules };
+}
+
+function validateRuntimeStepMetadata(
+  step: Record<string, unknown>,
+  adapter: Record<string, unknown> | null,
+  policy: Record<string, unknown> | null,
+): RuntimeStepValidation {
+  const missingFields: string[] = [];
+  const invalidFields: string[] = [];
+  const referenceGaps: string[] = [];
+  const outputSchemaGaps: string[] = [];
+  const permissionGaps: string[] = [];
+
+  const stepId = findDirectMetadataValue(step, ["step_id", "id"]);
+  if (!hasNonEmptyRegisterValue(stepId)) {
+    missingFields.push("step_id");
+  }
+  if (!metadataValueHasNonEmptyKey(step, ["position", "role"])) {
+    missingFields.push("position");
+  }
+  const runtimeAdapterRef = stringValue(
+    findDirectMetadataValue(step, ["runtime_adapter", "runtime_adapter_ref"]),
+  );
+  if (!runtimeAdapterRef) {
+    missingFields.push("runtime_adapter");
+  }
+  const injectionPolicyRef = stringValue(
+    findDirectMetadataValue(step, ["injection_policy", "injection_policy_ref"]),
+  );
+  if (!injectionPolicyRef) {
+    missingFields.push("injection_policy");
+  }
+  const expectedSchema = stringValue(
+    findDirectMetadataValue(step, ["expected_result_schema", "expected_output_schema"]),
+  );
+  if (!expectedSchema) {
+    missingFields.push("expected_result_schema");
+    outputSchemaGaps.push("expected_result_schema");
+  }
+  const writeScope = normalizedString(
+    findDirectMetadataValue(step, ["write_scope", "allowed_write_scope"]),
+  );
+  if (!writeScope) {
+    missingFields.push("write_scope");
+  } else if (!STEP_WRITE_SCOPES.has(writeScope)) {
+    invalidFields.push(`write_scope:${writeScope}`);
+  }
+  if (!metadataValueHasNonEmptyKey(step, ["evidence_sink", "evidence_sinks"])) {
+    missingFields.push("evidence_sink");
+  }
+  if (!runtimeStepHasFallbackBehavior(step)) {
+    missingFields.push("fallback_behavior");
+  }
+
+  if (!adapter) {
+    referenceGaps.push("runtime_adapter");
+    outputSchemaGaps.push("runtime_adapter");
+    permissionGaps.push("runtime_adapter");
+  } else {
+    const adapterId = stringValue(findDirectMetadataValue(adapter, ["adapter_id", "id"]));
+    if (runtimeAdapterRef && adapterId && runtimeAdapterRef !== adapterId) {
+      referenceGaps.push(`runtime_adapter:${runtimeAdapterRef}!=${adapterId}`);
+    }
+    const invocation = objectValue(
+      findDirectMetadataValue(adapter, ["invocation_template", "invocation"]),
+    );
+    const outputMode = invocation
+      ? normalizedString(findDirectMetadataValue(invocation, ["output_mode"]))
+      : null;
+    if (outputMode === "text") {
+      outputSchemaGaps.push("adapter.output_mode:text");
+    }
+    const finalSchema = invocation
+      ? stringValue(findDirectMetadataValue(invocation, ["final_schema_ref"]))
+      : null;
+    if (finalSchema && expectedSchema && finalSchema !== expectedSchema) {
+      outputSchemaGaps.push(`final_schema_ref:${finalSchema}!=${expectedSchema}`);
+    }
+
+    const permission = objectValue(
+      findDirectMetadataValue(adapter, ["permission_profile", "permissions"]),
+    );
+    const sandbox = permission
+      ? normalizedString(findDirectMetadataValue(permission, ["sandbox"]))
+      : null;
+    permissionGaps.push(...findRuntimePermissionGaps(writeScope, sandbox));
+  }
+
+  if (!policy) {
+    referenceGaps.push("injection_policy");
+    outputSchemaGaps.push("injection_policy");
+  } else {
+    const policyId = stringValue(findDirectMetadataValue(policy, ["policy_id", "id"]));
+    if (injectionPolicyRef && policyId && injectionPolicyRef !== policyId) {
+      referenceGaps.push(`injection_policy:${injectionPolicyRef}!=${policyId}`);
+    }
+    const outputValidation = objectValue(
+      findDirectMetadataValue(policy, ["output_validation"]),
+    );
+    if (!outputValidation) {
+      outputSchemaGaps.push("policy.output_validation");
+    } else {
+      if (findDirectMetadataValue(outputValidation, ["required_schema"]) !== true) {
+        outputSchemaGaps.push("policy.required_schema");
+      }
+      if (findDirectMetadataValue(outputValidation, ["fail_on_schema_mismatch"]) !== true) {
+        outputSchemaGaps.push("policy.fail_on_schema_mismatch");
+      }
+      if (findDirectMetadataValue(outputValidation, ["allow_text_fallback"]) !== false) {
+        outputSchemaGaps.push("policy.allow_text_fallback");
+      }
+    }
+  }
+
+  return {
+    missingFields,
+    invalidFields,
+    referenceGaps,
+    outputSchemaGaps,
+    permissionGaps,
+  };
+}
+
+function findRuntimePermissionGaps(
+  writeScope: string | null,
+  sandbox: string | null,
+): string[] {
+  if (!writeScope || !sandbox) {
+    return [];
+  }
+  if (sandbox === "danger-full-access" && writeScope !== "host-specific") {
+    return ["danger-full-access:requires-host-specific-write-scope"];
+  }
+  switch (writeScope) {
+    case "none":
+    case "read-only":
+      return sandbox === "read-only"
+        ? []
+        : [`${writeScope}:requires-read-only-sandbox`];
+    case "workspace-write":
+    case "repo-write":
+      return sandbox === "workspace-write"
+        ? []
+        : [`${writeScope}:requires-workspace-write-sandbox`];
+    case "host-specific":
+      return sandbox === "host-specific" || sandbox === "danger-full-access"
+        ? []
+        : ["host-specific:requires-host-specific-or-danger-full-access-sandbox"];
+    default:
+      return [];
+  }
+}
+
+function runtimeStepHasFallbackBehavior(step: Record<string, unknown>): boolean {
+  const fallback = findDirectMetadataValue(step, [
+    "fallback_behavior",
+    "degraded_fallback_behavior",
+    "retry_policy",
+    "on_failure",
+  ]);
+  if (!hasNonEmptyRegisterValue(fallback)) {
+    return false;
+  }
+  const fallbackObject = objectValue(fallback);
+  if (!fallbackObject) {
+    return false;
+  }
+  return (
+    metadataValueHasNonEmptyKey(fallbackObject, [
+      "timeout",
+      "on_timeout",
+      "timeout_behavior",
+    ]) &&
+    metadataValueHasNonEmptyKey(fallbackObject, [
+      "non_zero_exit",
+      "on_non_zero_exit",
+      "exit_code",
+    ]) &&
+    metadataValueHasNonEmptyKey(fallbackObject, [
+      "schema_mismatch",
+      "on_schema_mismatch",
+      "malformed_output",
+    ])
+  );
+}
+
+function runtimeAdapterValidationHasIssues(
+  validation: RuntimeAdapterValidation,
+): boolean {
+  return (
+    validation.missingFields.length > 0 ||
+    validation.invalidFields.length > 0 ||
+    validation.unsafeArgv.length > 0 ||
+    validation.evidenceMappingGaps.length > 0
+  );
+}
+
+function injectionPolicyValidationHasIssues(
+  validation: InjectionPolicyValidation,
+): boolean {
+  return (
+    validation.missingFields.length > 0 ||
+    validation.invalidFields.length > 0 ||
+    validation.unsafeRules.length > 0
+  );
+}
+
+function runtimeStepValidationHasIssues(
+  validation: RuntimeStepValidation,
+): boolean {
+  return (
+    validation.missingFields.length > 0 ||
+    validation.invalidFields.length > 0 ||
+    validation.referenceGaps.length > 0 ||
+    validation.outputSchemaGaps.length > 0 ||
+    validation.permissionGaps.length > 0
+  );
+}
+
+function validateOptionalStringArray(
+  metadata: Record<string, unknown>,
+  key: string,
+  invalidFields: string[],
+): void {
+  const value = findDirectMetadataValue(metadata, [key]);
+  if (
+    value !== undefined &&
+    (!Array.isArray(value) || value.some((item) => typeof item !== "string"))
+  ) {
+    invalidFields.push(key);
+  }
+}
+
+function containsUnsafeShellInterpolation(value: string): boolean {
+  const normalized = value.toLowerCase();
+  return (
+    /\$\(|`/.test(value) ||
+    /\$\{\{\s*github\.(event|head_ref|ref_name|base_ref|actor)/i.test(value) ||
+    /\{\{\s*(github|inputs|issue|pull_request|comment|branch|user_input|untrusted)[^}]*\}\}/i.test(value) ||
+    /\{(inputs|issue|pull_request|comment|branch|user_input|untrusted)[^}]*\}/i.test(value) ||
+    normalized.includes("github.event.issue") ||
+    normalized.includes("github.event.pull_request") ||
+    normalized.includes("inputs.") ||
+    normalized.includes("comment.body") ||
+    normalized.includes("issue.body") ||
+    normalized.includes("issue.title") ||
+    normalized.includes("pull_request.title") ||
+    normalized.includes("untrusted")
+  );
+}
+
+function describePromptRule(
+  rule: Record<string, unknown>,
+  index: number,
+): string {
+  const id = findDirectMetadataValue(rule, ["id", "name", "segment"]);
+  if (typeof id === "string" || typeof id === "number") {
+    return String(id);
+  }
+  return `prompt_rule_${index + 1}`;
+}
+
+function objectValue(value: unknown): Record<string, unknown> | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return null;
+}
+
+function objectArray(value: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (item): item is Record<string, unknown> =>
+      Boolean(item) && typeof item === "object" && !Array.isArray(item),
+  );
+}
+
+function primitiveStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .filter((item): item is string | number => typeof item === "string" || typeof item === "number")
+    .map((item) => String(item).trim())
+    .filter((item) => item.length > 0);
+}
+
+function stringValue(value: unknown): string | null {
+  if (typeof value === "string" || typeof value === "number") {
+    const normalized = String(value).trim();
+    return normalized.length > 0 ? normalized : null;
+  }
+  return null;
+}
+
+function normalizedString(value: unknown): string | null {
+  const string = stringValue(value);
+  return string ? string.toLowerCase() : null;
 }
 
 function phaseClosureAuditMatrixHasCoverage(

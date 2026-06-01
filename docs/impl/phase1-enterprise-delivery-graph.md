@@ -57,6 +57,13 @@ Record that Shirube's own PRs under this epic must identify:
 - post-merge verification;
 - goal progress update when applicable.
 
+### Slice F: #240 Runtime Adapter and Injection Policy Placement
+Document that #240 is a child/follow-up slice under #238. #240 defines
+`runtime-command-adapter/v1` and `injection-policy-pack/v1` so executable
+Delivery Graph steps can validate runtime invocation, permission scope,
+untrusted context handling, and schema-validated output before state or gate
+updates.
+
 ## 2. File-Level Impact
 This PR A slice is documentation-only:
 
@@ -78,10 +85,11 @@ This PR A slice is documentation-only:
 Later slices should implement the parent contract in this order unless review
 changes it:
 
-1. #226 action registry and wrapper semantics;
-2. #227 local/script-controlled workflow chain;
-3. delivery graph read model and status projection;
-4. position registry and workflow template contracts;
-5. PR/phase/goal runners;
-6. GitHub/MCP projection;
-7. AI Change Record and enterprise export/reporting.
+1. #240 runtime command adapter and injection policy pack;
+2. #226 action registry and wrapper semantics;
+3. #227 local/script-controlled workflow chain;
+4. delivery graph read model and status projection;
+5. position registry and workflow template contracts;
+6. PR/phase/goal runners;
+7. GitHub/MCP projection;
+8. AI Change Record and enterprise export/reporting.
