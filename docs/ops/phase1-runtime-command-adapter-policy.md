@@ -15,15 +15,19 @@ SPEC-RUNTIMEADAPTER-240.
 
 ## 1. Operator Flow
 1. Choose the Delivery Graph step to execute.
-2. Create or select a `runtime-command-adapter/v1` profile for the target
+2. Create or select a `work-order/v1` request envelope for the dispatch, or
+   record why the warning-first Work Order gate is not applicable yet.
+3. Create or select a `runtime-command-adapter/v1` profile for the target
    runtime.
-3. Create or select an `injection-policy-pack/v1` profile for the trust
+4. Create or select an `injection-policy-pack/v1` profile for the trust
    boundary.
-4. Create a Delivery Graph step runtime binding that names adapter, policy,
+5. Create a Delivery Graph step runtime binding that names adapter, policy,
    expected result schema, write scope, evidence sink, and fallback behavior.
-5. Run `shirube workflow check --action runtime_step --profile strict --json`.
-6. Execute the runtime only after G20 rules pass.
-7. Validate the final structured output against the expected schema before
+6. Run `shirube workflow check --action work_order --profile strict --json`.
+7. Run `shirube workflow check --action runtime_step --profile strict --json`.
+8. Execute the runtime only after Work Order warnings are dispositioned and G20
+   rules pass.
+9. Validate the final structured output against the expected schema before
    updating graph state, gate state, PR/issue state, audit ledger, or merge
    authority.
 

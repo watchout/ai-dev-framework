@@ -806,6 +806,160 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict work_order is warning-first when the contract is missing", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+
+    const result = runWorkflow("check --action work_order --profile strict --json");
+    const report = parseJson<{
+      check: {
+        status: string;
+        scoped_decision_counts: { BLOCK: number; WARN: number };
+      };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBe(0);
+    expect(report.check.scoped_decision_counts.WARN).toBeGreaterThan(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.record.present",
+          decision: "WARN",
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order can fail on warnings during migration audits", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { WARN: number } };
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.WARN).toBeGreaterThan(0);
+  });
+
+  it("strict work_order passes with a complete verifiable Work Order contract", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeWorkOrder(tmpDir, completeWorkOrder());
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: {
+        status: string;
+        scoped_decision_counts: { BLOCK: number; WARN: number };
+      };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBe(0);
+    expect(report.check.scoped_decision_counts.WARN).toBe(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.required_fields",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.dispatch_contract",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.context_pack_boundary",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order warns on prompt-only shape and missing dispatch/runtime fields", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeWorkOrder(tmpDir, {
+      schema_version: "prompt-template/v1",
+      request: "Please implement #244",
+      handoff_target: "codex",
+    });
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { WARN: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.WARN).toBeGreaterThanOrEqual(5);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.required_fields",
+          decision: "WARN",
+          message: expect.stringContaining("schema_version:prompt-template/v1"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.dispatch_contract",
+          decision: "WARN",
+          message: expect.stringContaining("dispatch_surfaces"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.runtime_contract",
+          decision: "WARN",
+          message: expect.stringContaining("runtime_adapter_or_structured_invocation"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order warns when context packs become instructions or shell commands", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const order = completeWorkOrder();
+    order.context_pack_refs = [];
+    order.context_pack_policy = {
+      delivery: "instruction",
+      treat_as_instruction: true,
+    };
+    order.runtime_invocation = {
+      argv: ["codex", "exec", "${{ inputs.issue_body }}"],
+    };
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.context_pack_boundary",
+          decision: "WARN",
+          message: expect.stringContaining("context_pack_refs"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.context_pack_boundary",
+          decision: "WARN",
+          message: expect.stringContaining("context_pack_instruction_promotion"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.runtime_contract",
+          decision: "WARN",
+          message: expect.stringContaining("direct_shell_command"),
+        }),
+      ]),
+    );
+  });
+
   it("strict phase_closure blocks incomplete closure evidence", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writePhaseClosureRecord(tmpDir, {
@@ -1320,6 +1474,18 @@ function writeRuntimeStep(
   );
 }
 
+function writeWorkOrder(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/work-order.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
 function completeAuditLedgerRecord(): Record<string, unknown> {
   return {
     schema_version: "audit-ledger/v1",
@@ -1523,6 +1689,68 @@ function completeRuntimeStep(): Record<string, unknown> {
       on_schema_mismatch: "BLOCK",
       degraded_fallback: "manual_review_required",
     },
+  };
+}
+
+function completeWorkOrder(): Record<string, unknown> {
+  return {
+    schema_version: "work-order/v1",
+    work_order_id: "WO-244",
+    issue: 244,
+    work_package_id: "phase1-work-order-contract",
+    objective: "Implement warning-first Work Order contract validation.",
+    handoff_target: "codex",
+    dispatch_surfaces: ["aun", "codex", "claude", "shirube_report"],
+    inputs: [
+      {
+        type: "aun_message",
+        ref: "3602251b-ce84-46aa-9e9c-f17b83ea3d99",
+      },
+      {
+        type: "github_issue",
+        ref: "watchout/ai-dev-framework#244",
+      },
+    ],
+    evidence_refs: ["github:watchout/ai-dev-framework#244"],
+    context_pack_refs: [
+      {
+        pack_id: "kodama-pack-issue-242",
+        citation: "github:watchout/kodama#7",
+      },
+    ],
+    context_pack_policy: {
+      data_not_instruction: true,
+      delivery: "data-only",
+    },
+    runtime_adapter: "codex-jsonl-readonly-v1",
+    structured_invocation: {
+      runtime: "codex",
+      output_mode: "jsonl",
+      output_schema: "work-order-result-v1",
+    },
+    expected_output_schema: "work-order-result-v1",
+    write_scope: "workspace-write",
+    required_gates: ["work_order", "runtime_step", "context_pack"],
+    report_sink: "shirube-gate-report",
+    authority_boundary: {
+      forbidden: [
+        "merge approval",
+        "phase transition",
+        "goal completion",
+      ],
+      merge_authority: "not_granted",
+      phase_transition_authority: "not_granted",
+    },
+    non_claims: [
+      "No merge authority.",
+      "No phase transition authority.",
+      "No public or enterprise readiness claim.",
+    ],
+    enforcement_mode: "warning",
+    promotion_criteria: [
+      "AUN, Codex, Claude, and Shirube report consumers accept work-order/v1.",
+      "Downstream migration has no warning-only violations.",
+    ],
   };
 }
 
