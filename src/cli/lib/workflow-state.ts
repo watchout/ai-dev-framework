@@ -52,6 +52,7 @@ export type WorkflowEvidenceKind =
   | "merge_authority"
   | "phase_closure"
   | "audit_ledger"
+  | "work_order"
   | "runtime_adapter"
   | "injection_policy"
   | "runtime_step"
@@ -187,6 +188,7 @@ export function buildWorkflowState(
   );
   applyPhaseClosureReadiness(projectDir, now, profile, evidence, gateDecisions);
   applyAuditLedgerReadiness(projectDir, now, profile, evidence, gateDecisions);
+  applyWorkOrderReadiness(projectDir, now, profile, evidence, gateDecisions);
   applyRuntimeStepReadiness(projectDir, now, profile, evidence, gateDecisions);
 
   const currentSession = readJsonFile<CurrentSessionV1>(
@@ -522,6 +524,24 @@ interface RuntimeStepValidation {
   permissionGaps: string[];
 }
 
+interface WorkOrderValidation {
+  missingFields: string[];
+  invalidFields: string[];
+  dispatchGaps: string[];
+  runtimeGaps: string[];
+  contextPackGaps: string[];
+  authorityGaps: string[];
+  promotionGaps: string[];
+}
+
+const WORK_ORDER_EVIDENCE_PATHS = [
+  ".framework/work-order.json",
+  ".framework/work-order/latest.json",
+  ".framework/work-orders/latest.json",
+  ".framework/delivery-graph/work-order.json",
+  ".framework/aun/work-order.json",
+];
+
 const RUNTIME_ADAPTER_EVIDENCE_PATHS = [
   ".framework/runtime-command-adapter.json",
   ".framework/runtime-adapter.json",
@@ -611,6 +631,57 @@ const REQUIRED_RUNTIME_EVIDENCE_MAPPING_KEYS = [
   "final_result",
   "gate_decision",
 ];
+
+const WORK_ORDER_DISPATCH_SURFACES = new Set([
+  "aun",
+  "aundispatch",
+  "codex",
+  "claude",
+  "structuredinvocation",
+  "shirube",
+  "shirubegate",
+  "shirubereport",
+]);
+
+const WORK_ORDER_WRITE_SCOPES = new Set([
+  "none",
+  "read-only",
+  "workspace-write",
+  "repo-write",
+  "host-specific",
+]);
+
+const WORK_ORDER_ENFORCEMENT_MODES = new Set([
+  "warning",
+  "warn",
+  "observe",
+  "block-ready",
+  "hard-block-ready",
+]);
+const WORK_ORDER_CANONICAL_NO_AUTHORITY_VALUE = "notgranted";
+const WORK_ORDER_NO_AUTHORITY_VALUES = new Set([
+  "notgranted",
+  "notallowed",
+  "none",
+  "no",
+  "false",
+  "denied",
+  "forbidden",
+  "prohibited",
+]);
+const WORK_ORDER_AUTHORITY_GRANT_VALUES = new Set([
+  "granted",
+  "allowed",
+  "allow",
+  "true",
+  "yes",
+  "approved",
+  "approve",
+  "passed",
+  "pass",
+  "enabled",
+  "permitted",
+]);
 
 function applyProjectApplied(
   projectDir: string,
@@ -1019,6 +1090,187 @@ function applyAuditLedgerReadiness(
         validation.nextActionGaps.length === 0
           ? "No action required."
           : "Add recommended_next_action, unresolved findings, or downstream gate data for each audit record.",
+    }),
+  );
+}
+
+function applyWorkOrderReadiness(
+  projectDir: string,
+  now: string,
+  profile: WorkflowProfile,
+  evidence: WorkflowEvidenceRecord[],
+  gateDecisions: WorkflowGateDecision[],
+): void {
+  const warning = workOrderWarningDecision();
+  const artifact = findLocalEvidence(projectDir, WORK_ORDER_EVIDENCE_PATHS);
+  const workOrderMetadata = artifact
+    ? selectWorkOrderMetadata(artifact.metadata)
+    : null;
+  const validation = workOrderMetadata
+    ? validateWorkOrderMetadata(workOrderMetadata)
+    : null;
+  const workOrderEvidence = artifact
+    ? createEvidence({
+        projectDir,
+        now,
+        kind: "work_order",
+        artifactPath: artifact.path,
+        sourceUri: `file://${artifact.path}`,
+        summary:
+          validation && workOrderValidationHasIssues(validation)
+            ? "Work Order contract is present but incomplete."
+            : "Work Order contract is present.",
+        validity:
+          validation && workOrderValidationHasIssues(validation)
+            ? "invalid"
+            : "current",
+        metadata: {
+          ...artifact.metadata,
+          selected_work_order: workOrderMetadata,
+          validation,
+        },
+      })
+    : null;
+  if (workOrderEvidence) {
+    evidence.push(workOrderEvidence);
+  }
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G21.work_order.record.present",
+      gate: "work_order",
+      decisionValue: workOrderMetadata ? "PASS" : warning.decision,
+      severity: workOrderMetadata ? "info" : warning.severity,
+      profile,
+      message: workOrderMetadata
+        ? "Work Order contract is present."
+        : "Work Order contract is missing.",
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation: workOrderMetadata
+        ? "No action required."
+        : "Create .framework/work-order.json before dispatching work to agents or runtimes.",
+    }),
+  );
+
+  if (!validation) {
+    return;
+  }
+
+  const fieldIssues = [
+    ...validation.missingFields.map((field) => `missing:${field}`),
+    ...validation.invalidFields.map((field) => `invalid:${field}`),
+  ];
+  gateDecisions.push(
+    decision({
+      ruleId: "G21.work_order.required_fields",
+      gate: "work_order",
+      decisionValue: fieldIssues.length === 0 ? "PASS" : warning.decision,
+      severity: fieldIssues.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        fieldIssues.length === 0
+          ? "Work Order required fields are complete."
+          : `Work Order required fields have issues: ${fieldIssues.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        fieldIssues.length === 0
+          ? "No action required."
+          : "Fill schema, id, scope, objective, handoff target, input evidence, expected output schema, write scope, required gates, authority boundary, and non-claims.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G21.work_order.dispatch_contract",
+      gate: "work_order",
+      decisionValue: validation.dispatchGaps.length === 0 ? "PASS" : warning.decision,
+      severity: validation.dispatchGaps.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        validation.dispatchGaps.length === 0
+          ? "Work Order declares dispatch surfaces for AUN, structured invocation, or Shirube reporting."
+          : `Work Order dispatch contract has gaps: ${validation.dispatchGaps.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        validation.dispatchGaps.length === 0
+          ? "No action required."
+          : "Declare dispatch surfaces, handoff target, and report/gate sink compatibility before dispatch.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G21.work_order.runtime_contract",
+      gate: "work_order",
+      decisionValue: validation.runtimeGaps.length === 0 ? "PASS" : warning.decision,
+      severity: validation.runtimeGaps.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        validation.runtimeGaps.length === 0
+          ? "Work Order declares structured runtime invocation requirements."
+          : `Work Order runtime contract has gaps: ${validation.runtimeGaps.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        validation.runtimeGaps.length === 0
+          ? "No action required."
+          : "Declare runtime adapter or structured invocation needs, expected output schema, and write scope.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G21.work_order.context_pack_boundary",
+      gate: "work_order",
+      decisionValue: validation.contextPackGaps.length === 0 ? "PASS" : warning.decision,
+      severity: validation.contextPackGaps.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        validation.contextPackGaps.length === 0
+          ? "Work Order treats context-pack refs as data evidence, not instruction authority."
+          : `Work Order context-pack boundary has gaps: ${validation.contextPackGaps.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        validation.contextPackGaps.length === 0
+          ? "No action required."
+          : "Declare context_pack_refs or explicit non-applicability, and keep context-pack item text data-only or citation-only.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G21.work_order.authority_boundary",
+      gate: "work_order",
+      decisionValue: validation.authorityGaps.length === 0 ? "PASS" : warning.decision,
+      severity: validation.authorityGaps.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        validation.authorityGaps.length === 0
+          ? "Work Order authority boundary is explicit."
+          : `Work Order authority boundary has gaps: ${validation.authorityGaps.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        validation.authorityGaps.length === 0
+          ? "No action required."
+          : "Declare forbidden authority, required gates, non-claims, and no shell-command generation from Work Order text.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G21.work_order.promotion_path",
+      gate: "work_order",
+      decisionValue: validation.promotionGaps.length === 0 ? "PASS" : warning.decision,
+      severity: validation.promotionGaps.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        validation.promotionGaps.length === 0
+          ? "Work Order declares a warning-first migration path."
+          : `Work Order promotion path has gaps: ${validation.promotionGaps.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        validation.promotionGaps.length === 0
+          ? "No action required."
+          : "Declare enforcement mode and criteria for later promotion from WARN to BLOCK.",
     }),
   );
 }
@@ -1798,6 +2050,16 @@ function describeAuditLedgerRecord(
   return `record_${index + 1}`;
 }
 
+function selectWorkOrderMetadata(
+  metadata: Record<string, unknown>,
+): Record<string, unknown> | null {
+  return selectNestedObject(metadata, [
+    "work_order",
+    "work_order_v1",
+    "order",
+  ], ["work_orders", "orders"]);
+}
+
 function selectRuntimeAdapterMetadata(
   metadata: Record<string, unknown>,
 ): Record<string, unknown> | null {
@@ -1854,6 +2116,87 @@ function selectNestedObject(
   }
 
   return Object.keys(metadata).length > 0 ? metadata : null;
+}
+
+function validateWorkOrderMetadata(
+  workOrder: Record<string, unknown>,
+): WorkOrderValidation {
+  const missingFields: string[] = [];
+  const invalidFields: string[] = [];
+  const dispatchGaps: string[] = [];
+  const runtimeGaps: string[] = [];
+  const contextPackGaps: string[] = [];
+  const authorityGaps: string[] = [];
+  const promotionGaps: string[] = [];
+
+  const schemaVersion = stringValue(
+    findDirectMetadataValue(workOrder, ["schema_version", "version"]),
+  );
+  if (!schemaVersion) {
+    missingFields.push("schema_version");
+  } else if (normalizeSchemaVersion(schemaVersion) !== "workorderv1") {
+    invalidFields.push(`schema_version:${schemaVersion}`);
+  }
+
+  if (!metadataValueHasNonEmptyKey(workOrder, ["work_order_id", "id"])) {
+    missingFields.push("work_order_id");
+  }
+  if (!workOrderHasScope(workOrder)) {
+    missingFields.push("scope");
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["objective", "goal", "request"])) {
+    missingFields.push("objective");
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["handoff_target", "assignee", "recipient"])) {
+    missingFields.push("handoff_target");
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["inputs", "input_refs", "evidence_refs"])) {
+    missingFields.push("inputs_or_evidence_refs");
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["expected_output_schema", "output_schema"])) {
+    missingFields.push("expected_output_schema");
+    runtimeGaps.push("expected_output_schema");
+  }
+
+  const writeScope = normalizedString(
+    findDirectMetadataValue(workOrder, ["write_scope", "allowed_write_scope"]),
+  );
+  if (!writeScope) {
+    missingFields.push("write_scope");
+    runtimeGaps.push("write_scope");
+  } else if (!WORK_ORDER_WRITE_SCOPES.has(writeScope)) {
+    invalidFields.push(`write_scope:${writeScope}`);
+    runtimeGaps.push(`write_scope:${writeScope}`);
+  }
+
+  if (!metadataValueHasNonEmptyKey(workOrder, ["required_gates", "gates"])) {
+    missingFields.push("required_gates");
+    authorityGaps.push("required_gates");
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["authority_boundary", "forbidden_authority"])) {
+    missingFields.push("authority_boundary");
+    authorityGaps.push("authority_boundary");
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["non_claims", "explicit_non_claims"])) {
+    missingFields.push("non_claims");
+    authorityGaps.push("non_claims");
+  }
+
+  dispatchGaps.push(...findWorkOrderDispatchGaps(workOrder));
+  runtimeGaps.push(...findWorkOrderRuntimeGaps(workOrder));
+  contextPackGaps.push(...findWorkOrderContextPackGaps(workOrder));
+  authorityGaps.push(...findWorkOrderAuthorityGaps(workOrder));
+  promotionGaps.push(...findWorkOrderPromotionGaps(workOrder));
+
+  return {
+    missingFields,
+    invalidFields,
+    dispatchGaps,
+    runtimeGaps,
+    contextPackGaps,
+    authorityGaps,
+    promotionGaps,
+  };
 }
 
 function validateRuntimeAdapterMetadata(
@@ -2356,6 +2699,383 @@ function runtimeStepValidationHasIssues(
     validation.outputSchemaGaps.length > 0 ||
     validation.permissionGaps.length > 0
   );
+}
+
+function workOrderValidationHasIssues(
+  validation: WorkOrderValidation,
+): boolean {
+  return (
+    validation.missingFields.length > 0 ||
+    validation.invalidFields.length > 0 ||
+    validation.dispatchGaps.length > 0 ||
+    validation.runtimeGaps.length > 0 ||
+    validation.contextPackGaps.length > 0 ||
+    validation.authorityGaps.length > 0 ||
+    validation.promotionGaps.length > 0
+  );
+}
+
+function workOrderWarningDecision(): {
+  decision: WorkflowGateDecisionValue;
+  severity: WorkflowGateSeverity;
+} {
+  return { decision: "WARN", severity: "warning" };
+}
+
+function workOrderHasScope(workOrder: Record<string, unknown>): boolean {
+  return (
+    metadataValueHasNonEmptyKey(workOrder, ["task", "task_id"]) ||
+    metadataValueHasNonEmptyKey(workOrder, ["issue", "issue_number"]) ||
+    metadataValueHasNonEmptyKey(workOrder, ["pr", "pull_request"]) ||
+    metadataValueHasNonEmptyKey(workOrder, ["work_package", "work_package_id"]) ||
+    metadataValueHasNonEmptyKey(workOrder, ["delivery_graph_ref", "graph_ref"])
+  );
+}
+
+function findWorkOrderDispatchGaps(workOrder: Record<string, unknown>): string[] {
+  const gaps: string[] = [];
+  const surfaces = primitiveStringArray(
+    findDirectMetadataValue(workOrder, [
+      "dispatch_surfaces",
+      "dispatch_surface",
+      "surfaces",
+      "adapter_surfaces",
+    ]),
+  ).map(normalizeScopeValue);
+  if (surfaces.length === 0) {
+    gaps.push("dispatch_surfaces");
+  } else {
+    for (const surface of surfaces) {
+      if (!WORK_ORDER_DISPATCH_SURFACES.has(surface)) {
+        gaps.push(`dispatch_surface:${surface}`);
+      }
+    }
+    if (
+      !surfaces.some((surface) =>
+        ["aun", "aundispatch", "codex", "claude", "structuredinvocation", "shirube", "shirubegate", "shirubereport"].includes(surface),
+      )
+    ) {
+      gaps.push("dispatch_surface:known_adapter");
+    }
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["handoff_target", "assignee", "recipient"])) {
+    gaps.push("handoff_target");
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["report_sink", "gate_sink", "evidence_sink"])) {
+    gaps.push("report_or_gate_sink");
+  }
+  return gaps;
+}
+
+function findWorkOrderRuntimeGaps(workOrder: Record<string, unknown>): string[] {
+  const gaps: string[] = [];
+  if (
+    !metadataValueHasNonEmptyKey(workOrder, [
+      "runtime_adapter",
+      "runtime_adapter_ref",
+      "structured_invocation",
+      "runtime_invocation",
+    ])
+  ) {
+    gaps.push("runtime_adapter_or_structured_invocation");
+  }
+  if (containsWorkOrderShellCommand(workOrder)) {
+    gaps.push("direct_shell_command");
+  }
+  return gaps;
+}
+
+function findWorkOrderContextPackGaps(workOrder: Record<string, unknown>): string[] {
+  const gaps: string[] = [];
+  const contextPackRefs = findDirectMetadataValue(workOrder, [
+    "context_pack_refs",
+    "context_pack_ref",
+    "context_packs",
+  ]);
+  if (contextPackRefs === undefined && !hasContextPackNonApplicability(workOrder)) {
+    gaps.push("context_pack_refs_or_non_applicability");
+  }
+  if (
+    contextPackRefs !== undefined &&
+    !hasNonEmptyRegisterValue(contextPackRefs)
+  ) {
+    gaps.push("context_pack_refs");
+  }
+  if (!workOrderTreatsContextPackAsData(workOrder)) {
+    gaps.push("context_pack_data_not_instruction");
+  }
+  if (workOrderPromotesContextPackInstruction(workOrder)) {
+    gaps.push("context_pack_instruction_promotion");
+  }
+  return gaps;
+}
+
+function findWorkOrderAuthorityGaps(workOrder: Record<string, unknown>): string[] {
+  const gaps: string[] = [];
+  const authorityBoundary = objectValue(
+    findDirectMetadataValue(workOrder, ["authority_boundary", "forbidden_authority"]),
+  );
+  if (!authorityBoundary) {
+    gaps.push("authority_boundary");
+  } else {
+    if (
+      !metadataValueHasNonEmptyKey(authorityBoundary, [
+        "cannot_approve",
+        "forbidden",
+        "forbidden_authority",
+      ])
+    ) {
+      gaps.push("authority_boundary.forbidden");
+    }
+    gaps.push(
+      ...findRequiredWorkOrderNoAuthorityGaps(authorityBoundary, [
+        { keys: ["merge_authority"], label: "merge_authority" },
+        {
+          keys: ["phase_transition_authority"],
+          label: "phase_transition_authority",
+        },
+      ]),
+      ...findOptionalWorkOrderAuthorityGrantGaps(authorityBoundary, [
+        {
+          keys: ["gate_authority", "gate_pass_authority", "gate_decision_authority"],
+          label: "gate_authority",
+        },
+        {
+          keys: ["goal_completion_authority", "goal_authority", "complete_goal"],
+          label: "goal_completion_authority",
+        },
+      ], "authority_boundary"),
+    );
+  }
+  const rootAuthorityGaps = findOptionalWorkOrderAuthorityGrantGaps(workOrder, [
+    { keys: ["approve_merge", "merge_authority"], label: "approve_merge" },
+    { keys: ["approve_phase", "phase_transition_authority"], label: "approve_phase" },
+    { keys: ["complete_goal", "goal_completion_authority"], label: "complete_goal" },
+    { keys: ["gate_pass", "gate_authority"], label: "gate_pass" },
+  ], "authority_self_approval");
+  gaps.push(...rootAuthorityGaps);
+  if (workOrderNonClaimsGrantAuthority(workOrder)) {
+    gaps.push("non_claims.authority_claim");
+  }
+  return gaps;
+}
+
+function findRequiredWorkOrderNoAuthorityGaps(
+  metadata: Record<string, unknown>,
+  fields: Array<{ keys: string[]; label: string }>,
+): string[] {
+  const gaps: string[] = [];
+  for (const field of fields) {
+    const value = findDirectMetadataValue(metadata, field.keys);
+    if (value === undefined || isEmptyRegisterValue(value)) {
+      gaps.push(`authority_boundary.${field.label}`);
+      continue;
+    }
+    const normalizedValues = normalizeWorkOrderAuthorityValues(value);
+    if (
+      normalizedValues.length !== 1 ||
+      normalizedValues[0] !== WORK_ORDER_CANONICAL_NO_AUTHORITY_VALUE
+    ) {
+      gaps.push(`authority_boundary.${field.label}:${describeAuthorityValue(value)}`);
+    }
+  }
+  return gaps;
+}
+
+function findOptionalWorkOrderAuthorityGrantGaps(
+  metadata: Record<string, unknown>,
+  fields: Array<{ keys: string[]; label: string }>,
+  prefix: string,
+): string[] {
+  const gaps: string[] = [];
+  for (const field of fields) {
+    const value = findDirectMetadataValue(metadata, field.keys);
+    if (value === undefined || isEmptyRegisterValue(value)) {
+      continue;
+    }
+    if (workOrderAuthorityValueGrantsAuthority(value)) {
+      gaps.push(`${prefix}.${field.label}:${describeAuthorityValue(value)}`);
+    }
+  }
+  return gaps;
+}
+
+function normalizeWorkOrderAuthorityValues(value: unknown): string[] {
+  return collectPrimitiveLeafValues(value)
+    .map((item) => normalizeScopeValue(item))
+    .filter((item) => item.length > 0);
+}
+
+function describeAuthorityValue(value: unknown): string {
+  const values = collectPrimitiveLeafValues(value)
+    .map((item) => String(item).trim())
+    .filter((item) => item.length > 0);
+  return values.length > 0 ? values.join("|") : "non_scalar";
+}
+
+function workOrderAuthorityValueGrantsAuthority(value: unknown): boolean {
+  const normalizedValues = normalizeWorkOrderAuthorityValues(value);
+  return normalizedValues.some((item) => {
+    if (WORK_ORDER_NO_AUTHORITY_VALUES.has(item)) {
+      return false;
+    }
+    if (WORK_ORDER_AUTHORITY_GRANT_VALUES.has(item)) {
+      return true;
+    }
+    return (
+      (item.includes("granted") && !item.includes("notgranted")) ||
+      (item.includes("allowed") && !item.includes("notallowed")) ||
+      item.includes("canapprove") ||
+      item.includes("canmerge") ||
+      item.includes("canpass") ||
+      item.includes("cancomplete")
+    );
+  });
+}
+
+function workOrderNonClaimsGrantAuthority(workOrder: Record<string, unknown>): boolean {
+  const nonClaims = findDirectMetadataValue(workOrder, [
+    "non_claims",
+    "explicit_non_claims",
+  ]);
+  return collectPrimitiveLeafValues(nonClaims).some(workOrderTextClaimsAuthority);
+}
+
+function workOrderTextClaimsAuthority(text: string): boolean {
+  const normalized = normalizeScopeValue(text);
+  const mentionsAuthority =
+    normalized.includes("merge") ||
+    normalized.includes("phase") ||
+    normalized.includes("gate") ||
+    normalized.includes("goal") ||
+    normalized.includes("authority") ||
+    normalized.includes("approve") ||
+    normalized.includes("complete");
+  if (!mentionsAuthority) {
+    return false;
+  }
+  const hasNegativeBoundary =
+    normalized.includes("no") ||
+    normalized.includes("not") ||
+    normalized.includes("without") ||
+    normalized.includes("cannot") ||
+    normalized.includes("cant") ||
+    normalized.includes("forbidden") ||
+    normalized.includes("denied") ||
+    normalized.includes("prohibited");
+  return !hasNegativeBoundary && workOrderAuthorityValueGrantsAuthority(text);
+}
+
+function findWorkOrderPromotionGaps(workOrder: Record<string, unknown>): string[] {
+  const gaps: string[] = [];
+  const enforcementMode = normalizedString(
+    findDirectMetadataValue(workOrder, [
+      "enforcement_mode",
+      "gate_mode",
+      "migration_mode",
+    ]),
+  );
+  if (!enforcementMode) {
+    gaps.push("enforcement_mode");
+  } else if (!WORK_ORDER_ENFORCEMENT_MODES.has(enforcementMode)) {
+    gaps.push(`enforcement_mode:${enforcementMode}`);
+  }
+  if (
+    !metadataValueHasNonEmptyKey(workOrder, [
+      "promotion_criteria",
+      "block_promotion_criteria",
+      "hard_block_criteria",
+    ])
+  ) {
+    gaps.push("promotion_criteria");
+  }
+  return gaps;
+}
+
+function hasContextPackNonApplicability(workOrder: Record<string, unknown>): boolean {
+  const value = findDirectMetadataValue(workOrder, [
+    "context_pack_non_applicability",
+    "context_pack_not_applicable",
+    "context_pack_applicability",
+  ]);
+  if (value === undefined) {
+    return false;
+  }
+  return hasNonEmptyRegisterValue(value);
+}
+
+function workOrderTreatsContextPackAsData(workOrder: Record<string, unknown>): boolean {
+  const policy = objectValue(
+    findDirectMetadataValue(workOrder, [
+      "context_pack_policy",
+      "context_policy",
+      "source_context_policy",
+    ]),
+  );
+  if (!policy) {
+    return false;
+  }
+  if (
+    findDirectMetadataValue(policy, ["data_not_instruction", "text_is_data"]) === true
+  ) {
+    return true;
+  }
+  const delivery = normalizedString(
+    findDirectMetadataValue(policy, ["delivery", "prompt_delivery"]),
+  );
+  return delivery === "data-only" || delivery === "citation-only";
+}
+
+function workOrderPromotesContextPackInstruction(
+  workOrder: Record<string, unknown>,
+): boolean {
+  const policy = objectValue(
+    findDirectMetadataValue(workOrder, [
+      "context_pack_policy",
+      "context_policy",
+      "source_context_policy",
+    ]),
+  );
+  if (!policy) {
+    return false;
+  }
+  const delivery = normalizedString(
+    findDirectMetadataValue(policy, ["delivery", "prompt_delivery"]),
+  );
+  if (delivery === "instruction") {
+    return true;
+  }
+  return findDirectMetadataValue(policy, [
+    "trusted_instruction",
+    "treat_as_instruction",
+  ]) === true;
+}
+
+function containsWorkOrderShellCommand(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some(containsWorkOrderShellCommand);
+  }
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    const normalizedKey = normalizeMetadataKey(key);
+    if (
+      [
+        "shell_command",
+        "generated_shell_command",
+        "command_line",
+        "argv",
+      ].includes(normalizedKey) &&
+      hasNonEmptyRegisterValue(child)
+    ) {
+      return true;
+    }
+    if (containsWorkOrderShellCommand(child)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function validateOptionalStringArray(
@@ -2991,6 +3711,10 @@ function normalizeMetadataKey(key: string): string {
 
 function normalizeScopeValue(value: string): string {
   return value.trim().toLowerCase().replace(/[\s_.-]+/g, "");
+}
+
+function normalizeSchemaVersion(value: string): string {
+  return value.trim().toLowerCase().replace(/[\s_.\-/]+/g, "");
 }
 
 function loadDiscoverSession(projectDir: string): DiscoverSessionData | null {

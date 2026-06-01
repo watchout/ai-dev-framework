@@ -142,6 +142,10 @@ enforcement, and injection wrapper semantics for G20.
 #227 should consume `runtime_step` before local/script-controlled chain
 execution.
 
+#244 should provide the warning-first `work-order/v1` request envelope that
+names runtime adapter needs, output schema, write scope, context-pack refs, and
+non-claims before runtime_step consumes a dispatch request.
+
 Later Delivery Graph runner slices should attach the final structured runtime
 result to AI Change Record, audit ledger, GitHub projection, and post-merge
 verification evidence.

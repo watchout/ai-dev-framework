@@ -20,6 +20,7 @@ export type WorkflowCheckAction =
   | "implementation_split"
   | "phase_closure"
   | "runtime_step"
+  | "work_order"
   | "remote_publish"
   | "merge"
   | "release";
@@ -273,6 +274,15 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
     "G20.runtime_step.step_contract.shape",
     "G20.runtime_step.output_schema",
     "G20.runtime_step.permission_scope",
+  ],
+  work_order: [
+    "G21.work_order.record.present",
+    "G21.work_order.required_fields",
+    "G21.work_order.dispatch_contract",
+    "G21.work_order.runtime_contract",
+    "G21.work_order.context_pack_boundary",
+    "G21.work_order.authority_boundary",
+    "G21.work_order.promotion_path",
   ],
   remote_publish: [
     "G1.roles.required_bindings",

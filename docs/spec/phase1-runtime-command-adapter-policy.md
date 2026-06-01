@@ -13,7 +13,7 @@ traces:
 - Origin Issue: #240
 - Parent: #238 / PR #239 Enterprise Delivery Graph
 - Phase: Phase 1 child/follow-up spec and minimum runner validation
-- Complements: #226, #227, #204, #168
+- Complements: #226, #227, #244, #204, #168
 
 ## 1. Purpose
 Add deterministic execution contracts for Delivery Graph steps so Shirube can
@@ -34,6 +34,11 @@ advance.
 ## 2. Source-of-Truth Placement
 `delivery-graph/v1` owns which step is being evaluated. A runtime adapter and
 injection policy only describe how that step may be executed.
+
+`work-order/v1` (#244) may provide the verified request envelope that names the
+handoff target, runtime adapter need, expected output schema, write scope,
+context-pack refs, required gates, and non-claims. It does not replace the
+runtime adapter, injection policy, or Delivery Graph step binding.
 
 Hierarchy additions under the #238 parent contract:
 
@@ -134,6 +139,8 @@ Strict policy packs must:
 ## 5. Delivery Graph Step Runtime Binding
 Every executable strict Delivery Graph step must declare:
 
+- Work Order ref or explicit non-applicability once #244 is promoted beyond
+  warning-only migration;
 - runtime adapter profile;
 - injection policy pack;
 - expected output schema;

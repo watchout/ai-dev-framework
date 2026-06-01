@@ -22,10 +22,13 @@ SPEC-DELIVERYGRAPH-238.
 4. Treat #240 as the runtime adapter and injection policy child slice that
    guards executable Delivery Graph steps before #226/#227 wire runtime
    execution semantics.
-5. For every implementation PR under #238, name the goal condition, phase exit
+5. Treat #244 as the Work Order contract child slice that freezes verifiable
+   request format before full #227 runner automation and before runtime/
+   context-pack consumers infer structure from prompts.
+6. For every implementation PR under #238, name the goal condition, phase exit
    criterion, work package/task, required gates, audit evidence, merge
    authority, and post-merge evidence it advances.
-6. Do not claim Phase 1, public, OSS, or enterprise readiness from #238 docs
+7. Do not claim Phase 1, public, OSS, or enterprise readiness from #238 docs
    alone.
 
 ## 2. Applying the Source-of-Truth Hierarchy
@@ -52,13 +55,14 @@ Use the following sequence unless review approves a different split:
 | Step | Scope |
 |------|-------|
 | PR A | #238 parent spec, authority map, delivery graph, SoT hierarchy. |
-| PR B | #240 runtime command adapter and injection policy pack. |
-| PR C | delivery graph read model and status projection. |
-| PR D | position registry and workflow template contracts. |
-| PR E | phase and PR runners. |
-| PR F | GitHub projection and AI Change Record. |
-| PR G | Shirube self-dogfood closure evidence. |
-| PR H | enterprise export and metrics. |
+| PR B | #244 Work Order contract and warning gate. |
+| PR C | #240 runtime command adapter and injection policy pack. |
+| PR D | delivery graph read model and status projection. |
+| PR E | position registry and workflow template contracts. |
+| PR F | phase and PR runners. |
+| PR G | GitHub projection and AI Change Record. |
+| PR H | Shirube self-dogfood closure evidence. |
+| PR I | enterprise export and metrics. |
 
 #226 and #227 remain Phase 1 tasks. They may be implemented before later PR B-G
 only when their scope stays local/script-controlled and cites this parent

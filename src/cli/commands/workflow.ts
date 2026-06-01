@@ -77,7 +77,7 @@ export function registerWorkflowCommand(program: Command): void {
     .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .option(
       "--action <action>",
-      "Action to evaluate (audit_ledger|design_draft|implementation_start|implementation_split|phase_closure|runtime_step|remote_publish|merge|release)",
+      "Action to evaluate (audit_ledger|design_draft|implementation_start|implementation_split|phase_closure|runtime_step|work_order|remote_publish|merge|release)",
     )
     .option("--fail-on <decision>", "Decision threshold (block|warn|observe)", "block")
     .action((options: WorkflowOptions) => {
@@ -177,6 +177,7 @@ function parseAction(value: string | undefined): WorkflowCheckAction {
     value === "implementation_split" ||
     value === "phase_closure" ||
     value === "runtime_step" ||
+    value === "work_order" ||
     value === "remote_publish" ||
     value === "merge" ||
     value === "release"

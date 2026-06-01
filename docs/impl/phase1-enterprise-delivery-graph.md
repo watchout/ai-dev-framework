@@ -64,6 +64,13 @@ Delivery Graph steps can validate runtime invocation, permission scope,
 untrusted context handling, and schema-validated output before state or gate
 updates.
 
+### Slice G: #244 Work Order Contract Placement
+Document that #244 is an early dependency under #238 before full #227 phase/PR
+runner automation. #244 defines `work-order/v1` so AUN dispatch, Codex/Claude
+structured invocation, Shirube gate/report output, runtime adapter selection,
+and Kodama context-pack refs share a verifiable request contract instead of a
+prompt template.
+
 ## 2. File-Level Impact
 This PR A slice is documentation-only:
 
@@ -85,11 +92,12 @@ This PR A slice is documentation-only:
 Later slices should implement the parent contract in this order unless review
 changes it:
 
-1. #240 runtime command adapter and injection policy pack;
-2. #226 action registry and wrapper semantics;
-3. #227 local/script-controlled workflow chain;
-4. delivery graph read model and status projection;
-5. position registry and workflow template contracts;
-6. PR/phase/goal runners;
-7. GitHub/MCP projection;
-8. AI Change Record and enterprise export/reporting.
+1. #244 Work Order contract and warning gate;
+2. #240 runtime command adapter and injection policy pack;
+3. #226 action registry and wrapper semantics;
+4. #227 local/script-controlled workflow chain;
+5. delivery graph read model and status projection;
+6. position registry and workflow template contracts;
+7. PR/phase/goal runners;
+8. GitHub/MCP projection;
+9. AI Change Record and enterprise export/reporting.
