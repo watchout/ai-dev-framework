@@ -481,6 +481,331 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict runtime_step fails when adapter, policy, and step records are missing", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+
+    const result = runWorkflow("check --action runtime_step --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThanOrEqual(3);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.adapter.present",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.injection_policy.present",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.step_contract.present",
+          decision: "BLOCK",
+        }),
+      ]),
+    );
+  });
+
+  it("strict runtime_step passes with a complete Codex JSONL adapter and strict injection policy", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeRuntimeAdapter(tmpDir, completeRuntimeAdapter("codex"));
+    writeInjectionPolicy(tmpDir, completeInjectionPolicy());
+    writeRuntimeStep(tmpDir, completeRuntimeStep());
+
+    const result = runWorkflow("check --action runtime_step --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBe(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.adapter.contract",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.output_schema",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.permission_scope",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("strict runtime_step blocks missing runtime CLI option values", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const adapter = completeRuntimeAdapter("codex");
+    const invocation = adapter.invocation_template as Record<string, unknown>;
+    invocation.argv = [
+      "codex",
+      "exec",
+      "--json",
+      "--output-schema",
+      ".framework/runtime/schemas/l1-audit-result-v1.schema.json",
+      "--output-last-message",
+      "--sandbox",
+      "--cd",
+      ".",
+    ];
+    writeRuntimeAdapter(tmpDir, adapter);
+    writeInjectionPolicy(tmpDir, completeInjectionPolicy());
+    writeRuntimeStep(tmpDir, completeRuntimeStep());
+
+    const result = runWorkflow("check --action runtime_step --profile strict --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.adapter.contract",
+          decision: "BLOCK",
+          message: expect.stringContaining("codex_argv:--output-last-message:value"),
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.adapter.contract",
+          decision: "BLOCK",
+          message: expect.stringContaining("codex_argv:--sandbox:value"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict runtime_step passes with a complete Claude stream-json adapter", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeRuntimeAdapter(tmpDir, completeRuntimeAdapter("claude"));
+    writeInjectionPolicy(tmpDir, completeInjectionPolicy());
+    writeRuntimeStep(tmpDir, {
+      ...completeRuntimeStep(),
+      runtime_adapter: "claude-stream-json-readonly-v1",
+    });
+
+    const result = runWorkflow("check --action runtime_step --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBe(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.adapter.contract",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("strict runtime_step blocks incompatible repo-write and host-specific sandboxes", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeRuntimeAdapter(tmpDir, completeRuntimeAdapter("codex"));
+    writeInjectionPolicy(tmpDir, completeInjectionPolicy());
+    writeRuntimeStep(tmpDir, {
+      ...completeRuntimeStep(),
+      write_scope: "repo-write",
+    });
+
+    const repoWriteResult = runWorkflow("check --action runtime_step --profile strict --json");
+    const repoWriteReport = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(repoWriteResult);
+
+    expect(repoWriteResult.exitCode).toBe(1);
+    expect(repoWriteReport.check.status).toBe("failed");
+    expect(repoWriteReport.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.permission_scope",
+          decision: "BLOCK",
+          message: expect.stringContaining("repo-write:requires-workspace-write-sandbox"),
+        }),
+      ]),
+    );
+
+    writeRuntimeStep(tmpDir, {
+      ...completeRuntimeStep(),
+      write_scope: "host-specific",
+    });
+
+    const hostSpecificResult = runWorkflow("check --action runtime_step --profile strict --json");
+    const hostSpecificReport = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(hostSpecificResult);
+
+    expect(hostSpecificResult.exitCode).toBe(1);
+    expect(hostSpecificReport.check.status).toBe("failed");
+    expect(hostSpecificReport.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.permission_scope",
+          decision: "BLOCK",
+          message: expect.stringContaining(
+            "host-specific:requires-host-specific-or-danger-full-access-sandbox",
+          ),
+        }),
+      ]),
+    );
+  });
+
+  it("strict runtime_step blocks unsafe GitHub interpolation and untrusted instruction delivery", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const adapter = completeRuntimeAdapter("codex");
+    const invocation = adapter.invocation_template as Record<string, unknown>;
+    invocation.argv = [
+      "codex",
+      "exec",
+      "--json",
+      "--output-schema",
+      ".framework/runtime/schemas/l1-audit-result-v1.schema.json",
+      "--output-last-message",
+      ".framework/runtime/results/last-message.json",
+      "--sandbox",
+      "read-only",
+      "--cd",
+      ".",
+      "${{ github.event.issue.title }}",
+      "${{ inputs.target_branch }}",
+    ];
+    const policy = completeInjectionPolicy();
+    policy.prompt_assembly_rules = [
+      ...(policy.prompt_assembly_rules as Record<string, unknown>[]),
+      {
+        segment: "context",
+        allowed_origin: ["github_issue_body"],
+        delivery: "instruction",
+      },
+    ];
+    writeRuntimeAdapter(tmpDir, adapter);
+    writeInjectionPolicy(tmpDir, policy);
+    writeRuntimeStep(tmpDir, completeRuntimeStep());
+
+    const result = runWorkflow("check --action runtime_step --profile strict --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.shell_interpolation",
+          decision: "BLOCK",
+          message: expect.stringContaining("github.event.issue.title"),
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.shell_interpolation",
+          decision: "BLOCK",
+          message: expect.stringContaining("inputs.target_branch"),
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.injection_policy.contract",
+          decision: "BLOCK",
+          message: expect.stringContaining("context"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict runtime_step blocks scalar fallback behavior", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeRuntimeAdapter(tmpDir, completeRuntimeAdapter("codex"));
+    writeInjectionPolicy(tmpDir, completeInjectionPolicy());
+    writeRuntimeStep(tmpDir, {
+      ...completeRuntimeStep(),
+      fallback_behavior: "manual_review_required",
+    });
+
+    const result = runWorkflow("check --action runtime_step --profile strict --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.step_contract.shape",
+          decision: "BLOCK",
+          message: expect.stringContaining("fallback_behavior"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict runtime_step blocks schema mismatch, text fallback, and incomplete fallback behavior", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const adapter = completeRuntimeAdapter("codex");
+    const invocation = adapter.invocation_template as Record<string, unknown>;
+    invocation.final_schema_ref = "wrong-result-schema-v1";
+    const policy = completeInjectionPolicy();
+    policy.output_validation = {
+      required_schema: true,
+      fail_on_schema_mismatch: true,
+      allow_text_fallback: true,
+    };
+    const step = completeRuntimeStep();
+    step.fallback_behavior = {
+      on_timeout: "BLOCK",
+      on_non_zero_exit: "BLOCK",
+    };
+    writeRuntimeAdapter(tmpDir, adapter);
+    writeInjectionPolicy(tmpDir, policy);
+    writeRuntimeStep(tmpDir, step);
+
+    const result = runWorkflow("check --action runtime_step --profile strict --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.injection_policy.contract",
+          decision: "BLOCK",
+          message: expect.stringContaining("allow_text_fallback"),
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.step_contract.shape",
+          decision: "BLOCK",
+          message: expect.stringContaining("fallback_behavior"),
+        }),
+        expect.objectContaining({
+          rule_id: "G20.runtime_step.output_schema",
+          decision: "BLOCK",
+          message: expect.stringContaining("final_schema_ref"),
+        }),
+      ]),
+    );
+  });
+
   it("strict phase_closure blocks incomplete closure evidence", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writePhaseClosureRecord(tmpDir, {
@@ -959,6 +1284,42 @@ function writeAuditLedgerRecord(
   );
 }
 
+function writeRuntimeAdapter(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/runtime-command-adapter.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
+function writeInjectionPolicy(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/injection-policy-pack.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
+function writeRuntimeStep(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/delivery-graph-step.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
 function completeAuditLedgerRecord(): Record<string, unknown> {
   return {
     schema_version: "audit-ledger/v1",
@@ -997,6 +1358,171 @@ function completeAuditLedgerRecord(): Record<string, unknown> {
         recommended_next_action: "request_l3_review",
       },
     ],
+  };
+}
+
+function completeRuntimeAdapter(runtime: "codex" | "claude"): Record<string, unknown> {
+  if (runtime === "claude") {
+    return {
+      adapter_id: "claude-stream-json-readonly-v1",
+      runtime: "claude",
+      min_version: "1.0.0",
+      feature_detection: [
+        "jsonl_stream",
+        "json_schema_final",
+        "tool_allowlist",
+        "mcp_config",
+      ],
+      invocation_template: {
+        argv: [
+          "claude",
+          "-p",
+          "--output-format",
+          "stream-json",
+          "--json-schema",
+          "l1-audit-result-v1",
+          "--permission-mode",
+          "acceptEdits",
+          "--allowedTools",
+          "Read,Grep,Glob",
+          "--disallowedTools",
+          "Bash",
+          "--mcp-config",
+          ".mcp.json",
+        ],
+        stdin_mode: "context-pack",
+        output_mode: "jsonl",
+        final_schema_ref: "l1-audit-result-v1",
+      },
+      permission_profile: {
+        sandbox: "read-only",
+        allowed_tools: ["Read", "Grep", "Glob"],
+        disallowed_tools: ["Bash", "Write", "Edit"],
+        env_allowlist: ["CI"],
+      },
+      evidence_mapping: {
+        argv: "runtime_invocation.argv",
+        runtime_version: "runtime_invocation.version",
+        schema_hash: "runtime_invocation.schema_hash",
+        final_result: "runtime_result.final",
+        gate_decision: "gate_decision",
+      },
+    };
+  }
+
+  return {
+    adapter_id: "codex-jsonl-readonly-v1",
+    runtime: "codex",
+    min_version: "0.52.0",
+    feature_detection: [
+      "jsonl_stream",
+      "json_schema_final",
+      "tool_allowlist",
+      "sandbox",
+    ],
+    invocation_template: {
+      argv: [
+        "codex",
+        "exec",
+        "--json",
+        "--output-schema",
+        ".framework/runtime/schemas/l1-audit-result-v1.schema.json",
+        "--output-last-message",
+        ".framework/runtime/results/last-message.json",
+        "--sandbox",
+        "read-only",
+        "--cd",
+        ".",
+      ],
+      stdin_mode: "context-pack",
+      output_mode: "jsonl",
+      final_schema_ref: "l1-audit-result-v1",
+    },
+    permission_profile: {
+      sandbox: "read-only",
+      allowed_tools: ["read", "rg", "sed"],
+      disallowed_tools: ["write", "network"],
+      env_allowlist: ["CI"],
+    },
+    evidence_mapping: {
+      argv: "runtime_invocation.argv",
+      runtime_version: "runtime_invocation.version",
+      schema_hash: "runtime_invocation.schema_hash",
+      final_result: "runtime_result.final",
+      gate_decision: "gate_decision",
+    },
+  };
+}
+
+function completeInjectionPolicy(): Record<string, unknown> {
+  return {
+    policy_id: "strict-enterprise-v1",
+    trusted_instruction_sources: ["system", "developer", "spec_owner"],
+    trusted_policy_sources: ["docs/spec", "docs/ops", ".framework/policy-pack.json"],
+    untrusted_context_sources: [
+      "github_issue_title",
+      "github_issue_body",
+      "github_comment",
+      "pull_request_body",
+      "tool_output",
+      "retrieved_source",
+    ],
+    prompt_assembly_rules: [
+      {
+        segment: "system",
+        allowed_origin: ["system"],
+        delivery: "instruction",
+      },
+      {
+        segment: "developer",
+        allowed_origin: ["developer", "docs/spec"],
+        delivery: "instruction",
+      },
+      {
+        segment: "task",
+        allowed_origin: ["spec_owner"],
+        delivery: "instruction",
+      },
+      {
+        segment: "context",
+        allowed_origin: ["github_issue_body", "pull_request_body"],
+        delivery: "data-only",
+      },
+      {
+        segment: "tool_output",
+        allowed_origin: ["tool_output"],
+        delivery: "data-only",
+      },
+      {
+        segment: "retrieved_source",
+        allowed_origin: ["retrieved_source"],
+        delivery: "citation-only",
+      },
+    ],
+    shell_interpolation_policy: "no-untrusted-interpolation",
+    output_validation: {
+      required_schema: true,
+      fail_on_schema_mismatch: true,
+      allow_text_fallback: false,
+    },
+  };
+}
+
+function completeRuntimeStep(): Record<string, unknown> {
+  return {
+    step_id: "PR-123.L1_AUDIT",
+    position: "L1_REVIEWER",
+    runtime_adapter: "codex-jsonl-readonly-v1",
+    injection_policy: "strict-enterprise-v1",
+    expected_result_schema: "l1-audit-result-v1",
+    write_scope: "none",
+    evidence_sink: "github-check-and-audit-ledger",
+    fallback_behavior: {
+      on_timeout: "BLOCK",
+      on_non_zero_exit: "BLOCK",
+      on_schema_mismatch: "BLOCK",
+      degraded_fallback: "manual_review_required",
+    },
   };
 }
 

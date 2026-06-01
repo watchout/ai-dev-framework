@@ -19,6 +19,7 @@ export type WorkflowCheckAction =
   | "implementation_start"
   | "implementation_split"
   | "phase_closure"
+  | "runtime_step"
   | "remote_publish"
   | "merge"
   | "release";
@@ -261,6 +262,17 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
     "G12.phase_closure.carryovers_justified",
     "G12.phase_closure.postmerge_evidence",
     "G12.phase_closure.audit_ledger_refs",
+  ],
+  runtime_step: [
+    "G20.runtime_step.adapter.present",
+    "G20.runtime_step.injection_policy.present",
+    "G20.runtime_step.step_contract.present",
+    "G20.runtime_step.adapter.contract",
+    "G20.runtime_step.shell_interpolation",
+    "G20.runtime_step.injection_policy.contract",
+    "G20.runtime_step.step_contract.shape",
+    "G20.runtime_step.output_schema",
+    "G20.runtime_step.permission_scope",
   ],
   remote_publish: [
     "G1.roles.required_bindings",
