@@ -58,6 +58,31 @@ const completeGovernanceIssue = `
 - Rollback/replay: revert PR and replay audit.
 `;
 
+const completeAunGatePolicyEvaluator = `
+## Governance Bone
+
+- Goal: Prepare Aun Gate Lite policy evaluation.
+- Phase: Phase 1 profile preparation.
+- Work Order: WO-AUN-GATE-001.
+- Risk classification: high.
+- PR slice: PR-2 policy evaluator.
+- Script/gate owner: Shirube deterministic check.
+- Action tools: no live execution.
+- Context evidence: Kodama context labels are evidence only.
+- Memory/recovery evidence: Wasurezu recovery refs are evidence only.
+- Approval policy: human approval is required for live execution.
+- Audit evidence: audit refs are required.
+- Rollback/replay: revert PR and replay fixtures.
+
+## Aun Gate Lite Profile
+
+- Aun Gate PR class: policy_evaluator.
+- Live execution boundary: no live execution in this PR.
+- Deterministic test evidence: policy evaluator fixtures and unit tests.
+- Policy fixtures: allow, deny, pending approval, blocked.
+- Deny/allow decisions: deterministic decision matrix.
+`;
+
 describe("shirube check governance", () => {
   it("returns warning status without failing in warning mode", () => {
     withTempMarkdown("This Work Order changes customer data mutation.", (file) => {
@@ -141,6 +166,88 @@ describe("shirube check governance", () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain("Invalid governance risk");
+    });
+  });
+});
+
+describe("shirube check aun-gate", () => {
+  it("passes a complete policy evaluator profile in default strict mode", () => {
+    withTempMarkdown(completeAunGatePolicyEvaluator, (file) => {
+      const result = runCli([
+        "check",
+        "aun-gate",
+        "--pr-class",
+        "policy_evaluator",
+        file,
+      ]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Aun Gate Profile: PASS");
+      expect(result.stdout).toContain("Mode: strict");
+      expect(result.stdout).toContain("PR class: policy_evaluator");
+    });
+  });
+
+  it("warns without failing for schema migration gaps in warning mode", () => {
+    withTempMarkdown(
+      `${completeGovernanceIssue}
+- Aun Gate PR class: schema_migration.
+- Live execution boundary: no live execution.
+`,
+      (file) => {
+        const result = runCli([
+          "check",
+          "aun-gate",
+          "--pr-class",
+          "schema_migration",
+          file,
+        ]);
+
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain("Aun Gate Profile: WARNING");
+        expect(result.stdout).toContain("Schema/migration evidence");
+      },
+    );
+  });
+
+  it("fails strict execution ledger profiles without runtime stability evidence", () => {
+    withTempMarkdown(
+      `${completeGovernanceIssue}
+- Aun Gate PR class: execution_ledger.
+- Live execution boundary: no live execution until AUN stability passes.
+- Execution attempt ledger: attempt-ledger/v1.
+- Approval evidence: approval refs required.
+- Audit evidence: audit refs required.
+- Rollback/replay: replay from audit refs.
+`,
+      (file) => {
+        const result = runCli([
+          "check",
+          "aun-gate",
+          "--pr-class",
+          "execution_ledger",
+          file,
+        ]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Aun Gate Profile: BLOCK");
+        expect(result.stdout).toContain("Runtime stability prerequisite");
+      },
+    );
+  });
+
+  it("rejects invalid Aun Gate PR classes", () => {
+    withTempMarkdown(completeAunGatePolicyEvaluator, (file) => {
+      const result = runCli([
+        "check",
+        "aun-gate",
+        "--pr-class",
+        "runner",
+        file,
+      ]);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("Invalid Aun Gate PR class");
     });
   });
 });
