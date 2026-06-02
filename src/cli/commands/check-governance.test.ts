@@ -41,6 +41,21 @@ function withTempMarkdown<T>(content: string, fn: (file: string) => T): T {
   }
 }
 
+function withTempFile<T>(
+  name: string,
+  content: string,
+  fn: (file: string) => T,
+): T {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "shirube-check-"));
+  const file = path.join(dir, name);
+  fs.writeFileSync(file, content);
+  try {
+    return fn(file);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 const completeGovernanceIssue = `
 ## Governance Bone
 
@@ -141,6 +156,99 @@ describe("shirube check governance", () => {
 
       expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain("Invalid governance risk");
+    });
+  });
+});
+
+describe("shirube check action-profile", () => {
+  it("passes strict stage 0 inventory rows", () => {
+    withTempFile(
+      "inventory.md",
+      `
+| Surface ID | Type | Capability | Risk | Owner repo |
+|---|---|---|---|---|
+| kodama.get_context | mcp_tool | read, reveal | medium | watchout/kodama |
+`,
+      (file) => {
+        const result = runCli([
+          "check",
+          "action-profile",
+          "--strict",
+          "--stage",
+          "inventory",
+          file,
+        ]);
+
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain("Action Surface Profile: PASS");
+        expect(result.stdout).toContain("Surfaces checked: 1");
+      },
+    );
+  });
+
+  it("warns without failing for incomplete profile-stage surfaces", () => {
+    withTempFile(
+      "surface.json",
+      JSON.stringify({
+        surface_id: "hotel_saas.ai_response.send",
+        surface_type: "api_endpoint",
+        owner_repo: "watchout/hotel-kanri",
+        capability_classes: ["external_send", "action"],
+        risk_level: "high",
+      }),
+      (file) => {
+        const result = runCli(["check", "action-profile", file]);
+
+        expect(result.exitCode).toBe(0);
+        expect(result.stdout).toContain("Action Surface Profile: WARNING");
+        expect(result.stdout).toContain("approval_policy");
+      },
+    );
+  });
+
+  it("fails in strict mode for risky profiles without approval evidence", () => {
+    withTempFile(
+      "surface.json",
+      JSON.stringify({
+        surface_id: "aun.execute_tool",
+        surface_type: "agent_action",
+        product: "AUN",
+        owner_repo: "watchout/agent-comms-mcp",
+        display_name: "Execute tool",
+        description: "Execute an action tool through a broker.",
+        capability_classes: ["action", "execute_code"],
+        risk_level: "critical",
+        resource_scope: { tenant_scoped: false, resource_patterns: [], data_categories: [] },
+        identity_requirements: { actor_required: true },
+        context_requirements: { context_pack_required: true },
+        memory_requirements: { recovery_pack_required: true },
+        approval_policy: {},
+        audit_policy: { audit_required: true },
+        rollback_policy: {},
+        execution_policy: {},
+      }),
+      (file) => {
+        const result = runCli(["check", "action-profile", "--strict", file]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Action Surface Profile: BLOCK");
+        expect(result.stdout).toContain("approval policy");
+      },
+    );
+  });
+
+  it("rejects invalid action profile stage", () => {
+    withTempFile("surface.json", "[]", (file) => {
+      const result = runCli([
+        "check",
+        "action-profile",
+        "--stage",
+        "live",
+        file,
+      ]);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("Invalid action profile stage");
     });
   });
 });

@@ -9,11 +9,19 @@ import {
   type GovernanceBoneRisk,
   type GovernanceBoneResult,
 } from "../lib/governance-bone-validator.js";
+import {
+  validateActionSurfaceProfiles,
+  type ActionSurfaceDocument,
+  type ActionSurfaceMode,
+  type ActionSurfaceProfileResult,
+  type ActionSurfaceStage,
+} from "../lib/action-surface-profile-validator.js";
 import { checkTests, formatTestQualityReport } from "../lib/test-quality-checker.js";
 
 const GOVERNANCE_MODES = ["warning", "strict"] as const;
 const GOVERNANCE_RISKS = ["low", "medium", "high", "critical"] as const;
 const GOVERNANCE_PROFILES = Object.keys(GOVERNANCE_BONE_PROFILES);
+const ACTION_SURFACE_STAGES = ["inventory", "profile"] as const;
 
 export function registerCheckCommand(program: Command): void {
   const check = program
@@ -77,6 +85,49 @@ export function registerCheckCommand(program: Command): void {
           process.stdout.write(JSON.stringify(result, null, 2) + "\n");
         } else {
           process.stdout.write(formatGovernanceBoneResult(result) + "\n");
+        }
+
+        if (result.status === "BLOCK") process.exit(1);
+      },
+    );
+
+  check
+    .command("action-profile")
+    .description("Validate governed MCP/SaaS action surface profiles")
+    .argument("<files...>", "JSON or Markdown action surface profile files to validate")
+    .option("--mode <mode>", "Action profile mode (warning|strict)")
+    .option("--strict", "Block when required action surface profile fields are missing")
+    .option("--stage <stage>", "Profile stage (inventory|profile)")
+    .option("--require", "Require at least one action surface profile entry")
+    .option("--json", "Output machine-readable JSON")
+    .action(
+      (
+        files: string[],
+        options: {
+          mode?: string;
+          strict?: boolean;
+          stage?: string;
+          require?: boolean;
+          json?: boolean;
+        },
+      ) => {
+        const mode = parseActionSurfaceMode(options.mode, options.strict);
+        const stage = parseActionSurfaceStage(options.stage);
+        const documents: ActionSurfaceDocument[] = files.map((file) => ({
+          path: file,
+          content: readFileSync(file, "utf-8"),
+        }));
+
+        const result = validateActionSurfaceProfiles(documents, {
+          mode,
+          stage,
+          requireProfiles: options.require,
+        });
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatActionSurfaceProfileResult(result) + "\n");
         }
 
         if (result.status === "BLOCK") process.exit(1);
@@ -150,6 +201,65 @@ function isGovernanceProfile(value: string): value is GovernanceBoneProfile {
 
 function isGovernanceRisk(value: string): value is GovernanceBoneRisk {
   return GOVERNANCE_RISKS.includes(value as GovernanceBoneRisk);
+}
+
+function formatActionSurfaceProfileResult(result: ActionSurfaceProfileResult): string {
+  const lines = [
+    `Action Surface Profile: ${result.status}`,
+    `Mode: ${result.mode}`,
+    `Stage: ${result.stage}`,
+    `Profile detected: ${result.profileDetected ? "yes" : "no"}`,
+    `Surfaces checked: ${result.surfacesChecked}`,
+    `Checked documents: ${result.checkedDocuments.length}`,
+  ];
+
+  if (result.findings.length > 0) {
+    lines.push("");
+    lines.push("Findings:");
+    for (const finding of result.findings) {
+      const surface = finding.surfaceId ? ` ${finding.surfaceId}` : "";
+      const field = finding.field ? ` ${finding.field}:` : "";
+      lines.push(
+        `- [${finding.severity}]${surface}${field} ${finding.message} (${finding.path})`,
+      );
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function parseActionSurfaceMode(
+  value: string | undefined,
+  strict: boolean | undefined,
+): ActionSurfaceMode | undefined {
+  if (strict) {
+    if (value && value !== "strict") {
+      failInvalidOption("--strict cannot be combined with --mode warning");
+    }
+    return "strict";
+  }
+
+  if (!value) return undefined;
+  if (isActionSurfaceMode(value)) return value;
+  failInvalidOption(
+    `Invalid action profile mode: "${value}". Valid: ${GOVERNANCE_MODES.join(", ")}.`,
+  );
+}
+
+function parseActionSurfaceStage(value: string | undefined): ActionSurfaceStage | undefined {
+  if (!value) return undefined;
+  if (isActionSurfaceStage(value)) return value;
+  failInvalidOption(
+    `Invalid action profile stage: "${value}". Valid: ${ACTION_SURFACE_STAGES.join(", ")}.`,
+  );
+}
+
+function isActionSurfaceMode(value: string): value is ActionSurfaceMode {
+  return GOVERNANCE_MODES.includes(value as ActionSurfaceMode);
+}
+
+function isActionSurfaceStage(value: string): value is ActionSurfaceStage {
+  return ACTION_SURFACE_STAGES.includes(value as ActionSurfaceStage);
 }
 
 function failInvalidOption(message: string): never {

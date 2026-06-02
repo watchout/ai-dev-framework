@@ -184,6 +184,7 @@ Shirube can govern its own development and at least one internal project through
 | Task DAG | Tasks derive from approved features and preserve dependency order. |
 | Enterprise Delivery Graph | Parent `delivery-graph/v1` contract links goal, phase, work package/task, PR, gate, evidence, and progress without runtime enforcement in PR A. |
 | Product-wide Governance Bone | #249 provides reusable Goal -> Phase -> Work Order -> PR / Change Slice -> Scripted Step -> Tool Execution -> Evidence templates and a warning-first/strict governance check for product repos. |
+| Governed Action Surface Profile | #254 defines common MCP/SaaS action-surface metadata and a warning-first/strict profile check before Aun Gate live enforcement exists. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
 | Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
 | Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
@@ -223,6 +224,7 @@ Shirube can govern its own development and at least one internal project through
 | T2 | #224 | Phase Closure Audit Gate. |
 | T3 | #225 | `AUDITLEDGER-001` Audit Evidence and Approval Ledger. |
 | T4a0 | #244 | Work Order contract and warning gate for AUN/runtime/report dispatch. |
+| T4a1 | #254 | Governed Action Surface Profile for MCP/SaaS inventory and profile validation. |
 | T4a | #240 | Runtime command adapter and injection policy pack for Delivery Graph steps. |
 | T4 | #226 | Workflow Action Registry and Wrapper Semantics. |
 | T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain. |

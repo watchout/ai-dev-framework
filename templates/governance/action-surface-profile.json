@@ -1,0 +1,63 @@
+{
+  "schema_version": "governed-action-surface-profile/v1",
+  "surfaces": [
+    {
+      "surface_id": "product.example_action",
+      "surface_type": "mcp_tool",
+      "product": "Example",
+      "owner_repo": "watchout/example",
+      "display_name": "Example action",
+      "description": "Describe what the surface can read, reveal, mutate, send, or execute.",
+      "capability_classes": ["read"],
+      "risk_level": "low",
+      "resource_scope": {
+        "tenant_scoped": true,
+        "resource_patterns": [],
+        "data_categories": []
+      },
+      "identity_requirements": {
+        "actor_required": true,
+        "agent_id_required": false,
+        "human_user_required": false,
+        "service_account_allowed": false
+      },
+      "context_requirements": {
+        "context_pack_required": false,
+        "required_labels": [],
+        "denied_labels": [],
+        "prompt_injection_check_required": false
+      },
+      "memory_requirements": {
+        "recovery_pack_required": false,
+        "approval_note_required": false,
+        "human_intent_ref_required": false
+      },
+      "approval_policy": {
+        "approval_required": false,
+        "approver_role": null,
+        "approval_ttl_seconds": null,
+        "reuse_allowed": false,
+        "allowlist_ref": null
+      },
+      "audit_policy": {
+        "audit_required": true,
+        "input_summary_required": true,
+        "output_summary_required": true,
+        "mutation_summary_required": false,
+        "egress_summary_required": false,
+        "redaction_required": true
+      },
+      "rollback_policy": {
+        "rollback_required": false,
+        "rollback_kind": "none",
+        "replay_supported": false
+      },
+      "execution_policy": {
+        "dry_run_supported": false,
+        "idempotency_key_required": false,
+        "rate_limit_policy": null,
+        "timeout_seconds": null
+      }
+    }
+  ]
+}
