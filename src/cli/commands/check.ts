@@ -17,6 +17,11 @@ import {
   type GithubQueueResult,
 } from "../lib/github-queue-projection.js";
 import {
+  validateRunnerInstructionPacks,
+  type RunnerPackDocument,
+  type RunnerPackResult,
+} from "../lib/runner-instruction-pack-validator.js";
+import {
   GOVERNANCE_BONE_PROFILES,
   validateGovernanceBone,
   type GovernanceBoneMode,
@@ -186,6 +191,37 @@ export function registerCheckCommand(program: Command): void {
           process.stdout.write(JSON.stringify(result, null, 2) + "\n");
         } else {
           process.stdout.write(formatGithubQueueResult(result) + "\n");
+        }
+
+        if (result.status === "BLOCK") process.exit(1);
+      },
+    );
+
+  check
+    .command("runner-packs")
+    .description("Validate runner-agnostic PR Conveyor instruction packs")
+    .argument("<paths...>", "Runner instruction pack JSON files or directories to validate")
+    .option("--strict", "Block when warning-level runner pack requirements fail")
+    .option("--json", "Output machine-readable JSON")
+    .action(
+      (
+        paths: string[],
+        options: { strict?: boolean; json?: boolean },
+      ) => {
+        const files = collectJsonFiles(paths);
+        const documents: RunnerPackDocument[] = files.map((file) => ({
+          path: file,
+          content: readFileSync(file, "utf-8"),
+        }));
+
+        const result = validateRunnerInstructionPacks(documents, {
+          mode: options.strict ? "strict" : "warning",
+        });
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatRunnerPackResult(result) + "\n");
         }
 
         if (result.status === "BLOCK") process.exit(1);
@@ -368,6 +404,29 @@ function formatGithubQueueResult(result: GithubQueueResult): string {
       const field = finding.field ? ` ${finding.field}:` : "";
       lines.push(
         `- [${finding.severity}]${repository}${field} ${finding.message} (${finding.path})`,
+      );
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function formatRunnerPackResult(result: RunnerPackResult): string {
+  const lines = [
+    `Runner Packs: ${result.status}`,
+    `Mode: ${result.mode}`,
+    `Checked documents: ${result.checkedDocuments.length}`,
+    `Checked packs: ${result.checkedPacks}`,
+  ];
+
+  if (result.findings.length > 0) {
+    lines.push("");
+    lines.push("Findings:");
+    for (const finding of result.findings) {
+      const runner = finding.runner ? ` ${finding.runner}` : "";
+      const field = finding.field ? ` ${finding.field}:` : "";
+      lines.push(
+        `- [${finding.severity}]${runner}${field} ${finding.message} (${finding.path})`,
       );
     }
   }

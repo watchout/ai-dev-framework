@@ -1,0 +1,133 @@
+{
+  "pack_version": "runner-instruction-pack/v1",
+  "profile_id": "iyasaka-internal.pr-conveyor",
+  "status": "draft",
+  "runner_agnostic": true,
+  "common_contract": {
+    "required_steps": [
+      "read_work_order",
+      "verify_authority_and_lane_risk",
+      "execute_allowed_files_actions_only",
+      "run_verification",
+      "open_or_update_pr_or_report_no_pr_needed",
+      "write_pr_evidence",
+      "return_result_state"
+    ],
+    "result_states": [
+      "completed_pr_opened",
+      "completed_no_pr_needed",
+      "blocked_requires_input",
+      "blocked_requires_audit",
+      "blocked_requires_approval",
+      "failed_verification",
+      "skipped_not_authorized"
+    ],
+    "required_evidence": [
+      "runner_identity",
+      "runtime_mode",
+      "work_order_id",
+      "branch_or_pr_ref",
+      "changed_files",
+      "verification_results",
+      "residual_risk",
+      "stop_conditions_encountered"
+    ],
+    "forbidden_interfaces": [
+      "codex_goal_required",
+      "aun_live_dispatch_required"
+    ],
+    "stop_behavior": "record_blocker_and_stop",
+    "protected_operations": [
+      "merge",
+      "production_deploy",
+      "secret_or_credential_change",
+      "destructive_db_or_storage_operation",
+      "customer_data_export",
+      "external_send_to_real_users",
+      "billing_or_value_transfer",
+      "permission_broadening"
+    ]
+  },
+  "runner_packs": [
+    {
+      "runner": "human",
+      "activation_condition": "available_now",
+      "required_steps": [
+        "read_work_order",
+        "verify_authority_and_lane_risk",
+        "execute_allowed_files_actions_only",
+        "run_verification",
+        "open_or_update_pr_or_report_no_pr_needed",
+        "write_pr_evidence",
+        "return_result_state"
+      ],
+      "requires_codex_goal": false,
+      "live_aun_dispatch_enabled": false,
+      "instruction_summary": "Execute one bounded Work Order manually, record verification and PR evidence, and stop on protected operations."
+    },
+    {
+      "runner": "codex",
+      "activation_condition": "available_now",
+      "required_steps": [
+        "read_work_order",
+        "verify_authority_and_lane_risk",
+        "execute_allowed_files_actions_only",
+        "run_verification",
+        "open_or_update_pr_or_report_no_pr_needed",
+        "write_pr_evidence",
+        "return_result_state"
+      ],
+      "requires_codex_goal": false,
+      "live_aun_dispatch_enabled": false,
+      "instruction_summary": "Use a Codex local session to execute one bounded Work Order; Codex goal continuation is optional and never required by the contract."
+    },
+    {
+      "runner": "claude_code",
+      "activation_condition": "available_now",
+      "required_steps": [
+        "read_work_order",
+        "verify_authority_and_lane_risk",
+        "execute_allowed_files_actions_only",
+        "run_verification",
+        "open_or_update_pr_or_report_no_pr_needed",
+        "write_pr_evidence",
+        "return_result_state"
+      ],
+      "requires_codex_goal": false,
+      "live_aun_dispatch_enabled": false,
+      "instruction_summary": "Use Claude Code to execute one bounded Work Order and return PR evidence without relying on Codex-specific goal semantics."
+    },
+    {
+      "runner": "ci_headless_script",
+      "activation_condition": "available_now",
+      "required_steps": [
+        "read_work_order",
+        "verify_authority_and_lane_risk",
+        "execute_allowed_files_actions_only",
+        "run_verification",
+        "open_or_update_pr_or_report_no_pr_needed",
+        "write_pr_evidence",
+        "return_result_state"
+      ],
+      "requires_codex_goal": false,
+      "live_aun_dispatch_enabled": false,
+      "instruction_summary": "Use a bounded non-interactive script only when allowed files/actions and verification commands are explicit."
+    },
+    {
+      "runner": "aun_dispatched_runner",
+      "activation_condition": "after_safety_stack_acceptance",
+      "required_steps": [
+        "read_work_order",
+        "verify_authority_and_lane_risk",
+        "execute_allowed_files_actions_only",
+        "run_verification",
+        "open_or_update_pr_or_report_no_pr_needed",
+        "write_pr_evidence",
+        "return_result_state"
+      ],
+      "requires_codex_goal": false,
+      "live_aun_dispatch_enabled": false,
+      "instruction_summary": "Future AUN dispatch may select and assign the same Work Order only after the safety stack is accepted."
+    }
+  ]
+}
