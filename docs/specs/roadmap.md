@@ -186,6 +186,7 @@ Shirube can govern its own development and at least one internal project through
 | Product-wide Governance Bone | #249 provides reusable Goal -> Phase -> Work Order -> PR / Change Slice -> Scripted Step -> Tool Execution -> Evidence templates and a warning-first/strict governance check for product repos. |
 | 4MCP Fast Track Minimum Safety Profile | #264 defines lane/risk/action-envelope/stop-sentinel evidence so AUN, Shirube, Kodama, and Wasurezu can continue current work before the full autonomous runner platform exists. |
 | IYASAKA PR Conveyor Delivery Profile | #266/#269 defines the internal `iyasaka-internal.pr-conveyor` profile schema, risk defaults, runner-agnostic contract, and no-automatic-merge stop policy before Work Order/queue/AUN bridge wiring. |
+| Codex Native Fast Lane | #275 defines the internal R0-R2 `codex_native_fast_lane` runner policy with GitHub labels as SSOT and AUN as optional mirror/notification only, while R3/R4 remain governed/manual. |
 | Work Order Delivery Defaults | #270 makes delivery strategy, risk class, lane, PR mode, audit timing, and owner/action-envelope fields first-class Work Order evidence resolved from the selected delivery profile. |
 | PR Conveyor Evidence | #267 makes PR evidence and audit timing visible in PR templates and a deterministic check so R0-R2 can enter Audit Pending and R3/R4 cannot claim merge readiness without audit/approval evidence. |
 | GitHub Queue WIP Projection | #268 defines PR Conveyor queue labels and WIP projection so GitHub issue/PR state can run the conveyor before AUN live dispatch. |
@@ -260,6 +261,11 @@ SPEC `docs/spec/phase1-delivery-profile-schema-validator.md`, IMPL
 `docs/impl/phase1-delivery-profile-schema-validator.md`, VERIFY
 `docs/verify/phase1-delivery-profile-schema-validator.md`, OPS
 `docs/ops/phase1-delivery-profile-schema-validator.md`.
+Codex native fast lane artifact:
+SPEC `docs/spec/phase1-codex-native-fast-lane.md`, IMPL
+`docs/impl/phase1-codex-native-fast-lane.md`, VERIFY
+`docs/verify/phase1-codex-native-fast-lane.md`, OPS
+`docs/ops/phase1-codex-native-fast-lane.md`.
 Work Order delivery defaults artifact:
 SPEC `docs/spec/phase1-work-order-delivery-defaults.md`, IMPL
 `docs/impl/phase1-work-order-delivery-defaults.md`, VERIFY

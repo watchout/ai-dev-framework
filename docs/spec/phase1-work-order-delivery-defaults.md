@@ -37,6 +37,7 @@ PR Conveyor Work Orders must include or inherit:
 
 - `delivery_profile_ref`;
 - `delivery_strategy`;
+- `runner_policy`;
 - `work_unit`;
 - `lane`;
 - `risk_class`;
@@ -69,24 +70,28 @@ It resolves:
 
 - lane;
 - delivery strategy;
+- runner policy;
 - audit timing;
 - PR mode.
 
 IYASAKA internal defaults:
 
-| Risk | Lane | Strategy | Audit timing | PR mode |
-|------|------|----------|--------------|---------|
-| `R0` | `Fast` | `pr_conveyor` | `after_pr` | `normal` |
-| `R1` | `Fast` | `pr_conveyor` | `after_pr` | `normal` |
-| `R2` | `Fast` | `pr_conveyor` | `after_pr` | `normal` |
-| `R3` | `Governed` | `phase_conveyor` | `before_merge` | `draft_or_reference_until_owner_adopts` |
-| `R4` | `Stop` | `serial_gate` | `before_execution` | `blocked_until_approved` |
+| Risk | Lane | Strategy | Runner policy | Audit timing | PR mode |
+|------|------|----------|---------------|--------------|---------|
+| `R0` | `Fast` | `pr_conveyor` | `codex_native_fast_lane` | `after_pr` | `normal` |
+| `R1` | `Fast` | `pr_conveyor` | `codex_native_fast_lane` | `after_pr` | `normal` |
+| `R2` | `Fast` | `pr_conveyor` | `codex_native_fast_lane` | `after_pr` | `normal` |
+| `R3` | `Governed` | `phase_conveyor` | `runner_agnostic_manual` | `before_merge` | `draft_or_reference_until_owner_adopts` |
+| `R4` | `Stop` | `serial_gate` | `runner_agnostic_manual` | `before_execution` | `blocked_until_approved` |
 
 ## 5. Safety Rules
 - R0-R2 can inherit `pr_conveyor`, `after_pr`, and `normal`.
+- R0-R2 can inherit `codex_native_fast_lane`.
 - R3 must not use `after_pr` audit timing.
+- R3 must not use `codex_native_fast_lane`.
 - R4 must use `serial_gate`, `before_execution`, and
   `blocked_until_approved`.
+- R4 must not use `codex_native_fast_lane`.
 - Owner fields must be concrete and non-placeholder.
 - Action envelope fields must be present.
 - A missing profile prevents inheritance.
@@ -119,6 +124,7 @@ Given a Work Order declares risk_class R2
 And it references the IYASAKA internal PR Conveyor profile
 When the Work Order delivery resolver runs
 Then delivery_strategy is pr_conveyor
+And runner_policy is codex_native_fast_lane
 And audit_timing is after_pr
 And pr_mode is normal
 ```
@@ -185,7 +191,9 @@ The implementation must add unit, integration-style CLI, regression, and smoke
 fixtures for:
 
 - R0-R2 inherited PR Conveyor defaults;
+- R0-R2 inherited runner policy defaults;
 - R3 governed defaults and after-PR rejection;
+- R3/R4 fast-lane rejection;
 - R4 serial gate defaults;
 - owner placeholder reporting;
 - profile ref mismatch;

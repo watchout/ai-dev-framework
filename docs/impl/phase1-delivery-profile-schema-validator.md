@@ -26,8 +26,11 @@ The validator checks:
 - required root fields;
 - supported profile version `0.1.0`;
 - known delivery strategies;
+- known runner policies;
 - `strategy_by_risk` entries for R0-R4;
+- `runner_policy_by_risk` entries for R0-R4;
 - R3 not using after-PR audit timing;
+- R3/R4 not using `codex_native_fast_lane`;
 - R4 not using PR Conveyor or after-PR audit timing;
 - R4 defaulting to `serial_gate`, `before_execution`, and
   `blocked_until_approved`;
@@ -35,6 +38,8 @@ The validator checks:
 - WIP policy and Stop Lane WIP of `0`;
 - Work Order required fields;
 - runner-agnostic contract and non-Codex-only allowed runners;
+- Codex native fast lane keeping AUN as minimal async optional and forbidding
+  AUN dispatch/approval/merge roles;
 - required result states and evidence;
 - merge policy forbidding automatic merge and implementation-runner merge;
 - stop policy requiring no-run sentinel, hard-stop blocking, and protected

@@ -46,8 +46,12 @@ Every delivery profile must be a JSON object with these top-level fields:
 - `profile_version`;
 - `profile_id`;
 - `default_delivery_strategy`;
+- `default_runner_policy`;
 - `allowed_delivery_strategies`;
+- `allowed_runner_policies`;
 - `strategy_by_risk`;
+- `runner_policy_by_risk`;
+- `runner_policies`;
 - `queue_states`;
 - `wip_policy`;
 - `work_order_required_fields`;
@@ -89,6 +93,15 @@ IYASAKA internal defaults:
 
 R0-R2 may enter Audit Pending after PR creation. R3 must not use after-PR
 audit timing. R4 must not use PR Conveyor or after-PR audit timing.
+
+## 5.1 Runner Policy Defaults
+The IYASAKA internal profile may use `codex_native_fast_lane` only for R0-R2.
+R3 and R4 must resolve to a non-fast-lane policy such as
+`runner_agnostic_manual`.
+
+`codex_native_fast_lane` keeps AUN coupling `minimal_async_optional`; AUN may
+mirror evidence or notify audit queues, but must not select Work Orders,
+dispatch runners, approve execution, merge, or override stop policy.
 
 ## 6. Queue, WIP, and Evidence
 Required queue states:
@@ -135,6 +148,7 @@ Acceptance criteria:
 - strict mode blocks missing required fields;
 - unknown delivery strategies block;
 - R4 with `pr_conveyor` and `after_pr` blocks;
+- R3/R4 with `codex_native_fast_lane` blocks;
 - Codex-only runner contracts block;
 - automatic merge policy blocks;
 - CLI supports `shirube check delivery-profile <paths...> --strict --json`.
@@ -177,7 +191,8 @@ The first implementation provides:
 
 The validator may run in warning mode for migration visibility, but structural
 safety violations such as parse errors, unknown strategies, unsafe R4 mapping,
-Codex-only runners, automatic merge, and missing stop policy remain BLOCK.
+unsafe runner-policy mapping, Codex-only runners, automatic merge, and missing
+stop policy remain BLOCK.
 
 ## 9. Review Boundary
 This slice is governed as R3 because it creates a cross-cutting delivery

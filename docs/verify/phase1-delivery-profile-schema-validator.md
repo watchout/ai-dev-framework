@@ -39,6 +39,8 @@ dispositioned.
 | Missing root field in strict mode | BLOCK |
 | Unknown strategy | BLOCK |
 | R4 mapped to PR Conveyor and after-PR audit | BLOCK |
+| R3/R4 mapped to Codex native fast lane | BLOCK |
+| Codex native fast lane missing AUN dispatch prohibition | BLOCK |
 | Codex-only runner contract | BLOCK |
 | Automatic merge policy | BLOCK |
 | Directory input with valid JSON profiles | PASS |

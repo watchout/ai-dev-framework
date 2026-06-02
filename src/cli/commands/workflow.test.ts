@@ -944,6 +944,33 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict work_order warns when R3 declares the Codex native fast lane", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
+    const order = completeWorkOrder();
+    order.risk_class = "R3";
+    order.runner_policy = "codex_native_fast_lane";
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.delivery_profile_defaults",
+          decision: "WARN",
+          message: expect.stringContaining("R3.runner_policy:codex_native_fast_lane"),
+        }),
+      ]),
+    );
+  });
+
   it("strict work_order warns when delivery owner fields are placeholders", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
@@ -1945,6 +1972,7 @@ function internalPrConveyorProfile(): Record<string, unknown> {
     profile_version: "0.1.0",
     profile_id: "iyasaka-internal.pr-conveyor",
     default_delivery_strategy: "pr_conveyor",
+    default_runner_policy: "codex_native_fast_lane",
     allowed_delivery_strategies: [
       "pr_conveyor",
       "phase_conveyor",
@@ -1953,6 +1981,29 @@ function internalPrConveyorProfile(): Record<string, unknown> {
       "design_only",
       "hotfix",
     ],
+    allowed_runner_policies: [
+      "codex_native_fast_lane",
+      "runner_agnostic_manual",
+      "claude_bounded_work_order",
+      "headless_ci_runner",
+      "aun_dispatched_runner",
+    ],
+    runner_policies: {
+      codex_native_fast_lane: {
+        eligible_risk_classes: ["R0", "R1", "R2"],
+        forbidden_risk_classes: ["R3", "R4"],
+        aun_coupling: "minimal_async_optional",
+        aun_forbidden_roles: [
+          "select_next_work_order",
+          "dispatch_runner",
+          "approve_execution",
+          "merge",
+          "override_stop_policy",
+        ],
+        queue_source_of_truth: "github_issue_pr_labels",
+        evidence_source_of_truth: "github_pr_body_or_comment",
+      },
+    },
     strategy_by_risk: {
       R0: {
         delivery_strategy: "pr_conveyor",
@@ -1979,6 +2030,13 @@ function internalPrConveyorProfile(): Record<string, unknown> {
         audit_timing: "before_execution",
         pr_mode: "blocked_until_approved",
       },
+    },
+    runner_policy_by_risk: {
+      R0: "codex_native_fast_lane",
+      R1: "codex_native_fast_lane",
+      R2: "codex_native_fast_lane",
+      R3: "runner_agnostic_manual",
+      R4: "runner_agnostic_manual",
     },
   };
 }

@@ -6,11 +6,13 @@ export interface WorkOrderDeliveryDefaults {
   riskClass: WorkOrderRiskClass;
   lane: WorkOrderLane;
   deliveryStrategy: string;
+  runnerPolicy: string;
   auditTiming: string;
   prMode: string;
   inherited: {
     lane: boolean;
     deliveryStrategy: boolean;
+    runnerPolicy: boolean;
     auditTiming: boolean;
     prMode: boolean;
   };
@@ -113,6 +115,7 @@ export function resolveWorkOrderDeliveryDefaults(
   const profileDeliveryStrategy = stringValue(
     findValue(riskDefaults, ["delivery_strategy", "deliveryStrategy"]),
   );
+  const profileRunnerPolicy = resolveProfileRunnerPolicy(profile, riskClass);
   const profileAuditTiming = stringValue(findValue(riskDefaults, ["audit_timing", "auditTiming"]));
   const profilePrMode = stringValue(findValue(riskDefaults, ["pr_mode", "prMode"]));
   const inheritedLane = !hasConcreteKey(workOrder, ["lane"]);
@@ -120,6 +123,7 @@ export function resolveWorkOrderDeliveryDefaults(
     "delivery_strategy",
     "deliveryStrategy",
   ]);
+  const inheritedRunnerPolicy = !hasConcreteKey(workOrder, ["runner_policy", "runnerPolicy"]);
   const inheritedAuditTiming = !hasConcreteKey(workOrder, ["audit_timing", "auditTiming"]);
   const inheritedPrMode = !hasConcreteKey(workOrder, ["pr_mode", "prMode"]);
 
@@ -127,6 +131,9 @@ export function resolveWorkOrderDeliveryDefaults(
   const deliveryStrategy =
     stringValue(findValue(workOrder, ["delivery_strategy", "deliveryStrategy"])) ??
     profileDeliveryStrategy;
+  const runnerPolicy =
+    stringValue(findValue(workOrder, ["runner_policy", "runnerPolicy"])) ??
+    profileRunnerPolicy;
   const auditTiming =
     stringValue(findValue(workOrder, ["audit_timing", "auditTiming"])) ??
     profileAuditTiming;
@@ -134,14 +141,31 @@ export function resolveWorkOrderDeliveryDefaults(
     stringValue(findValue(workOrder, ["pr_mode", "prMode"])) ?? profilePrMode;
 
   if (!profileDeliveryStrategy) gaps.push(`delivery_profile.${riskClass}.delivery_strategy`);
+  if (!profileRunnerPolicy) gaps.push(`delivery_profile.${riskClass}.runner_policy`);
   if (!profileAuditTiming) gaps.push(`delivery_profile.${riskClass}.audit_timing`);
   if (!profilePrMode) gaps.push(`delivery_profile.${riskClass}.pr_mode`);
   if (!deliveryStrategy) gaps.push("delivery_strategy");
+  if (!runnerPolicy) gaps.push("runner_policy");
   if (!auditTiming) gaps.push("audit_timing");
   if (!prMode) gaps.push("pr_mode");
 
+  const allowedRunnerPolicies = stringArrayValue(
+    findValue(profile, ["allowed_runner_policies", "allowedRunnerPolicies"]),
+  );
+  if (
+    runnerPolicy &&
+    allowedRunnerPolicies.length > 0 &&
+    !allowedRunnerPolicies.includes(runnerPolicy)
+  ) {
+    gaps.push(`runner_policy:${runnerPolicy}:not_allowed`);
+  }
+
   if (lane !== RISK_TO_LANE[riskClass]) {
     gaps.push(`lane:${lane}:expected:${RISK_TO_LANE[riskClass]}`);
+  }
+
+  if ((riskClass === "R3" || riskClass === "R4") && runnerPolicy === "codex_native_fast_lane") {
+    gaps.push(`${riskClass}.runner_policy:codex_native_fast_lane`);
   }
 
   if (riskClass === "R3" && auditTiming === "after_pr") {
@@ -160,7 +184,7 @@ export function resolveWorkOrderDeliveryDefaults(
     }
   }
 
-  if (!profileId || !deliveryStrategy || !auditTiming || !prMode) {
+  if (!profileId || !deliveryStrategy || !runnerPolicy || !auditTiming || !prMode) {
     return { defaults: null, gaps };
   }
 
@@ -170,17 +194,46 @@ export function resolveWorkOrderDeliveryDefaults(
       riskClass,
       lane,
       deliveryStrategy,
+      runnerPolicy,
       auditTiming,
       prMode,
       inherited: {
         lane: inheritedLane,
         deliveryStrategy: inheritedDeliveryStrategy,
+        runnerPolicy: inheritedRunnerPolicy,
         auditTiming: inheritedAuditTiming,
         prMode: inheritedPrMode,
       },
     },
     gaps,
   };
+}
+
+function resolveProfileRunnerPolicy(
+  profile: JsonObject,
+  riskClass: WorkOrderRiskClass,
+): string | null {
+  const runnerPolicyByRisk = objectValue(
+    findValue(profile, ["runner_policy_by_risk", "runnerPolicyByRisk"]),
+  );
+  const byRisk = runnerPolicyByRisk ? stringValue(runnerPolicyByRisk[riskClass]) : null;
+  if (byRisk) return byRisk;
+
+  const defaultRunnerPolicy = stringValue(
+    findValue(profile, ["default_runner_policy", "defaultRunnerPolicy"]),
+  );
+  if (!defaultRunnerPolicy) return null;
+
+  const runnerPolicies = objectValue(findValue(profile, ["runner_policies", "runnerPolicies"]));
+  const policy = objectValue(runnerPolicies?.[defaultRunnerPolicy]);
+  const eligibleRiskClasses = stringArrayValue(
+    policy?.eligible_risk_classes ?? policy?.eligibleRiskClasses,
+  );
+  if (eligibleRiskClasses.length === 0 || eligibleRiskClasses.includes(riskClass)) {
+    return defaultRunnerPolicy;
+  }
+
+  return "runner_agnostic_manual";
 }
 
 function normalizeRiskClass(value: unknown): WorkOrderRiskClass | null {
@@ -240,6 +293,12 @@ function objectValue(value: unknown): JsonObject | null {
     return value as JsonObject;
   }
   return null;
+}
+
+function stringArrayValue(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
 }
 
 function stringValue(value: unknown): string | null {
