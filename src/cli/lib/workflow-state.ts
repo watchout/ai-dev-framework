@@ -532,6 +532,9 @@ interface WorkOrderValidation {
   contextPackGaps: string[];
   authorityGaps: string[];
   promotionGaps: string[];
+  authoritySchemaGaps: string[];
+  riskApprovalGaps: string[];
+  deliveryGraphEvidenceGaps: string[];
 }
 
 const WORK_ORDER_EVIDENCE_PATHS = [
@@ -681,6 +684,22 @@ const WORK_ORDER_AUTHORITY_GRANT_VALUES = new Set([
   "pass",
   "enabled",
   "permitted",
+]);
+const WORK_ORDER_RISK_LEVELS = new Set(["low", "medium", "high", "critical"]);
+const WORK_ORDER_ALLOWED_TOOL_CLASSES = new Set([
+  "read",
+  "readonly",
+  "read_only",
+  "write",
+  "action",
+  "privilegedaction",
+  "privileged_action",
+]);
+const HIGH_RISK_WORK_ORDER_LEVELS = new Set(["high", "critical"]);
+const PRIVILEGED_WORK_ORDER_TOOL_CLASSES = new Set([
+  "action",
+  "privilegedaction",
+  "privileged_action",
 ]);
 
 function applyProjectApplied(
@@ -1271,6 +1290,73 @@ function applyWorkOrderReadiness(
         validation.promotionGaps.length === 0
           ? "No action required."
           : "Declare enforcement mode and criteria for later promotion from WARN to BLOCK.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G22.work_order.authority_schema",
+      gate: "work_order",
+      decisionValue:
+        validation.authoritySchemaGaps.length === 0 ? "PASS" : warning.decision,
+      severity:
+        validation.authoritySchemaGaps.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        validation.authoritySchemaGaps.length === 0
+          ? "Work Order authority schema fields are complete."
+          : `Work Order authority schema has gaps: ${validation.authoritySchemaGaps.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        validation.authoritySchemaGaps.length === 0
+          ? "No action required."
+          : "Declare repo, issue, parent issue, PR/change slice, branch policy, owner roles, authority level, allowed tool classes, risk, affected systems, approvals, evidence, rollback, context inputs, and report format.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G22.work_order.risk_approval_mapping",
+      gate: "work_order",
+      decisionValue:
+        validation.riskApprovalGaps.length === 0 ? "PASS" : warning.decision,
+      severity:
+        validation.riskApprovalGaps.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        validation.riskApprovalGaps.length === 0
+          ? "Work Order risk maps to approval and audit requirements."
+          : `Work Order risk approval mapping has gaps: ${validation.riskApprovalGaps.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        validation.riskApprovalGaps.length === 0
+          ? "No action required."
+          : "Map low/medium/high/critical risk to allowed tool classes, required approvals, audit level, and strict review requirements for risky action-tool or customer-data work.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G22.work_order.delivery_graph_evidence",
+      gate: "work_order",
+      decisionValue:
+        validation.deliveryGraphEvidenceGaps.length === 0
+          ? "PASS"
+          : warning.decision,
+      severity:
+        validation.deliveryGraphEvidenceGaps.length === 0
+          ? "info"
+          : warning.severity,
+      profile,
+      message:
+        validation.deliveryGraphEvidenceGaps.length === 0
+          ? "Work Order maps authority evidence into Delivery Graph evidence refs."
+          : `Work Order Delivery Graph evidence mapping has gaps: ${validation.deliveryGraphEvidenceGaps.join(", ")}.`,
+      evidenceRefs: workOrderEvidence ? [workOrderEvidence.id] : [],
+      remediation:
+        validation.deliveryGraphEvidenceGaps.length === 0
+          ? "No action required."
+          : "Reference context packs, Wasurezu recovery refs, AUN execution/audit refs, tests/build/typecheck/gate evidence, approvals, and exception records where applicable.",
     }),
   );
 }
@@ -2128,6 +2214,9 @@ function validateWorkOrderMetadata(
   const contextPackGaps: string[] = [];
   const authorityGaps: string[] = [];
   const promotionGaps: string[] = [];
+  const authoritySchemaGaps: string[] = [];
+  const riskApprovalGaps: string[] = [];
+  const deliveryGraphEvidenceGaps: string[] = [];
 
   const schemaVersion = stringValue(
     findDirectMetadataValue(workOrder, ["schema_version", "version"]),
@@ -2187,6 +2276,11 @@ function validateWorkOrderMetadata(
   contextPackGaps.push(...findWorkOrderContextPackGaps(workOrder));
   authorityGaps.push(...findWorkOrderAuthorityGaps(workOrder));
   promotionGaps.push(...findWorkOrderPromotionGaps(workOrder));
+  authoritySchemaGaps.push(...findWorkOrderAuthoritySchemaGaps(workOrder));
+  riskApprovalGaps.push(...findWorkOrderRiskApprovalGaps(workOrder));
+  deliveryGraphEvidenceGaps.push(
+    ...findWorkOrderDeliveryGraphEvidenceGaps(workOrder),
+  );
 
   return {
     missingFields,
@@ -2196,6 +2290,9 @@ function validateWorkOrderMetadata(
     contextPackGaps,
     authorityGaps,
     promotionGaps,
+    authoritySchemaGaps,
+    riskApprovalGaps,
+    deliveryGraphEvidenceGaps,
   };
 }
 
@@ -2711,7 +2808,10 @@ function workOrderValidationHasIssues(
     validation.runtimeGaps.length > 0 ||
     validation.contextPackGaps.length > 0 ||
     validation.authorityGaps.length > 0 ||
-    validation.promotionGaps.length > 0
+    validation.promotionGaps.length > 0 ||
+    validation.authoritySchemaGaps.length > 0 ||
+    validation.riskApprovalGaps.length > 0 ||
+    validation.deliveryGraphEvidenceGaps.length > 0
   );
 }
 
@@ -2858,6 +2958,193 @@ function findWorkOrderAuthorityGaps(workOrder: Record<string, unknown>): string[
     gaps.push("non_claims.authority_claim");
   }
   return gaps;
+}
+
+function findWorkOrderAuthoritySchemaGaps(workOrder: Record<string, unknown>): string[] {
+  const gaps: string[] = [];
+  const requiredFields: Array<{ keys: string[]; label: string }> = [
+    { keys: ["repo", "repository"], label: "repo" },
+    { keys: ["issue", "issue_number"], label: "issue" },
+    { keys: ["parent_issue", "parent_issue_number", "parent"], label: "parent_issue" },
+    { keys: ["pr", "pull_request", "change_slice"], label: "pr_or_change_slice" },
+    { keys: ["branch_policy", "base_branch", "target_branch"], label: "branch_policy" },
+    { keys: ["scope", "in_scope"], label: "scope" },
+    { keys: ["non_goals", "out_of_scope"], label: "non_goals" },
+    { keys: ["owner_roles", "owners", "role_owners"], label: "owner_roles" },
+    { keys: ["authority_level", "work_authority_level"], label: "authority_level" },
+    { keys: ["risk_classification", "risk", "risk_level"], label: "risk_classification" },
+    { keys: ["affected_systems", "affected_environments"], label: "affected_systems" },
+    { keys: ["allowed_tool_classes", "tool_classes"], label: "allowed_tool_classes" },
+    { keys: ["required_approvals", "approvals"], label: "required_approvals" },
+    { keys: ["required_evidence", "evidence_required"], label: "required_evidence" },
+    { keys: ["rollback_plan", "rollback", "rollback_replay"], label: "rollback_plan" },
+    { keys: ["context_inputs", "context_input_refs"], label: "context_inputs" },
+    { keys: ["report_format", "output_report_format"], label: "report_format" },
+  ];
+
+  for (const field of requiredFields) {
+    if (!metadataValueHasNonEmptyKey(workOrder, field.keys)) {
+      gaps.push(field.label);
+    }
+  }
+
+  const toolClasses = workOrderAllowedToolClasses(workOrder);
+  for (const toolClass of toolClasses) {
+    if (!WORK_ORDER_ALLOWED_TOOL_CLASSES.has(toolClass)) {
+      gaps.push(`allowed_tool_classes:${toolClass}`);
+    }
+  }
+
+  return gaps;
+}
+
+function findWorkOrderRiskApprovalGaps(workOrder: Record<string, unknown>): string[] {
+  const gaps: string[] = [];
+  const risk = workOrderRiskLevel(workOrder);
+  if (!risk) {
+    gaps.push("risk_classification");
+    return gaps;
+  }
+  if (!WORK_ORDER_RISK_LEVELS.has(risk)) {
+    gaps.push(`risk_classification:${risk}`);
+    return gaps;
+  }
+
+  const toolClasses = workOrderAllowedToolClasses(workOrder);
+  const hasPrivilegedToolClass = toolClasses.some((toolClass) =>
+    PRIVILEGED_WORK_ORDER_TOOL_CLASSES.has(toolClass),
+  );
+  const writeScope = normalizedString(
+    findDirectMetadataValue(workOrder, ["write_scope", "allowed_write_scope"]),
+  );
+  const isRiskyWriteScope = writeScope === "repo-write" || writeScope === "host-specific";
+  const requiresHighRiskApproval =
+    HIGH_RISK_WORK_ORDER_LEVELS.has(risk) ||
+    hasPrivilegedToolClass ||
+    isRiskyWriteScope;
+
+  if (hasPrivilegedToolClass && (risk === "low" || risk === "medium")) {
+    gaps.push("allowed_tool_classes:requires_high_or_critical_risk");
+  }
+
+  if (requiresHighRiskApproval && !workOrderHasApprovalEvidence(workOrder)) {
+    gaps.push(`${risk}.required_approvals`);
+  }
+
+  if (risk === "critical" && !workOrderRequiresStrictReview(workOrder)) {
+    gaps.push("critical.strict_or_multi_agent_review");
+  }
+
+  if (!metadataValueHasNonEmptyKey(workOrder, ["audit_level", "audit_requirement"])) {
+    gaps.push("audit_level");
+  }
+
+  return gaps;
+}
+
+function findWorkOrderDeliveryGraphEvidenceGaps(
+  workOrder: Record<string, unknown>,
+): string[] {
+  const gaps: string[] = [];
+  const deliveryGraphEvidence = findFirstMetadataValue(workOrder, [
+    "delivery_graph_evidence",
+    "delivery_graph_evidence_refs",
+    "evidence_mapping",
+  ]);
+  if (deliveryGraphEvidence === undefined || !hasNonEmptyRegisterValue(deliveryGraphEvidence)) {
+    gaps.push("delivery_graph_evidence");
+  }
+  if (!hasContextPackEvidence(workOrder)) {
+    gaps.push("context_pack_evidence");
+  }
+  if (!hasWasurezuRecoveryEvidence(workOrder)) {
+    gaps.push("wasurezu_recovery_refs");
+  }
+  if (!hasAunExecutionEvidence(workOrder)) {
+    gaps.push("aun_execution_refs");
+  }
+  if (!workOrderHasVerificationEvidence(workOrder)) {
+    gaps.push("verification_evidence");
+  }
+  if (!workOrderHasApprovalEvidence(workOrder)) {
+    gaps.push("approval_evidence");
+  }
+  return gaps;
+}
+
+function workOrderRiskLevel(workOrder: Record<string, unknown>): string | null {
+  return normalizedString(
+    findDirectMetadataValue(workOrder, ["risk_classification", "risk", "risk_level"]),
+  );
+}
+
+function workOrderAllowedToolClasses(workOrder: Record<string, unknown>): string[] {
+  return primitiveStringArray(
+    findDirectMetadataValue(workOrder, ["allowed_tool_classes", "tool_classes"]),
+  ).map(normalizeScopeValue);
+}
+
+function workOrderHasApprovalEvidence(workOrder: Record<string, unknown>): boolean {
+  return (
+    metadataValueHasNonEmptyKey(workOrder, ["required_approvals", "approvals"]) &&
+    metadataValueHasNonEmptyKey(workOrder, ["approval_evidence", "approval_refs"])
+  );
+}
+
+function workOrderRequiresStrictReview(workOrder: Record<string, unknown>): boolean {
+  const auditLevel = normalizedString(
+    findDirectMetadataValue(workOrder, ["audit_level", "audit_requirement"]),
+  );
+  const requiredApprovals = collectPrimitiveLeafValues(
+    findDirectMetadataValue(workOrder, ["required_approvals", "approvals"]),
+  ).map(normalizeScopeValue);
+  return (
+    auditLevel === "strict" ||
+    auditLevel === "multiagent" ||
+    requiredApprovals.some((approval) =>
+      ["l3", "humanapproval", "humanapprover", "ceoapproval"].includes(approval),
+    )
+  );
+}
+
+function hasContextPackEvidence(workOrder: Record<string, unknown>): boolean {
+  const value = findFirstMetadataValue(workOrder, [
+    "context_pack_refs",
+    "context_pack_ids",
+    "kodama_context_pack_ids",
+  ]);
+  return value !== undefined && hasNonEmptyRegisterValue(value);
+}
+
+function hasWasurezuRecoveryEvidence(workOrder: Record<string, unknown>): boolean {
+  const value = findFirstMetadataValue(workOrder, [
+    "wasurezu_recovery_refs",
+    "wasurezu_memory_refs",
+    "recovery_refs",
+  ]);
+  return value !== undefined && hasNonEmptyRegisterValue(value);
+}
+
+function hasAunExecutionEvidence(workOrder: Record<string, unknown>): boolean {
+  const value = findFirstMetadataValue(workOrder, [
+    "aun_queue_ids",
+    "aun_message_ids",
+    "aun_execution_refs",
+    "execution_audit_refs",
+  ]);
+  return value !== undefined && hasNonEmptyRegisterValue(value);
+}
+
+function workOrderHasVerificationEvidence(workOrder: Record<string, unknown>): boolean {
+  const value = findFirstMetadataValue(workOrder, [
+    "verification",
+    "verification_evidence",
+    "test_evidence",
+    "build_evidence",
+    "typecheck_evidence",
+    "gate_results",
+  ]);
+  return value !== undefined && hasNonEmptyRegisterValue(value);
 }
 
 function findRequiredWorkOrderNoAuthorityGaps(

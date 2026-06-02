@@ -1020,6 +1020,112 @@ describe("workflow command", () => {
     );
   });
 
+  it("strict work_order warns when authority schema fields are missing", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const order = completeWorkOrder();
+    delete order.repo;
+    delete order.parent_issue;
+    delete order.branch_policy;
+    delete order.non_goals;
+    delete order.allowed_tool_classes;
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G22.work_order.authority_schema",
+          decision: "WARN",
+          message: expect.stringContaining("repo"),
+        }),
+        expect.objectContaining({
+          rule_id: "G22.work_order.authority_schema",
+          decision: "WARN",
+          message: expect.stringContaining("allowed_tool_classes"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order warns when high-risk action work lacks approval mapping", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const order = completeWorkOrder();
+    order.risk_classification = "critical";
+    order.audit_level = "standard";
+    order.allowed_tool_classes = ["privileged_action"];
+    delete order.required_approvals;
+    delete order.approval_evidence;
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G22.work_order.risk_approval_mapping",
+          decision: "WARN",
+          message: expect.stringContaining("critical.required_approvals"),
+        }),
+        expect.objectContaining({
+          rule_id: "G22.work_order.risk_approval_mapping",
+          decision: "WARN",
+          message: expect.stringContaining("critical.strict_or_multi_agent_review"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order warns when Delivery Graph evidence refs are incomplete", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    const order = completeWorkOrder();
+    delete order.delivery_graph_evidence;
+    delete order.context_inputs;
+    delete order.verification_evidence;
+    delete order.approval_evidence;
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G22.work_order.delivery_graph_evidence",
+          decision: "WARN",
+          message: expect.stringContaining("delivery_graph_evidence"),
+        }),
+        expect.objectContaining({
+          rule_id: "G22.work_order.delivery_graph_evidence",
+          decision: "WARN",
+          message: expect.stringContaining("wasurezu_recovery_refs"),
+        }),
+        expect.objectContaining({
+          rule_id: "G22.work_order.delivery_graph_evidence",
+          decision: "WARN",
+          message: expect.stringContaining("aun_execution_refs"),
+        }),
+      ]),
+    );
+  });
+
   it("strict phase_closure blocks incomplete closure evidence", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writePhaseClosureRecord(tmpDir, {
@@ -1756,9 +1862,32 @@ function completeWorkOrder(): Record<string, unknown> {
   return {
     schema_version: "work-order/v1",
     work_order_id: "WO-244",
+    repo: "watchout/ai-dev-framework",
     issue: 244,
+    parent_issue: 238,
+    pr: "draft",
+    branch_policy: {
+      base: "main",
+      exact_head_required: true,
+    },
     work_package_id: "phase1-work-order-contract",
     objective: "Implement warning-first Work Order contract validation.",
+    scope: ["workflow-state work_order validation"],
+    non_goals: ["No merge authority.", "No runtime execution."],
+    owner_roles: {
+      implementation_lead: "codex",
+      reviewer: "l2-auditor",
+      human_approver: "product-owner",
+    },
+    authority_level: "execution_request_only",
+    risk_classification: "medium",
+    audit_level: "standard",
+    affected_systems: ["shirube-cli", "github-pr"],
+    allowed_tool_classes: ["read", "write"],
+    required_approvals: ["l2_review_before_merge"],
+    approval_evidence: ["github-pr-review"],
+    required_evidence: ["tests", "type-check", "build", "lint", "gate-results"],
+    rollback_plan: "Revert the PR and rerun workflow checks.",
     handoff_target: "codex",
     dispatch_surfaces: ["aun", "codex", "claude", "shirube_report"],
     inputs: [
@@ -1772,6 +1901,11 @@ function completeWorkOrder(): Record<string, unknown> {
       },
     ],
     evidence_refs: ["github:watchout/ai-dev-framework#244"],
+    context_inputs: {
+      kodama_context_pack_ids: ["kodama-pack-issue-242"],
+      wasurezu_recovery_refs: ["wasurezu:task-state-244"],
+      aun_queue_ids: ["aun:queue-244"],
+    },
     context_pack_refs: [
       {
         pack_id: "kodama-pack-issue-242",
@@ -1792,6 +1926,20 @@ function completeWorkOrder(): Record<string, unknown> {
     write_scope: "workspace-write",
     required_gates: ["work_order", "runtime_step", "context_pack"],
     report_sink: "shirube-gate-report",
+    report_format: "markdown+json",
+    verification_evidence: {
+      tests: "npm test",
+      typecheck: "npm run type-check",
+      build: "npm run build:cli",
+      gates: "workflow check --action work_order",
+    },
+    delivery_graph_evidence: {
+      context_pack_evidence: "kodama-pack-issue-242",
+      recovery_evidence: "wasurezu:task-state-244",
+      execution_audit_refs: ["aun:queue-244"],
+      verification_evidence: ["tests", "type-check", "build", "lint"],
+      approval_evidence: ["github-pr-review"],
+    },
     authority_boundary: {
       forbidden: [
         "merge approval",

@@ -283,6 +283,9 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
     "G21.work_order.context_pack_boundary",
     "G21.work_order.authority_boundary",
     "G21.work_order.promotion_path",
+    "G22.work_order.authority_schema",
+    "G22.work_order.risk_approval_mapping",
+    "G22.work_order.delivery_graph_evidence",
   ],
   remote_publish: [
     "G1.roles.required_bindings",
