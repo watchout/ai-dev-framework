@@ -185,6 +185,7 @@ Shirube can govern its own development and at least one internal project through
 | Enterprise Delivery Graph | Parent `delivery-graph/v1` contract links goal, phase, work package/task, PR, gate, evidence, and progress without runtime enforcement in PR A. |
 | Product-wide Governance Bone | #249 provides reusable Goal -> Phase -> Work Order -> PR / Change Slice -> Scripted Step -> Tool Execution -> Evidence templates and a warning-first/strict governance check for product repos. |
 | 4MCP Fast Track Minimum Safety Profile | #264 defines lane/risk/action-envelope/stop-sentinel evidence so AUN, Shirube, Kodama, and Wasurezu can continue current work before the full autonomous runner platform exists. |
+| IYASAKA PR Conveyor Delivery Profile | #266/#269 defines the internal `iyasaka-internal.pr-conveyor` profile schema, risk defaults, runner-agnostic contract, and no-automatic-merge stop policy before Work Order/queue/AUN bridge wiring. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
 | Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
 | Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
@@ -249,6 +250,11 @@ SPEC `docs/spec/phase1-4mcp-fast-track-safety-profile.md`, IMPL
 `docs/impl/phase1-4mcp-fast-track-safety-profile.md`, VERIFY
 `docs/verify/phase1-4mcp-fast-track-safety-profile.md`, OPS
 `docs/ops/phase1-4mcp-fast-track-safety-profile.md`.
+IYASAKA PR Conveyor delivery profile artifact:
+SPEC `docs/spec/phase1-delivery-profile-schema-validator.md`, IMPL
+`docs/impl/phase1-delivery-profile-schema-validator.md`, VERIFY
+`docs/verify/phase1-delivery-profile-schema-validator.md`, OPS
+`docs/ops/phase1-delivery-profile-schema-validator.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
