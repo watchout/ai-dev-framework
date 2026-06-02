@@ -1,0 +1,63 @@
+{
+  "projection_version": "github-queue-projection/v1",
+  "repository": "watchout/ai-dev-framework",
+  "labels": [
+    {
+      "name": "ready-for-implementation",
+      "queue_state": "ready_for_implementation"
+    },
+    {
+      "name": "implementing",
+      "queue_state": "implementing"
+    },
+    {
+      "name": "evidence-ready",
+      "queue_state": "pr_opened_evidence_ready"
+    },
+    {
+      "name": "audit-pending",
+      "queue_state": "audit_pending"
+    },
+    {
+      "name": "changes-requested",
+      "queue_state": "changes_requested"
+    },
+    {
+      "name": "rework-implementing",
+      "queue_state": "rework_implementing"
+    },
+    {
+      "name": "audit-passed",
+      "queue_state": "audit_passed"
+    },
+    {
+      "name": "merge-ready",
+      "queue_state": "merge_ready"
+    },
+    {
+      "name": "blocked-stop-lane",
+      "queue_state": "blocked_stop_lane"
+    }
+  ],
+  "wip_policy": {
+    "fast_lane_prs_per_repo": 3,
+    "governed_draft_prs_per_repo": 2,
+    "rework_prs_per_repo": 2,
+    "stop_lane_prs_without_approval": 0
+  },
+  "items": [
+    {
+      "id": "PR-283",
+      "type": "pull_request",
+      "state": "open",
+      "draft": true,
+      "labels": [
+        "audit-pending"
+      ],
+      "lane": "Governed",
+      "risk_class": "R3",
+      "queue_state": "audit_pending",
+      "approval_refs": []
+    }
+  ]
+}

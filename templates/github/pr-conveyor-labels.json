@@ -1,0 +1,60 @@
+{
+  "label_set": "iyasaka-internal.pr-conveyor",
+  "projection_version": "github-queue-projection/v1",
+  "labels": [
+    {
+      "name": "ready-for-implementation",
+      "queue_state": "ready_for_implementation",
+      "color": "0e8a16",
+      "description": "PR Conveyor: Work Order is ready for implementation"
+    },
+    {
+      "name": "implementing",
+      "queue_state": "implementing",
+      "color": "1d76db",
+      "description": "PR Conveyor: implementation is in progress"
+    },
+    {
+      "name": "evidence-ready",
+      "queue_state": "pr_opened_evidence_ready",
+      "color": "5319e7",
+      "description": "PR Conveyor: PR evidence is ready for audit queueing"
+    },
+    {
+      "name": "audit-pending",
+      "queue_state": "audit_pending",
+      "color": "fbca04",
+      "description": "PR Conveyor: audit is pending"
+    },
+    {
+      "name": "changes-requested",
+      "queue_state": "changes_requested",
+      "color": "d93f0b",
+      "description": "PR Conveyor: audit/review requested changes"
+    },
+    {
+      "name": "rework-implementing",
+      "queue_state": "rework_implementing",
+      "color": "f9d0c4",
+      "description": "PR Conveyor: rework implementation is in progress"
+    },
+    {
+      "name": "audit-passed",
+      "queue_state": "audit_passed",
+      "color": "0e8a16",
+      "description": "PR Conveyor: audit passed, merge authority still required"
+    },
+    {
+      "name": "merge-ready",
+      "queue_state": "merge_ready",
+      "color": "0052cc",
+      "description": "PR Conveyor: ready for manual merge authority review"
+    },
+    {
+      "name": "blocked-stop-lane",
+      "queue_state": "blocked_stop_lane",
+      "color": "b60205",
+      "description": "PR Conveyor: Stop Lane work blocked until approval"
+    }
+  ]
+}
