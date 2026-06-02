@@ -13,6 +13,12 @@ labels: governance, work-order
 - Phase:
 - Work Order:
 - Risk classification:
+- Delivery profile:
+- Delivery strategy:
+- Work unit:
+- Lane:
+- PR mode:
+- Audit timing:
 - PR slice:
 - Script/gate owner:
 - Action tools:
@@ -30,9 +36,15 @@ labels: governance, work-order
 ## Scope
 - In scope:
 - Out of scope:
+- Allowed files:
+- Allowed actions:
+- Forbidden actions:
+- Stop conditions:
+- Fallback next work policy:
 
 ## Risk Classification
-- Level: low | medium | high | critical
+- Level: R0 | R1 | R2 | R3 | R4
+- Default handling: R0-R2 PR Conveyor after PR audit | R3 Governed before merge/adoption | R4 Serial Gate before execution
 - Customer data:
 - External mutation:
 - Runtime/queue impact:

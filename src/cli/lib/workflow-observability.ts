@@ -278,6 +278,7 @@ const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
   work_order: [
     "G21.work_order.record.present",
     "G21.work_order.required_fields",
+    "G21.work_order.delivery_profile_defaults",
     "G21.work_order.dispatch_contract",
     "G21.work_order.runtime_contract",
     "G21.work_order.context_pack_boundary",
