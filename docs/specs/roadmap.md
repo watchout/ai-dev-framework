@@ -190,6 +190,7 @@ Shirube can govern its own development and at least one internal project through
 | PR Conveyor Evidence | #267 makes PR evidence and audit timing visible in PR templates and a deterministic check so R0-R2 can enter Audit Pending and R3/R4 cannot claim merge readiness without audit/approval evidence. |
 | GitHub Queue WIP Projection | #268 defines PR Conveyor queue labels and WIP projection so GitHub issue/PR state can run the conveyor before AUN live dispatch. |
 | Runner Instruction Packs | #271 defines runner-agnostic instruction packs so human, Codex, Claude Code, headless scripts, and future AUN runners execute the same bounded Work Order contract. |
+| Internal 4MCP Rollout Batch | #273 defines the GitHub-native internal rollout guide and first cross-repo Work Order batch for Shirube, AUN, Wasurezu, Kodama, and Totonoe before AUN live dispatch. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
 | Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
 | Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
@@ -279,6 +280,11 @@ SPEC `docs/spec/phase1-runner-instruction-packs.md`, IMPL
 `docs/impl/phase1-runner-instruction-packs.md`, VERIFY
 `docs/verify/phase1-runner-instruction-packs.md`, OPS
 `docs/ops/phase1-runner-instruction-packs.md`.
+Internal 4MCP rollout batch artifact:
+SPEC `docs/spec/phase1-internal-4mcp-rollout-batch.md`, IMPL
+`docs/impl/phase1-internal-4mcp-rollout-batch.md`, VERIFY
+`docs/verify/phase1-internal-4mcp-rollout-batch.md`, OPS
+`docs/ops/phase1-internal-4mcp-rollout-batch.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
