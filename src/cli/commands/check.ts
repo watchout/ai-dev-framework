@@ -12,6 +12,11 @@ import {
   type PrEvidenceResult,
 } from "../lib/pr-evidence-validator.js";
 import {
+  validateGithubQueueProjections,
+  type GithubQueueDocument,
+  type GithubQueueResult,
+} from "../lib/github-queue-projection.js";
+import {
   GOVERNANCE_BONE_PROFILES,
   validateGovernanceBone,
   type GovernanceBoneMode,
@@ -150,6 +155,37 @@ export function registerCheckCommand(program: Command): void {
           process.stdout.write(JSON.stringify(result, null, 2) + "\n");
         } else {
           process.stdout.write(formatPrEvidenceResult(result) + "\n");
+        }
+
+        if (result.status === "BLOCK") process.exit(1);
+      },
+    );
+
+  check
+    .command("github-queue")
+    .description("Validate GitHub-native PR Conveyor queue labels and WIP projection")
+    .argument("<paths...>", "GitHub queue projection JSON files or directories to validate")
+    .option("--strict", "Block when projection fields or warning-level WIP limits fail")
+    .option("--json", "Output machine-readable JSON")
+    .action(
+      (
+        paths: string[],
+        options: { strict?: boolean; json?: boolean },
+      ) => {
+        const files = collectJsonFiles(paths);
+        const documents: GithubQueueDocument[] = files.map((file) => ({
+          path: file,
+          content: readFileSync(file, "utf-8"),
+        }));
+
+        const result = validateGithubQueueProjections(documents, {
+          mode: options.strict ? "strict" : "warning",
+        });
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatGithubQueueResult(result) + "\n");
         }
 
         if (result.status === "BLOCK") process.exit(1);
@@ -300,6 +336,39 @@ function formatPrEvidenceResult(result: PrEvidenceResult): string {
     for (const finding of result.findings) {
       const field = finding.field ? ` ${finding.field}:` : "";
       lines.push(`- [${finding.severity}]${field} ${finding.message} (${finding.path})`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function formatGithubQueueResult(result: GithubQueueResult): string {
+  const lines = [
+    `GitHub Queue: ${result.status}`,
+    `Mode: ${result.mode}`,
+    `Checked documents: ${result.checkedDocuments.length}`,
+    `Checked items: ${result.checkedItems}`,
+  ];
+
+  if (result.repositories.length > 0) {
+    lines.push("");
+    lines.push("WIP:");
+    for (const summary of result.repositories) {
+      lines.push(
+        `- ${summary.repository}: fast=${summary.fastLanePrs}/${summary.limits.fastLanePrsPerRepo}, governed_draft=${summary.governedDraftPrs}/${summary.limits.governedDraftPrsPerRepo}, rework=${summary.reworkPrs}/${summary.limits.reworkPrsPerRepo}, stop_without_approval=${summary.stopLaneWithoutApproval}/${summary.limits.stopLanePrsWithoutApproval}`,
+      );
+    }
+  }
+
+  if (result.findings.length > 0) {
+    lines.push("");
+    lines.push("Findings:");
+    for (const finding of result.findings) {
+      const repository = finding.repository ? ` ${finding.repository}` : "";
+      const field = finding.field ? ` ${finding.field}:` : "";
+      lines.push(
+        `- [${finding.severity}]${repository}${field} ${finding.message} (${finding.path})`,
+      );
     }
   }
 

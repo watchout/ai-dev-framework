@@ -188,6 +188,7 @@ Shirube can govern its own development and at least one internal project through
 | IYASAKA PR Conveyor Delivery Profile | #266/#269 defines the internal `iyasaka-internal.pr-conveyor` profile schema, risk defaults, runner-agnostic contract, and no-automatic-merge stop policy before Work Order/queue/AUN bridge wiring. |
 | Work Order Delivery Defaults | #270 makes delivery strategy, risk class, lane, PR mode, audit timing, and owner/action-envelope fields first-class Work Order evidence resolved from the selected delivery profile. |
 | PR Conveyor Evidence | #267 makes PR evidence and audit timing visible in PR templates and a deterministic check so R0-R2 can enter Audit Pending and R3/R4 cannot claim merge readiness without audit/approval evidence. |
+| GitHub Queue WIP Projection | #268 defines PR Conveyor queue labels and WIP projection so GitHub issue/PR state can run the conveyor before AUN live dispatch. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
 | Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
 | Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
@@ -267,6 +268,11 @@ SPEC `docs/spec/phase1-pr-conveyor-evidence.md`, IMPL
 `docs/impl/phase1-pr-conveyor-evidence.md`, VERIFY
 `docs/verify/phase1-pr-conveyor-evidence.md`, OPS
 `docs/ops/phase1-pr-conveyor-evidence.md`.
+GitHub Queue WIP projection artifact:
+SPEC `docs/spec/phase1-github-queue-wip-projection.md`, IMPL
+`docs/impl/phase1-github-queue-wip-projection.md`, VERIFY
+`docs/verify/phase1-github-queue-wip-projection.md`, OPS
+`docs/ops/phase1-github-queue-wip-projection.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
