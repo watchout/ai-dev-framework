@@ -7,6 +7,11 @@ import {
   type DeliveryProfileResult,
 } from "../lib/delivery-profile-validator.js";
 import {
+  validatePrEvidence,
+  type PrEvidenceDocument,
+  type PrEvidenceResult,
+} from "../lib/pr-evidence-validator.js";
+import {
   GOVERNANCE_BONE_PROFILES,
   validateGovernanceBone,
   type GovernanceBoneMode,
@@ -119,6 +124,37 @@ export function registerCheckCommand(program: Command): void {
         if (result.status === "BLOCK") process.exit(1);
       },
     );
+
+  check
+    .command("pr-evidence")
+    .description("Validate PR Conveyor evidence in Markdown PR bodies")
+    .argument("<paths...>", "PR body Markdown files or directories to validate")
+    .option("--strict", "Block when evidence fields are missing or invalid")
+    .option("--json", "Output machine-readable JSON")
+    .action(
+      (
+        paths: string[],
+        options: { strict?: boolean; json?: boolean },
+      ) => {
+        const files = collectFilesByExtension(paths, ".md");
+        const documents: PrEvidenceDocument[] = files.map((file) => ({
+          path: file,
+          content: readFileSync(file, "utf-8"),
+        }));
+
+        const result = validatePrEvidence(documents, {
+          mode: options.strict ? "strict" : "warning",
+        });
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatPrEvidenceResult(result) + "\n");
+        }
+
+        if (result.status === "BLOCK") process.exit(1);
+      },
+    );
 }
 
 function formatGovernanceBoneResult(result: GovernanceBoneResult): string {
@@ -195,12 +231,16 @@ function failInvalidOption(message: string): never {
 }
 
 function collectJsonFiles(paths: string[]): string[] {
+  return collectFilesByExtension(paths, ".json");
+}
+
+function collectFilesByExtension(paths: string[], extension: string): string[] {
   const files = new Set<string>();
 
   for (const inputPath of paths) {
     const stat = statSync(inputPath);
     if (stat.isDirectory()) {
-      for (const file of walkJsonFiles(inputPath)) {
+      for (const file of walkFilesByExtension(inputPath, extension)) {
         files.add(file);
       }
     } else {
@@ -211,13 +251,13 @@ function collectJsonFiles(paths: string[]): string[] {
   return [...files].sort();
 }
 
-function walkJsonFiles(dir: string): string[] {
+function walkFilesByExtension(dir: string, extension: string): string[] {
   const results: string[] = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const fullPath = join(dir, entry.name);
     if (entry.isDirectory()) {
-      results.push(...walkJsonFiles(fullPath));
-    } else if (entry.isFile() && extname(entry.name) === ".json") {
+      results.push(...walkFilesByExtension(fullPath, extension));
+    } else if (entry.isFile() && extname(entry.name) === extension) {
       results.push(fullPath);
     }
   }
@@ -241,6 +281,25 @@ function formatDeliveryProfileResult(result: DeliveryProfileResult): string {
       lines.push(
         `- [${finding.severity}]${risk}${field} ${finding.message} (${finding.path})`,
       );
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function formatPrEvidenceResult(result: PrEvidenceResult): string {
+  const lines = [
+    `PR Evidence: ${result.status}`,
+    `Mode: ${result.mode}`,
+    `Checked documents: ${result.checkedDocuments.length}`,
+  ];
+
+  if (result.findings.length > 0) {
+    lines.push("");
+    lines.push("Findings:");
+    for (const finding of result.findings) {
+      const field = finding.field ? ` ${finding.field}:` : "";
+      lines.push(`- [${finding.severity}]${field} ${finding.message} (${finding.path})`);
     }
   }
 
