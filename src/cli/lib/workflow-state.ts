@@ -1191,12 +1191,15 @@ function applyWorkOrderReadiness(
     ...validation.missingFields.map((field) => `missing:${field}`),
     ...validation.invalidFields.map((field) => `invalid:${field}`),
   ];
+  const requiredFieldDecision = fieldIssues.length === 0
+    ? ({ decision: "PASS", severity: "info" } as const)
+    : ({ decision: "BLOCK", severity: "error" } as const);
   gateDecisions.push(
     decision({
       ruleId: "G21.work_order.required_fields",
       gate: "work_order",
-      decisionValue: fieldIssues.length === 0 ? "PASS" : warning.decision,
-      severity: fieldIssues.length === 0 ? "info" : warning.severity,
+      decisionValue: requiredFieldDecision.decision,
+      severity: requiredFieldDecision.severity,
       profile,
       message:
         fieldIssues.length === 0

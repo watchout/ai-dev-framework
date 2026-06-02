@@ -944,11 +944,15 @@ describe("workflow command", () => {
     );
   });
 
-  it("strict work_order warns when delivery owner fields are placeholders", () => {
+  it("strict work_order warns when R3 tries to use normal PR mode", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
     const order = completeWorkOrder();
-    order.implementation_owner = "TBD";
+    order.risk_class = "R3";
+    order.lane = "Governed";
+    order.delivery_strategy = "phase_conveyor";
+    order.audit_timing = "before_merge";
+    order.pr_mode = "normal";
     writeWorkOrder(tmpDir, order);
 
     const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
@@ -964,13 +968,45 @@ describe("workflow command", () => {
         expect.objectContaining({
           rule_id: "G21.work_order.delivery_profile_defaults",
           decision: "WARN",
+          message: expect.stringContaining("R3.pr_mode:normal"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order blocks when delivery owner fields are placeholders", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
+    const order = completeWorkOrder();
+    order.implementation_owner = "TBD";
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number; WARN: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.required_fields",
+          decision: "BLOCK",
+          message: expect.stringContaining("missing:implementation_owner"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.delivery_profile_defaults",
+          decision: "WARN",
           message: expect.stringContaining("owner:implementation_owner"),
         }),
       ]),
     );
   });
 
-  it("strict work_order warns on prompt-only shape and missing dispatch/runtime fields", () => {
+  it("strict work_order blocks prompt-only shape while warning on dispatch/runtime gaps", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writeWorkOrder(tmpDir, {
       schema_version: "prompt-template/v1",
@@ -978,20 +1014,21 @@ describe("workflow command", () => {
       handoff_target: "codex",
     });
 
-    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const result = runWorkflow("check --action work_order --profile strict --json");
     const report = parseJson<{
-      check: { status: string; scoped_decision_counts: { WARN: number } };
+      check: { status: string; scoped_decision_counts: { BLOCK: number; WARN: number } };
       scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
     }>(result);
 
     expect(result.exitCode).toBe(1);
     expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
     expect(report.check.scoped_decision_counts.WARN).toBeGreaterThanOrEqual(5);
     expect(report.scoped_decisions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           rule_id: "G21.work_order.required_fields",
-          decision: "WARN",
+          decision: "BLOCK",
           message: expect.stringContaining("schema_version:prompt-template/v1"),
         }),
         expect.objectContaining({

@@ -33,12 +33,15 @@ The resolver:
 - resolves lane, delivery strategy, audit timing, and PR mode;
 - marks whether values were inherited or declared;
 - warns on R3 after-PR audit timing;
+- warns on R3 normal PR mode;
 - warns on R4 values that are not serial-gate, before-execution, and
   blocked-until-approved.
 
 ## 4. Workflow Check
-The workflow check remains warning-first. Missing or unsafe delivery defaults
-produce WARN decisions unless a later promotion slice changes enforcement.
+The delivery-default finding remains warning-first. Missing or unsafe delivery
+defaults produce WARN decisions unless a later promotion slice changes
+enforcement. The existing `G21.work_order.required_fields` rule blocks a
+present Work Order with missing or placeholder required fields.
 
 The check can use `.framework/delivery-profile.json` or the bundled internal
 profile template when running in this repository.

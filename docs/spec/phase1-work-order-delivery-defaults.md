@@ -85,6 +85,7 @@ IYASAKA internal defaults:
 ## 5. Safety Rules
 - R0-R2 can inherit `pr_conveyor`, `after_pr`, and `normal`.
 - R3 must not use `after_pr` audit timing.
+- R3 must not use `normal` PR mode.
 - R4 must use `serial_gate`, `before_execution`, and
   `blocked_until_approved`.
 - Owner fields must be concrete and non-placeholder.
@@ -92,7 +93,7 @@ IYASAKA internal defaults:
 - A missing profile prevents inheritance.
 
 ## 6. Gate Behavior
-The first implementation remains warning-first through
+The delivery-default finding remains warning-first through
 `workflow check --action work_order`.
 
 New finding group:
@@ -101,6 +102,10 @@ New finding group:
 
 The gate reports gaps but does not hard-block until a later reviewed promotion
 slice.
+
+The existing `G21.work_order.required_fields` rule blocks a present Work Order
+with missing or placeholder required fields. Missing Work Order records remain
+WARN for migration compatibility.
 
 ## 7. Acceptance Criteria and Scenarios
 Acceptance criteria:
@@ -138,7 +143,8 @@ Owner scenario:
 ```gherkin
 Given a Work Order has implementation_owner TBD
 When workflow check evaluates the Work Order
-Then G21.work_order.delivery_profile_defaults warns
+Then G21.work_order.required_fields blocks
+And G21.work_order.delivery_profile_defaults warns
 ```
 
 ## 8. Implementation Contract
@@ -185,9 +191,9 @@ The implementation must add unit, integration-style CLI, regression, and smoke
 fixtures for:
 
 - R0-R2 inherited PR Conveyor defaults;
-- R3 governed defaults and after-PR rejection;
+- R3 governed defaults, after-PR rejection, and normal PR mode rejection;
 - R4 serial gate defaults;
-- owner placeholder reporting;
+- owner placeholder required-field blocking;
 - profile ref mismatch;
 - workflow check `G21.work_order.delivery_profile_defaults` PASS/WARN behavior.
 

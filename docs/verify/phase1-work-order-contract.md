@@ -29,7 +29,7 @@ Full `npm test` is recommended before PR ready state.
 | missing Work Order record | strict `work_order` default threshold PASS with WARN |
 | missing Work Order record with `--fail-on warn` | strict `work_order` FAIL |
 | complete `work-order/v1` record | strict `work_order --fail-on warn` PASS |
-| prompt-template shape without contract fields | `required_fields`, `dispatch_contract`, and `runtime_contract` WARN |
+| prompt-template shape without contract fields | `required_fields` BLOCK; `dispatch_contract` and `runtime_contract` WARN |
 | context-pack text promoted to instruction | `context_pack_boundary` WARN |
 | direct shell command or argv in Work Order | `runtime_contract` WARN |
 | granted merge/phase/gate/goal authority values | `authority_boundary` WARN |

@@ -35,9 +35,10 @@ Full `npm test` should run before audit/merge readiness.
 | R2 Work Order missing strategy/timing/mode with profile | PASS, inherited defaults |
 | R3 governed defaults | PASS |
 | R3 after-PR audit declaration | WARN under G21 delivery defaults |
+| R3 normal PR mode declaration | WARN under G21 delivery defaults |
 | R4 missing declarations with profile | PASS, serial gate defaults |
 | R4 declaring PR Conveyor/after-PR/normal | WARN |
-| placeholder implementation owner | WARN |
+| placeholder implementation owner | BLOCK under `required_fields`, WARN under delivery defaults |
 | mismatched profile ref | resolver gap |
 
 ## 4. Residual Risks

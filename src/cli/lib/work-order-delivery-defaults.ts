@@ -147,6 +147,9 @@ export function resolveWorkOrderDeliveryDefaults(
   if (riskClass === "R3" && auditTiming === "after_pr") {
     gaps.push("R3.audit_timing:after_pr");
   }
+  if (riskClass === "R3" && prMode === "normal") {
+    gaps.push("R3.pr_mode:normal");
+  }
 
   if (riskClass === "R4") {
     if (deliveryStrategy !== "serial_gate") {

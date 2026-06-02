@@ -84,9 +84,11 @@ Scoped rules:
 - `G21.work_order.authority_boundary`;
 - `G21.work_order.promotion_path`.
 
-All invalid/missing Work Order findings emit WARN in the first migration slice.
+Missing Work Order records and advisory boundary gaps emit WARN in the first
+migration slice. A present Work Order with missing or invalid required fields
+emits BLOCK so prompt-template evidence cannot satisfy dispatch prerequisites.
 Default `--fail-on block` passes warning-only findings; `--fail-on warn` fails
-them for audits.
+the remaining advisory findings for audits.
 
 ## 2. File-Level Impact
 - `src/cli/lib/workflow-state.ts`;

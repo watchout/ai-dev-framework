@@ -78,6 +78,20 @@ describe("resolveWorkOrderDeliveryDefaults", () => {
     expect(result.gaps).toContain("R3.audit_timing:after_pr");
   });
 
+  it("blocks R3 normal PR mode declarations", () => {
+    const result = resolveWorkOrderDeliveryDefaults(
+      profile(),
+      workOrder({
+        risk_class: "R3",
+        lane: "Governed",
+        audit_timing: "before_merge",
+        pr_mode: "normal",
+      }),
+    );
+
+    expect(result.gaps).toContain("R3.pr_mode:normal");
+  });
+
   it("uses serial gate defaults for R4 work", () => {
     const result = resolveWorkOrderDeliveryDefaults(profile(), workOrder({ risk_class: "R4" }));
 
