@@ -88,7 +88,9 @@ IYASAKA internal defaults:
 | `R4` | `serial_gate` | `before_execution` | `blocked_until_approved` |
 
 R0-R2 may enter Audit Pending after PR creation. R3 must not use after-PR
-audit timing. R4 must not use PR Conveyor or after-PR audit timing.
+audit timing and must not use `normal` PR mode; it remains governed as
+`draft_or_reference_until_owner_adopts`. R4 must not use PR Conveyor or
+after-PR audit timing.
 
 ## 6. Queue, WIP, and Evidence
 Required queue states:
@@ -116,6 +118,9 @@ Required WIP policy fields:
 
 `stop_lane_prs_without_approval` must be `0`.
 
+`stop_policy` is a hard safety boundary. A missing or non-object
+`stop_policy` is a blocker even when the checker runs in warning mode.
+
 Required runner evidence:
 
 - `runner_identity`;
@@ -134,7 +139,9 @@ Acceptance criteria:
 - missing required fields produce findings;
 - strict mode blocks missing required fields;
 - unknown delivery strategies block;
+- R3 with `normal` PR mode blocks;
 - R4 with `pr_conveyor` and `after_pr` blocks;
+- missing `stop_policy` blocks;
 - Codex-only runner contracts block;
 - automatic merge policy blocks;
 - CLI supports `shirube check delivery-profile <paths...> --strict --json`.

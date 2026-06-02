@@ -103,6 +103,50 @@ describe("validateDeliveryProfiles", () => {
     );
   });
 
+  it("blocks R3 from using normal PR mode even with before-merge audit timing", () => {
+    const profile = validProfileObject();
+    profile.strategy_by_risk = {
+      ...(profile.strategy_by_risk as Record<string, unknown>),
+      R3: {
+        delivery_strategy: "phase_conveyor",
+        audit_timing: "before_merge",
+        pr_mode: "normal",
+      },
+    };
+
+    const result = validateDeliveryProfiles([
+      { path: "profile.json", content: JSON.stringify(profile) },
+    ]);
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        type: "unsafe_risk_mapping",
+        field: "strategy_by_risk.R3.pr_mode",
+        riskClass: "R3",
+      }),
+    );
+  });
+
+  it("blocks when stop_policy is missing in warning mode", () => {
+    const profile = validProfileObject();
+    delete profile.stop_policy;
+
+    const result = validateDeliveryProfiles([
+      { path: "profile.json", content: JSON.stringify(profile) },
+    ]);
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        type: "missing_field",
+        field: "stop_policy",
+      }),
+    );
+  });
+
   it("blocks Codex-only runner contracts", () => {
     const profile = validProfileObject();
     profile.runner_contract = {

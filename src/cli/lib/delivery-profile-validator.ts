@@ -81,6 +81,8 @@ const REQUIRED_ROOT_FIELDS = [
   "stop_policy",
 ] as const;
 
+const HARD_REQUIRED_ROOT_FIELDS = new Set<string>(["stop_policy"]);
+
 const REQUIRED_STRATEGY_FIELDS = [
   "delivery_strategy",
   "audit_timing",
@@ -214,7 +216,16 @@ export function validateDeliveryProfiles(
     }
 
     checkedProfiles++;
-    validateRequiredFields(findings, mode, document.path, parsed, REQUIRED_ROOT_FIELDS, "$");
+    validateRequiredFields(
+      findings,
+      mode,
+      document.path,
+      parsed,
+      REQUIRED_ROOT_FIELDS,
+      "$",
+      undefined,
+      HARD_REQUIRED_ROOT_FIELDS,
+    );
     validateRootFields(findings, document.path, parsed);
 
     const allowedStrategies = validateAllowedStrategies(findings, document.path, parsed);
@@ -239,7 +250,9 @@ export function validateDeliveryProfiles(
     validateRunnerContract(findings, mode, document.path, parsed.runner_contract);
     validateAuditContract(findings, mode, document.path, parsed.audit_contract);
     validateMergePolicy(findings, mode, document.path, parsed.merge_policy);
-    validateStopPolicy(findings, mode, document.path, parsed.stop_policy);
+    if ("stop_policy" in parsed) {
+      validateStopPolicy(findings, mode, document.path, parsed.stop_policy);
+    }
   }
 
   return {
@@ -418,15 +431,28 @@ function validateRiskSafety(
   auditTiming: string | undefined,
   prMode: string | undefined,
 ): void {
-  if (riskClass === "R3" && auditTiming === "after_pr") {
-    findings.push({
-      severity: "BLOCK",
-      path,
-      type: "unsafe_risk_mapping",
-      field: "strategy_by_risk.R3.audit_timing",
-      riskClass,
-      message: "R3 work must require audit before merge or owner adoption, not after PR creation.",
-    });
+  if (riskClass === "R3") {
+    if (auditTiming === "after_pr") {
+      findings.push({
+        severity: "BLOCK",
+        path,
+        type: "unsafe_risk_mapping",
+        field: "strategy_by_risk.R3.audit_timing",
+        riskClass,
+        message: "R3 work must require audit before merge or owner adoption, not after PR creation.",
+      });
+    }
+
+    if (prMode === "normal") {
+      findings.push({
+        severity: "BLOCK",
+        path,
+        type: "unsafe_risk_mapping",
+        field: "strategy_by_risk.R3.pr_mode",
+        riskClass,
+        message: "R3 work must remain governed as draft_or_reference_until_owner_adopts, not normal PR mode.",
+      });
+    }
   }
 
   if (riskClass !== "R4") return;
@@ -727,16 +753,22 @@ function validateRequiredFields(
   fields: readonly string[],
   prefix: string,
   riskClass?: DeliveryRiskClass,
+  hardRequiredFields: ReadonlySet<string> = new Set(),
 ): void {
   for (const field of fields) {
     if (!(field in value)) {
-      pushModeFinding(findings, mode, {
+      const finding = {
         path,
         type: "missing_field",
         field: prefix === "$" ? field : `${prefix}.${field}`,
         riskClass,
         message: `Missing delivery profile field: ${prefix === "$" ? field : `${prefix}.${field}`}`,
-      });
+      } satisfies Omit<DeliveryProfileFinding, "severity">;
+      if (hardRequiredFields.has(field)) {
+        findings.push({ ...finding, severity: "BLOCK" });
+      } else {
+        pushModeFinding(findings, mode, finding);
+      }
     }
   }
 }

@@ -98,4 +98,37 @@ describe("shirube check delivery-profile", () => {
       expect(result.stdout).toContain("R4 work must not use pr_conveyor");
     });
   });
+
+  it("fails when R3 uses normal PR mode", () => {
+    const profile = validProfile();
+    profile.strategy_by_risk = {
+      ...(profile.strategy_by_risk as Record<string, unknown>),
+      R3: {
+        delivery_strategy: "phase_conveyor",
+        audit_timing: "before_merge",
+        pr_mode: "normal",
+      },
+    };
+
+    withTempProfile(JSON.stringify(profile), (file) => {
+      const result = runCli(["check", "delivery-profile", file]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("Delivery Profile: BLOCK");
+      expect(result.stdout).toContain("R3 work must remain governed");
+    });
+  });
+
+  it("fails when stop_policy is missing in warning mode", () => {
+    const profile = validProfile();
+    delete profile.stop_policy;
+
+    withTempProfile(JSON.stringify(profile), (file) => {
+      const result = runCli(["check", "delivery-profile", file]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("Delivery Profile: BLOCK");
+      expect(result.stdout).toContain("Missing delivery profile field: stop_policy");
+    });
+  });
 });
