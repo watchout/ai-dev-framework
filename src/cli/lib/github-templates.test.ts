@@ -86,6 +86,11 @@ describe("installGitHubTemplates", () => {
     // Issue templates
     expect(
       fs.existsSync(
+        path.join(tmpDir, ".github/ISSUE_TEMPLATE/governance-work-order.md"),
+      ),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
         path.join(tmpDir, ".github/ISSUE_TEMPLATE/feature-db.md"),
       ),
     ).toBe(true);
@@ -113,6 +118,16 @@ describe("installGitHubTemplates", () => {
     // CODEOWNERS
     expect(
       fs.existsSync(path.join(tmpDir, ".github/CODEOWNERS")),
+    ).toBe(true);
+
+    // Governance workflow and optional PR template
+    expect(
+      fs.existsSync(path.join(tmpDir, ".github/workflows/governance.yml")),
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(tmpDir, ".github/PULL_REQUEST_TEMPLATE/governance.md"),
+      ),
     ).toBe(true);
   });
 
@@ -308,6 +323,39 @@ describe("installGitHubTemplates", () => {
     expect(content).toContain("SSOT Audit");
     expect(content).toContain("SSOT_SCORE_THRESHOLD");
     expect(content).toContain("docs/**/*.md");
+  });
+
+  it("installs governance workflow and Work Order templates", () => {
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+
+    const governanceWorkflowPath = path.join(
+      tmpDir,
+      ".github/workflows/governance.yml",
+    );
+    const workOrderTemplatePath = path.join(
+      tmpDir,
+      ".github/ISSUE_TEMPLATE/governance-work-order.md",
+    );
+    const governancePrTemplatePath = path.join(
+      tmpDir,
+      ".github/PULL_REQUEST_TEMPLATE/governance.md",
+    );
+
+    expect(fs.existsSync(governanceWorkflowPath)).toBe(true);
+    expect(fs.existsSync(workOrderTemplatePath)).toBe(true);
+    expect(fs.existsSync(governancePrTemplatePath)).toBe(true);
+    expect(result.installed).toContain(".github/workflows/governance.yml");
+    expect(result.installed).toContain(
+      ".github/ISSUE_TEMPLATE/governance-work-order.md",
+    );
+    expect(result.installed).toContain(
+      ".github/PULL_REQUEST_TEMPLATE/governance.md",
+    );
+
+    const workflowContent = fs.readFileSync(governanceWorkflowPath, "utf-8");
+    expect(workflowContent).toContain("SHIRUBE_GOVERNANCE_PROFILE");
+    expect(workflowContent).toContain("check");
+    expect(workflowContent).toContain("governance");
   });
 
   it("skips ssot-audit workflow if already exists", () => {

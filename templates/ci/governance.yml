@@ -1,0 +1,74 @@
+name: Governance Bone
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: "20"
+  SHIRUBE_GOVERNANCE_PROFILE: default
+  SHIRUBE_GOVERNANCE_RISK: low
+  SHIRUBE_GOVERNANCE_MODE: warning
+  SHIRUBE_GOVERNANCE_REQUIRE: "true"
+
+jobs:
+  governance:
+    name: Governance Bone
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f pnpm-lock.yaml ]; then
+            npm install -g pnpm
+            pnpm install --frozen-lockfile
+          elif [ -f yarn.lock ]; then
+            yarn install --frozen-lockfile
+          elif [ -f package.json ]; then
+            npm install
+          else
+            echo "::warning::No package manifest found; skipping dependency install."
+          fi
+
+      - name: Check PR governance evidence
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+
+          body_file="$RUNNER_TEMP/shirube-pr-body.md"
+          printf '%s\n' "$PR_BODY" > "$body_file"
+
+          args=(
+            check
+            governance
+            --profile
+            "$SHIRUBE_GOVERNANCE_PROFILE"
+            --risk
+            "$SHIRUBE_GOVERNANCE_RISK"
+            --mode
+            "$SHIRUBE_GOVERNANCE_MODE"
+          )
+
+          if [ "$SHIRUBE_GOVERNANCE_REQUIRE" = "true" ]; then
+            args+=(--require)
+          fi
+
+          args+=("$body_file")
+
+          if [ -x node_modules/.bin/shirube ]; then
+            node_modules/.bin/shirube "${args[@]}"
+          elif npm run 2>/dev/null | grep -qE '(^|[[:space:]])shirube($|[[:space:]]|:)'; then
+            npm run shirube -- "${args[@]}"
+          else
+            echo "::warning::Shirube CLI is not installed in this repository; governance check skipped."
+          fi
