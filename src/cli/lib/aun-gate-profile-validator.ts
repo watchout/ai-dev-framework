@@ -201,6 +201,12 @@ export const AUN_GATE_PR_CLASSES: Record<AunGatePrClass, AunGateClassDefinition>
 const LIVE_EXECUTION_WITHOUT_STABILITY =
   /\b(live\s+action\s+execution|live\s+execution|execute\s+live\s+tools?|enable\s+execution)\b[^.\n]*(?:without|before|despite)[^.\n]*(runtime\s+stability|stability\s+gate|aun\s+stability)/i;
 
+const LIVE_EXECUTION_TERMS =
+  /\b(live\s+action\s+execution|live\s+execution|live\s+tools?|tool\s+execution|action\s+dispatch)\b/i;
+
+const LIVE_EXECUTION_ENABLEMENT =
+  /\b(enable|enables|enabled|allow|allows|allowed|permit|permits|permitted|run|runs|running|execute|executes|executed|dispatch|dispatches|dispatched|start|starts|started|ship|ships|shipped|turn\s+on)\b/i;
+
 const FORBIDDEN_AUTHORITY =
   /\b(?:aun\s+platform|kodama|wasurezu|shirube|hotel\s+product)[^.\n]*(owns|authorizes|approves|decides)[^.\n]*(execution|approval|policy\s+decision|tool\s+dispatch)|(?:execution|approval|policy\s+decision|tool\s+dispatch)[^.\n]*(owned|authorized|approved|decided)[^.\n]*(?:aun\s+platform|kodama|wasurezu|shirube|hotel\s+product)/i;
 
@@ -208,7 +214,16 @@ const SILENT_FALLBACK =
   /silent\s+fallback|fallback\s+silently|missing\s+(?:approval|context|audit|recovery|policy)[^.\n]*(?:continue|proceed|execute)/i;
 
 const NEGATED =
-  /\b(?:must\s+not|does\s+not|do\s+not|never|cannot|should\s+not|not\s+an\s+authority|no\s+execution\s+authority)\b|しない|禁止/i;
+  /\b(?:must\s+not|does\s+not|do\s+not|never|cannot|should\s+not|not\s+an\s+authority|no\s+execution\s+authority|no\s+live\s+(?:action\s+)?execution)\b|しない|禁止/i;
+
+const RUNTIME_STABILITY_ALIASES = [
+  "Runtime stability prerequisite",
+  "AUN stability gate",
+  "Runtime prerequisite",
+];
+
+const PLACEHOLDER_EVIDENCE =
+  /^(?:tbd|todo|pending|unknown|not\s+applicable|n\/a|na|none|null|-)(?:[\s.。,:;_-]|$)/i;
 
 export function validateAunGateProfile(
   documents: AunGateDocument[],
@@ -244,18 +259,22 @@ export function validateAunGateProfile(
 
   for (const document of documents) {
     for (const field of classDefinition.requiredFields) {
-      if (!hasFieldAlias(document.content, field.aliases)) {
+      if (!hasConcreteFieldEvidence(document.content, field.aliases)) {
         findings.push({
           severity: mode === "strict" ? "BLOCK" : "WARNING",
           path: document.path,
           type: "missing_field",
           field: field.field,
-          message: `${classDefinition.label} requires ${field.field}.`,
+          message: `${classDefinition.label} requires concrete ${field.field} evidence; placeholders such as TBD or not applicable do not satisfy this field.`,
         });
       }
     }
 
-    if (hasNonNegatedMatch(document.content, LIVE_EXECUTION_WITHOUT_STABILITY)) {
+    if (
+      hasNonNegatedMatch(document.content, LIVE_EXECUTION_WITHOUT_STABILITY) ||
+      (hasLiveExecutionEnablementClaim(document.content) &&
+        !hasConcreteRuntimeStabilityEvidence(document.content))
+    ) {
       findings.push({
         severity: "BLOCK",
         path: document.path,
@@ -296,27 +315,50 @@ export function validateAunGateProfile(
   };
 }
 
-function hasFieldAlias(content: string, aliases: string[]): boolean {
+function hasConcreteFieldEvidence(content: string, aliases: string[]): boolean {
   return aliases.some((alias) => {
     const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const pattern = new RegExp(
-      `(?:^|\\n)\\s*(?:[-*]\\s*)?(?:\\*\\*)?${escaped}(?:\\*\\*)?\\s*:\\s*(?:not applicable|n/a|tbd|.+)`,
-      "i",
+      `(?:^|\\n)\\s*(?:[-*]\\s*)?(?:\\*\\*)?${escaped}(?:\\*\\*)?\\s*:\\s*([^\\n]+)`,
+      "gi",
     );
-    return pattern.test(content);
+    return [...content.matchAll(pattern)].some((match) => isConcreteEvidenceValue(match[1]));
   });
 }
 
 function hasNonNegatedMatch(content: string, pattern: RegExp): boolean {
-  const sentences = content
-    .split(/(?<=[.!?。！？])\s+|\n+/)
-    .map((sentence) => sentence.trim())
-    .filter(Boolean);
-
-  return sentences.some((sentence) => {
+  return splitStatements(content).some((sentence) => {
     if (!pattern.test(sentence)) return false;
     return !NEGATED.test(sentence);
   });
+}
+
+function hasLiveExecutionEnablementClaim(content: string): boolean {
+  return splitStatements(content).some((sentence) => {
+    if (!LIVE_EXECUTION_TERMS.test(sentence)) return false;
+    if (!LIVE_EXECUTION_ENABLEMENT.test(sentence)) return false;
+    return !NEGATED.test(sentence);
+  });
+}
+
+function hasConcreteRuntimeStabilityEvidence(content: string): boolean {
+  return hasConcreteFieldEvidence(content, RUNTIME_STABILITY_ALIASES);
+}
+
+function splitStatements(content: string): string[] {
+  return content
+    .split(/(?<=[.!?。！？])\s+|\n+/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+function isConcreteEvidenceValue(value: string): boolean {
+  const normalized = value
+    .replace(/[*`_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!normalized) return false;
+  return !PLACEHOLDER_EVIDENCE.test(normalized);
 }
 
 function toStatus(findings: AunGateFinding[]): AunGateStatus {

@@ -42,6 +42,42 @@ describe("validateAunGateProfile", () => {
     expect(result.findings).toHaveLength(0);
   });
 
+  it("blocks placeholder strict policy evaluator evidence", () => {
+    const result = validateAunGateProfile(
+      [
+        {
+          path: "pr.md",
+          content: `
+${completeGovernanceBone}
+
+## Aun Gate Lite Profile
+
+- Aun Gate PR class: policy_evaluator.
+- Live execution boundary: no live execution in this PR.
+- Deterministic test evidence: policy evaluator fixtures and unit tests.
+- Policy fixtures: TBD.
+- Deny/allow decisions: TBD.
+`,
+        },
+      ],
+      { prClass: "policy_evaluator" },
+    );
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        field: "Policy fixtures",
+      }),
+    );
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        field: "Deny/allow decisions",
+      }),
+    );
+  });
+
   it("warns by default for schema/migration profile gaps", () => {
     const result = validateAunGateProfile(
       [
@@ -93,6 +129,39 @@ describe("validateAunGateProfile", () => {
     );
   });
 
+  it("blocks live execution enablement with placeholder runtime stability evidence", () => {
+    const result = validateAunGateProfile(
+      [
+        {
+          path: "pr.md",
+          content: `${completeGovernanceBone}
+- Aun Gate PR class: execution_ledger.
+- Live execution boundary: enable live execution in this PR.
+- Runtime stability prerequisite: TBD.
+- Execution attempt ledger: attempt-ledger/v1.
+- Approval evidence: approval refs required.
+- Audit evidence: audit refs required.
+- Rollback/replay: replay from audit refs.
+`,
+        },
+      ],
+      { prClass: "execution_ledger" },
+    );
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        field: "Runtime stability prerequisite",
+      }),
+    );
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        type: "live_execution_without_stability",
+      }),
+    );
+  });
+
   it("blocks live execution before runtime stability even in warning mode", () => {
     const result = validateAunGateProfile(
       [
@@ -113,6 +182,29 @@ describe("validateAunGateProfile", () => {
     expect(result.findings).toContainEqual(
       expect.objectContaining({ type: "live_execution_without_stability" }),
     );
+  });
+
+  it("allows live execution enablement only with concrete runtime stability evidence", () => {
+    const result = validateAunGateProfile(
+      [
+        {
+          path: "pr.md",
+          content: `${completeGovernanceBone}
+- Aun Gate PR class: execution_ledger.
+- Live execution boundary: enable live execution after runtime stability passes.
+- Runtime stability prerequisite: AUN stability gate #665 PASS recorded before dispatch.
+- Execution attempt ledger: attempt-ledger/v1 with immutable attempt ids.
+- Approval evidence: approval refs required.
+- Audit evidence: audit refs required.
+- Rollback/replay: replay from audit refs.
+`,
+        },
+      ],
+      { prClass: "execution_ledger" },
+    );
+
+    expect(result.status).toBe("PASS");
+    expect(result.findings).toHaveLength(0);
   });
 
   it("blocks cross-repository authority substitution", () => {

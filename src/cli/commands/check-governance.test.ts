@@ -188,6 +188,28 @@ describe("shirube check aun-gate", () => {
     });
   });
 
+  it("fails policy evaluator profiles with placeholder evidence", () => {
+    withTempMarkdown(
+      completeAunGatePolicyEvaluator
+        .replace("- Policy fixtures: allow, deny, pending approval, blocked.", "- Policy fixtures: TBD.")
+        .replace("- Deny/allow decisions: deterministic decision matrix.", "- Deny/allow decisions: TBD."),
+      (file) => {
+        const result = runCli([
+          "check",
+          "aun-gate",
+          "--pr-class",
+          "policy_evaluator",
+          file,
+        ]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Aun Gate Profile: BLOCK");
+        expect(result.stdout).toContain("Policy fixtures");
+        expect(result.stdout).toContain("Deny/allow decisions");
+      },
+    );
+  });
+
   it("warns without failing for schema migration gaps in warning mode", () => {
     withTempMarkdown(
       `${completeGovernanceIssue}
