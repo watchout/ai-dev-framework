@@ -17,6 +17,13 @@ import {
   parseWorkflowCheckAction,
   type WorkflowCheckAction,
 } from "../lib/workflow-action-registry.js";
+import {
+  createWorkflowChainCheckReport,
+  createWorkflowChainReport,
+  formatWorkflowChainActionList,
+  formatWorkflowChainCheck,
+  formatWorkflowChainStatus,
+} from "../lib/workflow-chain.js";
 import { logger } from "../lib/logger.js";
 
 interface WorkflowOptions {
@@ -111,6 +118,69 @@ export function registerWorkflowCommand(program: Command): void {
       });
     });
 
+  const chain = workflow
+    .command("chain")
+    .description("Inspect deterministic workflow-chain/v1 state");
+
+  chain
+    .command("status")
+    .description("Show derived workflow-chain/v1")
+    .option("--json", "Output machine-readable JSON")
+    .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
+    .action((options: WorkflowOptions) => {
+      runWorkflowAction(options, () => {
+        const state = buildWorkflowState(process.cwd(), {
+          profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
+        });
+        const report = createWorkflowChainReport(process.cwd(), state);
+        if (options.json) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatWorkflowChainStatus(report) + "\n");
+      });
+    });
+
+  chain
+    .command("check")
+    .description("Fail when workflow-chain/v1 decisions cross a threshold")
+    .option("--json", "Output machine-readable JSON")
+    .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
+    .option(
+      "--action <action>",
+      `Transition or registry action to evaluate (${formatWorkflowChainActionList()})`,
+    )
+    .option("--fail-on <decision>", "Decision threshold (block|warn|observe)", "block")
+    .action((options: WorkflowOptions) => {
+      runWorkflowAction(options, () => {
+        const state = buildWorkflowState(process.cwd(), {
+          profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
+        });
+        const action = parseChainAction(options.action);
+        const failOn = parseFailOn(options.failOn);
+        const report = createWorkflowChainCheckReport(
+          createWorkflowChainReport(process.cwd(), state),
+          action,
+          failOn,
+        );
+        const failed = report.check.status === "failed";
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatWorkflowChainCheck(report) + "\n");
+        }
+
+        if (failed) {
+          process.exitCode = 1;
+        }
+      });
+    });
+
   workflow
     .command("explain")
     .description("Explain a workflow rule id, gate, decision, or action")
@@ -180,5 +250,14 @@ function parseAction(value: string | undefined): WorkflowCheckAction {
   }
   throw new Error(
     `Invalid or missing workflow action: ${value ?? "(missing)"}. Expected one of: ${formatWorkflowActionRegistryList()}`,
+  );
+}
+
+function parseChainAction(value: string | undefined): string {
+  if (value) {
+    return value;
+  }
+  throw new Error(
+    `Invalid or missing workflow chain action: (missing). Expected one of: ${formatWorkflowChainActionList()}`,
   );
 }

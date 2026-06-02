@@ -290,6 +290,11 @@ SPEC `docs/spec/phase1-workflow-action-registry.md`, IMPL
 `docs/impl/phase1-workflow-action-registry.md`, VERIFY
 `docs/verify/phase1-workflow-action-registry.md`, OPS
 `docs/ops/phase1-workflow-action-registry.md`.
+Workflow chain child artifact:
+SPEC `docs/spec/phase1-workflow-chain.md`, IMPL
+`docs/impl/phase1-workflow-chain.md`, VERIFY
+`docs/verify/phase1-workflow-chain.md`, OPS
+`docs/ops/phase1-workflow-chain.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
