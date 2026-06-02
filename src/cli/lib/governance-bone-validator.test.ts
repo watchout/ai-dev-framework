@@ -16,6 +16,11 @@ const completeGovernanceIssue = `
 - Approval policy: human approval required for customer data mutation.
 - Audit evidence: AUN audit ref.
 - Rollback/replay: replay from audit refs and revert PR.
+- Architecture owner: IYASAKA ARC.
+- Implementation owner: repo maintainer.
+- Review owner: independent reviewer.
+- Merge authority: repo maintainer.
+- Audit owner: independent auditor.
 `;
 
 describe("validateGovernanceBone", () => {
@@ -158,6 +163,11 @@ describe("validateGovernanceBone", () => {
 - Runtime/queue impact: none.
 - Security/privacy impact: none.
 - Rollback/replay: revert PR.
+- Architecture owner: IYASAKA ARC.
+- Implementation owner: repo maintainer.
+- Review owner: independent reviewer.
+- Merge authority: repo maintainer.
+- Audit owner: independent auditor.
 `,
         },
       ],
@@ -165,6 +175,30 @@ describe("validateGovernanceBone", () => {
     );
 
     expect(result.status).toBe("PASS");
+  });
+
+  it("blocks placeholder implementation owners in strict mode", () => {
+    const result = validateGovernanceBone(
+      [
+        {
+          path: "issue.md",
+          content: completeGovernanceIssue.replace(
+            "- Implementation owner: repo maintainer.",
+            "- Implementation owner: TBD.",
+          ),
+        },
+      ],
+      { mode: "strict", requireGovernanceBone: true },
+    );
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        type: "missing_field",
+        field: "Implementation owner",
+      }),
+    );
   });
 
   it("does not require governance fields for unrelated copy-only changes", () => {
@@ -176,6 +210,69 @@ describe("validateGovernanceBone", () => {
     ]);
 
     expect(result.governanceDetected).toBe(false);
+    expect(result.status).toBe("PASS");
+  });
+
+  it("blocks ARC implementation or merge authority without explicit delegation", () => {
+    const result = validateGovernanceBone(
+      [
+        {
+          path: "issue.md",
+          content: completeGovernanceIssue
+            .replace("- Implementation owner: repo maintainer.", "- Implementation owner: IYASAKA ARC.")
+            .replace("- Merge authority: repo maintainer.", "- Merge authority: ARC."),
+        },
+      ],
+      { mode: "warning", requireGovernanceBone: true },
+    );
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ type: "ownership_boundary" }),
+    );
+  });
+
+  it("allows ARC architecture ownership when implementation and merge stay with the repo", () => {
+    const result = validateGovernanceBone(
+      [{ path: "issue.md", content: completeGovernanceIssue }],
+      { mode: "strict", requireGovernanceBone: true },
+    );
+
+    expect(result.status).toBe("PASS");
+  });
+
+  it("blocks unmarked reference implementations", () => {
+    const result = validateGovernanceBone(
+      [
+        {
+          path: "pr.md",
+          content: `${completeGovernanceIssue}
+Reference implementation: ARC supplied candidate code for repository adoption.
+`,
+        },
+      ],
+      { mode: "warning", requireGovernanceBone: true },
+    );
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({ type: "reference_implementation_boundary" }),
+    );
+  });
+
+  it("allows draft-marked reference implementations", () => {
+    const result = validateGovernanceBone(
+      [
+        {
+          path: "pr.md",
+          content: `${completeGovernanceIssue}
+Reference implementation: Draft proposal for repo maintainer adoption.
+`,
+        },
+      ],
+      { mode: "strict", requireGovernanceBone: true },
+    );
+
     expect(result.status).toBe("PASS");
   });
 

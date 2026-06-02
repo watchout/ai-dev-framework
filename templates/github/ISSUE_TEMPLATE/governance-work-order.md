@@ -21,6 +21,11 @@ labels: governance, work-order
 - Approval policy:
 - Audit evidence:
 - Rollback/replay:
+- Architecture owner:
+- Implementation owner:
+- Review owner:
+- Merge authority:
+- Audit owner:
 
 ## Scope
 - In scope:
@@ -33,6 +38,13 @@ labels: governance, work-order
 - Runtime/queue impact:
 - Security/privacy impact:
 - Enterprise readiness impact:
+
+## Ownership Boundary
+- ARC/design role:
+- Repo implementation owner:
+- Reference implementation: no | draft | label:
+- Explicit delegation:
+- Adoption decision owner:
 
 ## Required Verification
 - [ ] Unit or model tests

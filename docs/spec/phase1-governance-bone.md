@@ -40,10 +40,43 @@ through approved aliases:
 - Memory/recovery evidence;
 - Approval policy;
 - Audit evidence;
-- Rollback/replay.
+- Rollback/replay;
+- Architecture owner;
+- Implementation owner;
+- Review owner;
+- Merge authority;
+- Audit owner.
 
 Product teams may mark a field `not applicable`, but missing fields must be
 visible as warning or block findings.
+
+Ownership fields are stricter than ordinary descriptive fields. They must name
+concrete actors or teams; `TBD`, `n/a`, `not applicable`, `none`, and similar
+placeholder values do not satisfy them.
+
+## 2.1 Architecture / Implementation Ownership Boundary
+ARC and architecture/design roles may create or update specs, issues,
+acceptance criteria, roadmap entries, gate requirements, and review checklists.
+Repository owners retain implementation ownership, dependency/CI change
+ownership, adoption decisions, and merge authority.
+
+Governance evidence must separate:
+
+- `architecture_owner`;
+- `implementation_owner`;
+- `review_owner`;
+- `merge_authority`;
+- `audit_owner`.
+
+ARC-created implementation PRs are reference implementations by default unless
+the repository owner explicitly delegates implementation for the exact
+repository, issue or Work Order, file/module scope, verification requirements,
+and whether dependency or CI changes are allowed.
+
+Reference implementation PRs must be draft or carry an explicit
+reference/proposal label. They are not evidence that implementation is complete
+or merge-approved. The repository owner may adopt, revise, reimplement, or close
+them.
 
 ## 3. Profiles and Risk
 The first profiles are:
@@ -84,6 +117,10 @@ Both modes must block:
 - LLM-owned Goal, Phase, Work Order, gate, approval, or state-transition
   authority;
 - LLM-owned action-tool approval or external/customer-data mutation authority;
+- ARC/design-role implementation or merge authority unless explicit
+  repository-owner delegation is present;
+- reference implementation PRs that are not identifiable as draft or explicit
+  reference/proposal work;
 - silent fallback when approval, context, audit, or evidence is missing.
 
 ## 5. CI and Template Distribution
@@ -111,6 +148,11 @@ before it can become a hard dispatch or merge blocker.
 Acceptance criteria:
 
 - governance fields are checked through a deterministic script;
+- ownership fields separate architecture, implementation, review, merge, and
+  audit owners;
+- unset implementation owners are warning/block findings according to mode;
+- ARC-created reference implementation PRs are identifiable as draft or by an
+  explicit reference/proposal label;
 - product profiles influence trigger detection;
 - risk can derive strict mode;
 - warning mode remains explicit for first-phase adoption;
@@ -155,9 +197,28 @@ When the governance check runs in warning mode
 Then the check blocks because LLM output cannot own approval or execution authority
 ```
 
+ARC ownership boundary:
+
+```gherkin
+Given a PR body names ARC as implementation owner or merge authority
+And there is no explicit repository-owner delegation
+When the governance check runs in warning mode
+Then the check blocks because architecture ownership cannot transfer repo implementation ownership
+```
+
+Reference implementation boundary:
+
+```gherkin
+Given a PR body describes an ARC-created reference implementation
+And it is not marked Draft or with an explicit reference/proposal label
+When the governance check runs
+Then the check blocks because reference code cannot become mergeable evidence by itself
+```
+
 ## 8. Non-Goals
 - Do not own AUN queue state or runtime execution.
 - Do not enforce merge authority in this first slice.
+- Do not transfer implementation ownership from repository maintainers to ARC.
 - Do not make LLM output an approval surface.
 - Do not require full multi-agent governance before warning-mode adoption.
 - Do not claim public, OSS, or enterprise readiness from this validator alone.
@@ -190,6 +251,8 @@ phase.
 | Governance field validation | script (`check governance`) | - | deterministic field and alias validation |
 | CI projection | GitHub Actions calling script | - | repository-visible warning/strict status |
 | Product profile selection | script option/env var | - | profiles must not be inferred by LLM text |
+| ARC/repo ownership separation | script (`check governance`) | - | validates owner fields and blocks ARC implementation or merge authority without delegation |
+| Reference implementation identification | script (`check governance`) + PR Draft/label evidence | - | reference code must be visibly non-authoritative before repo adoption |
 | Action authority | not granted in this slice | - | #248/#227 own later authority mapping |
 
 ## 11. Testing Layer

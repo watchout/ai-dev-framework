@@ -36,6 +36,24 @@ use natural wording while satisfying one contract. For example:
 - `Audit evidence` may be represented by `Audit refs` or
   `Evidence / Audit Record`.
 
+### Slice B2: Ownership Separation Model
+Add concrete ownership fields to the same governance skeleton:
+
+- `architecture_owner`;
+- `implementation_owner`;
+- `review_owner`;
+- `merge_authority`;
+- `audit_owner`.
+
+The validator treats these fields as concrete required values. Placeholder
+values such as `TBD`, `n/a`, `not applicable`, `none`, and `null` are missing
+ownership evidence.
+
+The validator also blocks ARC/design-role implementation ownership or merge
+authority unless the document contains explicit repository-owner delegation.
+Reference implementation text must be identified as draft or by an explicit
+reference/proposal label.
+
 ### Slice C: Profile and Risk Resolution
 Add profile-specific trigger terms for infrastructure and hotel products.
 
@@ -94,6 +112,12 @@ controlled profile/risk/mode settings.
 
 ## 4. Future Integration
 #248 should extend Work Order authority fields and approval mapping.
+
+The Work Order authority contract should consume the same ownership fields
+rather than inventing a separate owner model. #248 can promote missing
+`implementation_owner`, `merge_authority`, or `audit_owner` from warning-first
+governance findings to hard Work Order dispatch blockers when the adoption plan
+is reviewed.
 
 #227 Delivery Graph runner work can later consume the same governance evidence
 as part of scripted step execution.

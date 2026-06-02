@@ -72,6 +72,7 @@ Later phase:
 If warning mode reports missing fields:
 
 - complete the Work Order or PR body fields;
+- assign a concrete implementation owner before starting implementation;
 - keep the PR draft if the missing evidence affects authority, mutation, or
   rollback;
 - do not claim strict governance readiness.
@@ -82,7 +83,23 @@ If strict mode blocks:
 - add the missing governance evidence;
 - rerun the same command with the same profile/risk/mode values.
 
-## 6. Rollback
+## 6. ARC Reference Implementation Handling
+If ARC or another architecture/design role opens implementation code without
+explicit repository-owner delegation:
+
+1. Keep or convert the PR to draft.
+2. Add an ownership note that the PR is a reference implementation only.
+3. Link the controlling issue/spec and adoption criteria.
+4. Require repository-owner adoption before treating it as implementation
+   complete.
+5. Do not use the reference PR itself as merge approval, audit approval, or
+   completion evidence.
+
+Repository owners may adopt, revise, reimplement, or close the reference PR.
+The gate validates this separation; it must not transfer implementation or
+merge authority to ARC.
+
+## 7. Rollback
 Rollback for this slice is removing the governance workflow/template install or
 setting `SHIRUBE_GOVERNANCE_MODE=warning` while a product migrates. The
 validator itself is read-only and does not mutate repository state.

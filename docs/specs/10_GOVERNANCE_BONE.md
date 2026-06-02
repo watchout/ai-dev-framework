@@ -39,6 +39,11 @@ Governance Bone:
 - Approval policy:
 - Audit evidence:
 - Rollback/replay:
+- Architecture owner:
+- Implementation owner:
+- Review owner:
+- Merge authority:
+- Audit owner:
 ```
 
 Every substantial PR must include:
@@ -53,10 +58,19 @@ Governance Evidence:
 - Human approval:
 - Verification:
 - Audit refs:
+- Architecture owner:
+- Implementation owner:
+- Review owner:
+- Merge authority:
+- Audit owner:
 ```
 
 Small copy-only tasks may mark fields as `not applicable`, but must not omit the
 section when a project profile requires governance evidence.
+
+Ownership fields are stricter: they must name concrete actors or teams.
+`implementation_owner`, `merge_authority`, and `audit_owner` must not be
+`TBD`, `n/a`, `not applicable`, or another placeholder.
 
 ## 3. Enforcement Levels
 
@@ -102,6 +116,13 @@ Shirube does not own:
 - Wasurezu memory/recovery source authority.
 - AUN Platform operator UI semantics.
 - Hotel domain business authority.
+- Repository implementation, dependency update, CI change, adoption, or merge
+  authority unless that exact repository owner explicitly delegates it.
+
+ARC/design roles may define specs, issues, acceptance criteria, roadmap entries,
+and gate conditions. Implementation PRs created by ARC are draft reference
+implementations by default. Repository owners decide whether to adopt, revise,
+reimplement, or close them.
 
 ## 5. Product Profiles
 
@@ -130,6 +151,10 @@ The validator must block these patterns even in warning mode:
 
 - LLM output owns Goal, Phase, Work Order, gate, approval, or state transition.
 - LLM output owns action-tool approval or external/customer-data mutation authority.
+- ARC/design roles own implementation or merge authority without explicit
+  repository-owner delegation.
+- Reference implementation PRs are not identifiable as Draft or by an explicit
+  reference/proposal label.
 - Missing approval, context, audit, or evidence silently falls back to execution.
 
 ## 7. First Implementation Slice

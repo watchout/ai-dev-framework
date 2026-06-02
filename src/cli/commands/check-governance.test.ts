@@ -56,6 +56,11 @@ const completeGovernanceIssue = `
 - Approval policy: human approval for risky changes.
 - Audit evidence: audit ref.
 - Rollback/replay: revert PR and replay audit.
+- Architecture owner: IYASAKA ARC.
+- Implementation owner: repo maintainer.
+- Review owner: independent reviewer.
+- Merge authority: repo maintainer.
+- Audit owner: independent auditor.
 `;
 
 describe("shirube check governance", () => {
@@ -142,5 +147,37 @@ describe("shirube check governance", () => {
       expect(result.exitCode).toBe(2);
       expect(result.stderr).toContain("Invalid governance risk");
     });
+  });
+
+  it("fails when implementation owner is unset in strict mode", () => {
+    withTempMarkdown(
+      completeGovernanceIssue.replace(
+        "- Implementation owner: repo maintainer.",
+        "- Implementation owner: TBD.",
+      ),
+      (file) => {
+        const result = runCli(["check", "governance", "--strict", file]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Governance Bone: BLOCK");
+        expect(result.stdout).toContain("Implementation owner");
+      },
+    );
+  });
+
+  it("blocks ARC implementation ownership without explicit delegation", () => {
+    withTempMarkdown(
+      completeGovernanceIssue.replace(
+        "- Implementation owner: repo maintainer.",
+        "- Implementation owner: IYASAKA ARC.",
+      ),
+      (file) => {
+        const result = runCli(["check", "governance", "--mode", "warning", file]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Governance Bone: BLOCK");
+        expect(result.stdout).toContain("explicit repository-owner delegation");
+      },
+    );
   });
 });
