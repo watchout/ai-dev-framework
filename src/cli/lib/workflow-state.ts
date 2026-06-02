@@ -17,6 +17,10 @@ import {
 } from "./workflow-config.js";
 import { resolveLifecycleSinkReadiness } from "./lifecycle-events.js";
 import type { MergeAuthorityDecision } from "./merge-authority.js";
+import {
+  resolveWorkOrderDeliveryDefaults,
+  type WorkOrderDeliveryDefaults,
+} from "./work-order-delivery-defaults.js";
 
 export const WORKFLOW_STATE_SCHEMA_VERSION = "workflow-state/v1" as const;
 
@@ -53,6 +57,7 @@ export type WorkflowEvidenceKind =
   | "phase_closure"
   | "audit_ledger"
   | "work_order"
+  | "delivery_profile"
   | "runtime_adapter"
   | "injection_policy"
   | "runtime_step"
@@ -527,6 +532,8 @@ interface RuntimeStepValidation {
 interface WorkOrderValidation {
   missingFields: string[];
   invalidFields: string[];
+  deliveryGaps: string[];
+  deliveryDefaults: WorkOrderDeliveryDefaults | null;
   dispatchGaps: string[];
   runtimeGaps: string[];
   contextPackGaps: string[];
@@ -540,6 +547,13 @@ const WORK_ORDER_EVIDENCE_PATHS = [
   ".framework/work-orders/latest.json",
   ".framework/delivery-graph/work-order.json",
   ".framework/aun/work-order.json",
+];
+
+const DELIVERY_PROFILE_EVIDENCE_PATHS = [
+  ".framework/delivery-profile.json",
+  ".framework/delivery-profile/latest.json",
+  ".framework/delivery-profiles/active.json",
+  "templates/delivery-profiles/iyasaka-internal.pr-conveyor.delivery-profile.json",
 ];
 
 const RUNTIME_ADAPTER_EVIDENCE_PATHS = [
@@ -1103,11 +1117,27 @@ function applyWorkOrderReadiness(
 ): void {
   const warning = workOrderWarningDecision();
   const artifact = findLocalEvidence(projectDir, WORK_ORDER_EVIDENCE_PATHS);
+  const deliveryProfileArtifact = findLocalEvidence(projectDir, DELIVERY_PROFILE_EVIDENCE_PATHS);
+  const deliveryProfileEvidence = deliveryProfileArtifact
+    ? createEvidence({
+        projectDir,
+        now,
+        kind: "delivery_profile",
+        artifactPath: deliveryProfileArtifact.path,
+        sourceUri: `file://${deliveryProfileArtifact.path}`,
+        summary: "Delivery profile evidence is present.",
+        validity: "current",
+        metadata: deliveryProfileArtifact.metadata,
+      })
+    : null;
+  if (deliveryProfileEvidence) {
+    evidence.push(deliveryProfileEvidence);
+  }
   const workOrderMetadata = artifact
     ? selectWorkOrderMetadata(artifact.metadata)
     : null;
   const validation = workOrderMetadata
-    ? validateWorkOrderMetadata(workOrderMetadata)
+    ? validateWorkOrderMetadata(workOrderMetadata, deliveryProfileArtifact?.metadata ?? null)
     : null;
   const workOrderEvidence = artifact
     ? createEvidence({
@@ -1127,6 +1157,7 @@ function applyWorkOrderReadiness(
         metadata: {
           ...artifact.metadata,
           selected_work_order: workOrderMetadata,
+          selected_delivery_profile: deliveryProfileArtifact?.metadata ?? null,
           validation,
         },
       })
@@ -1176,6 +1207,27 @@ function applyWorkOrderReadiness(
         fieldIssues.length === 0
           ? "No action required."
           : "Fill schema, id, scope, objective, handoff target, input evidence, expected output schema, write scope, required gates, authority boundary, and non-claims.",
+    }),
+  );
+
+  gateDecisions.push(
+    decision({
+      ruleId: "G21.work_order.delivery_profile_defaults",
+      gate: "work_order",
+      decisionValue: validation.deliveryGaps.length === 0 ? "PASS" : warning.decision,
+      severity: validation.deliveryGaps.length === 0 ? "info" : warning.severity,
+      profile,
+      message:
+        validation.deliveryGaps.length === 0
+          ? "Work Order delivery strategy defaults resolve from the selected profile."
+          : `Work Order delivery profile defaults have gaps: ${validation.deliveryGaps.join(", ")}.`,
+      evidenceRefs: [workOrderEvidence?.id, deliveryProfileEvidence?.id].filter(
+        (id): id is string => Boolean(id),
+      ),
+      remediation:
+        validation.deliveryGaps.length === 0
+          ? "No action required."
+          : "Declare risk class, owner fields, action envelope, or delivery profile evidence so strategy, lane, PR mode, and audit timing can be resolved.",
     }),
   );
 
@@ -2120,9 +2172,12 @@ function selectNestedObject(
 
 function validateWorkOrderMetadata(
   workOrder: Record<string, unknown>,
+  deliveryProfile: Record<string, unknown> | null,
 ): WorkOrderValidation {
   const missingFields: string[] = [];
   const invalidFields: string[] = [];
+  const deliveryResolution = resolveWorkOrderDeliveryDefaults(deliveryProfile, workOrder);
+  const deliveryGaps = [...deliveryResolution.gaps];
   const dispatchGaps: string[] = [];
   const runtimeGaps: string[] = [];
   const contextPackGaps: string[] = [];
@@ -2146,6 +2201,33 @@ function validateWorkOrderMetadata(
   }
   if (!metadataValueHasNonEmptyKey(workOrder, ["objective", "goal", "request"])) {
     missingFields.push("objective");
+  }
+  if (!metadataValueHasNonEmptyKey(workOrder, ["risk_class", "risk", "riskClass"])) {
+    missingFields.push("risk_class");
+  }
+  for (const ownerField of [
+    "architecture_owner",
+    "implementation_owner",
+    "review_owner",
+    "audit_owner",
+    "merge_authority",
+  ]) {
+    if (!metadataValueHasNonEmptyKey(workOrder, [ownerField, snakeToCamelCase(ownerField)])) {
+      missingFields.push(ownerField);
+    }
+  }
+  for (const envelopeField of [
+    "work_unit",
+    "allowed_files",
+    "allowed_actions",
+    "forbidden_actions",
+    "verification_commands",
+    "stop_conditions",
+    "fallback_next_work_policy",
+  ]) {
+    if (!metadataValueHasNonEmptyKey(workOrder, [envelopeField, snakeToCamelCase(envelopeField)])) {
+      missingFields.push(envelopeField);
+    }
   }
   if (!metadataValueHasNonEmptyKey(workOrder, ["handoff_target", "assignee", "recipient"])) {
     missingFields.push("handoff_target");
@@ -2191,6 +2273,8 @@ function validateWorkOrderMetadata(
   return {
     missingFields,
     invalidFields,
+    deliveryGaps,
+    deliveryDefaults: deliveryResolution.defaults,
     dispatchGaps,
     runtimeGaps,
     contextPackGaps,
@@ -2707,6 +2791,7 @@ function workOrderValidationHasIssues(
   return (
     validation.missingFields.length > 0 ||
     validation.invalidFields.length > 0 ||
+    validation.deliveryGaps.length > 0 ||
     validation.dispatchGaps.length > 0 ||
     validation.runtimeGaps.length > 0 ||
     validation.contextPackGaps.length > 0 ||
@@ -3270,6 +3355,10 @@ function metadataValueHasNonEmptyKey(value: unknown, keys: string[]): boolean {
     return found !== undefined && hasNonEmptyRegisterValue(found);
   }
   return false;
+}
+
+function snakeToCamelCase(value: string): string {
+  return value.replace(/_([a-z])/g, (_match, letter: string) => letter.toUpperCase());
 }
 
 function metadataValueHasAuditLedgerTraceKey(
