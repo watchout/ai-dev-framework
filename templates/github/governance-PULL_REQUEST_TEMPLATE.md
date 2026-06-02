@@ -4,18 +4,32 @@
 ## Governance Evidence
 
 - Work Order:
+- Delivery strategy:
+- Lane:
+- Risk class:
+- Audit timing:
+- Queue state: pr_opened_evidence_ready | audit_pending | changes_requested | audit_passed | merge_ready
+- Runner identity:
+- Runtime mode:
 - Gate profile:
 - Context pack:
 - Recovery pack:
 - Tool execution policy:
 - Human approval:
 - Verification:
+- Verification commands:
+- Verification results:
 - Audit refs:
+- Approval refs:
 - Architecture owner:
 - Implementation owner:
 - Review owner:
 - Merge authority:
 - Audit owner:
+- Changed files:
+- Residual risk:
+- Stop conditions encountered:
+- Merge readiness:
 
 ## Control Hierarchy
 
