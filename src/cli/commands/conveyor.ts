@@ -22,6 +22,13 @@ import {
   type ConveyorRoleView,
 } from "../lib/conveyor-role-view.js";
 import {
+  buildProfiledConveyorRoleView,
+  isConveyorProfileRole,
+  type ConveyorProfileRole,
+  type ConveyorProfiledRoleView,
+  type ConveyorProjectProfile,
+} from "../lib/conveyor-profile.js";
+import {
   buildConveyorLabelSyncPlan,
   type ConveyorLabelSyncPlan,
 } from "../lib/conveyor-label-sync.js";
@@ -39,6 +46,8 @@ interface ConveyorReconcileOptions {
 
 interface ConveyorNextOptions extends ConveyorReconcileOptions {
   role?: string;
+  profile?: string;
+  previousProfile?: string;
 }
 
 interface ConveyorCheckOptions {
@@ -158,16 +167,21 @@ export function registerConveyorCommand(program: Command): void {
   conveyor
     .command("next")
     .description("Select the next deterministic target for a conveyor role from a snapshot fixture")
-    .requiredOption("--role <role>", "Role lane: implementation, l1, l2, l3, ceo, rework, blocked, checker, or aun_mirror")
+    .requiredOption("--role <role>", "Role lane: implementation, l1, l2, l3, ceo, rework, blocked, checker, aun_mirror, or profile role aliases")
     .option("--fixture <path>", "JSON snapshot with issues, pull_requests, and optional config")
+    .option("--profile <path>", "JSON Conveyor project profile; filters repo scope and role query")
+    .option("--previous-profile <path>", "Previous JSON Conveyor project profile for profile_scope_changed reporting")
     .option("--json", "Output machine-readable JSON")
     .option("--apply", "Apply reconciliation to the in-memory snapshot result; does not mutate GitHub")
     .action((options: ConveyorNextOptions) => {
       runConveyorAction(options, () => {
-        const role = parseRole(options.role);
         const input = readManifestFixture(options.fixture);
         const mode: ConveyorMode = options.apply ? "apply" : "dry-run";
-        const view = buildConveyorRoleView(input, role, mode);
+        const profile = options.profile ? readConveyorProfile(options.profile) : undefined;
+        const previousProfile = options.previousProfile ? readConveyorProfile(options.previousProfile) : undefined;
+        const { role, view } = profile
+          ? buildProfiledNextView(input, profile, previousProfile, options.role, mode)
+          : buildNextView(input, options.role, mode);
         const target = selectConveyorRoleNextTarget(view);
         const payload = {
           schema: "shirube-conveyor-next-target/v1",
@@ -177,6 +191,15 @@ export function registerConveyorCommand(program: Command): void {
           authority_notes: view.authority_notes,
           excluded: view.excluded,
           target: target ?? null,
+          ...(isProfiledRoleView(view)
+            ? {
+                normalized_role: view.normalized_role,
+                profile: view.profile,
+                profile_scope_changed: view.profile_scope_changed,
+                role_query: view.role_query,
+                context_recovery: view.profile.context_recovery,
+              }
+            : {}),
         };
         if (options.json) {
           process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
@@ -253,11 +276,49 @@ function readManifestFixture(fixture: string | undefined): ConveyorManifestInput
   return JSON.parse(readFileSync(fixture, "utf8")) as ConveyorManifestInput;
 }
 
+function readConveyorProfile(profilePath: string): ConveyorProjectProfile {
+  return JSON.parse(readFileSync(profilePath, "utf8")) as ConveyorProjectProfile;
+}
+
 function parseRole(role: string | undefined): ConveyorActorRole {
   if (!role || !isConveyorActorRole(role)) {
     throw new Error("Invalid --role. Expected implementation, l1, l2, l3, ceo, rework, blocked, checker, or aun_mirror.");
   }
   return role;
+}
+
+function parseProfileRole(role: string | undefined): ConveyorProfileRole {
+  if (!role || !isConveyorProfileRole(role)) {
+    throw new Error("Invalid --role. Expected a Conveyor role or profile role alias.");
+  }
+  return role;
+}
+
+function buildNextView(
+  input: ConveyorManifestInput,
+  roleInput: string | undefined,
+  mode: ConveyorMode,
+): { role: ConveyorActorRole; view: ConveyorRoleView } {
+  const role = parseRole(roleInput);
+  return { role, view: buildConveyorRoleView(input, role, mode) };
+}
+
+function buildProfiledNextView(
+  input: ConveyorManifestInput,
+  profile: ConveyorProjectProfile,
+  previousProfile: ConveyorProjectProfile | undefined,
+  roleInput: string | undefined,
+  mode: ConveyorMode,
+): { role: ConveyorProfileRole; view: ConveyorProfiledRoleView } {
+  const role = parseProfileRole(roleInput);
+  return {
+    role,
+    view: buildProfiledConveyorRoleView({ manifest: input, profile, previousProfile, role, mode }),
+  };
+}
+
+function isProfiledRoleView(view: ConveyorRoleView | ConveyorProfiledRoleView): view is ConveyorProfiledRoleView {
+  return "profile" in view;
 }
 
 function parseAuditRole(role: string | undefined): ConveyorAuditRole {
@@ -375,7 +436,7 @@ function formatConveyorManifest(manifest: ConveyorTickManifest): string {
 }
 
 function formatNextTarget(payload: {
-  role: ConveyorActorRole;
+  role: string;
   query: string;
   authority_notes?: string[];
   excluded?: ConveyorRoleView["excluded"];
