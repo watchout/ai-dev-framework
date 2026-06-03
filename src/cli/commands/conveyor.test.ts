@@ -141,6 +141,58 @@ describe("conveyor command", () => {
     expect(payload.target).toEqual(expect.objectContaining({ repo: "watchout/aun-platform", number: 24 }));
   });
 
+  it("selects checker role targets with degraded reason codes", () => {
+    const fixturePath = path.join(tmpDir, "conveyor-checker-fixture.json");
+    fs.writeFileSync(
+      fixturePath,
+      JSON.stringify({
+        pull_requests: [
+          {
+            repo,
+            number: 131,
+            head: "head-131",
+            merge_state: "DIRTY",
+            labels: ["state:impl-l1", "audit-pending", "audit:l1-pending"],
+          },
+        ],
+      }),
+      "utf-8",
+    );
+    const result = runConveyor(`next --role checker --fixture ${fixturePath} --json`);
+    const payload = JSON.parse(result.stdout) as {
+      role: string;
+      target: { number: number; reason_codes: string[] } | null;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.role).toBe("checker");
+    expect(payload.target).toEqual(
+      expect.objectContaining({
+        number: 131,
+        reason_codes: expect.arrayContaining(["dirty_audit_pending", "missing_pr_conveyor_evidence"]),
+      }),
+    );
+  });
+
+  it("checks role authority for proposed labels without mutating", () => {
+    const result = runConveyor("check --role implementation --add-label evidence-ready --add-label merge-ready --json");
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      authorized: boolean;
+      violations: Array<{ label: string; reason: string }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.schema).toBe("shirube-conveyor-role-authority-check/v1");
+    expect(payload.authorized).toBe(false);
+    expect(payload.violations).toEqual([
+      expect.objectContaining({
+        label: "merge-ready",
+        reason: "role_forbidden_final_or_foreign_authority_label",
+      }),
+    ]);
+  });
+
   it("prints a durable audit-report evidence block without posting it", () => {
     const result = runConveyor(
       "audit-report --repo watchout/agent-memory --pr 132 --role l2 --verdict PASS --head abc123 --reported-by auditor",

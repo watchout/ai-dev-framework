@@ -9,12 +9,18 @@ import {
 } from "../lib/conveyor-reconciler.js";
 import {
   buildConveyorTickManifest,
-  isConveyorRole,
-  selectConveyorNextTarget,
   type ConveyorManifestInput,
-  type ConveyorRole,
   type ConveyorTickManifest,
 } from "../lib/conveyor-manifest.js";
+import {
+  buildConveyorRoleView,
+  isConveyorActorRole,
+  selectConveyorRoleNextTarget,
+  validateConveyorRoleLabelChange,
+  type ConveyorActorRole,
+  type ConveyorRoleAuthorityCheck,
+  type ConveyorRoleView,
+} from "../lib/conveyor-role-view.js";
 import {
   buildConveyorLabelSyncPlan,
   type ConveyorLabelSyncPlan,
@@ -33,6 +39,13 @@ interface ConveyorReconcileOptions {
 
 interface ConveyorNextOptions extends ConveyorReconcileOptions {
   role?: string;
+}
+
+interface ConveyorCheckOptions {
+  role?: string;
+  addLabel?: string[];
+  removeLabel?: string[];
+  json?: boolean;
 }
 
 interface ConveyorAuditReportOptions {
@@ -145,7 +158,7 @@ export function registerConveyorCommand(program: Command): void {
   conveyor
     .command("next")
     .description("Select the next deterministic target for a conveyor role from a snapshot fixture")
-    .requiredOption("--role <role>", "Role lane: implementation, l1, l2, l3, ceo, rework, or blocked")
+    .requiredOption("--role <role>", "Role lane: implementation, l1, l2, l3, ceo, rework, blocked, checker, or aun_mirror")
     .option("--fixture <path>", "JSON snapshot with issues, pull_requests, and optional config")
     .option("--json", "Output machine-readable JSON")
     .option("--apply", "Apply reconciliation to the in-memory snapshot result; does not mutate GitHub")
@@ -154,13 +167,15 @@ export function registerConveyorCommand(program: Command): void {
         const role = parseRole(options.role);
         const input = readManifestFixture(options.fixture);
         const mode: ConveyorMode = options.apply ? "apply" : "dry-run";
-        const manifest = buildConveyorTickManifest(input, mode);
-        const target = selectConveyorNextTarget(manifest, role);
+        const view = buildConveyorRoleView(input, role, mode);
+        const target = selectConveyorRoleNextTarget(view);
         const payload = {
           schema: "shirube-conveyor-next-target/v1",
           mode,
           role,
-          query: manifest.lanes[role].query,
+          query: view.query,
+          authority_notes: view.authority_notes,
+          excluded: view.excluded,
           target: target ?? null,
         };
         if (options.json) {
@@ -168,6 +183,29 @@ export function registerConveyorCommand(program: Command): void {
           return;
         }
         process.stdout.write(formatNextTarget(payload));
+      });
+    });
+
+  conveyor
+    .command("check")
+    .description("Validate Conveyor role authority for proposed label changes; does not mutate GitHub")
+    .requiredOption("--role <role>", "Conveyor actor role")
+    .option("--add-label <label>", "Proposed label to add", collectOption, [])
+    .option("--remove-label <label>", "Proposed label to remove", collectOption, [])
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorCheckOptions) => {
+      runConveyorAction(options, () => {
+        const role = parseRole(options.role);
+        const report = validateConveyorRoleLabelChange({
+          role,
+          add: options.addLabel,
+          remove: options.removeLabel,
+        });
+        if (options.json) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatAuthorityCheck(report));
       });
     });
 
@@ -215,9 +253,9 @@ function readManifestFixture(fixture: string | undefined): ConveyorManifestInput
   return JSON.parse(readFileSync(fixture, "utf8")) as ConveyorManifestInput;
 }
 
-function parseRole(role: string | undefined): ConveyorRole {
-  if (!role || !isConveyorRole(role)) {
-    throw new Error("Invalid --role. Expected implementation, l1, l2, l3, ceo, rework, or blocked.");
+function parseRole(role: string | undefined): ConveyorActorRole {
+  if (!role || !isConveyorActorRole(role)) {
+    throw new Error("Invalid --role. Expected implementation, l1, l2, l3, ceo, rework, blocked, checker, or aun_mirror.");
   }
   return role;
 }
@@ -337,15 +375,32 @@ function formatConveyorManifest(manifest: ConveyorTickManifest): string {
 }
 
 function formatNextTarget(payload: {
-  role: ConveyorRole;
+  role: ConveyorActorRole;
   query: string;
-  target: ReturnType<typeof selectConveyorNextTarget> | null;
+  authority_notes?: string[];
+  excluded?: ConveyorRoleView["excluded"];
+  target: ReturnType<typeof selectConveyorRoleNextTarget> | null;
 }): string {
   if (!payload.target) {
     return `No target for ${payload.role} (${payload.query})\n`;
   }
   const head = payload.target.head ? ` head=${payload.target.head}` : "";
   return `Next ${payload.role}: ${payload.target.repo}#${payload.target.number} ${payload.target.kind}${head}\n`;
+}
+
+function formatAuthorityCheck(report: ConveyorRoleAuthorityCheck): string {
+  if (report.authorized) {
+    return `Conveyor role check: authorized for ${report.role}\n`;
+  }
+  const lines = [`Conveyor role check: denied for ${report.role}`];
+  for (const violation of report.violations) {
+    lines.push(`- ${violation.operation} ${violation.label}: ${violation.reason}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function collectOption(value: string, previous: string[]): string[] {
+  return [...previous, value];
 }
 
 function formatAuditReportEvidence(evidence: ReturnType<typeof buildAuditReportEvidence>): string {
