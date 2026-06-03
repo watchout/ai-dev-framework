@@ -232,6 +232,56 @@ describe("validateGovernanceBone", () => {
     );
   });
 
+  it.each(["- Explicit delegation:", "- Explicit delegation: none."])(
+    "blocks ARC ownership with non-concrete standard-template delegation: %s",
+    (delegationLine) => {
+      const result = validateGovernanceBone(
+        [
+          {
+            path: "pull-request.md",
+            content: `${completeGovernanceIssue
+              .replace("- Implementation owner: repo maintainer.", "- Implementation owner: IYASAKA ARC.")
+              .replace("- Merge authority: repo maintainer.", "- Merge authority: ARC.")}
+## Ownership Boundary
+
+- ARC/design role involvement: implementation support.
+- Repo implementation owner: IYASAKA ARC.
+- Reference implementation: draft.
+${delegationLine}
+- Adoption decision owner: repo maintainer.
+`,
+          },
+        ],
+        { mode: "warning", requireGovernanceBone: true },
+      );
+
+      expect(result.status).toBe("BLOCK");
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({ type: "ownership_boundary" }),
+      );
+    },
+  );
+
+  it("allows ARC ownership with concrete repository-owner delegation", () => {
+    const result = validateGovernanceBone(
+      [
+        {
+          path: "pull-request.md",
+          content: `${completeGovernanceIssue
+            .replace("- Implementation owner: repo maintainer.", "- Implementation owner: IYASAKA ARC.")
+            .replace("- Merge authority: repo maintainer.", "- Merge authority: ARC.")}
+## Ownership Boundary
+
+- Explicit delegation: repository owner approved ARC implementation and merge authority in #249.
+`,
+        },
+      ],
+      { mode: "strict", requireGovernanceBone: true },
+    );
+
+    expect(result.status).toBe("PASS");
+  });
+
   it("allows ARC architecture ownership when implementation and merge stay with the repo", () => {
     const result = validateGovernanceBone(
       [{ path: "issue.md", content: completeGovernanceIssue }],

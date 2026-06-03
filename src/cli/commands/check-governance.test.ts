@@ -180,4 +180,27 @@ describe("shirube check governance", () => {
       },
     );
   });
+
+  it("blocks ARC authority with a non-concrete template delegation field", () => {
+    withTempMarkdown(
+      `${completeGovernanceIssue
+        .replace("- Implementation owner: repo maintainer.", "- Implementation owner: IYASAKA ARC.")
+        .replace("- Merge authority: repo maintainer.", "- Merge authority: ARC.")}
+## Ownership Boundary
+
+- ARC/design role involvement: implementation support.
+- Repo implementation owner: IYASAKA ARC.
+- Reference implementation: draft.
+- Explicit delegation: none.
+- Adoption decision owner: repo maintainer.
+`,
+      (file) => {
+        const result = runCli(["check", "governance", "--mode", "warning", file]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Governance Bone: BLOCK");
+        expect(result.stdout).toContain("explicit repository-owner delegation");
+      },
+    );
+  });
 });

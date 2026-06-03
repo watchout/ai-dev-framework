@@ -127,8 +127,23 @@ const SILENT_FALLBACK =
 const ARC_IMPLEMENTATION_OR_MERGE_AUTHORITY =
   /(?:implementation\s+owner|implementation_owner|implementation\s+lead|merge\s+authority|merge_authority)\s*:\s*(?:iyasaka\s+)?arc\b|(?:iyasaka\s+)?arc[^.\n]*(?:owns|implements|approves|decides|merges)[^.\n]*(?:implementation|production\s+code|dependency|ci|merge)/i;
 
-const EXPLICIT_REPO_DELEGATION =
-  /\bexplicit(?:ly)?\s+delegat(?:ed|ion)\b|\brepo(?:sitory)?\s+owner\s+delegat(?:ed|ion)\b|明示委任|明示的に委任/i;
+const REPOSITORY_OWNER_DELEGATION_FIELD_ALIASES = [
+  "Explicit delegation",
+  "explicit_delegation",
+  "Repository owner delegation",
+  "Repository-owner delegation",
+  "Repo owner delegation",
+  "Repo-owner delegation",
+];
+
+const REPOSITORY_OWNER_DELEGATION_ACTOR =
+  /\b(?:repo(?:sitory)?\s+(?:owner|maintainer)|repo-owner|repository-owner|maintainer)\b|リポジトリ(?:所有者|オーナー|メンテナ)|repo\s*owner/i;
+
+const REPOSITORY_OWNER_DELEGATION_ACTION =
+  /\b(?:delegat(?:e|ed|ion)|authori[sz](?:e|ed|ation)|approv(?:e|ed|al)|grant(?:ed)?)\b|委任|承認|許可/i;
+
+const NON_DELEGATION_VALUE =
+  /^(?:no|not|without|missing|absent|unavailable)\b|\b(?:no|without)\s+(?:explicit\s+)?(?:repo(?:sitory)?[-\s]*owner\s+)?delegation\b|\bdelegation\s+(?:not\s+)?(?:required|provided|present|granted)\b|\b(?:approval|delegation)\s+(?:pending|requested)\b/i;
 
 const REFERENCE_IMPLEMENTATION_CLAIM =
   /\breference\s+implementation\b|参考実装/i;
@@ -192,8 +207,8 @@ export function validateGovernanceBone(
     }
 
     if (
-      hasNonNegatedMatch(doc.content, ARC_IMPLEMENTATION_OR_MERGE_AUTHORITY) &&
-      !EXPLICIT_REPO_DELEGATION.test(doc.content)
+      hasArcImplementationOrMergeAuthority(doc.content) &&
+      !hasConcreteRepositoryOwnerDelegation(doc.content)
     ) {
       findings.push({
         severity: "BLOCK",
@@ -267,21 +282,19 @@ function hasGovernanceField(
 }
 
 function hasFieldAlias(content: string, field: string, requiresConcreteValue: boolean): boolean {
-  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const fieldPattern = new RegExp(
-    `(?:^|\\n)\\s*(?:[-*]\\s*)?(?:\\*\\*)?${escaped}(?:\\*\\*)?\\s*:`,
-    "i",
-  );
-  if (!fieldPattern.test(content)) return false;
+  const values = getFieldAliasValues(content, field);
+  if (values.length === 0) return false;
+  if (!requiresConcreteValue) return true;
+  return values.some(isConcreteValue);
+}
 
+function getFieldAliasValues(content: string, field: string): string[] {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const valuePattern = new RegExp(
     `(?:^|\\n)\\s*(?:[-*]\\s*)?(?:\\*\\*)?${escaped}(?:\\*\\*)?\\s*:\\s*([^\\n]+)`,
     "gi",
   );
-  const values = [...content.matchAll(valuePattern)].map((match) => match[1]);
-  if (values.length === 0) return false;
-  if (!requiresConcreteValue) return true;
-  return values.some(isConcreteValue);
+  return [...content.matchAll(valuePattern)].map((match) => match[1]);
 }
 
 function hasNonNegatedMatch(content: string, pattern: RegExp): boolean {
@@ -303,10 +316,50 @@ function toStatus(findings: GovernanceBoneFinding[]): GovernanceBoneStatus {
 }
 
 function isConcreteValue(value: string): boolean {
+  const normalized = normalizeFieldValue(value);
+  if (!normalized) return false;
+  return !PLACEHOLDER_VALUE.test(normalized);
+}
+
+function hasArcImplementationOrMergeAuthority(content: string): boolean {
+  return (
+    hasArcFieldValue(content, [
+      "Implementation owner",
+      "implementation_owner",
+      "Implementation lead",
+    ]) ||
+    hasArcFieldValue(content, ["Merge authority", "merge_authority"]) ||
+    hasNonNegatedMatch(content, ARC_IMPLEMENTATION_OR_MERGE_AUTHORITY)
+  );
+}
+
+function hasArcFieldValue(content: string, aliases: string[]): boolean {
+  return aliases
+    .flatMap((alias) => getFieldAliasValues(content, alias))
+    .some((value) => /\b(?:iyasaka\s+)?arc\b/i.test(value));
+}
+
+function hasConcreteRepositoryOwnerDelegation(content: string): boolean {
+  return REPOSITORY_OWNER_DELEGATION_FIELD_ALIASES.flatMap((alias) =>
+    getFieldAliasValues(content, alias),
+  ).some(isConcreteRepositoryOwnerDelegation);
+}
+
+function isConcreteRepositoryOwnerDelegation(value: string): boolean {
+  const normalized = normalizeFieldValue(value);
+  if (!normalized) return false;
+  if (PLACEHOLDER_VALUE.test(normalized)) return false;
+  if (NON_DELEGATION_VALUE.test(normalized)) return false;
+  return (
+    REPOSITORY_OWNER_DELEGATION_ACTOR.test(normalized) &&
+    REPOSITORY_OWNER_DELEGATION_ACTION.test(normalized)
+  );
+}
+
+function normalizeFieldValue(value: string): string {
   const normalized = value
     .replace(/[*`_~]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-  if (!normalized) return false;
-  return !PLACEHOLDER_VALUE.test(normalized);
+  return normalized;
 }

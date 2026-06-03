@@ -50,7 +50,8 @@ values such as `TBD`, `n/a`, `not applicable`, `none`, and `null` are missing
 ownership evidence.
 
 The validator also blocks ARC/design-role implementation ownership or merge
-authority unless the document contains explicit repository-owner delegation.
+authority unless an explicit delegation field contains concrete
+repository-owner approval or delegation evidence.
 Reference implementation text must be identified as draft or by an explicit
 reference/proposal label.
 
