@@ -15,6 +15,10 @@ import {
   type ConveyorRole,
   type ConveyorTickManifest,
 } from "../lib/conveyor-manifest.js";
+import {
+  buildConveyorLabelSyncPlan,
+  type ConveyorLabelSyncPlan,
+} from "../lib/conveyor-label-sync.js";
 import { logger } from "../lib/logger.js";
 
 interface ConveyorReconcileOptions {
@@ -62,6 +66,32 @@ export function registerConveyorCommand(program: Command): void {
           return;
         }
         process.stdout.write(formatConveyorReport(report));
+      });
+    });
+
+  const labels = conveyor
+    .command("labels")
+    .description("Inspect Conveyor label sync plans");
+
+  labels
+    .command("sync")
+    .description("Build an observe-only Conveyor label sync plan from a snapshot fixture")
+    .option("--fixture <path>", "JSON snapshot with pull_requests and optional config")
+    .option("--json", "Output machine-readable JSON")
+    .option("--apply", "Apply reconciliation to the in-memory plan result; does not mutate GitHub")
+    .action((options: ConveyorReconcileOptions) => {
+      runConveyorAction(options, () => {
+        if (!options.fixture) {
+          throw new Error("Missing --fixture. Live GitHub label mutation is reserved for a later authorized PR.");
+        }
+        const input = JSON.parse(readFileSync(options.fixture, "utf8")) as ConveyorReconcileInput;
+        const mode: ConveyorMode = options.apply ? "apply" : "dry-run";
+        const plan = buildConveyorLabelSyncPlan(input, mode);
+        if (options.json) {
+          process.stdout.write(JSON.stringify(plan, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatLabelSyncPlan(plan));
       });
     });
 
@@ -225,6 +255,22 @@ function formatConveyorReport(report: ReturnType<typeof reconcileConveyor>): str
     for (const release of report.dependency_releases) {
       lines.push(`${release.repo}#${release.predecessor} -> #${release.released} (${release.state})`);
     }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function formatLabelSyncPlan(plan: ConveyorLabelSyncPlan): string {
+  const lines = [
+    `Shirube Conveyor Label Sync (${plan.mode})`,
+    `Safe to apply remotely: ${plan.safe_to_apply ? "yes" : "no"}`,
+    "",
+  ];
+  for (const action of plan.actions) {
+    const added = action.add.length ? action.add.join(", ") : "-";
+    const removed = action.remove.length ? action.remove.join(", ") : "-";
+    const blocked = action.blocked ? " blocked" : "";
+    const findings = action.findings.length ? ` findings=${action.findings.map((finding) => finding.code).join(",")}` : "";
+    lines.push(`${action.repo}#${action.pr} add=[${added}] remove=[${removed}]${blocked}${findings}`);
   }
   return `${lines.join("\n")}\n`;
 }

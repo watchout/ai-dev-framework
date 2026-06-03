@@ -154,4 +154,25 @@ describe("conveyor command", () => {
     expect(result.stdout).toContain("verdict: PASS");
     expect(result.stdout).toContain("head: abc123");
   });
+
+  it("builds an observe-only label sync plan from a fixture", () => {
+    const fixturePath = writeFixture();
+    const result = runConveyor(`labels sync --fixture ${fixturePath} --json`);
+    const plan = JSON.parse(result.stdout) as {
+      schema: string;
+      safe_to_apply: boolean;
+      actions: Array<{ add: string[]; remove: string[]; blocked: boolean }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(plan.schema).toBe("shirube-conveyor-label-sync-plan/v1");
+    expect(plan.safe_to_apply).toBe(true);
+    expect(plan.actions[0]).toEqual(
+      expect.objectContaining({
+        add: expect.arrayContaining(["state:impl-l3", "audit:l2-passed"]),
+        remove: expect.arrayContaining(["state:impl-l2", "audit:l2-pending"]),
+        blocked: false,
+      }),
+    );
+  });
 });
