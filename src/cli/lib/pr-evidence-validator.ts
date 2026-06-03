@@ -68,6 +68,10 @@ const AUDIT_NON_CONCRETE_REF =
   /^(?:no\s+(?:audit|audits|audit\s+refs?|audit\s+evidence)|without\s+(?:audit|audits|audit\s+refs?|audit\s+evidence)|(?:audit|audits|audit\s+refs?|audit\s+evidence)\s+(?:not\s+required|not\s+needed|missing|absent))(?:[\s.。,:;_/-]|$)/i;
 const APPROVAL_NON_CONCRETE_REF =
   /^(?:no\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence)|without\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence)|(?:approval|approvals|approval\s+refs?|approval\s+evidence)\s+(?:not\s+required|not\s+needed|missing|absent))(?:[\s.。,:;_/-]|$)/i;
+const AUDIT_REQUEST_STATE_REF =
+  /\b(?:(?:audit|audits|audit\s+refs?|audit\s+evidence)\s+(?:pending|required|requested)|(?:pending|required|requested)\s+(?:audit|audits|audit\s+refs?|audit\s+evidence))\b/i;
+const APPROVAL_REQUEST_STATE_REF =
+  /\b(?:(?:approval|approvals|approval\s+refs?|approval\s+evidence)\s+(?:pending|required|requested)|(?:pending|required|requested)\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence))\b/i;
 
 export function validatePrEvidence(
   documents: PrEvidenceDocument[],
@@ -222,24 +226,36 @@ function hasConcreteText(
 }
 
 function hasConcreteAuditRef(value: string | undefined): boolean {
-  return hasConcreteReference(value, AUDIT_PRESENT, AUDIT_NON_CONCRETE_REF);
+  return hasConcreteReference(
+    value,
+    AUDIT_PRESENT,
+    AUDIT_NON_CONCRETE_REF,
+    AUDIT_REQUEST_STATE_REF,
+  );
 }
 
 function hasConcreteApprovalRef(value: string | undefined): boolean {
-  return hasConcreteReference(value, APPROVAL_PRESENT, APPROVAL_NON_CONCRETE_REF);
+  return hasConcreteReference(
+    value,
+    APPROVAL_PRESENT,
+    APPROVAL_NON_CONCRETE_REF,
+    APPROVAL_REQUEST_STATE_REF,
+  );
 }
 
 function hasConcreteReference(
   value: string | undefined,
   expectedRef: RegExp,
   nonConcreteRef: RegExp,
+  requestStateRef: RegExp,
 ): boolean {
   if (!value) return false;
   if (!hasConcreteText(value)) return false;
   const normalized = normalizeEvidenceText(value);
   if (
     GENERIC_NON_CONCRETE_REF.test(normalized) ||
-    nonConcreteRef.test(normalized)
+    nonConcreteRef.test(normalized) ||
+    requestStateRef.test(normalized)
   ) {
     return false;
   }

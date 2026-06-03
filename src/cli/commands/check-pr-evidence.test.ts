@@ -127,4 +127,40 @@ describe("shirube check pr-evidence", () => {
       expect(result.stdout).toContain("R4 PR evidence cannot claim merge-ready");
     });
   });
+
+  it("fails R3 merge-ready claims with requested audit refs", () => {
+    const unsafe = validPrEvidence()
+      .replace("Risk class: R2", "Risk class: R3")
+      .replace("Lane: Fast", "Lane: Governed")
+      .replace("Delivery strategy: pr_conveyor", "Delivery strategy: phase_conveyor")
+      .replace("Audit timing: after_pr", "Audit timing: before_merge")
+      .replace("Merge readiness: audit_pending", "Merge readiness: merge_ready")
+      .concat("\n- Audit refs: L3 audit requested #283\n");
+
+    withTempPr(unsafe, (file) => {
+      const result = runCli(["check", "pr-evidence", "--strict", file]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("PR Evidence: BLOCK");
+      expect(result.stdout).toContain("R3 PR evidence cannot claim merge-ready");
+    });
+  });
+
+  it("fails R4 merge-ready claims with requested audit and pending approval refs", () => {
+    const unsafe = validPrEvidence()
+      .replace("Risk class: R2", "Risk class: R4")
+      .replace("Lane: Fast", "Lane: Stop")
+      .replace("Delivery strategy: pr_conveyor", "Delivery strategy: serial_gate")
+      .replace("Audit timing: after_pr", "Audit timing: before_execution")
+      .replace("Merge readiness: audit_pending", "Merge readiness: merge_ready")
+      .concat("\n- Audit refs: L3 audit requested #283\n- Approval refs: CTO approval pending #283\n");
+
+    withTempPr(unsafe, (file) => {
+      const result = runCli(["check", "pr-evidence", "--strict", file]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("PR Evidence: BLOCK");
+      expect(result.stdout).toContain("R4 PR evidence cannot claim merge-ready");
+    });
+  });
 });

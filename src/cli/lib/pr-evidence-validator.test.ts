@@ -117,7 +117,17 @@ describe("validatePrEvidence", () => {
     );
   });
 
-  it.each(["no audit", "not required", "without audit"])(
+  it.each([
+    "no audit",
+    "not required",
+    "without audit",
+    "audit requested #283",
+    "audit pending #283",
+    "requested audit #283",
+    "pending audit #283",
+    "L3 audit requested #283",
+    "L3 audit pending https://github.com/watchout/ai-dev-framework/pull/283",
+  ])(
     "blocks R3 merge-ready claims with non-concrete audit refs: %s",
     (auditRefs) => {
       const result = validatePrEvidence(
@@ -197,6 +207,50 @@ describe("validatePrEvidence", () => {
     {
       auditRefs: "L3 audit PASS",
       approvalRefs: "without approval",
+    },
+    {
+      auditRefs: "audit requested #283",
+      approvalRefs: "CTO approval PASS",
+    },
+    {
+      auditRefs: "audit pending #283",
+      approvalRefs: "CTO approval PASS",
+    },
+    {
+      auditRefs: "requested audit #283",
+      approvalRefs: "CTO approval PASS",
+    },
+    {
+      auditRefs: "pending audit #283",
+      approvalRefs: "CTO approval PASS",
+    },
+    {
+      auditRefs: "L3 audit requested #283",
+      approvalRefs: "CTO approval PASS",
+    },
+    {
+      auditRefs: "L3 audit PASS",
+      approvalRefs: "approval requested #283",
+    },
+    {
+      auditRefs: "L3 audit PASS",
+      approvalRefs: "approval pending #283",
+    },
+    {
+      auditRefs: "L3 audit PASS",
+      approvalRefs: "requested approval #283",
+    },
+    {
+      auditRefs: "L3 audit PASS",
+      approvalRefs: "pending approval #283",
+    },
+    {
+      auditRefs: "L3 audit PASS",
+      approvalRefs: "CTO approval pending #283",
+    },
+    {
+      auditRefs: "L3 audit requested https://github.com/watchout/ai-dev-framework/pull/283",
+      approvalRefs: "CTO approval pending https://github.com/watchout/ai-dev-framework/pull/283",
     },
   ])(
     "blocks R4 merge-ready claims with non-concrete refs: $auditRefs / $approvalRefs",
