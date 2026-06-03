@@ -39,6 +39,14 @@ function writeFixture(): string {
   fs.writeFileSync(
     fixturePath,
     JSON.stringify({
+      issues: [
+        {
+          repo: "watchout/aun-platform",
+          number: 24,
+          title: "Discord-like thread stream",
+          labels: ["needs:implementation"],
+        },
+      ],
       pull_requests: [
         {
           repo,
@@ -95,5 +103,55 @@ describe("conveyor command", () => {
     const result = runConveyor("reconcile --json");
     expect(result.exitCode).not.toBe(0);
     expect(JSON.parse(result.stdout).error.message).toContain("Missing --fixture");
+  });
+
+  it("builds a tick manifest from a fixture without live discovery", () => {
+    const fixturePath = writeFixture();
+    const result = runConveyor(`tick --fixture ${fixturePath} --json`);
+    const manifest = JSON.parse(result.stdout) as {
+      schema: string;
+      lanes: {
+        implementation: { targets: Array<{ repo: string; number: number }> };
+        l3: { targets: Array<{ repo: string; number: number }> };
+      };
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(manifest.schema).toBe("shirube-conveyor-tick-manifest/v1");
+    expect(manifest.lanes.implementation.targets[0]).toEqual(
+      expect.objectContaining({ repo: "watchout/aun-platform", number: 24 }),
+    );
+    expect(manifest.lanes.l3.targets[0]).toEqual(
+      expect.objectContaining({ repo, number: 286 }),
+    );
+  });
+
+  it("selects the next role target deterministically", () => {
+    const fixturePath = writeFixture();
+    const result = runConveyor(`next --role implementation --fixture ${fixturePath} --json`);
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      role: string;
+      target: { repo: string; number: number };
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.schema).toBe("shirube-conveyor-next-target/v1");
+    expect(payload.role).toBe("implementation");
+    expect(payload.target).toEqual(expect.objectContaining({ repo: "watchout/aun-platform", number: 24 }));
+  });
+
+  it("prints a durable audit-report evidence block without posting it", () => {
+    const result = runConveyor(
+      "audit-report --repo watchout/agent-memory --pr 132 --role l2 --verdict PASS --head abc123 --reported-by auditor",
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("<!-- conveyor:audit-result/v1 -->");
+    expect(result.stdout).toContain("repo: watchout/agent-memory");
+    expect(result.stdout).toContain("pr: 132");
+    expect(result.stdout).toContain("role: l2");
+    expect(result.stdout).toContain("verdict: PASS");
+    expect(result.stdout).toContain("head: abc123");
   });
 });

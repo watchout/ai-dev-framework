@@ -4,13 +4,38 @@ import {
   reconcileConveyor,
   type ConveyorReconcileInput,
   type ConveyorMode,
+  type ConveyorAuditRole,
+  type ConveyorAuditVerdict,
 } from "../lib/conveyor-reconciler.js";
+import {
+  buildConveyorTickManifest,
+  isConveyorRole,
+  selectConveyorNextTarget,
+  type ConveyorManifestInput,
+  type ConveyorRole,
+  type ConveyorTickManifest,
+} from "../lib/conveyor-manifest.js";
 import { logger } from "../lib/logger.js";
 
 interface ConveyorReconcileOptions {
   fixture?: string;
   json?: boolean;
   apply?: boolean;
+}
+
+interface ConveyorNextOptions extends ConveyorReconcileOptions {
+  role?: string;
+}
+
+interface ConveyorAuditReportOptions {
+  repo?: string;
+  pr?: string;
+  role?: string;
+  verdict?: string;
+  head?: string;
+  reportedBy?: string;
+  recordedAt?: string;
+  json?: boolean;
 }
 
 export function registerConveyorCommand(program: Command): void {
@@ -39,6 +64,76 @@ export function registerConveyorCommand(program: Command): void {
         process.stdout.write(formatConveyorReport(report));
       });
     });
+
+  conveyor
+    .command("tick")
+    .description("Build a deterministic conveyor lane manifest from a snapshot fixture")
+    .option("--fixture <path>", "JSON snapshot with issues, pull_requests, and optional config")
+    .option("--json", "Output machine-readable JSON")
+    .option("--apply", "Apply reconciliation to the in-memory snapshot result; does not mutate GitHub")
+    .action((options: ConveyorReconcileOptions) => {
+      runConveyorAction(options, () => {
+        const input = readManifestFixture(options.fixture);
+        const mode: ConveyorMode = options.apply ? "apply" : "dry-run";
+        const manifest = buildConveyorTickManifest(input, mode);
+        if (options.json) {
+          process.stdout.write(JSON.stringify(manifest, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatConveyorManifest(manifest));
+      });
+    });
+
+  conveyor
+    .command("next")
+    .description("Select the next deterministic target for a conveyor role from a snapshot fixture")
+    .requiredOption("--role <role>", "Role lane: implementation, l1, l2, l3, ceo, rework, or blocked")
+    .option("--fixture <path>", "JSON snapshot with issues, pull_requests, and optional config")
+    .option("--json", "Output machine-readable JSON")
+    .option("--apply", "Apply reconciliation to the in-memory snapshot result; does not mutate GitHub")
+    .action((options: ConveyorNextOptions) => {
+      runConveyorAction(options, () => {
+        const role = parseRole(options.role);
+        const input = readManifestFixture(options.fixture);
+        const mode: ConveyorMode = options.apply ? "apply" : "dry-run";
+        const manifest = buildConveyorTickManifest(input, mode);
+        const target = selectConveyorNextTarget(manifest, role);
+        const payload = {
+          schema: "shirube-conveyor-next-target/v1",
+          mode,
+          role,
+          query: manifest.lanes[role].query,
+          target: target ?? null,
+        };
+        if (options.json) {
+          process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatNextTarget(payload));
+      });
+    });
+
+  conveyor
+    .command("audit-report")
+    .description("Render a durable conveyor audit evidence block; does not post to GitHub")
+    .requiredOption("--repo <repo>", "Repository name, for example watchout/agent-memory")
+    .requiredOption("--pr <number>", "Pull request number")
+    .requiredOption("--role <role>", "Audit role: l1, l2, or l3")
+    .requiredOption("--verdict <verdict>", "PASS, BLOCK, CHANGES_REQUESTED, or HOLD")
+    .requiredOption("--head <sha>", "Exact current PR head SHA")
+    .option("--reported-by <actor>", "Actor id for the evidence block", "conveyor")
+    .option("--recorded-at <timestamp>", "ISO timestamp; defaults to current time")
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorAuditReportOptions) => {
+      runConveyorAction(options, () => {
+        const evidence = buildAuditReportEvidence(options);
+        if (options.json) {
+          process.stdout.write(JSON.stringify(evidence, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatAuditReportEvidence(evidence));
+      });
+    });
 }
 
 function runConveyorAction(options: ConveyorReconcileOptions, action: () => void): void {
@@ -53,6 +148,63 @@ function runConveyorAction(options: ConveyorReconcileOptions, action: () => void
     }
     process.exitCode = 1;
   }
+}
+
+function readManifestFixture(fixture: string | undefined): ConveyorManifestInput {
+  if (!fixture) {
+    throw new Error("Missing --fixture. Live GitHub discovery is reserved for a later conveyor tick PR.");
+  }
+  return JSON.parse(readFileSync(fixture, "utf8")) as ConveyorManifestInput;
+}
+
+function parseRole(role: string | undefined): ConveyorRole {
+  if (!role || !isConveyorRole(role)) {
+    throw new Error("Invalid --role. Expected implementation, l1, l2, l3, ceo, rework, or blocked.");
+  }
+  return role;
+}
+
+function parseAuditRole(role: string | undefined): ConveyorAuditRole {
+  if (role === "l1" || role === "l2" || role === "l3") return role;
+  throw new Error("Invalid --role. Expected l1, l2, or l3.");
+}
+
+function parseAuditVerdict(verdict: string | undefined): ConveyorAuditVerdict {
+  const normalized = verdict?.toUpperCase();
+  if (
+    normalized === "PASS" ||
+    normalized === "BLOCK" ||
+    normalized === "CHANGES_REQUESTED" ||
+    normalized === "HOLD"
+  ) {
+    return normalized;
+  }
+  throw new Error("Invalid --verdict. Expected PASS, BLOCK, CHANGES_REQUESTED, or HOLD.");
+}
+
+function buildAuditReportEvidence(options: ConveyorAuditReportOptions): {
+  schema: "conveyor:audit-result/v1";
+  repo: string;
+  pr: number;
+  role: ConveyorAuditRole;
+  verdict: ConveyorAuditVerdict;
+  head: string;
+  reported_by: string;
+  recorded_at: string;
+} {
+  if (!options.repo) throw new Error("Missing --repo.");
+  if (!options.pr || !Number.isInteger(Number(options.pr))) throw new Error("Invalid --pr.");
+  if (!options.head) throw new Error("Missing --head.");
+  return {
+    schema: "conveyor:audit-result/v1",
+    repo: options.repo,
+    pr: Number(options.pr),
+    role: parseAuditRole(options.role),
+    verdict: parseAuditVerdict(options.verdict),
+    head: options.head,
+    reported_by: options.reportedBy ?? "conveyor",
+    recorded_at: options.recordedAt ?? new Date().toISOString(),
+  };
 }
 
 function formatConveyorReport(report: ReturnType<typeof reconcileConveyor>): string {
@@ -75,4 +227,53 @@ function formatConveyorReport(report: ReturnType<typeof reconcileConveyor>): str
     }
   }
   return `${lines.join("\n")}\n`;
+}
+
+function formatConveyorManifest(manifest: ConveyorTickManifest): string {
+  const lines = [`Shirube Conveyor Tick (${manifest.mode})`, ""];
+  for (const lane of Object.values(manifest.lanes)) {
+    lines.push(`${lane.role}:`);
+    if (lane.targets.length === 0) {
+      lines.push("  -");
+      continue;
+    }
+    for (const target of lane.targets) {
+      const head = target.head ? ` head=${target.head}` : "";
+      const reason = target.reason ? ` reason=${target.reason}` : "";
+      lines.push(`  ${target.repo}#${target.number} ${target.kind}${head}${reason}`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function formatNextTarget(payload: {
+  role: ConveyorRole;
+  query: string;
+  target: ReturnType<typeof selectConveyorNextTarget> | null;
+}): string {
+  if (!payload.target) {
+    return `No target for ${payload.role} (${payload.query})\n`;
+  }
+  const head = payload.target.head ? ` head=${payload.target.head}` : "";
+  return `Next ${payload.role}: ${payload.target.repo}#${payload.target.number} ${payload.target.kind}${head}\n`;
+}
+
+function formatAuditReportEvidence(evidence: ReturnType<typeof buildAuditReportEvidence>): string {
+  return [
+    "<!-- conveyor:audit-result/v1 -->",
+    `repo: ${evidence.repo}`,
+    `pr: ${evidence.pr}`,
+    `role: ${evidence.role}`,
+    `verdict: ${evidence.verdict}`,
+    `head: ${evidence.head}`,
+    `reported_by: ${evidence.reported_by}`,
+    `recorded_at: ${evidence.recorded_at}`,
+    "",
+    "Findings:",
+    "- <fill audit findings>",
+    "",
+    "Evidence:",
+    "- <fill validation evidence>",
+    "",
+  ].join("\n");
 }
