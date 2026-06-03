@@ -57,6 +57,7 @@ export function installGitHubTemplates(
   const dirs = [
     ".github/workflows",
     ".github/ISSUE_TEMPLATE",
+    ".github/PULL_REQUEST_TEMPLATE",
   ];
   for (const dir of dirs) {
     const dirPath = path.join(projectDir, dir);
@@ -106,7 +107,19 @@ export function installGitHubTemplates(
     }
   }
 
-  // 1c. Merge authority workflow
+  // 1c. Governance bone workflow
+  const governanceSrc = path.join(frameworkRoot, "templates/ci/governance.yml");
+  const governanceDest = path.join(projectDir, ".github/workflows/governance.yml");
+  copyTemplateFile(
+    governanceSrc,
+    governanceDest,
+    force,
+    installed,
+    skipped,
+    errors,
+  );
+
+  // 1d. Merge authority workflow
   const mergeAuthoritySrc = path.join(
     frameworkRoot,
     "templates/ci/merge-authority.yml",
@@ -141,6 +154,24 @@ export function installGitHubTemplates(
     : path.join(frameworkRoot, "templates/github/PULL_REQUEST_TEMPLATE.md");
   const prTemplateDest = path.join(projectDir, ".github/PULL_REQUEST_TEMPLATE.md");
   copyTemplateFile(prTemplateSrc, prTemplateDest, force, installed, skipped, errors);
+
+  // 2b. Optional governance PR template for substantial Work Orders.
+  const governancePrTemplateSrc = path.join(
+    frameworkRoot,
+    "templates/github/governance-PULL_REQUEST_TEMPLATE.md",
+  );
+  const governancePrTemplateDest = path.join(
+    projectDir,
+    ".github/PULL_REQUEST_TEMPLATE/governance.md",
+  );
+  copyTemplateFile(
+    governancePrTemplateSrc,
+    governancePrTemplateDest,
+    force,
+    installed,
+    skipped,
+    errors,
+  );
 
   // 3. Issue Templates
   const issueTemplates = issueTemplatesForProfile(profileType);
@@ -246,6 +277,7 @@ function pruneObsoleteIssueTemplates(
 function issueTemplatesForProfile(profileType: ProfileType): string[] {
   if (profileType === "mcp-server") {
     return [
+      "governance-work-order.md",
       "feature-db.md",
       "feature-api.md",
       "feature-test.md",
@@ -253,6 +285,7 @@ function issueTemplatesForProfile(profileType: ProfileType): string[] {
     ];
   }
   return [
+    "governance-work-order.md",
     "feature-db.md",
     "feature-api.md",
     "feature-ui.md",
