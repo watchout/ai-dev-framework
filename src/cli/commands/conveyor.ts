@@ -19,6 +19,10 @@ import {
   buildConveyorLabelSyncPlan,
   type ConveyorLabelSyncPlan,
 } from "../lib/conveyor-label-sync.js";
+import {
+  buildConveyorStackGateReport,
+  type ConveyorStackGateReport,
+} from "../lib/conveyor-stack-gate.js";
 import { logger } from "../lib/logger.js";
 
 interface ConveyorReconcileOptions {
@@ -92,6 +96,30 @@ export function registerConveyorCommand(program: Command): void {
           return;
         }
         process.stdout.write(formatLabelSyncPlan(plan));
+      });
+    });
+
+  const stack = conveyor
+    .command("stack")
+    .description("Inspect Conveyor dependency stack gates");
+
+  stack
+    .command("gate")
+    .description("Build an observe-only foundation blocker gate report from a snapshot fixture")
+    .option("--fixture <path>", "JSON snapshot with pull_requests and dependency config")
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorReconcileOptions) => {
+      runConveyorAction(options, () => {
+        if (!options.fixture) {
+          throw new Error("Missing --fixture. Live GitHub stack mutation is reserved for a later authorized PR.");
+        }
+        const input = JSON.parse(readFileSync(options.fixture, "utf8")) as ConveyorReconcileInput;
+        const report = buildConveyorStackGateReport(input);
+        if (options.json) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatStackGateReport(report));
       });
     });
 
@@ -271,6 +299,22 @@ function formatLabelSyncPlan(plan: ConveyorLabelSyncPlan): string {
     const blocked = action.blocked ? " blocked" : "";
     const findings = action.findings.length ? ` findings=${action.findings.map((finding) => finding.code).join(",")}` : "";
     lines.push(`${action.repo}#${action.pr} add=[${added}] remove=[${removed}]${blocked}${findings}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function formatStackGateReport(report: ConveyorStackGateReport): string {
+  const lines = [
+    "Shirube Conveyor Stack Gate",
+    `Safe to advance dependents: ${report.safe_to_advance_dependents ? "yes" : "no"}`,
+    "",
+  ];
+  for (const dependent of report.blocked_dependents) {
+    const add = dependent.recommended_add.length ? dependent.recommended_add.join(", ") : "-";
+    const remove = dependent.recommended_remove.length ? dependent.recommended_remove.join(", ") : "-";
+    lines.push(
+      `${dependent.repo}#${dependent.pr} blocked by #${dependent.blocker_pr} add=[${add}] remove=[${remove}] state=${dependent.current_state ?? "-"}`,
+    );
   }
   return `${lines.join("\n")}\n`;
 }
