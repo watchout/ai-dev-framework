@@ -89,6 +89,8 @@ const CONCRETE_APPROVAL_REF =
   /https?:\/\/|issuecomment-\d+|comment-\d+|#[0-9]+|\b[a-f0-9]{7,40}\b|\b(?:pass(?:ed)?|approved|granted|record(?:ed)?|evidence|review|sign(?:ed)?-?off)\b|承認済み/i;
 const NON_CONCRETE_APPROVAL_VALUE =
   /^(?:no\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence)|without\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence)|(?:approval|approvals|approval\s+refs?|approval\s+evidence)\s+(?:not\s+required|not\s+needed|missing|absent|pending|required|requested)|(?:not\s+required|not\s+needed|missing|absent|none|pending|required|requested)|unapproved)(?:[\s.。,:;_/-]|$)/i;
+const NON_CONCRETE_APPROVAL_PHRASE =
+  /\b(?:(?:approval|approvals|approval\s+refs?|approval\s+evidence)\s+(?:pending|required|requested)|(?:pending|required|requested)\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence))\b/i;
 const NON_CONCRETE_APPROVAL_LABEL =
   /^(?:no-approval|without-approval|approval-not-required|approval-not-needed|approval-missing|missing-approval|approval-absent|absent-approval|approval-pending|pending-approval|approval-required|required-approval|approval-requested|requested-approval|unapproved)$/i;
 const CONCRETE_APPROVAL_LABEL =
@@ -445,7 +447,8 @@ function hasConcreteApprovalValue(value: unknown): boolean {
   if (
     normalized.length === 0 ||
     EMPTY_VALUE.test(normalized) ||
-    NON_CONCRETE_APPROVAL_VALUE.test(normalized)
+    NON_CONCRETE_APPROVAL_VALUE.test(normalized) ||
+    NON_CONCRETE_APPROVAL_PHRASE.test(normalized)
   ) {
     return false;
   }

@@ -146,6 +146,18 @@ describe("shirube check github-queue", () => {
       },
     },
     {
+      name: "requested approval ref",
+      item: {
+        approval_refs: "CTO approval requested #285",
+      },
+    },
+    {
+      name: "pending approval ref",
+      item: {
+        approval_refs: "CTO approval pending #285",
+      },
+    },
+    {
       name: "negative approval label",
       item: {
         labels: ["blocked-stop-lane", "no-approval"],

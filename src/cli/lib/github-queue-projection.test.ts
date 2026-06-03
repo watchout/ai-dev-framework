@@ -190,6 +190,12 @@ describe("validateGithubQueueProjections", () => {
     "absent",
     "approval pending",
     "approval requested",
+    "CTO approval requested #285",
+    "CTO approval pending #285",
+    "CEO approval requested https://github.com/watchout/ai-dev-framework/pull/285",
+    "human approval pending https://github.com/watchout/ai-dev-framework/pull/285",
+    "requested approval #285",
+    "pending approval #285",
   ])("blocks Stop Lane PRs with non-concrete approval refs: %s", (approvalRefs) => {
     const result = validateGithubQueueProjections(
       [
