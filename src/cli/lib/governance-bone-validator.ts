@@ -140,10 +140,10 @@ const REPOSITORY_OWNER_DELEGATION_ACTOR =
   /\b(?:repo(?:sitory)?\s+(?:owner|maintainer)|repo-owner|repository-owner|maintainer)\b|リポジトリ(?:所有者|オーナー|メンテナ)|repo\s*owner/i;
 
 const REPOSITORY_OWNER_DELEGATION_ACTION =
-  /\b(?:delegat(?:e|ed|ion)|authori[sz](?:e|ed|ation)|approv(?:e|ed|al)|grant(?:ed)?)\b|委任|承認|許可/i;
+  /\b(?:delegated|authori[sz]ed|approved|granted)\b|委任済み|承認済み|許可済み/i;
 
 const NON_DELEGATION_VALUE =
-  /^(?:no|not|without|missing|absent|unavailable)\b|\b(?:no|without)\s+(?:explicit\s+)?(?:repo(?:sitory)?[-\s]*owner\s+)?delegation\b|\bdelegation\s+(?:not\s+)?(?:required|provided|present|granted)\b|\b(?:approval|delegation)\s+(?:pending|requested)\b/i;
+  /^(?:no|not|without|missing|absent|unavailable)\b|\b(?:no|without)\s+(?:explicit\s+)?(?:repo(?:sitory)?[-\s]*owner\s+)?delegation\b|\b(?:did|does|do)\s+not\b[^.\n]*(?:approv\w*|authori[sz]\w*|delegat\w*|grant\w*)|\bnot\b[^.\n]*(?:approv\w*|authori[sz]\w*|delegat\w*|grant\w*)|\b(?:requested|requesting|pending|refused|denied|rejected)\b[^.\n]*(?:approval|authorization|delegation|grant|approv\w*|authori[sz]\w*|delegat\w*|grant\w*)|\b(?:approval|authorization|delegation|grant)\s+(?:not\s+)?(?:required|provided|present|granted|requested|pending|refused|denied|rejected)\b|\b(?:approv\w*|authori[sz]\w*|delegat\w*|grant\w*)\s+(?:not|requested|pending|refused|denied|rejected)\b/i;
 
 const REFERENCE_IMPLEMENTATION_CLAIM =
   /\breference\s+implementation\b|参考実装/i;

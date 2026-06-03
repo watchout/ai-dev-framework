@@ -203,4 +203,30 @@ describe("shirube check governance", () => {
       },
     );
   });
+
+  it.each([
+    "repository owner did not approve ARC implementation or merge authority.",
+    "repository owner did not delegate ARC implementation or merge authority.",
+    "repo owner requested delegation for ARC implementation.",
+  ])(
+    "blocks ARC authority with negative delegation evidence: %s",
+    (delegationValue) => {
+      withTempMarkdown(
+        `${completeGovernanceIssue
+          .replace("- Implementation owner: repo maintainer.", "- Implementation owner: IYASAKA ARC.")
+          .replace("- Merge authority: repo maintainer.", "- Merge authority: ARC.")}
+## Ownership Boundary
+
+- Explicit delegation: ${delegationValue}
+`,
+        (file) => {
+          const result = runCli(["check", "governance", "--mode", "warning", file]);
+
+          expect(result.exitCode).not.toBe(0);
+          expect(result.stdout).toContain("Governance Bone: BLOCK");
+          expect(result.stdout).toContain("explicit repository-owner delegation");
+        },
+      );
+    },
+  );
 });

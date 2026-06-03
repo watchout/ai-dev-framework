@@ -262,6 +262,42 @@ ${delegationLine}
     },
   );
 
+  it.each([
+    "repository owner did not approve ARC implementation or merge authority.",
+    "repository owner did not delegate ARC implementation or merge authority.",
+    "repo owner requested delegation for ARC implementation.",
+    "repository owner approval pending for ARC implementation.",
+    "repository owner delegation requested for ARC implementation.",
+    "repository owner not approved ARC implementation.",
+    "repository owner refused ARC implementation delegation.",
+    "repository owner denied ARC implementation delegation.",
+    "repository owner rejected ARC implementation delegation.",
+  ])(
+    "blocks ARC ownership with negative or non-approval delegation evidence: %s",
+    (delegationValue) => {
+      const result = validateGovernanceBone(
+        [
+          {
+            path: "pull-request.md",
+            content: `${completeGovernanceIssue
+              .replace("- Implementation owner: repo maintainer.", "- Implementation owner: IYASAKA ARC.")
+              .replace("- Merge authority: repo maintainer.", "- Merge authority: ARC.")}
+## Ownership Boundary
+
+- Explicit delegation: ${delegationValue}
+`,
+          },
+        ],
+        { mode: "warning", requireGovernanceBone: true },
+      );
+
+      expect(result.status).toBe("BLOCK");
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({ type: "ownership_boundary" }),
+      );
+    },
+  );
+
   it("allows ARC ownership with concrete repository-owner delegation", () => {
     const result = validateGovernanceBone(
       [
