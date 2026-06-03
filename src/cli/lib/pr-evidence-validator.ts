@@ -60,6 +60,14 @@ const EMPTY_VALUE_ALLOWING_NONE =
 const MERGE_READY = /\bmerge[-_\s]?ready\b|ready\s+to\s+merge|ready\/merge|マージ可能|merge可能/i;
 const APPROVAL_PRESENT = /\b(approved|approval|ceo|cto|merge authority|承認|approval_ref)\b/i;
 const AUDIT_PRESENT = /\b(audit|auditor|L1|L2|L3|監査)\b/i;
+const CONCRETE_REF_PRESENT =
+  /https?:\/\/|issuecomment-\d+|comment-\d+|#[0-9]+|\b[a-f0-9]{7,40}\b|\bpass(?:ed)?\b|\bevidence\b|\brecord\b|\breport\b/i;
+const GENERIC_NON_CONCRETE_REF =
+  /^(?:not\s+required|not\s+needed|not\s+applicable|without\s+evidence|missing|absent|none)(?:[\s.。,:;_/-]|$)/i;
+const AUDIT_NON_CONCRETE_REF =
+  /^(?:no\s+(?:audit|audits|audit\s+refs?|audit\s+evidence)|without\s+(?:audit|audits|audit\s+refs?|audit\s+evidence)|(?:audit|audits|audit\s+refs?|audit\s+evidence)\s+(?:not\s+required|not\s+needed|missing|absent))(?:[\s.。,:;_/-]|$)/i;
+const APPROVAL_NON_CONCRETE_REF =
+  /^(?:no\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence)|without\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence)|(?:approval|approvals|approval\s+refs?|approval\s+evidence)\s+(?:not\s+required|not\s+needed|missing|absent))(?:[\s.。,:;_/-]|$)/i;
 
 export function validatePrEvidence(
   documents: PrEvidenceDocument[],
@@ -161,7 +169,7 @@ function validateRiskAndTiming(
 
   const auditEvidence = evidence.audit_refs ?? evidence.audit_evidence ?? "";
   const approvalEvidence = evidence.approval_refs ?? evidence.approval_evidence ?? "";
-  if (risk === "R3" && !hasConcreteText(auditEvidence)) {
+  if (risk === "R3" && !hasConcreteAuditRef(auditEvidence)) {
     findings.push({
       severity: "BLOCK",
       path,
@@ -173,10 +181,8 @@ function validateRiskAndTiming(
 
   if (
     risk === "R4" &&
-    (!hasConcreteText(auditEvidence) ||
-      !hasConcreteText(approvalEvidence) ||
-      !AUDIT_PRESENT.test(auditEvidence) ||
-      !APPROVAL_PRESENT.test(approvalEvidence))
+    (!hasConcreteAuditRef(auditEvidence) ||
+      !hasConcreteApprovalRef(approvalEvidence))
   ) {
     findings.push({
       severity: "BLOCK",
@@ -213,6 +219,35 @@ function hasConcreteText(
   const normalized = value.replace(/[*`_~]/g, "").replace(/\s+/g, " ").trim();
   const emptyValue = options.allowNone ? EMPTY_VALUE_ALLOWING_NONE : EMPTY_VALUE;
   return normalized.length > 0 && !emptyValue.test(normalized);
+}
+
+function hasConcreteAuditRef(value: string | undefined): boolean {
+  return hasConcreteReference(value, AUDIT_PRESENT, AUDIT_NON_CONCRETE_REF);
+}
+
+function hasConcreteApprovalRef(value: string | undefined): boolean {
+  return hasConcreteReference(value, APPROVAL_PRESENT, APPROVAL_NON_CONCRETE_REF);
+}
+
+function hasConcreteReference(
+  value: string | undefined,
+  expectedRef: RegExp,
+  nonConcreteRef: RegExp,
+): boolean {
+  if (!value) return false;
+  if (!hasConcreteText(value)) return false;
+  const normalized = normalizeEvidenceText(value);
+  if (
+    GENERIC_NON_CONCRETE_REF.test(normalized) ||
+    nonConcreteRef.test(normalized)
+  ) {
+    return false;
+  }
+  return expectedRef.test(normalized) || CONCRETE_REF_PRESENT.test(normalized);
+}
+
+function normalizeEvidenceText(value: string): string {
+  return value.replace(/[*`_~]/g, "").replace(/\s+/g, " ").trim();
 }
 
 function normalizeRisk(value: string): PrRiskClass | null {

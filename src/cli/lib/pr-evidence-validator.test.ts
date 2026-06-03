@@ -117,6 +117,37 @@ describe("validatePrEvidence", () => {
     );
   });
 
+  it.each(["no audit", "not required", "without audit"])(
+    "blocks R3 merge-ready claims with non-concrete audit refs: %s",
+    (auditRefs) => {
+      const result = validatePrEvidence(
+        [
+          {
+            path: "pr.md",
+            content: validEvidence({
+              "Risk class": "R3",
+              "Lane": "Governed",
+              "Delivery strategy": "phase_conveyor",
+              "Audit timing": "before_merge",
+              "Merge readiness": "merge_ready",
+              "Audit refs": auditRefs,
+            }),
+          },
+        ],
+        { mode: "strict" },
+      );
+
+      expect(result.status).toBe("BLOCK");
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          severity: "BLOCK",
+          type: "unsafe_merge_ready_claim",
+          field: "audit_refs",
+        }),
+      );
+    },
+  );
+
   it("blocks R4 merge-ready claims without approval refs", () => {
     const result = validatePrEvidence([
       {
@@ -140,5 +171,101 @@ describe("validatePrEvidence", () => {
         field: "approval_refs",
       }),
     );
+  });
+
+  it.each([
+    {
+      auditRefs: "no audit",
+      approvalRefs: "CTO approval PASS",
+    },
+    {
+      auditRefs: "L3 audit PASS",
+      approvalRefs: "no approval",
+    },
+    {
+      auditRefs: "audit not required",
+      approvalRefs: "CTO approval PASS",
+    },
+    {
+      auditRefs: "L3 audit PASS",
+      approvalRefs: "approval not required",
+    },
+    {
+      auditRefs: "without audit",
+      approvalRefs: "CTO approval PASS",
+    },
+    {
+      auditRefs: "L3 audit PASS",
+      approvalRefs: "without approval",
+    },
+  ])(
+    "blocks R4 merge-ready claims with non-concrete refs: $auditRefs / $approvalRefs",
+    ({ auditRefs, approvalRefs }) => {
+      const result = validatePrEvidence(
+        [
+          {
+            path: "pr.md",
+            content: validEvidence({
+              "Risk class": "R4",
+              "Lane": "Stop",
+              "Delivery strategy": "serial_gate",
+              "Audit timing": "before_execution",
+              "Merge readiness": "merge_ready",
+              "Audit refs": auditRefs,
+              "Approval refs": approvalRefs,
+            }),
+          },
+        ],
+        { mode: "strict" },
+      );
+
+      expect(result.status).toBe("BLOCK");
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          severity: "BLOCK",
+          type: "unsafe_merge_ready_claim",
+          field: "approval_refs",
+        }),
+      );
+    },
+  );
+
+  it("passes R3/R4 merge-ready claims with concrete refs", () => {
+    const r3 = validatePrEvidence(
+      [
+        {
+          path: "r3.md",
+          content: validEvidence({
+            "Risk class": "R3",
+            "Lane": "Governed",
+            "Delivery strategy": "phase_conveyor",
+            "Audit timing": "before_merge",
+            "Merge readiness": "merge_ready",
+            "Audit refs": "L2 audit PASS #283",
+          }),
+        },
+      ],
+      { mode: "strict" },
+    );
+    const r4 = validatePrEvidence(
+      [
+        {
+          path: "r4.md",
+          content: validEvidence({
+            "Risk class": "R4",
+            "Lane": "Stop",
+            "Delivery strategy": "serial_gate",
+            "Audit timing": "before_execution",
+            "Merge readiness": "merge_ready",
+            "Audit refs": "L3 audit PASS #283",
+            "Approval refs": "CTO approval PASS #283",
+          }),
+        },
+      ],
+      { mode: "strict" },
+    );
+
+    expect(r3.status).toBe("PASS");
+    expect(r4.status).toBe("PASS");
   });
 });
