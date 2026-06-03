@@ -83,6 +83,16 @@ const WIP_POLICY_FIELDS = [
 
 const EMPTY_VALUE =
   /^(?:tbd|todo|pending|unknown|not\s+applicable|n\/a|na|none|null|-)(?:[\s.。,:;_-]|$)/i;
+const APPROVAL_PRESENT =
+  /\b(?:approved|approval|ceo|cto|merge authority|human approver|承認)\b/i;
+const CONCRETE_APPROVAL_REF =
+  /https?:\/\/|issuecomment-\d+|comment-\d+|#[0-9]+|\b[a-f0-9]{7,40}\b|\b(?:pass(?:ed)?|approved|granted|record(?:ed)?|evidence|review|sign(?:ed)?-?off)\b|承認済み/i;
+const NON_CONCRETE_APPROVAL_VALUE =
+  /^(?:no\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence)|without\s+(?:approval|approvals|approval\s+refs?|approval\s+evidence)|(?:approval|approvals|approval\s+refs?|approval\s+evidence)\s+(?:not\s+required|not\s+needed|missing|absent|pending|required|requested)|(?:not\s+required|not\s+needed|missing|absent|none|pending|required|requested)|unapproved)(?:[\s.。,:;_/-]|$)/i;
+const NON_CONCRETE_APPROVAL_LABEL =
+  /^(?:no-approval|without-approval|approval-not-required|approval-not-needed|approval-missing|missing-approval|approval-absent|absent-approval|approval-pending|pending-approval|approval-required|required-approval|approval-requested|requested-approval|unapproved)$/i;
+const CONCRETE_APPROVAL_LABEL =
+  /^(?:approved|approval-(?:pass|passed|approved|granted|recorded|evidence)|(?:ceo|cto|human|merge)-approved|(?:ceo|cto|human|merge)-approval-(?:pass|passed|approved|granted|recorded|evidence))$/i;
 
 export function validateGithubQueueProjections(
   documents: GithubQueueDocument[],
@@ -420,17 +430,35 @@ function queueStateForLabel(label: string): string | null {
 }
 
 function hasApprovalEvidence(item: JsonObject): boolean {
-  if (hasConcreteValue(item.approval_refs)) return true;
-  if (hasConcreteValue(item.approvalRefs)) return true;
-  if (hasConcreteValue(item.approval)) return true;
-  return readLabelNames(item.labels).some((label) => /approval|approved|ceo|cto/.test(label));
+  if (hasConcreteApprovalValue(item.approval_refs)) return true;
+  if (hasConcreteApprovalValue(item.approvalRefs)) return true;
+  if (hasConcreteApprovalValue(item.approval)) return true;
+  return readLabelNames(item.labels).some(hasConcreteApprovalLabel);
 }
 
-function hasConcreteValue(value: unknown): boolean {
-  if (Array.isArray(value)) return value.some((item) => hasConcreteValue(item));
+function hasConcreteApprovalValue(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some((item) => hasConcreteApprovalValue(item));
+  }
   if (typeof value !== "string") return false;
-  const normalized = value.replace(/[*`_~]/g, "").replace(/\s+/g, " ").trim();
-  return normalized.length > 0 && !EMPTY_VALUE.test(normalized);
+  const normalized = normalizeEvidenceText(value);
+  if (
+    normalized.length === 0 ||
+    EMPTY_VALUE.test(normalized) ||
+    NON_CONCRETE_APPROVAL_VALUE.test(normalized)
+  ) {
+    return false;
+  }
+  return APPROVAL_PRESENT.test(normalized) && CONCRETE_APPROVAL_REF.test(normalized);
+}
+
+function hasConcreteApprovalLabel(label: string): boolean {
+  if (NON_CONCRETE_APPROVAL_LABEL.test(label)) return false;
+  return CONCRETE_APPROVAL_LABEL.test(label);
+}
+
+function normalizeEvidenceText(value: string): string {
+  return value.replace(/[*`_~]/g, "").replace(/\s+/g, " ").trim();
 }
 
 function readLabelNames(labels: unknown): string[] {

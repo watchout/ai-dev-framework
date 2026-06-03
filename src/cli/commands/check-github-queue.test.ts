@@ -137,4 +137,42 @@ describe("shirube check github-queue", () => {
       expect(result.stdout).toContain("Stop Lane PRs without approval");
     });
   });
+
+  it.each([
+    {
+      name: "negative approval ref",
+      item: {
+        approval_refs: "no approval",
+      },
+    },
+    {
+      name: "negative approval label",
+      item: {
+        labels: ["blocked-stop-lane", "no-approval"],
+      },
+    },
+  ])("fails Stop Lane PRs with $name", ({ item }) => {
+    const unsafe = JSON.parse(validProjection()) as {
+      items: Array<Record<string, unknown>>;
+    };
+    unsafe.items = [
+      {
+        id: "PR-4",
+        type: "pull_request",
+        state: "open",
+        labels: ["blocked-stop-lane"],
+        lane: "Stop",
+        risk_class: "R4",
+        ...item,
+      },
+    ];
+
+    withTempProjection(JSON.stringify(unsafe, null, 2), (file) => {
+      const result = runCli(["check", "github-queue", "--strict", file]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("GitHub Queue: BLOCK");
+      expect(result.stdout).toContain("Stop Lane PRs without approval");
+    });
+  });
 });

@@ -181,4 +181,124 @@ describe("validateGithubQueueProjections", () => {
       }),
     );
   });
+
+  it.each([
+    "no approval",
+    "without approval",
+    "approval not required",
+    "missing",
+    "absent",
+    "approval pending",
+    "approval requested",
+  ])("blocks Stop Lane PRs with non-concrete approval refs: %s", (approvalRefs) => {
+    const result = validateGithubQueueProjections(
+      [
+        {
+          path: "queue.json",
+          content: validProjection({
+            items: [
+              {
+                id: "PR-4",
+                type: "pull_request",
+                state: "open",
+                labels: ["blocked-stop-lane"],
+                lane: "Stop",
+                risk_class: "R4",
+                approval_refs: approvalRefs,
+              },
+            ],
+          }),
+        },
+      ],
+      { mode: "strict" },
+    );
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.repositories).toContainEqual(
+      expect.objectContaining({
+        stopLaneWithoutApproval: 1,
+      }),
+    );
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        type: "stop_lane_without_approval",
+      }),
+    );
+  });
+
+  it.each([
+    "no-approval",
+    "without-approval",
+    "approval-not-required",
+    "approval-missing",
+    "missing-approval",
+    "approval-pending",
+    "approval-requested",
+  ])("blocks Stop Lane PRs with non-concrete approval labels: %s", (label) => {
+    const result = validateGithubQueueProjections(
+      [
+        {
+          path: "queue.json",
+          content: validProjection({
+            items: [
+              {
+                id: "PR-4",
+                type: "pull_request",
+                state: "open",
+                labels: ["blocked-stop-lane", label],
+                lane: "Stop",
+                risk_class: "R4",
+              },
+            ],
+          }),
+        },
+      ],
+      { mode: "strict" },
+    );
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        type: "stop_lane_without_approval",
+      }),
+    );
+  });
+
+  it.each([
+    { approval_refs: "CTO approval PASS #285" },
+    { approvalRefs: ["https://github.com/watchout/ai-dev-framework/pull/285#issuecomment-1", "CTO approval granted"] },
+    { labels: ["blocked-stop-lane", "cto-approved"] },
+    { labels: ["blocked-stop-lane", "approval-granted"] },
+  ])("passes Stop Lane PRs with concrete approval evidence: %o", (approvalEvidence) => {
+    const result = validateGithubQueueProjections(
+      [
+        {
+          path: "queue.json",
+          content: validProjection({
+            items: [
+              {
+                id: "PR-4",
+                type: "pull_request",
+                state: "open",
+                labels: ["blocked-stop-lane"],
+                lane: "Stop",
+                risk_class: "R4",
+                ...approvalEvidence,
+              },
+            ],
+          }),
+        },
+      ],
+      { mode: "strict" },
+    );
+
+    expect(result.status).toBe("PASS");
+    expect(result.repositories).toContainEqual(
+      expect.objectContaining({
+        stopLaneWithoutApproval: 0,
+      }),
+    );
+  });
 });
