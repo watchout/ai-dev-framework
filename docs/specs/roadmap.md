@@ -184,6 +184,7 @@ Shirube can govern its own development and at least one internal project through
 | Task DAG | Tasks derive from approved features and preserve dependency order. |
 | Enterprise Delivery Graph | Parent `delivery-graph/v1` contract links goal, phase, work package/task, PR, gate, evidence, and progress without runtime enforcement in PR A. |
 | Product-wide Governance Bone | #249 provides reusable Goal -> Phase -> Work Order -> PR / Change Slice -> Scripted Step -> Tool Execution -> Evidence templates and a warning-first/strict governance check for product repos. |
+| 4MCP Fast Track Minimum Safety Profile | #264 defines lane/risk/action-envelope/stop-sentinel evidence so AUN, Shirube, Kodama, and Wasurezu can continue current work before the full autonomous runner platform exists. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
 | Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
 | Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
@@ -243,6 +244,11 @@ SPEC `docs/spec/phase1-work-order-contract.md`, IMPL
 `docs/impl/phase1-work-order-contract.md`, VERIFY
 `docs/verify/phase1-work-order-contract.md`, OPS
 `docs/ops/phase1-work-order-contract.md`.
+4MCP fast-track safety artifact:
+SPEC `docs/spec/phase1-4mcp-fast-track-safety-profile.md`, IMPL
+`docs/impl/phase1-4mcp-fast-track-safety-profile.md`, VERIFY
+`docs/verify/phase1-4mcp-fast-track-safety-profile.md`, OPS
+`docs/ops/phase1-4mcp-fast-track-safety-profile.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
