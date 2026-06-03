@@ -289,27 +289,23 @@ function validateRunnerPack(
     runner,
   );
 
-  if (pack.requires_codex_goal === true) {
-    findings.push({
-      severity: "BLOCK",
-      path,
-      runner,
-      type: "unsafe_runner_boundary",
-      field: `runner_packs.${runner}.requires_codex_goal`,
-      message: "Runner packs must not require Codex-specific /goal semantics.",
-    });
-  }
+  validateExplicitFalseSafetyFlag(
+    findings,
+    path,
+    runner,
+    pack,
+    "requires_codex_goal",
+    "Runner packs must not require Codex-specific /goal semantics.",
+  );
 
-  if (pack.live_aun_dispatch_enabled === true) {
-    findings.push({
-      severity: "BLOCK",
-      path,
-      runner,
-      type: "unsafe_runner_boundary",
-      field: `runner_packs.${runner}.live_aun_dispatch_enabled`,
-      message: "Runner packs must not enable live AUN dispatch in this slice.",
-    });
-  }
+  validateExplicitFalseSafetyFlag(
+    findings,
+    path,
+    runner,
+    pack,
+    "live_aun_dispatch_enabled",
+    "Runner packs must not enable live AUN dispatch in this slice.",
+  );
 
   if (
     runner === "aun_dispatched_runner" &&
@@ -324,6 +320,25 @@ function validateRunnerPack(
       message: "AUN dispatched runner pack must stay inactive until safety stack acceptance.",
     });
   }
+}
+
+function validateExplicitFalseSafetyFlag(
+  findings: RunnerPackFinding[],
+  path: string,
+  runner: string,
+  pack: JsonObject,
+  field: "requires_codex_goal" | "live_aun_dispatch_enabled",
+  message: string,
+): void {
+  if (pack[field] === false) return;
+  findings.push({
+    severity: "BLOCK",
+    path,
+    runner,
+    type: "unsafe_runner_boundary",
+    field: `runner_packs.${runner}.${field}`,
+    message: `${message} The safety flag must be explicit boolean false.`,
+  });
 }
 
 function validateArrayIncludes(

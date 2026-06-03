@@ -120,14 +120,49 @@ describe("validateRunnerInstructionPacks", () => {
     );
   });
 
-  it("blocks Codex-specific goal requirements", () => {
+  it.each([true, "true", "false"])(
+    "blocks Codex-specific goal requirements unless explicitly false: %s",
+    (requiresCodexGoal) => {
+      const result = validateRunnerInstructionPacks([
+        {
+          path: "runner-packs.json",
+          content: validPack({
+            runner_packs: [
+              { ...runnerPack("human") },
+              { ...runnerPack("codex"), requires_codex_goal: requiresCodexGoal },
+              { ...runnerPack("claude_code") },
+              { ...runnerPack("ci_headless_script") },
+              {
+                ...runnerPack("aun_dispatched_runner"),
+                activation_condition: "after_safety_stack_acceptance",
+              },
+            ],
+          }),
+        },
+      ]);
+
+      expect(result.status).toBe("BLOCK");
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          type: "unsafe_runner_boundary",
+          field: "runner_packs.codex.requires_codex_goal",
+        }),
+      );
+    },
+  );
+
+  it("blocks missing Codex goal safety flags", () => {
     const result = validateRunnerInstructionPacks([
       {
         path: "runner-packs.json",
         content: validPack({
           runner_packs: [
             { ...runnerPack("human") },
-            { ...runnerPack("codex"), requires_codex_goal: true },
+            (() => {
+              const pack = { ...runnerPack("codex") };
+              delete pack.requires_codex_goal;
+              return pack;
+            })(),
             { ...runnerPack("claude_code") },
             { ...runnerPack("ci_headless_script") },
             {
@@ -148,7 +183,45 @@ describe("validateRunnerInstructionPacks", () => {
     );
   });
 
-  it("blocks live AUN dispatch before safety stack acceptance", () => {
+  it.each([true, "true", "false"])(
+    "blocks live AUN dispatch flags unless explicitly false: %s",
+    (liveAunDispatchEnabled) => {
+      const result = validateRunnerInstructionPacks([
+        {
+          path: "runner-packs.json",
+          content: validPack({
+            runner_packs: [
+              runnerPack("human"),
+              runnerPack("codex"),
+              runnerPack("claude_code"),
+              runnerPack("ci_headless_script"),
+              {
+                ...runnerPack("aun_dispatched_runner"),
+                activation_condition: "after_safety_stack_acceptance",
+                live_aun_dispatch_enabled: liveAunDispatchEnabled,
+              },
+            ],
+          }),
+        },
+      ]);
+
+      expect(result.status).toBe("BLOCK");
+      expect(result.findings).toContainEqual(
+        expect.objectContaining({
+          type: "unsafe_runner_boundary",
+          field: "runner_packs.aun_dispatched_runner.live_aun_dispatch_enabled",
+        }),
+      );
+    },
+  );
+
+  it("blocks missing live AUN dispatch safety flags", () => {
+    const aunPack: Record<string, unknown> = {
+      ...runnerPack("aun_dispatched_runner"),
+      activation_condition: "after_safety_stack_acceptance",
+    };
+    delete aunPack.live_aun_dispatch_enabled;
+
     const result = validateRunnerInstructionPacks([
       {
         path: "runner-packs.json",
@@ -158,11 +231,7 @@ describe("validateRunnerInstructionPacks", () => {
             runnerPack("codex"),
             runnerPack("claude_code"),
             runnerPack("ci_headless_script"),
-            {
-              ...runnerPack("aun_dispatched_runner"),
-              activation_condition: "after_safety_stack_acceptance",
-              live_aun_dispatch_enabled: true,
-            },
+            aunPack,
           ],
         }),
       },

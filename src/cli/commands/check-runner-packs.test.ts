@@ -151,4 +151,37 @@ describe("shirube check runner-packs", () => {
       expect(result.stdout).toContain("live AUN dispatch");
     });
   });
+
+  it.each([
+    {
+      name: "requires_codex_goal string true",
+      runner: "codex",
+      field: "requires_codex_goal",
+      value: "true",
+      expected: "Codex-specific /goal",
+    },
+    {
+      name: "live_aun_dispatch_enabled string true",
+      runner: "aun_dispatched_runner",
+      field: "live_aun_dispatch_enabled",
+      value: "true",
+      expected: "live AUN dispatch",
+    },
+  ])("fails when runner safety flag is non-boolean truthy: $name", (unsafe) => {
+    const pack = JSON.parse(validPack()) as {
+      runner_packs: Array<Record<string, unknown>>;
+    };
+    const runnerPack = pack.runner_packs.find(
+      (candidate) => candidate.runner === unsafe.runner,
+    );
+    if (runnerPack) runnerPack[unsafe.field] = unsafe.value;
+
+    withTempPack(JSON.stringify(pack, null, 2), (file) => {
+      const result = runCli(["check", "runner-packs", file]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("Runner Packs: BLOCK");
+      expect(result.stdout).toContain(unsafe.expected);
+    });
+  });
 });
