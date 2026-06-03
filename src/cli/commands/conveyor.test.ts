@@ -402,4 +402,40 @@ describe("conveyor command", () => {
       expect.objectContaining({ pr: 286, recommended_add: ["dependency-blocked"] }),
     );
   });
+
+  it("builds a read-only audit sweeper plan through a project profile", () => {
+    const { fixturePath, profilePath, previousProfilePath } = writeProfileFixtures();
+    const result = runConveyor(
+      `audit-sweeper plan --fixture ${fixturePath} --profile ${profilePath} --previous-profile ${previousProfilePath} --level l1 --json`,
+    );
+    const plan = JSON.parse(result.stdout) as {
+      schema: string;
+      level: string;
+      profile_scope_changed: boolean;
+      authority_notes: string[];
+      profile: { scope_changes: Array<{ repo: string; profile: string }> };
+      targets: Array<{ repo: string; pr: number; audit_level: string; state_label: string; priority_bucket: string }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(plan.schema).toBe("shirube-conveyor-audit-sweeper-plan/v1");
+    expect(plan.level).toBe("l1");
+    expect(plan.authority_notes).toEqual(
+      expect.arrayContaining(["read_only_audit_dispatch_plan", "no_merge_authority", "no_aun_lifecycle_or_runner_dispatch"]),
+    );
+    expect(plan.profile_scope_changed).toBe(true);
+    expect(plan.profile.scope_changes).toEqual([
+      expect.objectContaining({ repo: "watchout/aun-platform", profile: "saas_ui_platform" }),
+    ]);
+    expect(plan.targets.map((target) => `${target.audit_level}:${target.repo}#${target.pr}`)).toEqual([
+      "l1:watchout/aun-platform#41",
+      `l1:${repo}#288`,
+    ]);
+    expect(plan.targets[0]).toEqual(
+      expect.objectContaining({
+        state_label: "state:impl-l1",
+        priority_bucket: "stop_lane",
+      }),
+    );
+  });
 });
