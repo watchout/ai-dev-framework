@@ -36,6 +36,11 @@ import {
   buildConveyorStackGateReport,
   type ConveyorStackGateReport,
 } from "../lib/conveyor-stack-gate.js";
+import {
+  buildConveyorAuditSweeperPlan,
+  type ConveyorAuditSweeperLevel,
+  type ConveyorAuditSweeperPlan,
+} from "../lib/conveyor-audit-sweeper.js";
 import { logger } from "../lib/logger.js";
 
 interface ConveyorReconcileOptions {
@@ -46,6 +51,12 @@ interface ConveyorReconcileOptions {
 
 interface ConveyorNextOptions extends ConveyorReconcileOptions {
   role?: string;
+  profile?: string;
+  previousProfile?: string;
+}
+
+interface ConveyorAuditSweeperOptions extends ConveyorReconcileOptions {
+  level?: string;
   profile?: string;
   previousProfile?: string;
 }
@@ -142,6 +153,38 @@ export function registerConveyorCommand(program: Command): void {
           return;
         }
         process.stdout.write(formatStackGateReport(report));
+      });
+    });
+
+  const auditSweeper = conveyor
+    .command("audit-sweeper")
+    .description("Inspect read-only cross-repo Audit Sweeper dispatch plans");
+
+  auditSweeper
+    .command("plan")
+    .description("Build a read-only Audit Sweeper plan from a snapshot fixture and optional project profile")
+    .option("--fixture <path>", "JSON snapshot with pull_requests and optional config")
+    .option("--profile <path>", "JSON Conveyor project profile; filters repo scope")
+    .option("--previous-profile <path>", "Previous JSON Conveyor project profile for profile_scope_changed reporting")
+    .option("--level <level>", "Audit level: l1, l2, l3, or all", "all")
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorAuditSweeperOptions) => {
+      runConveyorAction(options, () => {
+        const input = readManifestFixture(options.fixture);
+        const profile = options.profile ? readConveyorProfile(options.profile) : undefined;
+        const previousProfile = options.previousProfile ? readConveyorProfile(options.previousProfile) : undefined;
+        const plan = buildConveyorAuditSweeperPlan({
+          manifest: input,
+          level: parseAuditSweeperLevel(options.level),
+          mode: "dry-run",
+          profile,
+          previousProfile,
+        });
+        if (options.json) {
+          process.stdout.write(JSON.stringify(plan, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatAuditSweeperPlan(plan));
       });
     });
 
@@ -294,6 +337,11 @@ function parseProfileRole(role: string | undefined): ConveyorProfileRole {
   return role;
 }
 
+function parseAuditSweeperLevel(level: string | undefined): ConveyorAuditSweeperLevel {
+  if (level === "l1" || level === "l2" || level === "l3" || level === "all") return level;
+  throw new Error("Invalid --level. Expected l1, l2, l3, or all.");
+}
+
 function buildNextView(
   input: ConveyorManifestInput,
   roleInput: string | undefined,
@@ -413,6 +461,20 @@ function formatStackGateReport(report: ConveyorStackGateReport): string {
     const remove = dependent.recommended_remove.length ? dependent.recommended_remove.join(", ") : "-";
     lines.push(
       `${dependent.repo}#${dependent.pr} blocked by #${dependent.blocker_pr} add=[${add}] remove=[${remove}] state=${dependent.current_state ?? "-"}`,
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function formatAuditSweeperPlan(plan: ConveyorAuditSweeperPlan): string {
+  const lines = [
+    `Shirube Conveyor Audit Sweeper (${plan.mode}, ${plan.level})`,
+    `Targets: ${plan.metrics.total_targets}`,
+    "",
+  ];
+  for (const target of plan.targets) {
+    lines.push(
+      `${target.audit_level} ${target.repo}#${target.pr} head=${target.head} bucket=${target.priority_bucket} evidence=${target.evidence.status}`,
     );
   }
   return `${lines.join("\n")}\n`;
