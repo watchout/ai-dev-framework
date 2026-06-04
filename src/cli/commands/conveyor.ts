@@ -41,6 +41,11 @@ import {
   type ConveyorAuditSweeperLevel,
   type ConveyorAuditSweeperPlan,
 } from "../lib/conveyor-audit-sweeper.js";
+import {
+  buildConveyorLiveStateReport,
+  type ConveyorLiveStateInput,
+  type ConveyorLiveStateReport,
+} from "../lib/conveyor-live-state.js";
 import { logger } from "../lib/logger.js";
 
 interface ConveyorReconcileOptions {
@@ -185,6 +190,30 @@ export function registerConveyorCommand(program: Command): void {
           return;
         }
         process.stdout.write(formatAuditSweeperPlan(plan));
+      });
+    });
+
+  const liveState = conveyor
+    .command("live-state")
+    .description("Inspect read-only Conveyor live deployed commit reconciliation");
+
+  liveState
+    .command("reconcile")
+    .description("Build a read-only deployed commit reconciliation report from a snapshot fixture")
+    .option("--fixture <path>", "JSON snapshot with deployments, merged_heads, and optional pull_requests")
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorReconcileOptions) => {
+      runConveyorAction(options, () => {
+        if (!options.fixture) {
+          throw new Error("Missing --fixture. Live checkout probing is reserved for a later guarded PR.");
+        }
+        const input = JSON.parse(readFileSync(options.fixture, "utf8")) as ConveyorLiveStateInput;
+        const report = buildConveyorLiveStateReport(input, "dry-run");
+        if (options.json) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatLiveStateReport(report));
       });
     });
 
@@ -476,6 +505,24 @@ function formatAuditSweeperPlan(plan: ConveyorAuditSweeperPlan): string {
     lines.push(
       `${target.audit_level} ${target.repo}#${target.pr} head=${target.head} bucket=${target.priority_bucket} evidence=${target.evidence.status}`,
     );
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function formatLiveStateReport(report: ConveyorLiveStateReport): string {
+  const lines = [
+    `Shirube Conveyor Live State (${report.mode})`,
+    `Unreviewed deployed commits: ${report.metrics.unreviewed_deployed_commit_count}`,
+    "",
+  ];
+  for (const deployment of report.deployments) {
+    const head = deployment.deployed_head ? ` head=${deployment.deployed_head}` : "";
+    const reasons = deployment.reason_codes.length ? ` reasons=${deployment.reason_codes.join(",")}` : "";
+    const stop = deployment.stop_lane ? " stop-lane" : "";
+    lines.push(`${deployment.component} ${deployment.repo}${head} status=${deployment.status}${stop}${reasons}`);
+    for (const action of deployment.next_actions) {
+      lines.push(`  next: ${action}`);
+    }
   }
   return `${lines.join("\n")}\n`;
 }

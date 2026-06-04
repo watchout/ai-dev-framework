@@ -438,4 +438,48 @@ describe("conveyor command", () => {
       }),
     );
   });
+
+  it("builds a read-only live-state deployed commit reconciliation report", () => {
+    const fixturePath = path.join(tmpDir, "conveyor-live-state-fixture.json");
+    fs.writeFileSync(
+      fixturePath,
+      JSON.stringify({
+        deployments: [
+          {
+            component: "aun-state-daemon",
+            repo: "watchout/agent-comms-mcp",
+            checkout_path: "/srv/aun",
+            deployed_head: "unreviewed-head",
+          },
+        ],
+        merged_heads: { "watchout/agent-comms-mcp": ["merged-head"] },
+      }),
+      "utf-8",
+    );
+    const result = runConveyor(`live-state reconcile --fixture ${fixturePath} --json`);
+    const report = JSON.parse(result.stdout) as {
+      schema: string;
+      safe_to_apply: boolean;
+      metrics: { unreviewed_deployed_commit_count: number };
+      deployments: Array<{ status: string; stop_lane: boolean; next_actions: string[] }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(report.schema).toBe("shirube-conveyor-live-state-report/v1");
+    expect(report.safe_to_apply).toBe(false);
+    expect(report.metrics.unreviewed_deployed_commit_count).toBe(1);
+    expect(report.deployments[0]).toEqual(
+      expect.objectContaining({
+        status: "unreviewed_deployed_commit",
+        stop_lane: true,
+        next_actions: ["rollback_decision_required", "create_or_attach_emergency_pr_with_exact_head_evidence"],
+      }),
+    );
+  });
+
+  it("requires a fixture for live-state reconciliation", () => {
+    const result = runConveyor("live-state reconcile --json");
+    expect(result.exitCode).not.toBe(0);
+    expect(JSON.parse(result.stdout).error.message).toContain("Missing --fixture");
+  });
 });
