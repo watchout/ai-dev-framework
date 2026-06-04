@@ -74,6 +74,90 @@ function writeFixture(): string {
   return fixturePath;
 }
 
+function writeProfileFixtures(): { fixturePath: string; profilePath: string; previousProfilePath: string } {
+  const fixturePath = path.join(tmpDir, "conveyor-profile-fixture.json");
+  fs.writeFileSync(
+    fixturePath,
+    JSON.stringify({
+      pull_requests: [
+        {
+          repo,
+          number: 288,
+          head: "head-288",
+          merge_state: "CLEAN",
+          labels: ["state:impl-l1", "audit-pending", "audit:l1-pending", "needs:l1-audit"],
+        },
+        {
+          repo: "watchout/aun-platform",
+          number: 41,
+          head: "head-41",
+          merge_state: "CLEAN",
+          labels: ["state:impl-l1", "audit-pending", "audit:l1-pending", "needs:l1-audit", "blocked-stop-lane"],
+        },
+        {
+          repo: "watchout/out-of-scope",
+          number: 9,
+          head: "head-9",
+          merge_state: "CLEAN",
+          labels: ["state:impl-l1", "audit-pending", "audit:l1-pending", "needs:l1-audit"],
+        },
+      ],
+    }),
+    "utf-8",
+  );
+
+  const profile = {
+    schema: "shirube-conveyor-project-profile/v1",
+    profile_id: "wave1-mcp-dev-conveyor-lite",
+    profile_version: "2026-06-04.1",
+    repo_scope_id: "wave1-mcp-dev-conveyor-lite",
+    repositories: [
+      { full_name: repo, profile: "mcp_framework", product: "shirube", wave: "wave1", enabled: true },
+      { full_name: "watchout/agent-comms-mcp", profile: "mcp_runtime", product: "aun", wave: "wave1", enabled: true },
+      { full_name: "watchout/agent-memory", profile: "mcp_memory", product: "wasurezu", wave: "wave1", enabled: true },
+      {
+        full_name: "watchout/aun-platform",
+        profile: "saas_ui_platform",
+        product: "aun-platform",
+        wave: "wave-b",
+        enabled: true,
+        added_reason: "AUN Platform PRs now enter conveyor audit",
+      },
+    ],
+    role_queries: {
+      l1_auditor: {
+        include_labels: ["state:impl-l1", "audit:l1-pending"],
+        exclude_labels: ["blocked-stop-lane"],
+      },
+    },
+    wip_limits: { l1_auditor: 2 },
+    context_recovery: {
+      preferred: "wasurezu",
+      fallback: "bounded_context_pack",
+      require_recovery_before_dispatch: true,
+    },
+    mutation_authority: {
+      labels: "authorized_only",
+      comments: "authorized_only",
+      check_results: "authorized_only",
+      cross_repo_code_edits: "forbidden_without_target_work_order",
+    },
+  };
+  const profilePath = path.join(tmpDir, "conveyor-profile.json");
+  fs.writeFileSync(profilePath, JSON.stringify(profile), "utf-8");
+
+  const previousProfilePath = path.join(tmpDir, "previous-conveyor-profile.json");
+  fs.writeFileSync(
+    previousProfilePath,
+    JSON.stringify({
+      ...profile,
+      repositories: profile.repositories.filter((repository) => repository.full_name !== "watchout/aun-platform"),
+    }),
+    "utf-8",
+  );
+  return { fixturePath, profilePath, previousProfilePath };
+}
+
 describe("conveyor command", () => {
   it("prints reconcile help", () => {
     const result = runConveyor("--help");
@@ -139,6 +223,69 @@ describe("conveyor command", () => {
     expect(payload.schema).toBe("shirube-conveyor-next-target/v1");
     expect(payload.role).toBe("implementation");
     expect(payload.target).toEqual(expect.objectContaining({ repo: "watchout/aun-platform", number: 24 }));
+  });
+
+  it("selects next targets through a project profile and reports scope changes", () => {
+    const { fixturePath, profilePath, previousProfilePath } = writeProfileFixtures();
+    const result = runConveyor(
+      `next --role l1_auditor --fixture ${fixturePath} --profile ${profilePath} --previous-profile ${previousProfilePath} --json`,
+    );
+    const payload = JSON.parse(result.stdout) as {
+      role: string;
+      normalized_role: string;
+      profile_scope_changed: boolean;
+      profile: {
+        profile_id: string;
+        profile_hash: string;
+        repo_scope_id: string;
+        repositories: Array<{ full_name: string; profile: string }>;
+        scope_changes: Array<{ kind: string; repo: string; profile: string; reason: string }>;
+      };
+      role_query: { include_labels: string[]; exclude_labels: string[] };
+      context_recovery: { preferred: string };
+      target: { repo: string; number: number; reason_codes: string[] };
+      excluded: Array<{ repo: string; pr: number; reason_codes: string[] }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.role).toBe("l1_auditor");
+    expect(payload.normalized_role).toBe("l1");
+    expect(payload.profile_scope_changed).toBe(true);
+    expect(payload.profile.profile_id).toBe("wave1-mcp-dev-conveyor-lite");
+    expect(payload.profile.profile_hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(payload.profile.repo_scope_id).toBe("wave1-mcp-dev-conveyor-lite");
+    expect(payload.profile.repositories).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ full_name: "watchout/aun-platform", profile: "saas_ui_platform" }),
+      ]),
+    );
+    expect(payload.profile.scope_changes).toEqual([
+      {
+        kind: "added",
+        repo: "watchout/aun-platform",
+        profile: "saas_ui_platform",
+        reason: "AUN Platform PRs now enter conveyor audit",
+      },
+    ]);
+    expect(payload.role_query.include_labels).toEqual(["state:impl-l1", "audit:l1-pending"]);
+    expect(payload.role_query.exclude_labels).toEqual(["blocked-stop-lane"]);
+    expect(payload.context_recovery.preferred).toBe("wasurezu");
+    expect(payload.target).toEqual(
+      expect.objectContaining({
+        repo,
+        number: 288,
+        reason_codes: expect.arrayContaining(["repo_profile:mcp_framework"]),
+      }),
+    );
+    expect(payload.excluded).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          repo: "watchout/aun-platform",
+          pr: 41,
+          reason_codes: ["profile_role_query_excluded"],
+        }),
+      ]),
+    );
   });
 
   it("selects checker role targets with degraded reason codes", () => {
