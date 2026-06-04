@@ -68,6 +68,13 @@ export interface ConveyorDependencyRelease {
   reason: string;
 }
 
+export interface ConveyorDependencyBlocker {
+  repo: string;
+  pr: number;
+  labels: string[];
+  reason: string;
+}
+
 export interface ConveyorReconcileReport {
   schema: "shirube-conveyor-reconcile-report/v1";
   mode: ConveyorMode;
@@ -115,17 +122,21 @@ const STATE_ROLE: Record<string, ConveyorAuditRole> = {
   "state:impl-l3": "l3",
 };
 
+const LOWER_DEPENDENCY_BLOCKER_LABELS = [
+  "audit:blocked",
+  "audit:changes-requested",
+  "foundation-blocker",
+  "blocked-stop-lane",
+  "dependency-blocked",
+  "state:rework",
+  "state:blocked",
+];
+
 export function parseConveyorAuditEvidence(source: ConveyorEvidenceSource): ConveyorAuditEvidence | null {
   if (!source.body.includes("<!-- conveyor:audit-result/v1 -->")) {
     return null;
   }
-  const fields = new Map<string, string>();
-  for (const line of source.body.split(/\r?\n/)) {
-    const match = line.match(/^\s*([a-z_]+):\s*(.+?)\s*$/i);
-    if (match) {
-      fields.set(match[1].toLowerCase(), match[2]);
-    }
-  }
+  const fields = parseEvidenceFields(source.body);
 
   const repo = fields.get("repo");
   const prRaw = fields.get("pr");
@@ -163,6 +174,33 @@ export function collectConveyorAuditEvidence(pr: ConveyorPullRequestSnapshot): C
     .filter((evidence) => evidence.repo === pr.repo && evidence.pr === pr.number);
 }
 
+export function invalidConveyorAuditEvidenceReasons(
+  pr: ConveyorPullRequestSnapshot,
+  role?: ConveyorAuditRole,
+): string[] {
+  const reasons: string[] = [];
+  for (const source of [...(pr.comments ?? []), ...(pr.reviews ?? [])]) {
+    if (!source.body.includes("<!-- conveyor:audit-result/v1 -->")) continue;
+    const fields = parseEvidenceFields(source.body);
+    const roleRaw = fields.get("role")?.toLowerCase();
+    const verdictRaw = fields.get("verdict")?.toUpperCase();
+    const appliesToRole = !role || !roleRaw || roleRaw === role;
+    const hasActionVerdict = Boolean(verdictRaw && verdictRaw !== "HOLD");
+
+    if (isConsolidatedOnlyEvidence(fields)) {
+      reasons.push("invalid_audit_evidence:consolidated_only");
+      continue;
+    }
+    if (appliesToRole && hasActionVerdict && !fields.get("head")) {
+      reasons.push("exact_head_missing");
+    }
+    if (appliesToRole && hasActionVerdict && (!fields.get("repo") || !fields.get("pr"))) {
+      reasons.push("invalid_audit_evidence:missing_pr_judgment_fields");
+    }
+  }
+  return unique(reasons);
+}
+
 export function reconcileConveyor(input: ConveyorReconcileInput, mode: ConveyorMode = "dry-run"): ConveyorReconcileReport {
   const working = input.pull_requests.map((pr) => ({
     ...pr,
@@ -180,6 +218,7 @@ export function reconcileConveyor(input: ConveyorReconcileInput, mode: ConveyorM
     const acceptedEvidence: ConveyorAuditEvidence[] = [];
     const state = normalizeActiveState(labels, findings);
     const role = state ? STATE_ROLE[state] : undefined;
+    const lowerBlocker = lowerDependencyBlockerFor(pr, input.config, byRepoAndNumber);
 
     if (!state) {
       skipped.push("missing_active_state");
@@ -187,15 +226,25 @@ export function reconcileConveyor(input: ConveyorReconcileInput, mode: ConveyorM
 
     if (state && role) {
       const evidence = selectEvidence(pr, role);
+      const invalidEvidenceReasons = invalidConveyorAuditEvidenceReasons(pr, role);
       const labelOnlyPass = labels.has(PASS_LABEL_BY_ROLE[role]) && !evidence.matchingHead;
       if (labelOnlyPass) {
         findings.push("label_only_pass_without_durable_evidence");
       }
+      for (const reason of invalidEvidenceReasons) {
+        findings.push(reason);
+      }
 
-      if (evidence.anyVerdict && !evidence.matchingHead) {
+      if (!evidence.matchingHead && invalidEvidenceReasons.length > 0) {
+        skipped.push(...invalidEvidenceReasons);
+      } else if (evidence.anyVerdict && !evidence.matchingHead) {
         skipped.push("head_mismatch");
       } else if (evidence.matchingHead && isDirtyOrConflicting(pr.merge_state)) {
         skipped.push("dirty_or_conflicting_pr");
+      } else if (evidence.matchingHead?.verdict === "PASS" && lowerBlocker) {
+        labels.add("dependency-blocked");
+        findings.push("dependency_blocked_by_lower_pr");
+        skipped.push(`dependency_blocked_by_lower_pr:${lowerBlocker.repo}#${lowerBlocker.pr}`);
       } else if (evidence.matchingHead) {
         applyVerdict(labels, state, evidence.matchingHead, acceptedEvidence);
         if (evidence.matchingHead.verdict === "PASS") {
@@ -389,6 +438,38 @@ function releaseImmediateDependencies(input: {
   return releases;
 }
 
+function lowerDependencyBlockerFor(
+  pr: ConveyorPullRequestSnapshot,
+  config: ConveyorReconcilerConfig | undefined,
+  prsByKey: Map<string, ConveyorPullRequestSnapshot>,
+): ConveyorDependencyBlocker | undefined {
+  for (const stack of config?.dependencies?.[pr.repo] ?? []) {
+    const index = stack.indexOf(pr.number);
+    if (index <= 0) continue;
+    for (const lowerNumber of stack.slice(0, index)) {
+      const lower = prsByKey.get(prKey(pr.repo, lowerNumber));
+      if (!lower) {
+        return {
+          repo: pr.repo,
+          pr: lowerNumber,
+          labels: [],
+          reason: "lower_dependency_snapshot_missing",
+        };
+      }
+      const blockerLabels = lower.labels.filter((label) => LOWER_DEPENDENCY_BLOCKER_LABELS.includes(label));
+      if (blockerLabels.length > 0) {
+        return {
+          repo: lower.repo,
+          pr: lower.number,
+          labels: unique(blockerLabels).sort(),
+          reason: `lower dependency #${lower.number} has ${unique(blockerLabels).sort().join(",")}`,
+        };
+      }
+    }
+  }
+  return undefined;
+}
+
 function labelChangeFor(repo: string, pr: number, initial: string[], final: string[]): ConveyorLabelChange {
   const before = new Set(initial);
   const after = new Set(final);
@@ -414,6 +495,26 @@ function isAuditRole(value: string): value is ConveyorAuditRole {
 
 function isAuditVerdict(value: string): value is ConveyorAuditVerdict {
   return value === "PASS" || value === "BLOCK" || value === "CHANGES_REQUESTED" || value === "HOLD";
+}
+
+function parseEvidenceFields(body: string): Map<string, string> {
+  const fields = new Map<string, string>();
+  for (const line of body.split(/\r?\n/)) {
+    const match = line.match(/^\s*([a-z_]+):\s*(.+?)\s*$/i);
+    if (match) {
+      fields.set(match[1].toLowerCase(), match[2]);
+    }
+  }
+  return fields;
+}
+
+function isConsolidatedOnlyEvidence(fields: Map<string, string>): boolean {
+  const executionMode = fields.get("execution_mode")?.toLowerCase();
+  const judgmentUnit = fields.get("judgment_unit")?.toLowerCase();
+  const hasBatchSignal = executionMode === "batch" || fields.has("batch_id");
+  const notPrJudgment = judgmentUnit !== undefined && judgmentUnit !== "pull_request";
+  if (!hasBatchSignal && !notPrJudgment) return false;
+  return notPrJudgment || !fields.get("pr") || !fields.get("head");
 }
 
 function unique<T>(values: T[]): T[] {

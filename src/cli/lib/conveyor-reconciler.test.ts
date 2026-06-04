@@ -92,6 +92,63 @@ describe("conveyor reconciler", () => {
     expect(report.skipped).toEqual([]);
   });
 
+  it("rejects consolidated-only batch PASS evidence for PR transitions", () => {
+    const report = reconcileConveyor({
+      pull_requests: [
+        pr({
+          number: 287,
+          labels: ["state:impl-l2", "audit:l2-pending", "needs:l2-audit"],
+          comments: [
+            {
+              body: [
+                "<!-- conveyor:audit-result/v1 -->",
+                "batch_id: wave-conveyor-l2-2026-06-04",
+                "execution_mode: batch",
+                "judgment_unit: batch",
+                "role: l2",
+                "verdict: PASS",
+              ].join("\n"),
+            },
+          ],
+        }),
+      ],
+    }, "apply");
+
+    expect(report.prs[0].final_labels).toEqual(
+      expect.arrayContaining(["state:impl-l2", "audit:l2-pending", "needs:l2-audit"]),
+    );
+    expect(report.prs[0].final_labels).not.toContain("audit:l2-passed");
+    expect(report.prs[0].skipped).toContain("invalid_audit_evidence:consolidated_only");
+    expect(report.prs[0].findings).toContain("invalid_audit_evidence:consolidated_only");
+  });
+
+  it("reports exact-head-missing durable evidence and refuses transition", () => {
+    const report = reconcileConveyor({
+      pull_requests: [
+        pr({
+          number: 288,
+          labels: ["state:impl-l2", "audit:l2-pending", "needs:l2-audit"],
+          comments: [
+            {
+              body: [
+                "<!-- conveyor:audit-result/v1 -->",
+                `repo: ${repo}`,
+                "pr: 288",
+                "role: l2",
+                "verdict: PASS",
+              ].join("\n"),
+            },
+          ],
+        }),
+      ],
+    }, "apply");
+
+    expect(report.prs[0].final_labels).toContain("state:impl-l2");
+    expect(report.prs[0].final_labels).not.toContain("audit:l2-passed");
+    expect(report.prs[0].skipped).toContain("exact_head_missing");
+    expect(report.prs[0].findings).toContain("exact_head_missing");
+  });
+
   it("moves L3 PASS to state:done and merge-ready without approving or merging", () => {
     const report = reconcileConveyor({
       pull_requests: [
@@ -161,6 +218,28 @@ describe("conveyor reconciler", () => {
     expect(report.prs.find((item) => item.pr === 287)?.final_labels).toEqual(
       expect.arrayContaining(["state:blocked", "dependency-blocked"]),
     );
+  });
+
+  it("does not accept upper PR PASS when a lower dependency is blocked", () => {
+    const report = reconcileConveyor({
+      config: { dependencies: { [repo]: [[285, 286]] } },
+      pull_requests: [
+        pr({ number: 285, labels: ["state:rework", "audit:blocked", "needs:rework"] }),
+        pr({
+          number: 286,
+          labels: ["state:impl-l2", "audit:l2-pending", "needs:l2-audit"],
+          comments: [{ body: evidence("l2", "PASS", 286) }],
+        }),
+      ],
+    }, "apply");
+
+    const upper = report.prs.find((item) => item.pr === 286);
+    expect(upper?.final_labels).toEqual(
+      expect.arrayContaining(["state:impl-l2", "audit:l2-pending", "needs:l2-audit", "dependency-blocked"]),
+    );
+    expect(upper?.final_labels).not.toContain("audit:l2-passed");
+    expect(upper?.findings).toContain("dependency_blocked_by_lower_pr");
+    expect(upper?.skipped).toContain("dependency_blocked_by_lower_pr:watchout/ai-dev-framework#285");
   });
 
   it("cleans stale audit-pending labels from CEO approval state", () => {

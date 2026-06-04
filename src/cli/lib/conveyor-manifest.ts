@@ -1,6 +1,7 @@
 import {
   reconcileConveyor,
   type ConveyorMode,
+  type ConveyorReconcilerConfig,
   type ConveyorPullRequestSnapshot,
   type ConveyorReconcileInput,
   type ConveyorReconcileReport,
@@ -43,6 +44,9 @@ export interface ConveyorLaneManifest {
 export interface ConveyorTickManifest {
   schema: "shirube-conveyor-tick-manifest/v1";
   mode: ConveyorMode;
+  execution_mode: "batch";
+  judgment_unit: "pull_request";
+  dependency_order: string[][];
   lanes: Record<ConveyorRole, ConveyorLaneManifest>;
   reconcile: ConveyorReconcileReport;
 }
@@ -97,6 +101,9 @@ export function buildConveyorTickManifest(input: ConveyorManifestInput, mode: Co
   return {
     schema: "shirube-conveyor-tick-manifest/v1",
     mode,
+    execution_mode: "batch",
+    judgment_unit: "pull_request",
+    dependency_order: dependencyOrder(input.config?.dependencies),
     lanes,
     reconcile,
   };
@@ -176,6 +183,16 @@ function compareTargets(left: ConveyorTarget, right: ConveyorTarget): number {
 
 function targetKey(repo: string, number: number): string {
   return `${repo}#${number}`;
+}
+
+function dependencyOrder(dependencies: ConveyorReconcilerConfig["dependencies"] | undefined): string[][] {
+  const order: string[][] = [];
+  for (const [repo, stacks] of Object.entries(dependencies ?? {})) {
+    for (const stack of stacks) {
+      order.push(stack.map((pr) => `${repo}#${pr}`));
+    }
+  }
+  return order;
 }
 
 function unique<T>(values: T[]): T[] {
