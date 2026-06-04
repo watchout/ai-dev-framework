@@ -175,4 +175,32 @@ describe("conveyor command", () => {
       }),
     );
   });
+
+  it("builds an observe-only stack gate report from a fixture", () => {
+    const fixturePath = path.join(tmpDir, "conveyor-stack-fixture.json");
+    fs.writeFileSync(
+      fixturePath,
+      JSON.stringify({
+        config: { dependencies: { [repo]: [[285, 286]] } },
+        pull_requests: [
+          { repo, number: 285, head: "head-285", labels: ["state:impl-l2", "foundation-blocker"] },
+          { repo, number: 286, head: "head-286", labels: ["state:impl-l2", "audit:l2-pending"] },
+        ],
+      }),
+      "utf-8",
+    );
+    const result = runConveyor(`stack gate --fixture ${fixturePath} --json`);
+    const report = JSON.parse(result.stdout) as {
+      schema: string;
+      safe_to_advance_dependents: boolean;
+      blocked_dependents: Array<{ pr: number; recommended_add: string[] }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(report.schema).toBe("shirube-conveyor-stack-gate-report/v1");
+    expect(report.safe_to_advance_dependents).toBe(false);
+    expect(report.blocked_dependents[0]).toEqual(
+      expect.objectContaining({ pr: 286, recommended_add: ["dependency-blocked"] }),
+    );
+  });
 });
