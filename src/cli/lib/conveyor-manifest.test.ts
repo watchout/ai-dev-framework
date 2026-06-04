@@ -92,6 +92,9 @@ describe("conveyor tick manifest", () => {
     const manifest = buildConveyorTickManifest(fixture(), "apply");
 
     expect(manifest.schema).toBe("shirube-conveyor-tick-manifest/v1");
+    expect(manifest.execution_mode).toBe("batch");
+    expect(manifest.judgment_unit).toBe("pull_request");
+    expect(manifest.dependency_order).toEqual([["watchout/ai-dev-framework#285", "watchout/ai-dev-framework#286"]]);
     expect(manifest.lanes.implementation.targets.map((target) => `${target.repo}#${target.number}`)).toEqual([
       "watchout/aun-platform#24",
     ]);
