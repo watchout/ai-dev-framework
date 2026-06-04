@@ -1,0 +1,41 @@
+{
+  "schema": "shirube-conveyor-config/v1",
+  "owner": "watchout",
+  "repos": {
+    "implementation": [
+      "watchout/aun-platform",
+      "watchout/ai-dev-framework",
+      "watchout/agent-comms-mcp",
+      "watchout/agent-memory",
+      "watchout/kodama"
+    ],
+    "audit": [
+      "watchout/ai-dev-framework",
+      "watchout/agent-comms-mcp",
+      "watchout/agent-memory",
+      "watchout/kodama",
+      "watchout/aun-platform"
+    ]
+  },
+  "lanes": {
+    "implementation": "needs:implementation",
+    "l1": "state:impl-l1",
+    "l2": "state:impl-l2",
+    "l3": "state:impl-l3",
+    "ceo": "state:ceo-approval",
+    "rework": "state:rework",
+    "blocked": "state:blocked"
+  },
+  "state_rules": {
+    "active_state_prefix": "state:",
+    "active_needs_prefix": "needs:",
+    "audit_pending_labels_follow_active_state": true,
+    "durable_audit_evidence_required": true,
+    "exact_head_required": true
+  },
+  "dependencies": {
+    "watchout/ai-dev-framework": [
+      [274, 276, 279, 283, 285, 286, 287]
+    ]
+  }
+}

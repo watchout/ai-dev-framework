@@ -132,6 +132,7 @@ describe("CLI Smoke Tests", () => {
       "roles",
       "status",
       "workflow",
+      "conveyor",
       "retrofit",
       "update",
       "checkpoint",
