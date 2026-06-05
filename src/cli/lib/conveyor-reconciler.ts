@@ -1,5 +1,5 @@
 export type ConveyorAuditRole = "l1" | "l2" | "l3";
-export type ConveyorAuditVerdict = "PASS" | "BLOCK" | "CHANGES_REQUESTED" | "HOLD";
+export type ConveyorAuditVerdict = "PASS" | "BLOCK" | "CHANGES_REQUESTED" | "HOLD" | "STALE_HEAD" | "NEEDS_INFO";
 export type ConveyorMode = "dry-run" | "apply";
 
 export interface ConveyorAuditEvidence {
@@ -9,6 +9,9 @@ export interface ConveyorAuditEvidence {
   role: ConveyorAuditRole;
   verdict: ConveyorAuditVerdict;
   head: string;
+  base: string;
+  route: string;
+  next_state_recommendation: string;
   reported_by?: string;
   recorded_at?: string;
   source?: string;
@@ -26,6 +29,7 @@ export interface ConveyorPullRequestSnapshot {
   url?: string;
   title?: string;
   head: string;
+  base?: string;
   merge_state?: string;
   labels: string[];
   comments?: ConveyorEvidenceSource[];
@@ -52,12 +56,26 @@ export interface ConveyorPrReport {
   repo: string;
   pr: number;
   head: string;
+  base?: string;
   initial_labels: string[];
   final_labels: string[];
   changes: ConveyorLabelChange;
   accepted_evidence: ConveyorAuditEvidence[];
+  transition_plan: ConveyorTransitionPlan;
   skipped: string[];
   findings: string[];
+}
+
+export interface ConveyorTransitionPlan {
+  current_state?: string;
+  required_role?: ConveyorAuditRole;
+  verdict?: ConveyorAuditVerdict;
+  evidence_head?: string;
+  evidence_base?: string;
+  next_state: string | null;
+  next_labels: string[];
+  reason_codes: string[];
+  safe_to_apply: boolean;
 }
 
 export interface ConveyorDependencyRelease {
@@ -143,7 +161,10 @@ export function parseConveyorAuditEvidence(source: ConveyorEvidenceSource): Conv
   const roleRaw = fields.get("role");
   const verdictRaw = fields.get("verdict");
   const head = fields.get("head");
-  if (!repo || !prRaw || !roleRaw || !verdictRaw || !head) {
+  const base = fields.get("base");
+  const route = fields.get("route");
+  const nextStateRecommendation = fields.get("next_state_recommendation");
+  if (!repo || !prRaw || !roleRaw || !verdictRaw || !head || !base || !route || !nextStateRecommendation) {
     return null;
   }
 
@@ -161,6 +182,9 @@ export function parseConveyorAuditEvidence(source: ConveyorEvidenceSource): Conv
     role,
     verdict,
     head,
+    base,
+    route,
+    next_state_recommendation: nextStateRecommendation,
     reported_by: fields.get("reported_by"),
     recorded_at: fields.get("recorded_at"),
     source: source.url,
@@ -191,6 +215,15 @@ export function invalidConveyorAuditEvidenceReasons(
       reasons.push("invalid_audit_evidence:consolidated_only");
       continue;
     }
+    if (appliesToRole && hasActionVerdict) {
+      const missingFixedFields = requiredAuditResultFields().filter((field) => !fields.get(field));
+      if (missingFixedFields.length > 0) {
+        reasons.push("missing_fixed_audit_result_fields");
+      }
+      if (!fields.get("base")) reasons.push("base_missing");
+      if (!fields.get("route")) reasons.push("route_missing");
+      if (!fields.get("next_state_recommendation")) reasons.push("next_state_recommendation_missing");
+    }
     if (appliesToRole && hasActionVerdict && !fields.get("head")) {
       reasons.push("exact_head_missing");
     }
@@ -219,6 +252,7 @@ export function reconcileConveyor(input: ConveyorReconcileInput, mode: ConveyorM
     const state = normalizeActiveState(labels, findings);
     const role = state ? STATE_ROLE[state] : undefined;
     const lowerBlocker = lowerDependencyBlockerFor(pr, input.config, byRepoAndNumber);
+    let matchingEvidence: ConveyorAuditEvidence | undefined;
 
     if (!state) {
       skipped.push("missing_active_state");
@@ -239,13 +273,21 @@ export function reconcileConveyor(input: ConveyorReconcileInput, mode: ConveyorM
         skipped.push(...invalidEvidenceReasons);
       } else if (evidence.anyVerdict && !evidence.matchingHead) {
         skipped.push("head_mismatch");
+      } else if (evidence.matchingHead && pr.base && evidence.matchingHead.base !== pr.base) {
+        matchingEvidence = evidence.matchingHead;
+        skipped.push("base_mismatch");
       } else if (evidence.matchingHead && isDirtyOrConflicting(pr.merge_state)) {
+        matchingEvidence = evidence.matchingHead;
         skipped.push("dirty_or_conflicting_pr");
       } else if (evidence.matchingHead?.verdict === "PASS" && lowerBlocker) {
+        matchingEvidence = evidence.matchingHead;
         labels.add("dependency-blocked");
         findings.push("dependency_blocked_by_lower_pr");
         skipped.push(`dependency_blocked_by_lower_pr:${lowerBlocker.repo}#${lowerBlocker.pr}`);
       } else if (evidence.matchingHead) {
+        matchingEvidence = evidence.matchingHead;
+        if (evidence.matchingHead.verdict === "STALE_HEAD") findings.push("audit_report_stale_head");
+        if (evidence.matchingHead.verdict === "NEEDS_INFO") findings.push("audit_report_needs_info");
         applyVerdict(labels, state, evidence.matchingHead, acceptedEvidence);
         if (evidence.matchingHead.verdict === "PASS") {
           acceptedPasses.push({ repo: pr.repo, pr: pr.number, role });
@@ -258,6 +300,15 @@ export function reconcileConveyor(input: ConveyorReconcileInput, mode: ConveyorM
     normalizeLabelsForState(labels, activeState(labels) ?? state, findings);
     const final = Array.from(labels).sort();
     const changes = labelChangeFor(pr.repo, pr.number, initial, final);
+    const transitionPlan = buildTransitionPlan({
+      state,
+      role,
+      evidence: matchingEvidence,
+      finalLabels: final,
+      skipped,
+      findings,
+      changes,
+    });
     if (mode === "apply") {
       pr.labels = final;
     }
@@ -265,10 +316,12 @@ export function reconcileConveyor(input: ConveyorReconcileInput, mode: ConveyorM
       repo: pr.repo,
       pr: pr.number,
       head: pr.head,
+      base: pr.base,
       initial_labels: initial.sort(),
       final_labels: final,
       changes,
       accepted_evidence: acceptedEvidence,
+      transition_plan: transitionPlan,
       skipped: unique(skipped),
       findings: unique(findings),
     });
@@ -365,6 +418,11 @@ function applyVerdict(
   acceptedEvidence.push(evidence);
   const role = STATE_ROLE[state];
   if (!role) return;
+
+  if (evidence.verdict === "HOLD" || evidence.verdict === "STALE_HEAD" || evidence.verdict === "NEEDS_INFO") {
+    return;
+  }
+
   labels.delete(state);
   labels.delete(`audit:${role}-pending`);
   labels.delete(role === "l3" ? "needs:l3-review" : `needs:${role}-audit`);
@@ -390,6 +448,43 @@ function applyVerdict(
     labels.add("audit:changes-requested");
   }
   labels.add("state:rework");
+}
+
+function buildTransitionPlan(input: {
+  state: string | undefined;
+  role: ConveyorAuditRole | undefined;
+  evidence: ConveyorAuditEvidence | undefined;
+  finalLabels: string[];
+  skipped: string[];
+  findings: string[];
+  changes: ConveyorLabelChange;
+}): ConveyorTransitionPlan {
+  const reasonCodes = unique([...input.skipped, ...input.findings]);
+  const nextState = nextStateFromLabels(input.finalLabels, input.state);
+  const inertVerdict = input.evidence?.verdict === "HOLD" ||
+    input.evidence?.verdict === "STALE_HEAD" ||
+    input.evidence?.verdict === "NEEDS_INFO";
+  if (!input.evidence && input.role && !reasonCodes.includes("missing_durable_audit_evidence")) {
+    reasonCodes.push("missing_pr_local_audit_evidence");
+  }
+  if (inertVerdict && input.evidence?.verdict) {
+    reasonCodes.push(`audit_verdict_${input.evidence.verdict.toLowerCase()}`);
+  }
+
+  return {
+    current_state: input.state,
+    required_role: input.role,
+    verdict: input.evidence?.verdict,
+    evidence_head: input.evidence?.head,
+    evidence_base: input.evidence?.base,
+    next_state: input.evidence && !inertVerdict && input.skipped.length === 0 ? nextState : null,
+    next_labels: input.evidence && !inertVerdict && input.skipped.length === 0 ? input.finalLabels : [],
+    reason_codes: unique(reasonCodes),
+    safe_to_apply: input.skipped.length === 0 &&
+      !inertVerdict &&
+      Boolean(input.evidence) &&
+      (input.changes.add.length > 0 || input.changes.remove.length > 0),
+  };
 }
 
 function releaseImmediateDependencies(input: {
@@ -494,7 +589,18 @@ function isAuditRole(value: string): value is ConveyorAuditRole {
 }
 
 function isAuditVerdict(value: string): value is ConveyorAuditVerdict {
-  return value === "PASS" || value === "BLOCK" || value === "CHANGES_REQUESTED" || value === "HOLD";
+  return (
+    value === "PASS" ||
+    value === "BLOCK" ||
+    value === "CHANGES_REQUESTED" ||
+    value === "HOLD" ||
+    value === "STALE_HEAD" ||
+    value === "NEEDS_INFO"
+  );
+}
+
+function requiredAuditResultFields(): string[] {
+  return ["repo", "pr", "role", "verdict", "head", "base", "route", "next_state_recommendation"];
 }
 
 function parseEvidenceFields(body: string): Map<string, string> {
@@ -523,4 +629,8 @@ function unique<T>(values: T[]): T[] {
 
 function prKey(repo: string, pr: number): string {
   return `${repo}#${pr}`;
+}
+
+function nextStateFromLabels(labels: string[], fallback: string | undefined): string | null {
+  return labels.find((label) => label.startsWith(STATE_PREFIX)) ?? fallback ?? null;
 }

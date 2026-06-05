@@ -13,6 +13,7 @@ function pr(input: Partial<ConveyorPullRequestSnapshot> & { number: number; head
     repo,
     number: input.number,
     head: input.head ?? `head-${input.number}`,
+    base: input.base ?? "main",
     merge_state: input.merge_state ?? "CLEAN",
     labels: input.labels,
     comments: input.comments,
@@ -28,6 +29,9 @@ function evidence(role: string, verdict: string, number: number, head = `head-${
     `role: ${role}`,
     `verdict: ${verdict}`,
     `head: ${head}`,
+    "base: main",
+    "route: standard",
+    `next_state_recommendation: ${role === "l1" ? "state:impl-l2" : role === "l2" ? "state:impl-l3" : "state:done+merge-ready"}`,
     "reported_by: auditor",
     "recorded_at: 2026-06-04T00:00:00.000Z",
   ].join("\n");
@@ -48,6 +52,9 @@ describe("conveyor reconciler", () => {
         role: "l2",
         verdict: "PASS",
         head: "abc123",
+        base: "main",
+        route: "standard",
+        next_state_recommendation: "state:impl-l3",
         source: "https://github.test/comment",
       }),
     );
@@ -66,6 +73,15 @@ describe("conveyor reconciler", () => {
 
     const result = report.prs[0];
     expect(result.accepted_evidence[0].role).toBe("l1");
+    expect(result.transition_plan).toEqual(
+      expect.objectContaining({
+        current_state: "state:impl-l1",
+        required_role: "l1",
+        verdict: "PASS",
+        next_state: "state:impl-l2",
+        safe_to_apply: true,
+      }),
+    );
     expect(result.final_labels).toEqual(
       expect.arrayContaining(["state:impl-l2", "audit:l1-passed", "audit:l2-pending", "needs:l2-audit"]),
     );
@@ -90,6 +106,34 @@ describe("conveyor reconciler", () => {
       expect.arrayContaining(["state:impl-l3", "audit:l2-passed", "audit:l3-pending", "needs:l3-review"]),
     );
     expect(report.skipped).toEqual([]);
+  });
+
+  it("keeps STALE_HEAD and NEEDS_INFO audit results as no-transition evidence", () => {
+    const report = reconcileConveyor({
+      pull_requests: [
+        pr({
+          number: 290,
+          labels: ["state:impl-l1", "audit:l1-pending", "needs:l1-audit"],
+          comments: [{ body: evidence("l1", "STALE_HEAD", 290) }],
+        }),
+        pr({
+          number: 291,
+          labels: ["state:impl-l2", "audit:l2-pending", "needs:l2-audit"],
+          comments: [{ body: evidence("l2", "NEEDS_INFO", 291) }],
+        }),
+      ],
+    }, "apply");
+
+    const stale = report.prs.find((item) => item.pr === 290);
+    const needsInfo = report.prs.find((item) => item.pr === 291);
+    expect(stale?.accepted_evidence[0].verdict).toBe("STALE_HEAD");
+    expect(stale?.final_labels).toEqual(expect.arrayContaining(["state:impl-l1", "audit:l1-pending"]));
+    expect(stale?.transition_plan.next_state).toBeNull();
+    expect(stale?.transition_plan.reason_codes).toContain("audit_verdict_stale_head");
+    expect(needsInfo?.accepted_evidence[0].verdict).toBe("NEEDS_INFO");
+    expect(needsInfo?.final_labels).toEqual(expect.arrayContaining(["state:impl-l2", "audit:l2-pending"]));
+    expect(needsInfo?.transition_plan.next_state).toBeNull();
+    expect(needsInfo?.transition_plan.reason_codes).toContain("audit_verdict_needs_info");
   });
 
   it("rejects consolidated-only batch PASS evidence for PR transitions", () => {
@@ -147,6 +191,37 @@ describe("conveyor reconciler", () => {
     expect(report.prs[0].final_labels).not.toContain("audit:l2-passed");
     expect(report.prs[0].skipped).toContain("exact_head_missing");
     expect(report.prs[0].findings).toContain("exact_head_missing");
+    expect(report.prs[0].findings).toContain("missing_fixed_audit_result_fields");
+  });
+
+  it("rejects audit-result evidence missing M0 fixed fields", () => {
+    const report = reconcileConveyor({
+      pull_requests: [
+        pr({
+          number: 289,
+          labels: ["state:impl-l1", "audit:l1-pending", "needs:l1-audit"],
+          comments: [
+            {
+              body: [
+                "<!-- conveyor:audit-result/v1 -->",
+                `repo: ${repo}`,
+                "pr: 289",
+                "role: l1",
+                "verdict: PASS",
+                "head: head-289",
+              ].join("\n"),
+            },
+          ],
+        }),
+      ],
+    }, "apply");
+
+    expect(report.prs[0].accepted_evidence).toEqual([]);
+    expect(report.prs[0].final_labels).toEqual(expect.arrayContaining(["state:impl-l1", "audit:l1-pending"]));
+    expect(report.prs[0].skipped).toContain("missing_fixed_audit_result_fields");
+    expect(report.prs[0].findings).toContain("base_missing");
+    expect(report.prs[0].findings).toContain("route_missing");
+    expect(report.prs[0].findings).toContain("next_state_recommendation_missing");
   });
 
   it("moves L3 PASS to state:done and merge-ready without approving or merging", () => {

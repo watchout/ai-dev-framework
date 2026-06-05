@@ -63,6 +63,9 @@ function writeFixture(): string {
                 "role: l2",
                 "verdict: PASS",
                 "head: head-286",
+                "base: main",
+                "route: standard",
+                "next_state_recommendation: state:impl-l3",
               ].join("\n"),
             },
           ],
@@ -468,7 +471,18 @@ describe("conveyor command", () => {
 
   it("prints a durable audit-report evidence block without posting it", () => {
     const result = runConveyor(
-      "audit-report --repo watchout/agent-memory --pr 132 --role l2 --verdict PASS --head abc123 --reported-by auditor",
+      [
+        "audit-report",
+        "--repo watchout/agent-memory",
+        "--pr 132",
+        "--role l2",
+        "--verdict PASS",
+        "--head abc123",
+        "--base main",
+        "--route standard",
+        "--next-state-recommendation state:impl-l3",
+        "--reported-by auditor",
+      ].join(" "),
     );
 
     expect(result.exitCode).toBe(0);
@@ -478,6 +492,21 @@ describe("conveyor command", () => {
     expect(result.stdout).toContain("role: l2");
     expect(result.stdout).toContain("verdict: PASS");
     expect(result.stdout).toContain("head: abc123");
+    expect(result.stdout).toContain("base: main");
+    expect(result.stdout).toContain("route: standard");
+    expect(result.stdout).toContain("next_state_recommendation: state:impl-l3");
+  });
+
+  it("renders a fixed audit-result template for an audit role", () => {
+    const result = runConveyor(
+      "audit-report --template --repo watchout/agent-memory --pr 132 --role l1 --head abc123 --base main --route standard",
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("<!-- conveyor:audit-result/v1 -->");
+    expect(result.stdout).toContain("role: l1");
+    expect(result.stdout).toContain("verdict: <PASS|BLOCK|STALE_HEAD|NEEDS_INFO>");
+    expect(result.stdout).toContain("next_state_recommendation: <state:impl-l2|state:impl-l3|state:rework|no_transition>");
   });
 
   it("builds an observe-only label sync plan from a fixture", () => {

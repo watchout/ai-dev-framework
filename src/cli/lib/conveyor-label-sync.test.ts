@@ -23,6 +23,9 @@ function evidence(role: string, verdict: string, number: number, head = `head-${
     `role: ${role}`,
     `verdict: ${verdict}`,
     `head: ${head}`,
+    "base: main",
+    "route: standard",
+    `next_state_recommendation: ${role === "l1" ? "state:impl-l2" : role === "l2" ? "state:impl-l3" : "state:done+merge-ready"}`,
   ].join("\n");
 }
 
