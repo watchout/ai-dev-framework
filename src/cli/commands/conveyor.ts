@@ -13,10 +13,12 @@ import {
   type ConveyorTickManifest,
 } from "../lib/conveyor-manifest.js";
 import {
+  buildConveyorClaimEvidence,
   buildConveyorRoleView,
   isConveyorActorRole,
   selectConveyorRoleNextTarget,
   validateConveyorRoleLabelChange,
+  type ConveyorClaimEvidence,
   type ConveyorActorRole,
   type ConveyorRoleAuthorityCheck,
   type ConveyorRoleView,
@@ -53,6 +55,10 @@ interface ConveyorNextOptions extends ConveyorReconcileOptions {
   role?: string;
   profile?: string;
   previousProfile?: string;
+  claim?: boolean;
+  claimedBy?: string;
+  claimTtlMinutes?: string;
+  claimedAt?: string;
 }
 
 interface ConveyorAuditSweeperOptions extends ConveyorReconcileOptions {
@@ -216,6 +222,10 @@ export function registerConveyorCommand(program: Command): void {
     .option("--previous-profile <path>", "Previous JSON Conveyor project profile for profile_scope_changed reporting")
     .option("--json", "Output machine-readable JSON")
     .option("--apply", "Apply reconciliation to the in-memory snapshot result; does not mutate GitHub")
+    .option("--claim", "Emit append-only claim evidence for the selected target; does not post to GitHub")
+    .option("--claimed-by <actor>", "Actor id to include in claim evidence")
+    .option("--claim-ttl-minutes <minutes>", "Claim expiry window in minutes", "30")
+    .option("--claimed-at <timestamp>", "ISO timestamp for deterministic claim evidence")
     .action((options: ConveyorNextOptions) => {
       runConveyorAction(options, () => {
         const input = readManifestFixture(options.fixture);
@@ -226,14 +236,25 @@ export function registerConveyorCommand(program: Command): void {
           ? buildProfiledNextView(input, profile, previousProfile, options.role, mode)
           : buildNextView(input, options.role, mode);
         const target = selectConveyorRoleNextTarget(view);
+        const claim = options.claim && target
+          ? buildConveyorClaimEvidence({
+              role: isConveyorActorRole(role) ? role : view.role,
+              target,
+              actor: options.claimedBy ?? process.env.USER ?? "conveyor",
+              claimedAt: options.claimedAt ?? new Date().toISOString(),
+              ttlMinutes: parseClaimTtlMinutes(options.claimTtlMinutes),
+            })
+          : undefined;
         const payload = {
           schema: "shirube-conveyor-next-target/v1",
           mode,
           role,
+          claim_mode: options.claim ? "evidence_only" : "off",
           query: view.query,
           authority_notes: view.authority_notes,
           excluded: view.excluded,
           target: target ?? null,
+          claim: claim ?? null,
           ...(isProfiledRoleView(view)
             ? {
                 normalized_role: view.normalized_role,
@@ -340,6 +361,14 @@ function parseProfileRole(role: string | undefined): ConveyorProfileRole {
 function parseAuditSweeperLevel(level: string | undefined): ConveyorAuditSweeperLevel {
   if (level === "l1" || level === "l2" || level === "l3" || level === "all") return level;
   throw new Error("Invalid --level. Expected l1, l2, l3, or all.");
+}
+
+function parseClaimTtlMinutes(value: string | undefined): number {
+  const ttl = Number(value ?? "30");
+  if (!Number.isFinite(ttl) || ttl <= 0) {
+    throw new Error("Invalid --claim-ttl-minutes. Expected a positive number.");
+  }
+  return ttl;
 }
 
 function buildNextView(
@@ -499,16 +528,22 @@ function formatConveyorManifest(manifest: ConveyorTickManifest): string {
 
 function formatNextTarget(payload: {
   role: string;
+  claim_mode?: string;
   query: string;
   authority_notes?: string[];
   excluded?: ConveyorRoleView["excluded"];
   target: ReturnType<typeof selectConveyorRoleNextTarget> | null;
+  claim?: ConveyorClaimEvidence | null;
 }): string {
   if (!payload.target) {
     return `No target for ${payload.role} (${payload.query})\n`;
   }
   const head = payload.target.head ? ` head=${payload.target.head}` : "";
-  return `Next ${payload.role}: ${payload.target.repo}#${payload.target.number} ${payload.target.kind}${head}\n`;
+  const lines = [`Next ${payload.role}: ${payload.target.repo}#${payload.target.number} ${payload.target.kind}${head}`];
+  if (payload.claim) {
+    lines.push("", "Claim evidence (not posted):", payload.claim.comment_body.trimEnd());
+  }
+  return `${lines.join("\n")}\n`;
 }
 
 function formatAuthorityCheck(report: ConveyorRoleAuthorityCheck): string {

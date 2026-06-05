@@ -74,6 +74,26 @@ function writeFixture(): string {
   return fixturePath;
 }
 
+function writeClaimFixture(): string {
+  const fixturePath = path.join(tmpDir, "conveyor-claim-fixture.json");
+  fs.writeFileSync(
+    fixturePath,
+    JSON.stringify({
+      pull_requests: [
+        {
+          repo,
+          number: 286,
+          head: "head-286",
+          merge_state: "CLEAN",
+          labels: ["state:impl-l2", "audit:l1-passed", "audit:l2-pending", "needs:l2-audit"],
+        },
+      ],
+    }),
+    "utf-8",
+  );
+  return fixturePath;
+}
+
 function writeProfileFixtures(): { fixturePath: string; profilePath: string; previousProfilePath: string } {
   const fixturePath = path.join(tmpDir, "conveyor-profile-fixture.json");
   fs.writeFileSync(
@@ -223,6 +243,112 @@ describe("conveyor command", () => {
     expect(payload.schema).toBe("shirube-conveyor-next-target/v1");
     expect(payload.role).toBe("implementation");
     expect(payload.target).toEqual(expect.objectContaining({ repo: "watchout/aun-platform", number: 24 }));
+  });
+
+  it("emits append-only claim evidence for the selected next target without changing labels", () => {
+    const fixturePath = writeClaimFixture();
+    const result = runConveyor(
+      [
+        "next --role l2",
+        `--fixture ${fixturePath}`,
+        "--claim",
+        "--claimed-by auditor-1",
+        "--claimed-at 2026-06-04T00:00:00.000Z",
+        "--claim-ttl-minutes 45",
+        "--json",
+      ].join(" "),
+    );
+    const payload = JSON.parse(result.stdout) as {
+      claim_mode: string;
+      target: { repo: string; number: number; labels: string[] };
+      claim: {
+        schema: string;
+        role: string;
+        actor: string;
+        repo: string;
+        kind: string;
+        number: number;
+        head: string;
+        claimed_at: string;
+        expires_at: string;
+        comment_body: string;
+      };
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.claim_mode).toBe("evidence_only");
+    expect(payload.target).toEqual(
+      expect.objectContaining({
+        repo,
+        number: 286,
+        labels: expect.arrayContaining(["state:impl-l2", "audit:l1-passed"]),
+      }),
+    );
+    expect(payload.claim).toEqual(
+      expect.objectContaining({
+        schema: "conveyor:claim/v1",
+        role: "l2",
+        actor: "auditor-1",
+        repo,
+        kind: "pr",
+        number: 286,
+        head: "head-286",
+        claimed_at: "2026-06-04T00:00:00.000Z",
+        expires_at: "2026-06-04T00:45:00.000Z",
+      }),
+    );
+    expect(payload.claim.comment_body).toContain("<!-- conveyor:claim/v1 -->");
+    expect(payload.claim.comment_body).toContain("CONVEYOR CLAIM role=l2 actor=auditor-1");
+  });
+
+  it("skips targets with active same-role claim evidence", () => {
+    const fixturePath = path.join(tmpDir, "conveyor-active-claim-fixture.json");
+    fs.writeFileSync(
+      fixturePath,
+      JSON.stringify({
+        pull_requests: [
+          {
+            repo,
+            number: 286,
+            head: "head-286",
+            merge_state: "CLEAN",
+            labels: ["state:impl-l2", "audit:l1-passed", "audit:l2-pending", "needs:l2-audit"],
+            comments: [
+              {
+                body: [
+                  "<!-- conveyor:claim/v1 -->",
+                  "CONVEYOR CLAIM role=l2 actor=auditor-1 repo=watchout/ai-dev-framework pr=286 head=head-286 claimed_at=2026-06-04T00:00:00.000Z expires_at=2099-01-01T00:00:00.000Z",
+                ].join("\n"),
+              },
+            ],
+          },
+          {
+            repo,
+            number: 287,
+            head: "head-287",
+            merge_state: "CLEAN",
+            labels: ["state:impl-l2", "audit:l1-passed", "audit:l2-pending", "needs:l2-audit"],
+          },
+        ],
+      }),
+      "utf-8",
+    );
+    const result = runConveyor(`next --role l2 --fixture ${fixturePath} --json`);
+    const payload = JSON.parse(result.stdout) as {
+      target: { number: number };
+      excluded: Array<{ pr: number; reason_codes: string[] }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.target).toEqual(expect.objectContaining({ number: 287 }));
+    expect(payload.excluded).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          pr: 286,
+          reason_codes: expect.arrayContaining(["already_claimed", "active_claim:auditor-1"]),
+        }),
+      ]),
+    );
   });
 
   it("selects next targets through a project profile and reports scope changes", () => {

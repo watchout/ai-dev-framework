@@ -1,6 +1,7 @@
 import {
   reconcileConveyor,
   type ConveyorMode,
+  type ConveyorEvidenceSource,
   type ConveyorReconcilerConfig,
   type ConveyorPullRequestSnapshot,
   type ConveyorReconcileInput,
@@ -15,6 +16,7 @@ export interface ConveyorIssueSnapshot {
   url?: string;
   title?: string;
   labels: string[];
+  comments?: ConveyorEvidenceSource[];
 }
 
 export interface ConveyorManifestInput extends ConveyorReconcileInput {
