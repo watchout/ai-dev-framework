@@ -847,6 +847,7 @@ describe("workflow command", () => {
 
   it("strict work_order passes with a complete verifiable Work Order contract", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
     writeWorkOrder(tmpDir, completeWorkOrder());
 
     const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
@@ -869,6 +870,10 @@ describe("workflow command", () => {
           decision: "PASS",
         }),
         expect.objectContaining({
+          rule_id: "G21.work_order.delivery_profile_defaults",
+          decision: "PASS",
+        }),
+        expect.objectContaining({
           rule_id: "G21.work_order.dispatch_contract",
           decision: "PASS",
         }),
@@ -880,7 +885,128 @@ describe("workflow command", () => {
     );
   });
 
-  it("strict work_order warns on prompt-only shape and missing dispatch/runtime fields", () => {
+  it("strict work_order resolves R0-R2 PR Conveyor defaults from the delivery profile", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
+    const order = completeWorkOrder();
+    order.risk_class = "R2";
+    delete order.delivery_strategy;
+    delete order.audit_timing;
+    delete order.pr_mode;
+    delete order.lane;
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.check.status).toBe("passed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.delivery_profile_defaults",
+          decision: "PASS",
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order warns when R4 tries to use PR Conveyor after PR creation", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
+    const order = completeWorkOrder();
+    order.risk_class = "R4";
+    order.lane = "Fast";
+    order.delivery_strategy = "pr_conveyor";
+    order.audit_timing = "after_pr";
+    order.pr_mode = "normal";
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.delivery_profile_defaults",
+          decision: "WARN",
+          message: expect.stringContaining("R4.delivery_strategy:pr_conveyor"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order warns when R3 tries to use normal PR mode", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
+    const order = completeWorkOrder();
+    order.risk_class = "R3";
+    order.lane = "Governed";
+    order.delivery_strategy = "phase_conveyor";
+    order.audit_timing = "before_merge";
+    order.pr_mode = "normal";
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const report = parseJson<{
+      check: { status: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.delivery_profile_defaults",
+          decision: "WARN",
+          message: expect.stringContaining("R3.pr_mode:normal"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order blocks when delivery owner fields are placeholders", () => {
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
+    const order = completeWorkOrder();
+    order.implementation_owner = "TBD";
+    writeWorkOrder(tmpDir, order);
+
+    const result = runWorkflow("check --action work_order --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; scoped_decision_counts: { BLOCK: number; WARN: number } };
+      scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G21.work_order.required_fields",
+          decision: "BLOCK",
+          message: expect.stringContaining("missing:implementation_owner"),
+        }),
+        expect.objectContaining({
+          rule_id: "G21.work_order.delivery_profile_defaults",
+          decision: "WARN",
+          message: expect.stringContaining("owner:implementation_owner"),
+        }),
+      ]),
+    );
+  });
+
+  it("strict work_order blocks prompt-only shape while warning on dispatch/runtime gaps", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
     writeWorkOrder(tmpDir, {
       schema_version: "prompt-template/v1",
@@ -888,20 +1014,21 @@ describe("workflow command", () => {
       handoff_target: "codex",
     });
 
-    const result = runWorkflow("check --action work_order --profile strict --fail-on warn --json");
+    const result = runWorkflow("check --action work_order --profile strict --json");
     const report = parseJson<{
-      check: { status: string; scoped_decision_counts: { WARN: number } };
+      check: { status: string; scoped_decision_counts: { BLOCK: number; WARN: number } };
       scoped_decisions: Array<{ rule_id: string; decision: string; message: string }>;
     }>(result);
 
     expect(result.exitCode).toBe(1);
     expect(report.check.status).toBe("failed");
+    expect(report.check.scoped_decision_counts.BLOCK).toBeGreaterThan(0);
     expect(report.check.scoped_decision_counts.WARN).toBeGreaterThanOrEqual(5);
     expect(report.scoped_decisions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           rule_id: "G21.work_order.required_fields",
-          decision: "WARN",
+          decision: "BLOCK",
           message: expect.stringContaining("schema_version:prompt-template/v1"),
         }),
         expect.objectContaining({
@@ -920,6 +1047,7 @@ describe("workflow command", () => {
 
   it("strict work_order warns when context packs become instructions or shell commands", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
     const order = completeWorkOrder();
     order.context_pack_refs = [];
     order.context_pack_policy = {
@@ -962,6 +1090,7 @@ describe("workflow command", () => {
 
   it("strict work_order warns when authority values grant transition authority", () => {
     saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDeliveryProfile(tmpDir, internalPrConveyorProfile());
     const order = completeWorkOrder();
     order.authority_boundary = {
       forbidden: [
@@ -1546,6 +1675,18 @@ function writeWorkOrder(
   );
 }
 
+function writeDeliveryProfile(
+  projectDir: string,
+  record: Record<string, unknown>,
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework/delivery-profile.json"),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
 function completeAuditLedgerRecord(): Record<string, unknown> {
   return {
     schema_version: "audit-ledger/v1",
@@ -1757,10 +1898,32 @@ function completeWorkOrder(): Record<string, unknown> {
     schema_version: "work-order/v1",
     work_order_id: "WO-244",
     issue: 244,
+    repo: "watchout/ai-dev-framework",
+    product: "shirube",
     work_package_id: "phase1-work-order-contract",
     objective: "Implement warning-first Work Order contract validation.",
+    risk_class: "R2",
+    work_unit: "PR",
+    delivery_profile_ref: "iyasaka-internal.pr-conveyor",
+    architecture_owner: "IYASAKA ARC",
+    implementation_owner: "Shirube repo maintainer",
+    review_owner: "Shirube reviewer",
+    audit_owner: "Shirube audit owner",
+    merge_authority: "Shirube repo maintainer",
     handoff_target: "codex",
     dispatch_surfaces: ["aun", "codex", "claude", "shirube_report"],
+    scope: ["Implement warning-first Work Order contract validation."],
+    non_goals: ["Do not enable live AUN dispatch.", "Do not merge automatically."],
+    allowed_files: ["src/cli/lib/workflow-state.ts", "src/cli/commands/workflow.test.ts"],
+    allowed_actions: ["edit code", "run tests", "open PR", "request audit"],
+    forbidden_actions: ["merge", "production deploy", "secret change"],
+    verification_commands: [
+      "npm test -- src/cli/commands/workflow.test.ts",
+      "npm run type-check",
+      "npm run build:cli",
+    ],
+    stop_conditions: ["R4 action requested", "missing implementation authority"],
+    fallback_next_work_policy: "record blocker and move to next ready Work Order",
     inputs: [
       {
         type: "aun_message",
@@ -1811,6 +1974,49 @@ function completeWorkOrder(): Record<string, unknown> {
       "AUN, Codex, Claude, and Shirube report consumers accept work-order/v1.",
       "Downstream migration has no warning-only violations.",
     ],
+  };
+}
+
+function internalPrConveyorProfile(): Record<string, unknown> {
+  return {
+    profile_version: "0.1.0",
+    profile_id: "iyasaka-internal.pr-conveyor",
+    default_delivery_strategy: "pr_conveyor",
+    allowed_delivery_strategies: [
+      "pr_conveyor",
+      "phase_conveyor",
+      "release_train",
+      "serial_gate",
+      "design_only",
+      "hotfix",
+    ],
+    strategy_by_risk: {
+      R0: {
+        delivery_strategy: "pr_conveyor",
+        audit_timing: "after_pr",
+        pr_mode: "normal",
+      },
+      R1: {
+        delivery_strategy: "pr_conveyor",
+        audit_timing: "after_pr",
+        pr_mode: "normal",
+      },
+      R2: {
+        delivery_strategy: "pr_conveyor",
+        audit_timing: "after_pr",
+        pr_mode: "normal",
+      },
+      R3: {
+        delivery_strategy: "phase_conveyor",
+        audit_timing: "before_merge",
+        pr_mode: "draft_or_reference_until_owner_adopts",
+      },
+      R4: {
+        delivery_strategy: "serial_gate",
+        audit_timing: "before_execution",
+        pr_mode: "blocked_until_approved",
+      },
+    },
   };
 }
 

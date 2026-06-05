@@ -99,18 +99,21 @@ type WorkOrderV1 = {
 };
 ```
 
-## 4. Warning-First Gate
+## 4. Warning-First Gate With Required Field Block
 `shirube workflow check --action work_order --profile strict --json` evaluates
-the contract but emits WARN for missing or invalid Work Order evidence.
+the contract. Missing Work Order records remain WARN during migration, but a
+present Work Order with missing or invalid required fields is a BLOCK because
+downstream dispatch must not infer a prompt-template shape.
 
-The default `--fail-on block` threshold therefore does not stop current
-development. Migration audits can use `--fail-on warn` to fail on the same
-findings before the gate is promoted.
+The default `--fail-on block` threshold therefore still does not stop current
+development when no Work Order has been adopted yet. Migration audits can use
+`--fail-on warn` to fail advisory findings before those remaining rules are
+promoted.
 
 | Rule | Gate | Initial decision when invalid |
 |------|------|-------------------------------|
 | `G21.work_order.record.present` | work_order | WARN |
-| `G21.work_order.required_fields` | work_order | WARN |
+| `G21.work_order.required_fields` | work_order | BLOCK |
 | `G21.work_order.dispatch_contract` | work_order | WARN |
 | `G21.work_order.runtime_contract` | work_order | WARN |
 | `G21.work_order.context_pack_boundary` | work_order | WARN |
@@ -142,12 +145,13 @@ cites them.
   context pack refs or non-applicability, runtime adapter needs, expected output
   schema, write scope, authority boundary, gates, non-claims, and handoff
   target.
-- `workflow check --action work_order` is warning-first and can fail under
-  `--fail-on warn`.
+- `workflow check --action work_order` is warning-first for missing records and
+  advisory boundaries, but blocks a present Work Order with missing or invalid
+  required fields.
 - Docs describe AUN dispatch, Codex/Claude structured invocation, Shirube gate/
   report, and Kodama context-pack compatibility.
-- The contract can later be promoted from WARN to BLOCK without changing the
-  artifact shape.
+- Remaining advisory rules can later be promoted from WARN to BLOCK without
+  changing the artifact shape.
 
 Acceptance scenario for warning-first migration:
 
@@ -156,6 +160,15 @@ Given a repository has no work-order/v1 artifact yet
 When the strict work_order workflow check runs with the default block threshold
 Then the check reports WARN decisions
 And the scoped check still passes because the migration gate is warning-first
+```
+
+Acceptance scenario for required field enforcement:
+
+```gherkin
+Given a repository has a prompt-template-like Work Order artifact
+When the strict work_order workflow check runs with the default block threshold
+Then G21.work_order.required_fields blocks
+And dispatch/runtime advisory gaps may still warn
 ```
 
 Acceptance scenario for structured dispatch:
