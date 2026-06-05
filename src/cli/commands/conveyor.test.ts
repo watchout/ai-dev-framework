@@ -217,6 +217,10 @@ describe("conveyor command", () => {
     const result = runConveyor(`tick --fixture ${fixturePath} --json`);
     const manifest = JSON.parse(result.stdout) as {
       schema: string;
+      current_ops: {
+        metrics: { reconcile_backlog: number };
+        reconcile_backlog: Array<{ repo: string; number: number }>;
+      };
       lanes: {
         implementation: { targets: Array<{ repo: string; number: number }> };
         l3: { targets: Array<{ repo: string; number: number }> };
@@ -231,6 +235,20 @@ describe("conveyor command", () => {
     expect(manifest.lanes.l3.targets[0]).toEqual(
       expect.objectContaining({ repo, number: 286 }),
     );
+    expect(manifest.current_ops.metrics.reconcile_backlog).toBe(1);
+    expect(manifest.current_ops.reconcile_backlog[0]).toEqual(
+      expect.objectContaining({ repo, number: 286 }),
+    );
+  });
+
+  it("prints current ops sections in the tick manifest", () => {
+    const fixturePath = writeFixture();
+    const result = runConveyor(`tick --fixture ${fixturePath}`);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Current ops:");
+    expect(result.stdout).toContain("reconcile_backlog=1");
+    expect(result.stdout).toContain("Reconcile backlog:");
   });
 
   it("selects the next role target deterministically", () => {

@@ -659,7 +659,49 @@ function formatConveyorManifest(manifest: ConveyorTickManifest): string {
       lines.push(`  ${target.repo}#${target.number} ${target.kind}${head}${reason}`);
     }
   }
+  const ops = manifest.current_ops;
+  lines.push(
+    "",
+    "Current ops:",
+    `  reconcile_backlog=${ops.metrics.reconcile_backlog}`,
+    `  dirty_audit_queue=${ops.metrics.dirty_audit_queue}`,
+    `  merged_stale_state_cleanup=${ops.metrics.merged_stale_state_cleanup}`,
+    `  dependency_release_candidates=${ops.metrics.dependency_release_candidates}`,
+    `  human_approval_notifications=${ops.metrics.human_approval_notifications}`,
+    `  unreviewed_deployed_commit_blockers=${ops.metrics.unreviewed_deployed_commit_blockers}`,
+  );
+  appendOpsSection(lines, "Reconcile backlog", ops.reconcile_backlog);
+  appendOpsSection(lines, "Dirty audit queue", ops.dirty_audit_queue);
+  appendOpsSection(lines, "Merged stale state cleanup", ops.merged_stale_state_cleanup);
+  if (ops.dependency_release_candidates.length > 0) {
+    lines.push("", "Dependency release candidates:");
+    for (const release of ops.dependency_release_candidates) {
+      lines.push(`  ${release.repo}#${release.predecessor} -> #${release.released} ${release.state}`);
+    }
+  }
+  appendOpsSection(lines, "Human approval notifications", ops.human_approval_notifications);
+  if (ops.unreviewed_deployed_commit_blockers.length > 0) {
+    lines.push("", "Unreviewed deployed commit blockers:");
+    for (const blocker of ops.unreviewed_deployed_commit_blockers) {
+      const head = blocker.deployed_head ? ` head=${blocker.deployed_head}` : "";
+      lines.push(`  ${blocker.repo} ${blocker.component}${head} reason=${blocker.reason_codes.join(",")}`);
+    }
+  }
   return `${lines.join("\n")}\n`;
+}
+
+function appendOpsSection(
+  lines: string[],
+  title: string,
+  targets: ConveyorTickManifest["current_ops"]["reconcile_backlog"],
+): void {
+  if (targets.length === 0) return;
+  lines.push("", `${title}:`);
+  for (const target of targets) {
+    const head = target.head ? ` head=${target.head}` : "";
+    const reasons = target.reason_codes.length ? ` reason=${target.reason_codes.join(",")}` : "";
+    lines.push(`  ${target.repo}#${target.number}${head}${reasons}`);
+  }
 }
 
 function formatNextTarget(payload: {

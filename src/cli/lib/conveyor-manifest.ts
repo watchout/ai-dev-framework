@@ -1,7 +1,9 @@
 import {
+  collectConveyorAuditEvidence,
   reconcileConveyor,
   type ConveyorMode,
   type ConveyorEvidenceSource,
+  type ConveyorDependencyRelease,
   type ConveyorReconcilerConfig,
   type ConveyorPullRequestSnapshot,
   type ConveyorReconcileInput,
@@ -21,6 +23,16 @@ export interface ConveyorIssueSnapshot {
 
 export interface ConveyorManifestInput extends ConveyorReconcileInput {
   issues?: ConveyorIssueSnapshot[];
+  deployments?: ConveyorDeploymentSnapshot[];
+  merged_heads?: Record<string, string[]>;
+}
+
+export interface ConveyorDeploymentSnapshot {
+  component: string;
+  repo: string;
+  checkout_path?: string;
+  deployed_head?: string;
+  observed_at?: string;
 }
 
 export interface ConveyorTarget {
@@ -43,6 +55,66 @@ export interface ConveyorLaneManifest {
   targets: ConveyorTarget[];
 }
 
+export interface ConveyorOpsTarget {
+  kind: "issue" | "pr";
+  repo: string;
+  number: number;
+  url?: string;
+  title?: string;
+  head?: string;
+  labels: string[];
+  reason_codes: string[];
+  recommended_add: string[];
+  recommended_remove: string[];
+}
+
+export interface ConveyorMergedStaleStateCleanup extends ConveyorOpsTarget {
+  merge_state?: string;
+}
+
+export interface ConveyorDeploymentBlocker {
+  component: string;
+  repo: string;
+  checkout_path?: string;
+  deployed_head?: string;
+  status: "missing_deployed_head" | "unreviewed_deployed_commit";
+  reason_codes: string[];
+  represented_by?: {
+    repo: string;
+    pr: number;
+    head: string;
+  };
+  next_actions: string[];
+}
+
+export interface ConveyorLaneQueueSummary {
+  role: ConveyorRole;
+  count: number;
+  targets: ConveyorTarget[];
+}
+
+export interface ConveyorCurrentOps {
+  schema: "shirube-conveyor-current-ops/v1";
+  safe_to_apply: false;
+  lane_queues: Record<ConveyorRole, ConveyorLaneQueueSummary>;
+  reconcile_backlog: ConveyorOpsTarget[];
+  dirty_audit_queue: ConveyorOpsTarget[];
+  merged_stale_state_cleanup: ConveyorMergedStaleStateCleanup[];
+  dependency_release_candidates: ConveyorDependencyRelease[];
+  human_approval_notifications: ConveyorOpsTarget[];
+  unreviewed_deployed_commit_blockers: ConveyorDeploymentBlocker[];
+  metrics: {
+    lane_targets: Record<ConveyorRole, number>;
+    reconcile_backlog: number;
+    dirty_audit_queue: number;
+    merged_stale_state_cleanup: number;
+    dependency_release_candidates: number;
+    human_approval_notifications: number;
+    unreviewed_deployed_commit_blockers: number;
+  };
+  authority_notes: string[];
+}
+
 export interface ConveyorTickManifest {
   schema: "shirube-conveyor-tick-manifest/v1";
   mode: ConveyorMode;
@@ -50,6 +122,7 @@ export interface ConveyorTickManifest {
   judgment_unit: "pull_request";
   dependency_order: string[][];
   lanes: Record<ConveyorRole, ConveyorLaneManifest>;
+  current_ops: ConveyorCurrentOps;
   reconcile: ConveyorReconcileReport;
 }
 
@@ -100,6 +173,8 @@ export function buildConveyorTickManifest(input: ConveyorManifestInput, mode: Co
     lane.targets.sort(compareTargets);
   }
 
+  const currentOps = buildCurrentOps(input, lanes, reconcile, pullRequestsByKey);
+
   return {
     schema: "shirube-conveyor-tick-manifest/v1",
     mode,
@@ -107,6 +182,7 @@ export function buildConveyorTickManifest(input: ConveyorManifestInput, mode: Co
     judgment_unit: "pull_request",
     dependency_order: dependencyOrder(input.config?.dependencies),
     lanes,
+    current_ops: currentOps,
     reconcile,
   };
 }
@@ -170,6 +246,162 @@ function prTarget(
   };
 }
 
+function buildCurrentOps(
+  input: ConveyorManifestInput,
+  lanes: Record<ConveyorRole, ConveyorLaneManifest>,
+  reconcile: ConveyorReconcileReport,
+  pullRequestsByKey: Map<string, ConveyorPullRequestSnapshot>,
+): ConveyorCurrentOps {
+  const laneQueues = buildLaneQueueSummary(lanes);
+  const laneTargets = Object.fromEntries(
+    Object.entries(laneQueues).map(([role, queue]) => [role, queue.count]),
+  ) as Record<ConveyorRole, number>;
+  const reconcileBacklog: ConveyorOpsTarget[] = [];
+  const dirtyAuditQueue: ConveyorOpsTarget[] = [];
+  const mergedCleanup: ConveyorMergedStaleStateCleanup[] = [];
+  const humanApproval: ConveyorOpsTarget[] = [];
+
+  for (const report of reconcile.prs) {
+    const original = pullRequestsByKey.get(targetKey(report.repo, report.pr));
+    const reasonCodes = unique([...report.transition_plan.reason_codes, ...report.skipped, ...report.findings]);
+    if (report.transition_plan.safe_to_apply) {
+      reconcileBacklog.push(opsTarget(report, original, ["safe_transition_plan"]));
+    }
+    if (reasonCodes.length > 0 && hasAuditPendingLabel(report.final_labels)) {
+      dirtyAuditQueue.push(opsTarget(report, original, reasonCodes));
+    }
+    if (original && isMergedPr(original) && hasStaleActiveState(original.labels)) {
+      mergedCleanup.push(mergedCleanupTarget(report, original));
+    }
+    if (requiresHumanApproval(report.final_labels, original?.labels ?? [])) {
+      humanApproval.push(opsTarget(report, original, ["human_approval_required"]));
+    }
+  }
+
+  const deployedBlockers = buildDeploymentBlockers(input);
+
+  return {
+    schema: "shirube-conveyor-current-ops/v1",
+    safe_to_apply: false,
+    lane_queues: laneQueues,
+    reconcile_backlog: reconcileBacklog.sort(compareOpsTargets),
+    dirty_audit_queue: dirtyAuditQueue.sort(compareOpsTargets),
+    merged_stale_state_cleanup: mergedCleanup.sort(compareOpsTargets),
+    dependency_release_candidates: reconcile.dependency_releases,
+    human_approval_notifications: humanApproval.sort(compareOpsTargets),
+    unreviewed_deployed_commit_blockers: deployedBlockers,
+    metrics: {
+      lane_targets: laneTargets,
+      reconcile_backlog: reconcileBacklog.length,
+      dirty_audit_queue: dirtyAuditQueue.length,
+      merged_stale_state_cleanup: mergedCleanup.length,
+      dependency_release_candidates: reconcile.dependency_releases.length,
+      human_approval_notifications: humanApproval.length,
+      unreviewed_deployed_commit_blockers: deployedBlockers.length,
+    },
+    authority_notes: [
+      "current_ops_tick_is_read_only",
+      "dry_run_by_default",
+      "no_merge_approval_draft_remove_deploy_restart_db_queue_discord_or_aun_dispatch",
+    ],
+  };
+}
+
+function buildLaneQueueSummary(lanes: Record<ConveyorRole, ConveyorLaneManifest>): Record<ConveyorRole, ConveyorLaneQueueSummary> {
+  return Object.fromEntries(
+    Object.entries(lanes).map(([role, lane]) => [
+      role,
+      {
+        role: lane.role,
+        count: lane.targets.length,
+        targets: lane.targets,
+      },
+    ]),
+  ) as Record<ConveyorRole, ConveyorLaneQueueSummary>;
+}
+
+function opsTarget(
+  report: ConveyorReconcileReport["prs"][number],
+  original: ConveyorPullRequestSnapshot | undefined,
+  reasonCodes: string[],
+): ConveyorOpsTarget {
+  return {
+    kind: "pr",
+    repo: report.repo,
+    number: report.pr,
+    url: original?.url,
+    title: original?.title,
+    head: report.head,
+    labels: report.final_labels,
+    reason_codes: unique(reasonCodes),
+    recommended_add: report.changes.add,
+    recommended_remove: report.changes.remove,
+  };
+}
+
+function mergedCleanupTarget(
+  report: ConveyorReconcileReport["prs"][number],
+  original: ConveyorPullRequestSnapshot,
+): ConveyorMergedStaleStateCleanup {
+  const staleLabels = original.labels.filter(isStaleMergedLabel);
+  return {
+    ...opsTarget(report, original, ["merged_pr_has_stale_active_state"]),
+    merge_state: original.merge_state,
+    recommended_add: ["state:done", "merged_closed"].filter((label) => !original.labels.includes(label)),
+    recommended_remove: unique([...staleLabels, "audit-pending"].filter((label) => original.labels.includes(label))),
+  };
+}
+
+function buildDeploymentBlockers(input: ConveyorManifestInput): ConveyorDeploymentBlocker[] {
+  const blockers: ConveyorDeploymentBlocker[] = [];
+  for (const deployment of input.deployments ?? []) {
+    if (!deployment.deployed_head) {
+      blockers.push({
+        component: deployment.component,
+        repo: deployment.repo,
+        checkout_path: deployment.checkout_path,
+        status: "missing_deployed_head",
+        reason_codes: ["missing_deployed_head"],
+        next_actions: ["record_live_probe_head_before_reconcile"],
+      });
+      continue;
+    }
+    if ((input.merged_heads?.[deployment.repo] ?? []).includes(deployment.deployed_head)) continue;
+
+    const representedBy = findReviewedExactHeadPr(input.pull_requests, deployment.repo, deployment.deployed_head);
+    if (representedBy) continue;
+
+    const exactHeadPr = input.pull_requests.find((pr) => pr.repo === deployment.repo && pr.head === deployment.deployed_head);
+    blockers.push({
+      component: deployment.component,
+      repo: deployment.repo,
+      checkout_path: deployment.checkout_path,
+      deployed_head: deployment.deployed_head,
+      status: "unreviewed_deployed_commit",
+      reason_codes: exactHeadPr
+        ? ["deployed_head_pr_missing_pass_audit_evidence"]
+        : ["no_merged_commit_or_reviewed_pr_for_deployed_head"],
+      represented_by: exactHeadPr
+        ? { repo: exactHeadPr.repo, pr: exactHeadPr.number, head: exactHeadPr.head }
+        : undefined,
+      next_actions: ["open_or_attach_pr_with_exact_head_audit_evidence", "hold_done_or_recovered_claim"],
+    });
+  }
+  return blockers.sort((left, right) => left.repo.localeCompare(right.repo) || left.component.localeCompare(right.component));
+}
+
+function findReviewedExactHeadPr(
+  pullRequests: ConveyorPullRequestSnapshot[],
+  repo: string,
+  head: string,
+): ConveyorPullRequestSnapshot | undefined {
+  return pullRequests.find((pr) =>
+    pr.repo === repo &&
+    pr.head === head &&
+    collectConveyorAuditEvidence(pr).some((evidence) => evidence.head === head && evidence.verdict === "PASS")
+  );
+}
+
 function reasonForTarget(target: ConveyorTarget, role: ConveyorRole): string | undefined {
   if (target.skipped.length > 0) return target.skipped.join(",");
   if (target.labels.includes("dependency-blocked")) return "dependency-blocked";
@@ -180,6 +412,10 @@ function reasonForTarget(target: ConveyorTarget, role: ConveyorRole): string | u
 }
 
 function compareTargets(left: ConveyorTarget, right: ConveyorTarget): number {
+  return left.repo === right.repo ? left.number - right.number : left.repo.localeCompare(right.repo);
+}
+
+function compareOpsTargets(left: ConveyorOpsTarget, right: ConveyorOpsTarget): number {
   return left.repo === right.repo ? left.number - right.number : left.repo.localeCompare(right.repo);
 }
 
@@ -199,4 +435,30 @@ function dependencyOrder(dependencies: ConveyorReconcilerConfig["dependencies"] 
 
 function unique<T>(values: T[]): T[] {
   return Array.from(new Set(values));
+}
+
+function hasAuditPendingLabel(labels: string[]): boolean {
+  return labels.includes("audit-pending") || labels.some((label) => label.startsWith("audit:") && label.endsWith("-pending"));
+}
+
+function isMergedPr(pr: ConveyorPullRequestSnapshot): boolean {
+  return pr.merge_state?.toUpperCase() === "MERGED" || pr.labels.includes("merged_closed");
+}
+
+function hasStaleActiveState(labels: string[]): boolean {
+  return labels.some(isStaleMergedLabel);
+}
+
+function isStaleMergedLabel(label: string): boolean {
+  if (label === "state:done" || label === "merged_closed") return false;
+  return label.startsWith("state:") ||
+    label === "audit-pending" ||
+    label.startsWith("audit:") && label.endsWith("-pending") ||
+    label.startsWith("needs:");
+}
+
+function requiresHumanApproval(finalLabels: string[], originalLabels: string[]): boolean {
+  return finalLabels.includes("state:ceo-approval") ||
+    finalLabels.includes("needs:ceo-approval") ||
+    originalLabels.includes("route:ceo-approval");
 }

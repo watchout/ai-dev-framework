@@ -88,7 +88,29 @@ function fixture(): ConveyorManifestInput {
           },
         ],
       },
+      {
+        repo,
+        number: 293,
+        head: "merged-head-293",
+        merge_state: "MERGED",
+        labels: ["state:done", "audit-pending", "audit:l1-pending", "needs:l1-audit"],
+      },
     ],
+    deployments: [
+      {
+        component: "shirube-control-plane",
+        repo,
+        checkout_path: "/srv/shirube",
+        deployed_head: "unreviewed-deployed-head",
+      },
+      {
+        component: "merged-control-plane",
+        repo,
+        checkout_path: "/srv/shirube",
+        deployed_head: "merged-deployed-head",
+      },
+    ],
+    merged_heads: { [repo]: ["merged-deployed-head"] },
     config: { dependencies: { [repo]: [[285, 286]] } },
   };
 }
@@ -121,6 +143,36 @@ describe("conveyor tick manifest", () => {
         reason: "state:ceo-approval",
       }),
     );
+    expect(manifest.current_ops.schema).toBe("shirube-conveyor-current-ops/v1");
+    expect(manifest.current_ops.safe_to_apply).toBe(false);
+    expect(manifest.current_ops.lane_queues.l2.count).toBe(2);
+    expect(manifest.current_ops.reconcile_backlog.map((target) => `${target.repo}#${target.number}`)).toEqual([
+      "watchout/ai-dev-framework#285",
+    ]);
+    expect(manifest.current_ops.dirty_audit_queue.map((target) => `${target.repo}#${target.number}`)).toContain(
+      "watchout/ai-dev-framework#292",
+    );
+    expect(manifest.current_ops.merged_stale_state_cleanup).toEqual([
+      expect.objectContaining({
+        repo,
+        number: 293,
+        recommended_add: ["merged_closed"],
+        recommended_remove: expect.arrayContaining(["audit-pending", "audit:l1-pending", "needs:l1-audit"]),
+      }),
+    ]);
+    expect(manifest.current_ops.dependency_release_candidates).toEqual([
+      expect.objectContaining({ repo, predecessor: 285, released: 286 }),
+    ]);
+    expect(manifest.current_ops.human_approval_notifications).toEqual([
+      expect.objectContaining({ repo, number: 291 }),
+    ]);
+    expect(manifest.current_ops.unreviewed_deployed_commit_blockers).toEqual([
+      expect.objectContaining({
+        component: "shirube-control-plane",
+        deployed_head: "unreviewed-deployed-head",
+        reason_codes: ["no_merged_commit_or_reviewed_pr_for_deployed_head"],
+      }),
+    ]);
   });
 
   it("preserves skipped transition reasons instead of silently omitting stale-head targets", () => {
