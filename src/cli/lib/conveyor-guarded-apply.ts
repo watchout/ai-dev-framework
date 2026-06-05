@@ -140,8 +140,19 @@ export function executeConveyorGuardedApplyPlan(
         reason_codes: ["live_head_mismatch"],
         findings: [],
       });
-      continue;
     }
+  }
+  if (blocked.length > 0) {
+    return {
+      schema: "shirube-conveyor-guarded-apply-execution/v1",
+      mode: "apply",
+      applied,
+      blocked,
+      safe_to_apply: false,
+    };
+  }
+
+  for (const operation of plan.operations) {
     adapter.applyPullRequestLabels(operation);
     adapter.postPullRequestComment(operation);
     applied.push(operation);

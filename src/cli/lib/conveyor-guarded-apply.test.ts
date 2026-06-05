@@ -134,6 +134,35 @@ describe("conveyor guarded apply", () => {
     expect(report.blocked[0].reason_codes).toContain("live_head_mismatch");
     expect(applied).toEqual([]);
   });
+
+  it("does not mutate any operation when a later live head differs", () => {
+    const plan = buildConveyorGuardedApplyPlan({
+      pull_requests: [
+        pr({
+          number: 101,
+          labels: ["state:impl-l2", "audit:l2-pending", "needs:l2-audit"],
+          comments: [{ body: evidence("l2", "PASS", 101) }],
+        }),
+        pr({
+          number: 102,
+          labels: ["state:impl-l2", "audit:l2-pending", "needs:l2-audit"],
+          comments: [{ body: evidence("l2", "PASS", 102) }],
+        }),
+      ],
+    }, { mode: "apply", confirmLiveGithub: true });
+    const applied: ConveyorGuardedApplyOperation[] = [];
+    const commented: ConveyorGuardedApplyOperation[] = [];
+    const adapter = fakeAdapterByPr({ 101: "head-101", 102: "other-head" }, applied, commented);
+
+    const report = executeConveyorGuardedApplyPlan(plan, adapter, { confirmLiveGithub: true });
+
+    expect(report.safe_to_apply).toBe(false);
+    expect(report.applied).toEqual([]);
+    expect(report.blocked.map((operation) => operation.pr)).toEqual([102]);
+    expect(report.blocked[0].reason_codes).toContain("live_head_mismatch");
+    expect(applied).toEqual([]);
+    expect(commented).toEqual([]);
+  });
 });
 
 function fakeAdapter(
@@ -143,6 +172,22 @@ function fakeAdapter(
 ): ConveyorGuardedApplyAdapter {
   return {
     readPullRequestHead: () => head,
+    applyPullRequestLabels: (operation) => {
+      applied.push(operation);
+    },
+    postPullRequestComment: (operation) => {
+      commented.push(operation);
+    },
+  };
+}
+
+function fakeAdapterByPr(
+  heads: Record<number, string>,
+  applied: ConveyorGuardedApplyOperation[] = [],
+  commented: ConveyorGuardedApplyOperation[] = [],
+): ConveyorGuardedApplyAdapter {
+  return {
+    readPullRequestHead: (operation) => heads[operation.pr] ?? operation.expected_head,
     applyPullRequestLabels: (operation) => {
       applied.push(operation);
     },
