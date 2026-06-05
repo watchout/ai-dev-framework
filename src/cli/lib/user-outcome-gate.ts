@@ -60,26 +60,29 @@ export function evaluateUserOutcomeGate(input: UserOutcomeGateInput): UserOutcom
     findings.push(pass("no_completion_claim_detected", "No done/recovered/usable/complete claim was detected."));
   }
 
-  const missingFields = missingProofFields(proof);
-  for (const field of missingFields) {
-    findings.push(block(`missing_${field}`, `${field} is required before a completion or usability claim.`));
-  }
-
-  if (proof?.outcome_verdict === "FAIL") {
-    findings.push(block("outcome_verdict_fail", "User outcome evidence reports FAIL."));
-  }
-  if (proof?.outcome_verdict === "NEEDS_INFO") {
-    findings.push(block("outcome_verdict_needs_info", "User outcome evidence needs more information."));
-  }
-  if (proof?.outcome_verdict === "WAIVED") {
-    if (!proof.waiver_actor) findings.push(block("missing_waiver_actor", "WAIVED outcome requires waiver_actor."));
-    if (!proof.waiver_reason) findings.push(block("missing_waiver_reason", "WAIVED outcome requires waiver_reason."));
-    if (proof.waiver_actor && proof.waiver_reason) {
-      findings.push(warn("outcome_waived", "User outcome was waived by an explicit actor and reason."));
+  const requiresOutcomeProof = claimTerms.length > 0;
+  const missingFields = requiresOutcomeProof ? missingProofFields(proof) : [];
+  if (requiresOutcomeProof) {
+    for (const field of missingFields) {
+      findings.push(block(`missing_${field}`, `${field} is required before a completion or usability claim.`));
     }
-  }
-  if (proof?.outcome_verdict === "PASS") {
-    findings.push(pass("outcome_verdict_pass", "User outcome evidence reports PASS."));
+
+    if (proof?.outcome_verdict === "FAIL") {
+      findings.push(block("outcome_verdict_fail", "User outcome evidence reports FAIL."));
+    }
+    if (proof?.outcome_verdict === "NEEDS_INFO") {
+      findings.push(block("outcome_verdict_needs_info", "User outcome evidence needs more information."));
+    }
+    if (proof?.outcome_verdict === "WAIVED") {
+      if (!proof.waiver_actor) findings.push(block("missing_waiver_actor", "WAIVED outcome requires waiver_actor."));
+      if (!proof.waiver_reason) findings.push(block("missing_waiver_reason", "WAIVED outcome requires waiver_reason."));
+      if (proof.waiver_actor && proof.waiver_reason) {
+        findings.push(warn("outcome_waived", "User outcome was waived by an explicit actor and reason."));
+      }
+    }
+    if (proof?.outcome_verdict === "PASS") {
+      findings.push(pass("outcome_verdict_pass", "User outcome evidence reports PASS."));
+    }
   }
 
   const outcomeSatisfied = missingFields.length === 0 &&

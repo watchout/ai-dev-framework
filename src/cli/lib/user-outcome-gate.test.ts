@@ -81,6 +81,7 @@ describe("user outcome gate", () => {
       claim_text: "Shirube M0 implementation is in progress.",
     });
 
+    expect(report.verdict).toBe("PASS");
     expect(report.claim_blocked).toBe(false);
     expect(report.findings.map((finding) => finding.code)).toContain("no_completion_claim_detected");
   });
