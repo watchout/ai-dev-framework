@@ -94,6 +94,11 @@ export interface PrCellLaneHold extends PrCellLaneTarget {
 }
 
 const PLAN_MARKER = "<!-- codex-goal-cell-plan/v1 -->";
+const PR_CELL_RISK_ROUTES = ["R0", "R1", "R2", "R3", "R4"] as const;
+const PR_CELL_AUDIT_ROUTES = ["minimal", "standard", "strict", "l1", "l2", "l3", "ceo"] as const;
+const PR_CELL_OWNER_ROLES = ["implementation", "audit", "merge_authority", "ops", "human_approval"] as const;
+const PR_CELL_KINDS = ["implementation", "ops", "human_approval"] as const;
+const CONTINUE_AFTER_VALUES = ["pr_evidence_posted_and_state_impl_l1", "merge_completed", "explicit_approval"] as const;
 const REQUIRED_FORBIDDEN_OPS = ["merge", "approve", "live_aun_dispatch", "production_db_mutation"];
 const REQUIRED_EVIDENCE = ["exact_head", "validation_commands", "non_goals"];
 const REQUIRED_CONTINUATION_STOPS = [
@@ -150,12 +155,18 @@ export function validatePrCellPlan(plan: PrCellPlan): PrCellPlanValidationReport
 
 export function buildPrCellLanePlan(plan: PrCellPlan, runtime: PrCellRuntimeState[] = []): PrCellLanePlan {
   const runtimeByCell = new Map(runtime.map((state) => [state.cell_id, state]));
+  const invalidReasonCodes = invalidLaneReasonCodesByCell(plan);
   const eligible: PrCellLaneTarget[] = [];
   const held: PrCellLaneHold[] = [];
   const ops: PrCellLaneTarget[] = [];
 
-  for (const cell of plan.cells) {
+  for (const [index, cell] of plan.cells.entries()) {
     const target = laneTarget(cell, plan);
+    const schemaReasons = invalidReasonCodes.get(index) ?? [];
+    if (schemaReasons.length > 0) {
+      held.push({ ...target, reason_codes: schemaReasons });
+      continue;
+    }
     if (cell.kind === "ops" || cell.kind === "human_approval" || cell.owner_role === "ops" || cell.owner_role === "human_approval") {
       ops.push(target);
       continue;
@@ -185,9 +196,24 @@ function validateCell(cell: PrCell, path: string, findings: PrCellValidationFind
     findings.push(finding("invalid_expected_pr_count", `${path}.expected_pr_count`, "expected_pr_count must be a non-negative integer"));
   }
   if (!Array.isArray(cell.depends_on)) findings.push(finding("missing_dependency_information", `${path}.depends_on`, "depends_on is required"));
-  if (!cell.risk_route) findings.push(finding("missing_risk_route", `${path}.risk_route`, "risk_route is required"));
-  if (!cell.audit_route) findings.push(finding("missing_audit_route", `${path}.audit_route`, "audit_route is required"));
-  if (!cell.owner_role) findings.push(finding("missing_owner_role", `${path}.owner_role`, "owner_role is required"));
+  if (cell.kind !== undefined) {
+    validateEnumValue(cell.kind, PR_CELL_KINDS, `${path}.kind`, "invalid_cell_kind", "kind", findings);
+  }
+  if (!cell.risk_route) {
+    findings.push(finding("missing_risk_route", `${path}.risk_route`, "risk_route is required"));
+  } else {
+    validateEnumValue(cell.risk_route, PR_CELL_RISK_ROUTES, `${path}.risk_route`, "invalid_risk_route", "risk_route", findings);
+  }
+  if (!cell.audit_route) {
+    findings.push(finding("missing_audit_route", `${path}.audit_route`, "audit_route is required"));
+  } else {
+    validateEnumValue(cell.audit_route, PR_CELL_AUDIT_ROUTES, `${path}.audit_route`, "invalid_audit_route", "audit_route", findings);
+  }
+  if (!cell.owner_role) {
+    findings.push(finding("missing_owner_role", `${path}.owner_role`, "owner_role is required"));
+  } else {
+    validateEnumValue(cell.owner_role, PR_CELL_OWNER_ROLES, `${path}.owner_role`, "invalid_owner_role", "owner_role", findings);
+  }
   validateRequiredValues(cell.forbidden, REQUIRED_FORBIDDEN_OPS, `${path}.forbidden`, "missing_forbidden_operation", findings);
   validateRequiredValues(cell.evidence_required, REQUIRED_EVIDENCE, `${path}.evidence_required`, "missing_evidence_requirement", findings);
   if (!Array.isArray(cell.stop_conditions) || cell.stop_conditions.length === 0) {
@@ -212,8 +238,30 @@ function validateContinuationPolicy(
   }
   if (!policy.continue_after) {
     findings.push(finding("missing_continue_after", `${path}.continue_after`, "continue_after is required"));
+  } else {
+    validateEnumValue(
+      policy.continue_after,
+      CONTINUE_AFTER_VALUES,
+      `${path}.continue_after`,
+      "invalid_continue_after",
+      "continue_after",
+      findings,
+    );
   }
   validateRequiredValues(policy.stop_on, REQUIRED_CONTINUATION_STOPS, `${path}.stop_on`, "missing_continuation_stop", findings);
+}
+
+function validateEnumValue(
+  value: string,
+  allowed: readonly string[],
+  path: string,
+  code: string,
+  label: string,
+  findings: PrCellValidationFinding[],
+): void {
+  if (!allowed.includes(value)) {
+    findings.push(finding(code, path, `${label} must be one of ${allowed.join(", ")}`));
+  }
 }
 
 function validateRequiredValues(
@@ -277,10 +325,37 @@ function laneTarget(cell: PrCell, plan: PrCellPlan): PrCellLaneTarget {
     parallel_group: cell.parallel_group,
     risk_route: cell.risk_route,
     audit_route: cell.audit_route,
-    continue_after: cell.continuation_policy?.continue_after ?? plan.continuation_policy.continue_after,
+    continue_after: cell.continuation_policy?.continue_after ?? plan.continuation_policy?.continue_after ?? "pr_evidence_posted_and_state_impl_l1",
     forbidden: cell.forbidden,
     evidence_required: cell.evidence_required,
   };
+}
+
+function invalidLaneReasonCodesByCell(plan: PrCellPlan): Map<number, string[]> {
+  const report = validatePrCellPlan(plan);
+  const byCell = new Map<number, string[]>();
+  const planReasons = report.findings
+    .filter((item) => !item.path.startsWith("cells["))
+    .map((item) => `invalid_cell_plan:${item.code}`);
+
+  for (const finding of report.findings) {
+    const match = finding.path.match(/^cells\[(\d+)\]/);
+    if (!match) continue;
+    const index = Number(match[1]);
+    const reasons = byCell.get(index) ?? [];
+    reasons.push(`invalid_cell_plan:${finding.code}`);
+    byCell.set(index, reasons);
+  }
+
+  for (const [index, reasons] of byCell) {
+    byCell.set(index, [...new Set([...planReasons, ...reasons])]);
+  }
+  if (planReasons.length > 0) {
+    for (const [index] of plan.cells.entries()) {
+      byCell.set(index, [...new Set([...(byCell.get(index) ?? []), ...planReasons])]);
+    }
+  }
+  return byCell;
 }
 
 function finding(code: string, path: string, message: string): PrCellValidationFinding {

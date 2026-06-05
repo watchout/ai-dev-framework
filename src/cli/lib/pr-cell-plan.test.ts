@@ -95,6 +95,50 @@ describe("PR Cell Plan", () => {
     );
   });
 
+  it("rejects invalid enum values and keeps invalid cells out of implementation lanes", () => {
+    const cellPlan = {
+      ...plan([
+        baseCell({
+          kind: "worker" as PrCell["kind"],
+          risk_route: "R5" as PrCell["risk_route"],
+          audit_route: "root" as PrCell["audit_route"],
+          owner_role: "unknown" as PrCell["owner_role"],
+        }),
+      ]),
+      continuation_policy: {
+        ...plan().continuation_policy,
+        continue_after: "run_now" as PrCellPlan["continuation_policy"]["continue_after"],
+      },
+    };
+
+    const report = validatePrCellPlan(cellPlan);
+    expect(report.valid).toBe(false);
+    expect(report.findings.map((finding) => finding.code)).toEqual(
+      expect.arrayContaining([
+        "invalid_continue_after",
+        "invalid_cell_kind",
+        "invalid_risk_route",
+        "invalid_audit_route",
+        "invalid_owner_role",
+      ]),
+    );
+
+    const lanePlan = buildPrCellLanePlan(cellPlan);
+    expect(lanePlan.eligible_implementation_cells).toEqual([]);
+    expect(lanePlan.held_cells).toEqual([
+      expect.objectContaining({
+        cell_id: "A",
+        reason_codes: expect.arrayContaining([
+          "invalid_cell_plan:invalid_continue_after",
+          "invalid_cell_plan:invalid_cell_kind",
+          "invalid_cell_plan:invalid_risk_route",
+          "invalid_cell_plan:invalid_audit_route",
+          "invalid_cell_plan:invalid_owner_role",
+        ]),
+      }),
+    ]);
+  });
+
   it("returns independent parallel implementation cells together", () => {
     const lanePlan = buildPrCellLanePlan(plan([
       baseCell({ id: "A", title: "schema", parallel_group: "alpha" }),
