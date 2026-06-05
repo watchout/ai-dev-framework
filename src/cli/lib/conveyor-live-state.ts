@@ -115,7 +115,7 @@ function reconcileDeployment(
   }
 
   const openPr = (input.pull_requests ?? []).find((pr) => pr.repo === deployment.repo && pr.head === deployment.deployed_head);
-  if (openPr && isEmergencyPr(openPr) && hasExactAuditEvidence(openPr, deployment.deployed_head)) {
+  if (openPr && isEmergencyPr(openPr) && hasExactPassingAuditEvidence(openPr, deployment.deployed_head)) {
     return {
       component: deployment.component,
       repo: deployment.repo,
@@ -138,8 +138,11 @@ function reconcileDeployment(
   if (openPr && !isEmergencyPr(openPr)) {
     reasonCodes.push("open_pr_not_emergency_regularization");
   }
-  if (openPr && isEmergencyPr(openPr) && !hasExactAuditEvidence(openPr, deployment.deployed_head)) {
+  if (openPr && isEmergencyPr(openPr) && !hasExactPassingAuditEvidence(openPr, deployment.deployed_head)) {
     reasonCodes.push("open_emergency_pr_missing_exact_head_evidence");
+    if (hasExactNonPassingAuditEvidence(openPr, deployment.deployed_head)) {
+      reasonCodes.push("open_emergency_pr_exact_head_audit_not_pass");
+    }
   }
   if (!openPr) {
     reasonCodes.push("no_open_pr_for_deployed_head");
@@ -164,6 +167,10 @@ function isEmergencyPr(pr: ConveyorPullRequestSnapshot): boolean {
   return pr.labels.some((label) => EMERGENCY_LABELS.includes(label));
 }
 
-function hasExactAuditEvidence(pr: ConveyorPullRequestSnapshot, head: string): boolean {
-  return collectConveyorAuditEvidence(pr).some((evidence) => evidence.head === head);
+function hasExactPassingAuditEvidence(pr: ConveyorPullRequestSnapshot, head: string): boolean {
+  return collectConveyorAuditEvidence(pr).some((evidence) => evidence.head === head && evidence.verdict === "PASS");
+}
+
+function hasExactNonPassingAuditEvidence(pr: ConveyorPullRequestSnapshot, head: string): boolean {
+  return collectConveyorAuditEvidence(pr).some((evidence) => evidence.head === head && evidence.verdict !== "PASS");
 }

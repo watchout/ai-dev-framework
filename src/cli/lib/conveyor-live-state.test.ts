@@ -113,6 +113,46 @@ describe("conveyor live state reconciler", () => {
     );
   });
 
+  it("keeps exact-head non-PASS emergency PR evidence in stop lane", () => {
+    const report = buildConveyorLiveStateReport({
+      deployments: [
+        { component: "aun-state-daemon", repo, checkout_path: "/srv/aun", deployed_head: "unsafe-head" },
+      ],
+      pull_requests: [
+        {
+          repo,
+          number: 687,
+          head: "unsafe-head",
+          labels: ["route:emergency"],
+          comments: [
+            {
+              body: [
+                "<!-- conveyor:audit-result/v1 -->",
+                `repo: ${repo}`,
+                "pr: 687",
+                "role: l2",
+                "verdict: BLOCK",
+                "head: unsafe-head",
+              ].join("\n"),
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(report.deployments[0]).toEqual(
+      expect.objectContaining({
+        status: "unreviewed_deployed_commit",
+        stop_lane: true,
+        reason_codes: expect.arrayContaining([
+          "open_emergency_pr_missing_exact_head_evidence",
+          "open_emergency_pr_exact_head_audit_not_pass",
+        ]),
+        next_actions: ["rollback_decision_required", "create_or_attach_emergency_pr_with_exact_head_evidence"],
+      }),
+    );
+  });
+
   it("emits stop-lane when a live probe omits the deployed head", () => {
     const report = buildConveyorLiveStateReport({
       deployments: [
