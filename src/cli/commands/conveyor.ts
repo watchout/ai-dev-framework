@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import type { Command } from "commander";
 import {
   reconcileConveyor,
@@ -34,6 +35,14 @@ import {
   buildConveyorLabelSyncPlan,
   type ConveyorLabelSyncPlan,
 } from "../lib/conveyor-label-sync.js";
+import {
+  buildConveyorGuardedApplyPlan,
+  executeConveyorGuardedApplyPlan,
+  type ConveyorGuardedApplyAdapter,
+  type ConveyorGuardedApplyExecution,
+  type ConveyorGuardedApplyPlan,
+  type ConveyorGuardedApplyOperation,
+} from "../lib/conveyor-guarded-apply.js";
 import {
   buildConveyorStackGateReport,
   type ConveyorStackGateReport,
@@ -77,6 +86,11 @@ interface ConveyorCheckOptions {
   addLabel?: string[];
   removeLabel?: string[];
   json?: boolean;
+}
+
+interface ConveyorGuardedApplyCliOptions extends ConveyorReconcileOptions {
+  confirmLiveGithub?: boolean;
+  actor?: string;
 }
 
 interface ConveyorAuditReportOptions {
@@ -144,6 +158,44 @@ export function registerConveyorCommand(program: Command): void {
           return;
         }
         process.stdout.write(formatLabelSyncPlan(plan));
+      });
+    });
+
+  labels
+    .command("apply")
+    .description("Build or execute a guarded Conveyor label/comment apply plan")
+    .option("--fixture <path>", "JSON snapshot with pull_requests and optional config")
+    .option("--json", "Output machine-readable JSON")
+    .option("--apply", "Execute safe live GitHub label/comment mutations")
+    .option("--confirm-live-github", "Required with --apply; confirms live GitHub mutation authority")
+    .option("--actor <actor>", "Actor id for guarded apply comments", "conveyor")
+    .action((options: ConveyorGuardedApplyCliOptions) => {
+      runConveyorAction(options, () => {
+        if (!options.fixture) {
+          throw new Error("Missing --fixture. Guarded apply requires an explicit snapshot fixture.");
+        }
+        const input = JSON.parse(readFileSync(options.fixture, "utf8")) as ConveyorReconcileInput;
+        const plan = buildConveyorGuardedApplyPlan(input, {
+          mode: options.apply ? "apply" : "dry-run",
+          confirmLiveGithub: options.confirmLiveGithub,
+          actor: options.actor,
+        });
+        if (options.apply) {
+          const execution = executeConveyorGuardedApplyPlan(plan, buildGhGuardedApplyAdapter(), {
+            confirmLiveGithub: options.confirmLiveGithub,
+          });
+          if (options.json) {
+            process.stdout.write(JSON.stringify(execution, null, 2) + "\n");
+            return;
+          }
+          process.stdout.write(formatGuardedApplyExecution(execution));
+          return;
+        }
+        if (options.json) {
+          process.stdout.write(JSON.stringify(plan, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatGuardedApplyPlan(plan));
       });
     });
 
@@ -595,6 +647,92 @@ function formatLabelSyncPlan(plan: ConveyorLabelSyncPlan): string {
     lines.push(`${action.repo}#${action.pr} add=[${added}] remove=[${removed}]${blocked}${findings}`);
   }
   return `${lines.join("\n")}\n`;
+}
+
+function formatGuardedApplyPlan(plan: ConveyorGuardedApplyPlan): string {
+  const lines = [
+    `Shirube Conveyor Guarded Apply (${plan.mode})`,
+    `Dry run: ${plan.dry_run ? "yes" : "no"}`,
+    `Safe to apply: ${plan.safe_to_apply ? "yes" : "no"}`,
+    `Confirmation required: ${plan.confirmation_required ? "yes" : "no"}`,
+    "",
+    "Forbidden operations:",
+    `  ${plan.forbidden_operations.join(", ")}`,
+    "",
+    "Operations:",
+  ];
+  if (plan.operations.length === 0) {
+    lines.push("  -");
+  }
+  for (const operation of plan.operations) {
+    lines.push(
+      `  ${operation.repo}#${operation.pr} head=${operation.expected_head} add=[${operation.add_labels.join(",") || "-"}] remove=[${operation.remove_labels.join(",") || "-"}]`,
+    );
+  }
+  if (plan.blocked_operations.length > 0) {
+    lines.push("", "Blocked operations:");
+    for (const operation of plan.blocked_operations) {
+      lines.push(`  ${operation.repo}#${operation.pr} head=${operation.expected_head} reason=${operation.reason_codes.join(",")}`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function formatGuardedApplyExecution(execution: ConveyorGuardedApplyExecution): string {
+  const lines = [
+    "Shirube Conveyor Guarded Apply Execution",
+    `Safe to apply: ${execution.safe_to_apply ? "yes" : "no"}`,
+    "",
+    "Applied:",
+  ];
+  if (execution.applied.length === 0) {
+    lines.push("  -");
+  }
+  for (const operation of execution.applied) {
+    lines.push(`  ${operation.repo}#${operation.pr} head=${operation.expected_head}`);
+  }
+  if (execution.blocked.length > 0) {
+    lines.push("", "Blocked:");
+    for (const operation of execution.blocked) {
+      lines.push(`  ${operation.repo}#${operation.pr} reason=${operation.reason_codes.join(",")}`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function buildGhGuardedApplyAdapter(): ConveyorGuardedApplyAdapter {
+  return {
+    readPullRequestHead(operation) {
+      return execFileSync("gh", [
+        "pr",
+        "view",
+        String(operation.pr),
+        "--repo",
+        operation.repo,
+        "--json",
+        "headRefOid",
+        "--jq",
+        ".headRefOid",
+      ], { encoding: "utf8" }).trim();
+    },
+    applyPullRequestLabels(operation) {
+      const args = ["pr", "edit", String(operation.pr), "--repo", operation.repo];
+      if (operation.add_labels.length > 0) args.push("--add-label", operation.add_labels.join(","));
+      if (operation.remove_labels.length > 0) args.push("--remove-label", operation.remove_labels.join(","));
+      execFileSync("gh", args, { stdio: ["ignore", "pipe", "pipe"] });
+    },
+    postPullRequestComment(operation) {
+      execFileSync("gh", [
+        "pr",
+        "comment",
+        String(operation.pr),
+        "--repo",
+        operation.repo,
+        "--body",
+        operation.comment_body,
+      ], { stdio: ["ignore", "pipe", "pipe"] });
+    },
+  };
 }
 
 function formatStackGateReport(report: ConveyorStackGateReport): string {
