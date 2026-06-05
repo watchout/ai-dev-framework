@@ -74,8 +74,12 @@ interface ConveyorAuditReportOptions {
   role?: string;
   verdict?: string;
   head?: string;
+  base?: string;
+  route?: string;
+  nextStateRecommendation?: string;
   reportedBy?: string;
   recordedAt?: string;
+  template?: boolean;
   json?: boolean;
 }
 
@@ -278,16 +282,29 @@ export function registerConveyorCommand(program: Command): void {
   conveyor
     .command("audit-report")
     .description("Render a durable conveyor audit evidence block; does not post to GitHub")
-    .requiredOption("--repo <repo>", "Repository name, for example watchout/agent-memory")
-    .requiredOption("--pr <number>", "Pull request number")
-    .requiredOption("--role <role>", "Audit role: l1, l2, or l3")
-    .requiredOption("--verdict <verdict>", "PASS, BLOCK, CHANGES_REQUESTED, or HOLD")
-    .requiredOption("--head <sha>", "Exact current PR head SHA")
+    .option("--repo <repo>", "Repository name, for example watchout/agent-memory")
+    .option("--pr <number>", "Pull request number")
+    .option("--role <role>", "Audit role: l1, l2, or l3")
+    .option("--verdict <verdict>", "PASS, BLOCK, CHANGES_REQUESTED, HOLD, STALE_HEAD, or NEEDS_INFO")
+    .option("--head <sha>", "Exact current PR head SHA")
+    .option("--base <ref>", "Exact current PR base branch or base SHA")
+    .option("--route <route>", "Audit route, for example l1, l2, l3, standard, or strict", "standard")
+    .option("--next-state-recommendation <state>", "Recommended next state/operation")
     .option("--reported-by <actor>", "Actor id for the evidence block", "conveyor")
     .option("--recorded-at <timestamp>", "ISO timestamp; defaults to current time")
+    .option("--template", "Render a fill-in L1/L2/L3 audit-result template")
     .option("--json", "Output machine-readable JSON")
     .action((options: ConveyorAuditReportOptions) => {
       runConveyorAction(options, () => {
+        if (options.template) {
+          const template = buildAuditReportTemplate(options);
+          if (options.json) {
+            process.stdout.write(JSON.stringify(template, null, 2) + "\n");
+            return;
+          }
+          process.stdout.write(template.body);
+          return;
+        }
         const evidence = buildAuditReportEvidence(options);
         if (options.json) {
           process.stdout.write(JSON.stringify(evidence, null, 2) + "\n");
@@ -380,11 +397,13 @@ function parseAuditVerdict(verdict: string | undefined): ConveyorAuditVerdict {
     normalized === "PASS" ||
     normalized === "BLOCK" ||
     normalized === "CHANGES_REQUESTED" ||
-    normalized === "HOLD"
+    normalized === "HOLD" ||
+    normalized === "STALE_HEAD" ||
+    normalized === "NEEDS_INFO"
   ) {
     return normalized;
   }
-  throw new Error("Invalid --verdict. Expected PASS, BLOCK, CHANGES_REQUESTED, or HOLD.");
+  throw new Error("Invalid --verdict. Expected PASS, BLOCK, CHANGES_REQUESTED, HOLD, STALE_HEAD, or NEEDS_INFO.");
 }
 
 function buildAuditReportEvidence(options: ConveyorAuditReportOptions): {
@@ -394,22 +413,92 @@ function buildAuditReportEvidence(options: ConveyorAuditReportOptions): {
   role: ConveyorAuditRole;
   verdict: ConveyorAuditVerdict;
   head: string;
+  base: string;
+  route: string;
+  next_state_recommendation: string;
   reported_by: string;
   recorded_at: string;
+} {
+  const common = parseAuditReportCommon(options);
+  if (!options.verdict) throw new Error("Missing --verdict.");
+  if (!options.nextStateRecommendation) throw new Error("Missing --next-state-recommendation.");
+  return {
+    schema: "conveyor:audit-result/v1",
+    repo: common.repo,
+    pr: common.pr,
+    role: common.role,
+    verdict: parseAuditVerdict(options.verdict),
+    head: common.head,
+    base: common.base,
+    route: common.route,
+    next_state_recommendation: options.nextStateRecommendation,
+    reported_by: options.reportedBy ?? "conveyor",
+    recorded_at: options.recordedAt ?? new Date().toISOString(),
+  };
+}
+
+function buildAuditReportTemplate(options: ConveyorAuditReportOptions): {
+  schema: "shirube-conveyor-audit-result-template/v1";
+  repo: string;
+  pr: number;
+  role: ConveyorAuditRole;
+  head: string;
+  base: string;
+  route: string;
+  body: string;
+} {
+  const common = parseAuditReportCommon(options);
+  const body = formatAuditReportEvidence({
+    schema: "conveyor:audit-result/v1",
+    repo: common.repo,
+    pr: common.pr,
+    role: common.role,
+    verdict: "<PASS|BLOCK|STALE_HEAD|NEEDS_INFO>" as ConveyorAuditVerdict,
+    head: common.head,
+    base: common.base,
+    route: common.route,
+    next_state_recommendation: defaultNextStateRecommendation(common.role),
+    reported_by: options.reportedBy ?? "<auditor>",
+    recorded_at: options.recordedAt ?? "<iso8601>",
+  });
+  return {
+    schema: "shirube-conveyor-audit-result-template/v1",
+    repo: common.repo,
+    pr: common.pr,
+    role: common.role,
+    head: common.head,
+    base: common.base,
+    route: common.route,
+    body,
+  };
+}
+
+function parseAuditReportCommon(options: ConveyorAuditReportOptions): {
+  repo: string;
+  pr: number;
+  role: ConveyorAuditRole;
+  head: string;
+  base: string;
+  route: string;
 } {
   if (!options.repo) throw new Error("Missing --repo.");
   if (!options.pr || !Number.isInteger(Number(options.pr))) throw new Error("Invalid --pr.");
   if (!options.head) throw new Error("Missing --head.");
+  if (!options.base) throw new Error("Missing --base.");
   return {
-    schema: "conveyor:audit-result/v1",
     repo: options.repo,
     pr: Number(options.pr),
     role: parseAuditRole(options.role),
-    verdict: parseAuditVerdict(options.verdict),
     head: options.head,
-    reported_by: options.reportedBy ?? "conveyor",
-    recorded_at: options.recordedAt ?? new Date().toISOString(),
+    base: options.base,
+    route: options.route ?? "standard",
   };
+}
+
+function defaultNextStateRecommendation(role: ConveyorAuditRole): string {
+  if (role === "l1") return "<state:impl-l2|state:impl-l3|state:rework|no_transition>";
+  if (role === "l2") return "<state:impl-l3|state:rework|no_transition>";
+  return "<state:done+merge-ready|state:rework|no_transition>";
 }
 
 function formatConveyorReport(report: ReturnType<typeof reconcileConveyor>): string {
@@ -534,6 +623,9 @@ function formatAuditReportEvidence(evidence: ReturnType<typeof buildAuditReportE
     `role: ${evidence.role}`,
     `verdict: ${evidence.verdict}`,
     `head: ${evidence.head}`,
+    `base: ${evidence.base}`,
+    `route: ${evidence.route}`,
+    `next_state_recommendation: ${evidence.next_state_recommendation}`,
     `reported_by: ${evidence.reported_by}`,
     `recorded_at: ${evidence.recorded_at}`,
     "",

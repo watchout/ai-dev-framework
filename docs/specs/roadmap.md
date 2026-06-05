@@ -187,6 +187,7 @@ Shirube can govern its own development and at least one internal project through
 | 4MCP Fast Track Minimum Safety Profile | #264 defines lane/risk/action-envelope/stop-sentinel evidence so AUN, Shirube, Kodama, and Wasurezu can continue current work before the full autonomous runner platform exists. |
 | IYASAKA PR Conveyor Delivery Profile | #266/#269 defines the internal `iyasaka-internal.pr-conveyor` profile schema, risk defaults, runner-agnostic contract, and no-automatic-merge stop policy before Work Order/queue/AUN bridge wiring. |
 | Work Order Delivery Defaults | #270 makes delivery strategy, risk class, lane, PR mode, audit timing, and owner/action-envelope fields first-class Work Order evidence resolved from the selected delivery profile. |
+| M0 Conveyor Audit Result And Reconcile | #309 M0-A/B makes PR-local exact-head `conveyor:audit-result/v1` evidence and deterministic transition plans mandatory before internal usability claims. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
 | Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
 | Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
@@ -261,6 +262,11 @@ SPEC `docs/spec/phase1-work-order-delivery-defaults.md`, IMPL
 `docs/impl/phase1-work-order-delivery-defaults.md`, VERIFY
 `docs/verify/phase1-work-order-delivery-defaults.md`, OPS
 `docs/ops/phase1-work-order-delivery-defaults.md`.
+M0 conveyor audit/reconcile artifact:
+SPEC `docs/spec/phase1-m0-conveyor-audit-reconcile.md`, IMPL
+`docs/impl/phase1-m0-conveyor-audit-reconcile.md`, VERIFY
+`docs/verify/phase1-m0-conveyor-audit-reconcile.md`, OPS
+`docs/ops/phase1-m0-conveyor-audit-reconcile.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY

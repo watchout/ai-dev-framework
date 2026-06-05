@@ -15,6 +15,9 @@ function auditEvidence(input: { repo: string; pr: number; role: string; verdict:
     `role: ${input.role}`,
     `verdict: ${input.verdict}`,
     `head: ${input.head}`,
+    "base: main",
+    "route: standard",
+    `next_state_recommendation: ${input.role === "l1" ? "state:impl-l2" : input.role === "l2" ? "state:impl-l3" : "state:done+merge-ready"}`,
     "reported_by: auditor",
     "recorded_at: 2026-06-04T00:00:00.000Z",
   ].join("\n");
