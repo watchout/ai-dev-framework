@@ -548,6 +548,36 @@ describe("conveyor command", () => {
     );
   });
 
+  it("builds a guarded label/comment apply plan without mutating GitHub", () => {
+    const fixturePath = writeFixture();
+    const result = runConveyor(`labels apply --fixture ${fixturePath} --json`);
+    const plan = JSON.parse(result.stdout) as {
+      schema: string;
+      mode: string;
+      dry_run: boolean;
+      safe_to_apply: boolean;
+      operations: Array<{ repo: string; pr: number; expected_head: string; comment_body: string }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(plan.schema).toBe("shirube-conveyor-guarded-apply-plan/v1");
+    expect(plan.mode).toBe("dry-run");
+    expect(plan.dry_run).toBe(true);
+    expect(plan.safe_to_apply).toBe(true);
+    expect(plan.operations[0]).toEqual(
+      expect.objectContaining({ repo, pr: 286, expected_head: "head-286" }),
+    );
+    expect(plan.operations[0].comment_body).toContain("<!-- conveyor:guarded-apply/v1 -->");
+  });
+
+  it("rejects guarded apply without explicit live confirmation", () => {
+    const fixturePath = writeFixture();
+    const result = runConveyor(`labels apply --fixture ${fixturePath} --apply --json`);
+
+    expect(result.exitCode).not.toBe(0);
+    expect(JSON.parse(result.stdout).error.message).toContain("confirm-live-github");
+  });
+
   it("builds an observe-only stack gate report from a fixture", () => {
     const fixturePath = path.join(tmpDir, "conveyor-stack-fixture.json");
     fs.writeFileSync(
