@@ -87,6 +87,29 @@ describe("workflow command", () => {
     );
   });
 
+  it("prints derived workflow-chain/v1 as JSON", () => {
+    saveFrameworkConfig(tmpDir, readyConfig());
+
+    const result = runWorkflow("chain status --json");
+    const report = parseJson<{
+      schema_version: string;
+      transitions: Array<{ id: string; order: number }>;
+      status: string;
+    }>(result);
+
+    expect(result.exitCode).toBe(0);
+    expect(report.schema_version).toBe("workflow-chain/v1");
+    expect(report.status).toBe("blocked");
+    expect(report.transitions).toHaveLength(19);
+    expect(report.transitions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "intake_hearing", order: 1 }),
+        expect.objectContaining({ id: "implementation_start", order: 10 }),
+        expect.objectContaining({ id: "phase_closure_audit", order: 18 }),
+      ]),
+    );
+  });
+
   it("doctor reports BLOCK findings without turning observability into enforcement", () => {
     saveSession(tmpDir, completedDiscoverSession());
     saveFrameworkConfig(tmpDir, readyConfig());
@@ -104,6 +127,134 @@ describe("workflow command", () => {
     expect(report.blocking_decisions).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ rule_id: "G4.publish.remote" }),
+      ]),
+    );
+  });
+
+  it("strict workflow chain blocks implementation_start when carryover ledger is missing", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDogfoodEvidence(tmpDir);
+    writeWorkflowChainArtifact(tmpDir, "goal-sufficient-conditions.json");
+    writeWorkflowChainArtifact(tmpDir, "feature-catalog.json");
+
+    const result = runWorkflow("chain check --action implementation_start --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; target_transition: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        target_transition: "implementation_start",
+      }),
+    );
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G22.workflow_chain.carryover_ledger.present",
+          decision: "BLOCK",
+        }),
+      ]),
+    );
+  });
+
+  it("strict workflow chain blocks implementation_start when core dogfood evidence is missing", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeWorkflowChainArtifact(tmpDir, "goal-sufficient-conditions.json");
+    writeWorkflowChainArtifact(tmpDir, "carryover-ledger.json");
+    writeWorkflowChainArtifact(tmpDir, "feature-catalog.json");
+
+    const result = runWorkflow("chain check --action implementation_start --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; target_transition: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        target_transition: "implementation_start",
+      }),
+    );
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G10.goal_contract.approved",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G10.doc4l.readiness",
+          decision: "BLOCK",
+        }),
+        expect.objectContaining({
+          rule_id: "G11.pre_impl_audit.disposition",
+          decision: "BLOCK",
+        }),
+      ]),
+    );
+  });
+
+  it("strict workflow chain blocks postmerge_verify when POSTMERGE evidence is missing", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDogfoodEvidence(tmpDir);
+    writeWorkflowChainPrerequisites(tmpDir, { postmerge: false });
+    writeAuditLedgerRecord(tmpDir, completeAuditLedgerRecord());
+
+    const result = runWorkflow("chain check --action postmerge_verify --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; target_transition: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        target_transition: "postmerge_verify",
+      }),
+    );
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G22.workflow_chain.postmerge_evidence.present",
+          decision: "BLOCK",
+        }),
+      ]),
+    );
+  });
+
+  it("strict workflow chain blocks phase_closure_audit when phase closure is missing", () => {
+    saveSession(tmpDir, completedDiscoverSession());
+    saveFrameworkConfig(tmpDir, autoPublishConfig());
+    writeDogfoodEvidence(tmpDir);
+    writeWorkflowChainPrerequisites(tmpDir);
+    writeAuditLedgerRecord(tmpDir, completeAuditLedgerRecord());
+
+    const result = runWorkflow("chain check --action phase_closure_audit --profile strict --json");
+    const report = parseJson<{
+      check: { status: string; target_transition: string };
+      scoped_decisions: Array<{ rule_id: string; decision: string }>;
+    }>(result);
+
+    expect(result.exitCode).toBe(1);
+    expect(report.check).toEqual(
+      expect.objectContaining({
+        status: "failed",
+        target_transition: "phase_closure_audit",
+      }),
+    );
+    expect(report.scoped_decisions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          rule_id: "G12.phase_closure.record.present",
+          decision: "BLOCK",
+        }),
       ]),
     );
   });
@@ -1690,6 +1841,34 @@ function writeDeliveryProfile(
     JSON.stringify(record, null, 2),
     "utf-8",
   );
+}
+
+function writeWorkflowChainArtifact(
+  projectDir: string,
+  fileName: string,
+  record: Record<string, unknown> = { status: "recorded" },
+): void {
+  fs.mkdirSync(path.join(projectDir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(projectDir, ".framework", fileName),
+    JSON.stringify(record, null, 2),
+    "utf-8",
+  );
+}
+
+function writeWorkflowChainPrerequisites(
+  projectDir: string,
+  options: { postmerge?: boolean } = {},
+): void {
+  writeWorkflowChainArtifact(projectDir, "goal-sufficient-conditions.json");
+  writeWorkflowChainArtifact(projectDir, "carryover-ledger.json");
+  writeWorkflowChainArtifact(projectDir, "feature-catalog.json");
+  writeWorkflowChainArtifact(projectDir, "implementation-evidence.json");
+  writeWorkflowChainArtifact(projectDir, "implementation-audit.json");
+  if (options.postmerge !== false) {
+    writeWorkflowChainArtifact(projectDir, "postmerge-001.json");
+  }
+  writeWorkflowChainArtifact(projectDir, "goal-progress.json");
 }
 
 function completeAuditLedgerRecord(): Record<string, unknown> {
