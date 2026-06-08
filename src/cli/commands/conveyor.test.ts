@@ -400,6 +400,56 @@ describe("conveyor command", () => {
     );
   });
 
+  it("fails marked PR Cell Plan comments with missing cells as deterministic validation output", () => {
+    const invalidCommentPath = path.join(tmpDir, "invalid-pr-cell-comment.md");
+    fs.writeFileSync(
+      invalidCommentPath,
+      [
+        "<!-- codex-goal-cell-plan/v1 -->",
+        "```json",
+        JSON.stringify({
+          schema: "shirube-pr-cell-plan/v1",
+          cell_plan_id: "pr-cell-plan-304-c3-invalid",
+          issue: { repo, number: 304 },
+          objective: "Validate malformed PR Cell Plan manifests",
+          continuation_policy: {
+            continue_after: "pr_evidence_posted_and_state_impl_l1",
+            stop_on: [
+              "direct_dependency_blocked",
+              "merge_required",
+              "ceo_approval_required",
+              "live_operation_required",
+              "production_db_or_secret_mutation",
+            ],
+          },
+        }),
+        "```",
+      ].join("\n"),
+      "utf-8",
+    );
+
+    const result = runConveyor(`cell-plan validate --fixture ${invalidCommentPath} --json`);
+    const payload = JSON.parse(result.stdout) as {
+      error?: { message: string };
+      validation: { valid: boolean; findings: Array<{ code: string; path: string }> };
+      lane_plan: {
+        eligible_implementation_cells: unknown[];
+        held_cells: unknown[];
+        visible_ops_cells: unknown[];
+      };
+    };
+
+    expect(result.exitCode).not.toBe(0);
+    expect(payload.error).toBeUndefined();
+    expect(payload.validation.valid).toBe(false);
+    expect(payload.validation.findings).toEqual([
+      expect.objectContaining({ code: "missing_cells", path: "cells" }),
+    ]);
+    expect(payload.lane_plan.eligible_implementation_cells).toEqual([]);
+    expect(payload.lane_plan.held_cells).toEqual([]);
+    expect(payload.lane_plan.visible_ops_cells).toEqual([]);
+  });
+
   it("selects the next role target deterministically", () => {
     const fixturePath = writeFixture();
     const result = runConveyor(`next --role implementation --fixture ${fixturePath} --json`);

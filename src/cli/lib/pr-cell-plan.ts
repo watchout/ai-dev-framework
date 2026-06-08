@@ -156,11 +156,12 @@ export function validatePrCellPlan(plan: PrCellPlan): PrCellPlanValidationReport
 export function buildPrCellLanePlan(plan: PrCellPlan, runtime: PrCellRuntimeState[] = []): PrCellLanePlan {
   const runtimeByCell = new Map(runtime.map((state) => [state.cell_id, state]));
   const invalidReasonCodes = invalidLaneReasonCodesByCell(plan);
+  const cells = prCellPlanCells(plan);
   const eligible: PrCellLaneTarget[] = [];
   const held: PrCellLaneHold[] = [];
   const ops: PrCellLaneTarget[] = [];
 
-  for (const [index, cell] of plan.cells.entries()) {
+  for (const [index, cell] of cells.entries()) {
     const target = laneTarget(cell, plan);
     const schemaReasons = invalidReasonCodes.get(index) ?? [];
     if (schemaReasons.length > 0) {
@@ -287,7 +288,7 @@ function holdReasons(
 ): string[] {
   const reasons: string[] = [];
   for (const dependencyId of cell.depends_on) {
-    const dependency = plan.cells.find((item) => item.id === dependencyId);
+    const dependency = prCellPlanCells(plan).find((item) => item.id === dependencyId);
     const dependencyState = runtimeByCell.get(dependencyId);
     if (!dependency) {
       reasons.push(`unknown_dependency:${dependencyId}`);
@@ -334,6 +335,7 @@ function laneTarget(cell: PrCell, plan: PrCellPlan): PrCellLaneTarget {
 function invalidLaneReasonCodesByCell(plan: PrCellPlan): Map<number, string[]> {
   const report = validatePrCellPlan(plan);
   const byCell = new Map<number, string[]>();
+  const cells = prCellPlanCells(plan);
   const planReasons = report.findings
     .filter((item) => !item.path.startsWith("cells["))
     .map((item) => `invalid_cell_plan:${item.code}`);
@@ -351,11 +353,16 @@ function invalidLaneReasonCodesByCell(plan: PrCellPlan): Map<number, string[]> {
     byCell.set(index, [...new Set([...planReasons, ...reasons])]);
   }
   if (planReasons.length > 0) {
-    for (const [index] of plan.cells.entries()) {
+    for (const [index] of cells.entries()) {
       byCell.set(index, [...new Set([...(byCell.get(index) ?? []), ...planReasons])]);
     }
   }
   return byCell;
+}
+
+function prCellPlanCells(plan: PrCellPlan): PrCell[] {
+  const cells = (plan as { cells?: unknown }).cells;
+  return Array.isArray(cells) ? cells as PrCell[] : [];
 }
 
 function finding(code: string, path: string, message: string): PrCellValidationFinding {
