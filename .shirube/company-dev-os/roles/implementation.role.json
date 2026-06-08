@@ -1,0 +1,58 @@
+{
+  "schema": "shirube-company-dev-os-role-profile/v1",
+  "role": "implementation",
+  "llm": "repo_specific",
+  "purpose": "repo-specific implementation within approved ARC scope",
+  "may": [
+    "implement within approved scope",
+    "edit files",
+    "add or update tests",
+    "run checks",
+    "create commits",
+    "create implementation pull requests",
+    "write implementation handoff evidence"
+  ],
+  "must_not": [
+    "change Feature Goal",
+    "change Acceptance Criteria",
+    "expand scope without approval",
+    "self-approve audit",
+    "skip audit",
+    "skip qa",
+    "skip check",
+    "perform cto Go/No-Go",
+    "merge pull requests"
+  ],
+  "required_input": [
+    "ARC Technical Design",
+    "Implementation Handoff",
+    "approved scope"
+  ],
+  "required_output": [
+    "Implementation Handoff",
+    "Changed Files",
+    "Tests / Checks Run",
+    "Known Risks",
+    "Next Required Review"
+  ],
+  "authority": {
+    "can_edit_files": true,
+    "can_commit": true,
+    "can_create_pr": true,
+    "can_apply_fixes": true,
+    "can_merge": false,
+    "can_approve": false
+  },
+  "required_skills": [
+    "company-dev-os-runtime"
+  ],
+  "runtime_entrypoints": [
+    "AGENTS.md",
+    ".codex/instructions.md",
+    ".agents/skills/company-dev-os-runtime/SKILL.md"
+  ],
+  "handoff_targets": [
+    "audit",
+    "qa"
+  ]
+}
