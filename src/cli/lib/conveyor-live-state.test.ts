@@ -35,14 +35,7 @@ describe("conveyor live state reconciler", () => {
           labels: ["route:emergency", "state:impl-l2"],
           comments: [
             {
-              body: [
-                "<!-- conveyor:audit-result/v1 -->",
-                `repo: ${repo}`,
-                "pr: 687",
-                "role: l1",
-                "verdict: PASS",
-                "head: emergency-head",
-              ].join("\n"),
+              body: auditEvidence({ pr: 687, role: "l1", verdict: "PASS", head: "emergency-head" }),
             },
           ],
         },
@@ -90,14 +83,7 @@ describe("conveyor live state reconciler", () => {
           labels: ["route:emergency"],
           comments: [
             {
-              body: [
-                "<!-- conveyor:audit-result/v1 -->",
-                `repo: ${repo}`,
-                "pr: 687",
-                "role: l1",
-                "verdict: PASS",
-                "head: stale-head",
-              ].join("\n"),
+              body: auditEvidence({ pr: 687, role: "l1", verdict: "PASS", head: "stale-head" }),
             },
           ],
         },
@@ -126,14 +112,7 @@ describe("conveyor live state reconciler", () => {
           labels: ["route:emergency"],
           comments: [
             {
-              body: [
-                "<!-- conveyor:audit-result/v1 -->",
-                `repo: ${repo}`,
-                "pr: 687",
-                "role: l2",
-                "verdict: BLOCK",
-                "head: unsafe-head",
-              ].join("\n"),
+              body: auditEvidence({ pr: 687, role: "l2", verdict: "BLOCK", head: "unsafe-head" }),
             },
           ],
         },
@@ -170,3 +149,17 @@ describe("conveyor live state reconciler", () => {
     expect(report.metrics.missing_deployed_head_count).toBe(1);
   });
 });
+
+function auditEvidence(input: { pr: number; role: "l1" | "l2"; verdict: "PASS" | "BLOCK"; head: string }): string {
+  return [
+    "<!-- conveyor:audit-result/v1 -->",
+    `repo: ${repo}`,
+    `pr: ${input.pr}`,
+    `role: ${input.role}`,
+    `verdict: ${input.verdict}`,
+    `head: ${input.head}`,
+    "base: base-head",
+    "route: R3/Governed emergency regularization",
+    "next_state_recommendation: continue_emergency_pr_audit_to_merge_authority",
+  ].join("\n");
+}
