@@ -632,6 +632,48 @@ describe("roles command", () => {
     });
   });
 
+  it("validates bundled Company Dev OS role profiles as JSON", () => {
+    const result = runCliWithExit("roles validate --json");
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      passed: boolean;
+      profiles: Array<{ role: string; role_profile_hash: string }>;
+      findings: unknown[];
+    };
+    expect(payload.schema).toBe("shirube-company-dev-os-role-profile-validation/v1");
+    expect(payload.passed).toBe(true);
+    expect(payload.findings).toEqual([]);
+    expect(payload.profiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "implementation",
+          role_profile_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      ]),
+    );
+  });
+
+  it("validate exits non-zero with deterministic findings when profiles are missing", () => {
+    withNonFrameworkDir((cwd) => {
+      const result = runCliWithExit("roles validate --json", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      const payload = JSON.parse(result.stdout) as {
+        passed: boolean;
+        findings: Array<{ code: string; role: string }>;
+      };
+      expect(payload.passed).toBe(false);
+      expect(payload.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: "missing_profile", role: "spec" }),
+          expect.objectContaining({ code: "missing_profile", role: "cto" }),
+        ]),
+      );
+    });
+  });
+
   it("sets and lists a role binding", () => {
     withFrameworkConfig((cwd) => {
       const setResult = runCliWithExit(

@@ -1,0 +1,43 @@
+{
+  "schema": "shirube-company-dev-os-role-evidence-schema/v1",
+  "evidence_marker": "shirube:role-evidence/v1",
+  "required_fields": [
+    "repo",
+    "head",
+    "role",
+    "llm",
+    "role_profile",
+    "role_profile_hash",
+    "skill_bindings",
+    "runtime_entrypoints",
+    "authority_can_edit_files",
+    "authority_can_apply_fixes",
+    "authority_can_commit",
+    "authority_can_create_pr",
+    "authority_can_merge",
+    "recorded_by",
+    "recorded_at"
+  ],
+  "optional_fields": [
+    "pr"
+  ],
+  "transition_required_fields": [
+    "repo",
+    "pr",
+    "head",
+    "role",
+    "role_profile_hash",
+    "skill_bindings"
+  ],
+  "authority_fields": [
+    "authority_can_edit_files",
+    "authority_can_apply_fixes",
+    "authority_can_commit",
+    "authority_can_create_pr",
+    "authority_can_merge"
+  ],
+  "hash_algorithm": "sha256",
+  "hash_input": "stable-json-or-normalized-lf-text-without-timestamps",
+  "non_transition_missing_head_policy": "informational_only",
+  "transition_missing_head_policy": "block"
+}

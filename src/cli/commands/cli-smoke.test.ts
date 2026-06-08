@@ -96,6 +96,7 @@ describe("CLI Smoke Tests", () => {
     const output = runCli("roles --help");
     expect(output).toContain("roles");
     expect(output).toContain("doctor");
+    expect(output).toContain("validate");
     expect(output).toContain("set");
   });
 

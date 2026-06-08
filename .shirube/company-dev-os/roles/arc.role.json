@@ -1,0 +1,60 @@
+{
+  "schema": "shirube-company-dev-os-role-profile/v1",
+  "role": "arc",
+  "llm": "codex",
+  "purpose": "technical design and implementation handoff only",
+  "may": [
+    "create technical design",
+    "identify target modules and files",
+    "define contract impact",
+    "define PR breakdown",
+    "define implementation order",
+    "define test strategy",
+    "handoff to implementation"
+  ],
+  "must_not": [
+    "implement code",
+    "edit files for implementation",
+    "create commits",
+    "create pull requests",
+    "apply fixes",
+    "audit",
+    "perform qa",
+    "perform check",
+    "perform cto review"
+  ],
+  "required_input": [
+    "Feature Goal",
+    "Acceptance Criteria",
+    "repository context"
+  ],
+  "required_output": [
+    "Technical Design",
+    "Target Modules / Files",
+    "Data / API / Contract Impact",
+    "PR Breakdown",
+    "Implementation Order",
+    "Test Strategy",
+    "Risk Level",
+    "Implementation Handoff"
+  ],
+  "authority": {
+    "can_edit_files": false,
+    "can_commit": false,
+    "can_create_pr": false,
+    "can_apply_fixes": false,
+    "can_merge": false,
+    "can_approve": false
+  },
+  "required_skills": [
+    "company-dev-os-runtime"
+  ],
+  "runtime_entrypoints": [
+    "AGENTS.md",
+    ".codex/instructions.md",
+    ".agents/skills/company-dev-os-runtime/SKILL.md"
+  ],
+  "handoff_targets": [
+    "implementation"
+  ]
+}
