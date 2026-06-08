@@ -51,6 +51,17 @@ const REQUIRED_FIELDS = [
   "negative_controls_checked",
 ];
 
+const PLACEHOLDER_TEXT = new Set([
+  "n/a",
+  "na",
+  "none",
+  "not applicable",
+  "pending",
+  "tbd",
+  "todo",
+  "unknown",
+]);
+
 export function evaluateUserOutcomeGate(input: UserOutcomeGateInput): UserOutcomeGateReport {
   const findings: UserOutcomeFinding[] = [];
   const claimTerms = detectedClaimTerms([input.claim_text, ...(input.claims ?? [])].filter(Boolean).join("\n"));
@@ -74,9 +85,13 @@ export function evaluateUserOutcomeGate(input: UserOutcomeGateInput): UserOutcom
       findings.push(block("outcome_verdict_needs_info", "User outcome evidence needs more information."));
     }
     if (proof?.outcome_verdict === "WAIVED") {
-      if (!proof.waiver_actor) findings.push(block("missing_waiver_actor", "WAIVED outcome requires waiver_actor."));
-      if (!proof.waiver_reason) findings.push(block("missing_waiver_reason", "WAIVED outcome requires waiver_reason."));
-      if (proof.waiver_actor && proof.waiver_reason) {
+      if (!isConcreteText(proof.waiver_actor)) {
+        findings.push(block("missing_waiver_actor", "WAIVED outcome requires waiver_actor."));
+      }
+      if (!isConcreteText(proof.waiver_reason)) {
+        findings.push(block("missing_waiver_reason", "WAIVED outcome requires waiver_reason."));
+      }
+      if (isConcreteText(proof.waiver_actor) && isConcreteText(proof.waiver_reason)) {
         findings.push(warn("outcome_waived", "User outcome was waived by an explicit actor and reason."));
       }
     }
@@ -87,7 +102,7 @@ export function evaluateUserOutcomeGate(input: UserOutcomeGateInput): UserOutcom
 
   const outcomeSatisfied = missingFields.length === 0 &&
     (proof?.outcome_verdict === "PASS" ||
-      (proof?.outcome_verdict === "WAIVED" && Boolean(proof.waiver_actor && proof.waiver_reason)));
+      (proof?.outcome_verdict === "WAIVED" && isConcreteText(proof.waiver_actor) && isConcreteText(proof.waiver_reason)));
   const claimBlocked = claimTerms.length > 0 && !outcomeSatisfied;
   if (claimBlocked) {
     findings.push(block(
@@ -122,13 +137,20 @@ function detectedClaimTerms(text: string): string[] {
 function missingProofFields(proof: UserOutcomeProof | undefined): string[] {
   if (!proof) return REQUIRED_FIELDS;
   const missing: string[] = [];
-  if (!proof.expected_user_outcome) missing.push("expected_user_outcome");
-  if (!proof.outcome_evidence_uri) missing.push("outcome_evidence_uri");
+  if (!isConcreteText(proof.expected_user_outcome)) missing.push("expected_user_outcome");
+  if (!isConcreteText(proof.outcome_evidence_uri)) missing.push("outcome_evidence_uri");
   if (!proof.outcome_verdict) missing.push("outcome_verdict");
-  if (!Array.isArray(proof.negative_controls_checked) || proof.negative_controls_checked.length === 0) {
+  if (!Array.isArray(proof.negative_controls_checked) || !proof.negative_controls_checked.some(isConcreteText)) {
     missing.push("negative_controls_checked");
   }
   return missing;
+}
+
+function isConcreteText(value: string | undefined): boolean {
+  if (!value) return false;
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) return false;
+  return !PLACEHOLDER_TEXT.has(normalized);
 }
 
 function pass(code: string, message: string): UserOutcomeFinding {

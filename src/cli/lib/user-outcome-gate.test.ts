@@ -43,6 +43,31 @@ describe("user outcome gate", () => {
     expect(report.claim_blocked).toBe(false);
   });
 
+  it("blocks PASS outcome proof with blank or placeholder evidence fields", () => {
+    const report = evaluateUserOutcomeGate({
+      subject: "Shirube M0",
+      claim_text: "Shirube M0 is usable.",
+      proof: {
+        expected_user_outcome: "   ",
+        outcome_evidence_uri: "TBD",
+        outcome_verdict: "PASS",
+        negative_controls_checked: [" ", "pending", "none"],
+      },
+    });
+
+    expect(report.verdict).toBe("BLOCK");
+    expect(report.outcome_satisfied).toBe(false);
+    expect(report.claim_blocked).toBe(true);
+    expect(report.findings.map((finding) => finding.code)).toEqual(
+      expect.arrayContaining([
+        "missing_expected_user_outcome",
+        "missing_outcome_evidence_uri",
+        "missing_negative_controls_checked",
+        "completion_claim_without_user_outcome",
+      ]),
+    );
+  });
+
   it("allows waived outcome only with actor and reason", () => {
     const blocked = evaluateUserOutcomeGate({
       subject: "Shirube M0",
@@ -73,6 +98,27 @@ describe("user outcome gate", () => {
     });
     expect(allowed.verdict).toBe("PASS");
     expect(allowed.outcome_satisfied).toBe(true);
+  });
+
+  it("blocks waived outcome proof with blank or placeholder waiver fields", () => {
+    const report = evaluateUserOutcomeGate({
+      subject: "Shirube M0",
+      claim_text: "Shirube M0 is complete.",
+      proof: {
+        expected_user_outcome: "Operator can inspect next actions.",
+        outcome_evidence_uri: "fixture://waiver",
+        outcome_verdict: "WAIVED",
+        negative_controls_checked: ["known UI unavailable"],
+        waiver_actor: " ",
+        waiver_reason: "pending",
+      },
+    });
+
+    expect(report.verdict).toBe("BLOCK");
+    expect(report.outcome_satisfied).toBe(false);
+    expect(report.findings.map((finding) => finding.code)).toEqual(
+      expect.arrayContaining(["missing_waiver_actor", "missing_waiver_reason"]),
+    );
   });
 
   it("does not block non-completion statements", () => {
