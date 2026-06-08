@@ -504,6 +504,73 @@ describe("conveyor command", () => {
     expect(payload.lane_plan.visible_ops_cells).toEqual([]);
   });
 
+  it("generates PR Cell Plan templates as JSON without live mutation", () => {
+    const { planPath } = writeCellPlanFixture();
+    const result = runConveyor([
+      `cell-plan template --fixture ${planPath}`,
+      "--cell B",
+      "--pr 320",
+      "--head head-sha",
+      "--base main@base-sha",
+      "--generated-by codex-dev",
+      "--generated-at 2026-06-08T02:00:00.000Z",
+      "--json",
+    ].join(" "));
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      validation: { valid: boolean };
+      cell: { cell_id: string; repo: string; issue: number };
+      templates: Array<{ kind: string; body: string }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.schema).toBe("shirube-pr-cell-template-bundle/v1");
+    expect(payload.validation.valid).toBe(true);
+    expect(payload.cell).toEqual(expect.objectContaining({ cell_id: "B", repo, issue: 304 }));
+    expect(payload.templates.map((template) => template.kind)).toEqual([
+      "implementation_prompt",
+      "audit_request",
+      "implementation_handoff",
+    ]);
+    const body = payload.templates.map((template) => template.body).join("\n");
+    expect(body).toContain("Work order: watchout/ai-dev-framework#304");
+    expect(body).toContain("PR: 320");
+    expect(body).toContain("Exact head: head-sha");
+    expect(body).toContain("Base: main@base-sha");
+    expect(body).toContain("Depends on: A");
+    expect(body).toContain("production_db_mutation");
+    expect(body).toContain("<!-- conveyor:audit-result/v1 -->");
+    expect(body).toContain("## Next Required Review");
+  });
+
+  it("renders PR Cell Plan templates as markdown", () => {
+    const { planPath } = writeCellPlanFixture();
+    const result = runConveyor(`cell-plan template --fixture ${planPath} --cell A --pr 320 --head head-sha --base main@base-sha`);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("# Implementation Prompt");
+    expect(result.stdout).toContain("# Audit Request");
+    expect(result.stdout).toContain("# Implementation Handoff");
+    expect(result.stdout).toContain("PR: 320");
+    expect(result.stdout).toContain("<!-- conveyor:audit-result/v1 -->");
+  });
+
+  it("fails PR Cell Plan template generation deterministically for missing cells", () => {
+    const { planPath } = writeCellPlanFixture();
+    const result = runConveyor(`cell-plan template --fixture ${planPath} --cell missing --json`);
+    const payload = JSON.parse(result.stdout) as {
+      validation: { valid: boolean; findings: Array<{ code: string; path: string }> };
+      templates: unknown[];
+    };
+
+    expect(result.exitCode).not.toBe(0);
+    expect(payload.validation.valid).toBe(false);
+    expect(payload.validation.findings).toEqual([
+      expect.objectContaining({ code: "missing_template_cell", path: "cell" }),
+    ]);
+    expect(payload.templates).toEqual([]);
+  });
+
   it("selects the next role target deterministically", () => {
     const fixturePath = writeFixture();
     const result = runConveyor(`next --role implementation --fixture ${fixturePath} --json`);
