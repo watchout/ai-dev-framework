@@ -62,6 +62,15 @@ import {
   type UserOutcomeGateInput,
   type UserOutcomeGateReport,
 } from "../lib/user-outcome-gate.js";
+import {
+  buildPrCellLanePlan,
+  parsePrCellPlanFromText,
+  validatePrCellPlan,
+  type PrCellLanePlan,
+  type PrCellPlan,
+  type PrCellPlanValidationReport,
+  type PrCellRuntimeState,
+} from "../lib/pr-cell-plan.js";
 import { logger } from "../lib/logger.js";
 
 interface ConveyorReconcileOptions {
@@ -116,6 +125,23 @@ interface ConveyorAuditReportOptions {
 interface ConveyorOutcomeGateOptions {
   fixture?: string;
   json?: boolean;
+}
+
+interface ConveyorCellPlanOptions {
+  fixture?: string;
+  runtime?: string;
+  json?: boolean;
+}
+
+interface ConveyorCellPlanCheck {
+  schema: "shirube-pr-cell-plan-check/v1";
+  plan: {
+    cell_plan_id: string;
+    issue: string;
+    objective: string;
+  };
+  validation: PrCellPlanValidationReport;
+  lane_plan: PrCellLanePlan;
 }
 
 export function registerConveyorCommand(program: Command): void {
@@ -445,6 +471,44 @@ export function registerConveyorCommand(program: Command): void {
         process.stdout.write(formatUserOutcomeGateReport(report));
       });
     });
+
+  const cellPlan = conveyor
+    .command("cell-plan")
+    .description("Validate PR Cell Plan manifests and derive implementation cell lanes");
+
+  cellPlan
+    .command("validate")
+    .description("Validate a PR Cell Plan fixture and print deterministic next implementation cells")
+    .option("--fixture <path>", "JSON plan or marked issue-comment fixture")
+    .option("--runtime <path>", "Optional JSON runtime state array for cell dependencies")
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorCellPlanOptions) => {
+      runConveyorAction(options, () => {
+        if (!options.fixture) {
+          throw new Error("Missing --fixture. PR Cell Plan validation requires an explicit fixture.");
+        }
+        const plan = readPrCellPlanFixture(options.fixture);
+        const runtime = options.runtime ? readPrCellRuntimeFixture(options.runtime) : [];
+        const validation = validatePrCellPlan(plan);
+        const lanePlan = buildPrCellLanePlan(plan, runtime);
+        const check: ConveyorCellPlanCheck = {
+          schema: "shirube-pr-cell-plan-check/v1",
+          plan: {
+            cell_plan_id: plan.cell_plan_id,
+            issue: `${plan.issue?.repo ?? "unknown"}#${plan.issue?.number ?? "unknown"}`,
+            objective: plan.objective,
+          },
+          validation,
+          lane_plan: lanePlan,
+        };
+        if (options.json) {
+          process.stdout.write(JSON.stringify(check, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatPrCellPlanCheck(check));
+        }
+        if (!validation.valid) process.exitCode = 1;
+      });
+    });
 }
 
 function runConveyorAction(options: ConveyorReconcileOptions, action: () => void): void {
@@ -470,6 +534,26 @@ function readManifestFixture(fixture: string | undefined): ConveyorManifestInput
 
 function readConveyorProfile(profilePath: string): ConveyorProjectProfile {
   return JSON.parse(readFileSync(profilePath, "utf8")) as ConveyorProjectProfile;
+}
+
+function readPrCellPlanFixture(fixturePath: string): PrCellPlan {
+  const text = readFileSync(fixturePath, "utf8");
+  const trimmed = text.trim();
+  const plan = trimmed.startsWith("{")
+    ? JSON.parse(trimmed) as PrCellPlan
+    : parsePrCellPlanFromText(text);
+  if (!plan) {
+    throw new Error("No PR Cell Plan found. Expected JSON or <!-- codex-goal-cell-plan/v1 --> fenced JSON.");
+  }
+  return plan;
+}
+
+function readPrCellRuntimeFixture(runtimePath: string): PrCellRuntimeState[] {
+  const runtime = JSON.parse(readFileSync(runtimePath, "utf8")) as unknown;
+  if (!Array.isArray(runtime)) {
+    throw new Error("Invalid --runtime. Expected a JSON array of PR Cell runtime states.");
+  }
+  return runtime as PrCellRuntimeState[];
 }
 
 function parseRole(role: string | undefined): ConveyorActorRole {
@@ -745,6 +829,50 @@ function formatUserOutcomeGateReport(report: UserOutcomeGateReport): string {
     lines.push(`  ${finding.severity} ${finding.code}: ${finding.message}`);
   }
   return `${lines.join("\n")}\n`;
+}
+
+function formatPrCellPlanCheck(check: ConveyorCellPlanCheck): string {
+  const lines = [
+    "Shirube PR Cell Plan",
+    `Plan: ${check.plan.cell_plan_id}`,
+    `Issue: ${check.plan.issue}`,
+    `Valid: ${check.validation.valid ? "yes" : "no"}`,
+    "",
+    "Eligible implementation cells:",
+  ];
+  appendCellTargets(lines, check.lane_plan.eligible_implementation_cells);
+  lines.push("", "Held cells:");
+  if (check.lane_plan.held_cells.length === 0) {
+    lines.push("  -");
+  } else {
+    for (const cell of check.lane_plan.held_cells) {
+      lines.push(`  ${formatCellTarget(cell)} reason=${cell.reason_codes.join(",")}`);
+    }
+  }
+  lines.push("", "Ops / human approval cells:");
+  appendCellTargets(lines, check.lane_plan.visible_ops_cells);
+  if (check.validation.findings.length > 0) {
+    lines.push("", "Findings:");
+    for (const finding of check.validation.findings) {
+      lines.push(`  ${finding.code} ${finding.path}: ${finding.message}`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function appendCellTargets(lines: string[], cells: PrCellLanePlan["eligible_implementation_cells"]): void {
+  if (cells.length === 0) {
+    lines.push("  -");
+    return;
+  }
+  for (const cell of cells) {
+    lines.push(`  ${formatCellTarget(cell)}`);
+  }
+}
+
+function formatCellTarget(cell: PrCellLanePlan["eligible_implementation_cells"][number]): string {
+  const group = cell.parallel_group ? ` group=${cell.parallel_group}` : "";
+  return `${cell.cell_id} ${cell.repo}#${cell.issue} ${cell.title} route=${cell.risk_route}/${cell.audit_route}${group} continue_after=${cell.continue_after}`;
 }
 
 function buildGhGuardedApplyAdapter(): ConveyorGuardedApplyAdapter {

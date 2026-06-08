@@ -181,6 +181,102 @@ function writeProfileFixtures(): { fixturePath: string; profilePath: string; pre
   return { fixturePath, profilePath, previousProfilePath };
 }
 
+function writeCellPlanFixture(): { planPath: string; runtimePath: string } {
+  const planPath = path.join(tmpDir, "pr-cell-plan.json");
+  fs.writeFileSync(
+    planPath,
+    JSON.stringify({
+      schema: "shirube-pr-cell-plan/v1",
+      cell_plan_id: "pr-cell-plan-304-c3",
+      issue: { repo, number: 304 },
+      objective: "Validate PR Cell Plan manifests",
+      continuation_policy: {
+        continue_after: "pr_evidence_posted_and_state_impl_l1",
+        stop_on: [
+          "direct_dependency_blocked",
+          "merge_required",
+          "ceo_approval_required",
+          "live_operation_required",
+          "production_db_or_secret_mutation",
+        ],
+      },
+      cells: [
+        {
+          id: "A",
+          title: "schema",
+          repo,
+          issue: 304,
+          kind: "implementation",
+          expected_pr_count: 1,
+          depends_on: [],
+          parallel_group: "alpha",
+          risk_route: "R2",
+          audit_route: "l2",
+          owner_role: "implementation",
+          required_labels: ["state:impl-l1", "audit:l1-pending", "needs:l1-audit", "evidence-ready"],
+          l2_required: true,
+          forbidden: ["merge", "approve", "live_aun_dispatch", "production_db_mutation", "ceo_approval_bypass"],
+          evidence_required: ["exact_head", "validation_commands", "non_goals"],
+          stop_conditions: ["direct_dependency_blocked", "merge_required", "ceo_approval_required"],
+        },
+        {
+          id: "B",
+          title: "manifest validation CLI",
+          repo,
+          issue: 304,
+          kind: "implementation",
+          expected_pr_count: 1,
+          depends_on: ["A"],
+          parallel_group: "beta",
+          risk_route: "R2",
+          audit_route: "l2",
+          owner_role: "implementation",
+          required_labels: ["state:impl-l1", "audit:l1-pending", "needs:l1-audit", "evidence-ready"],
+          l2_required: true,
+          forbidden: ["merge", "approve", "live_aun_dispatch", "production_db_mutation", "ceo_approval_bypass"],
+          evidence_required: ["exact_head", "validation_commands", "non_goals"],
+          stop_conditions: ["direct_dependency_blocked", "merge_required", "ceo_approval_required"],
+        },
+        {
+          id: "OPS",
+          title: "approval checkpoint",
+          repo,
+          issue: 304,
+          kind: "human_approval",
+          expected_pr_count: 0,
+          depends_on: ["B"],
+          risk_route: "R4",
+          audit_route: "ceo",
+          owner_role: "human_approval",
+          required_labels: ["state:impl-l1", "audit:l1-pending", "needs:l1-audit", "evidence-ready"],
+          l2_required: true,
+          forbidden: ["merge", "approve", "live_aun_dispatch", "production_db_mutation"],
+          evidence_required: ["exact_head", "validation_commands", "non_goals"],
+          stop_conditions: ["direct_dependency_blocked", "merge_required", "ceo_approval_required"],
+        },
+      ],
+    }),
+    "utf-8",
+  );
+
+  const runtimePath = path.join(tmpDir, "pr-cell-runtime.json");
+  fs.writeFileSync(
+    runtimePath,
+    JSON.stringify([
+      {
+        cell_id: "A",
+        pr: {
+          repo,
+          number: 308,
+          labels: ["state:impl-l1", "evidence-ready"],
+        },
+      },
+    ]),
+    "utf-8",
+  );
+  return { planPath, runtimePath };
+}
+
 describe("conveyor command", () => {
   it("prints reconcile help", () => {
     const result = runConveyor("--help");
@@ -249,6 +345,59 @@ describe("conveyor command", () => {
     expect(result.stdout).toContain("Current ops:");
     expect(result.stdout).toContain("reconcile_backlog=1");
     expect(result.stdout).toContain("Reconcile backlog:");
+  });
+
+  it("validates a PR Cell Plan fixture and returns implementation cells", () => {
+    const { planPath, runtimePath } = writeCellPlanFixture();
+    const result = runConveyor(`cell-plan validate --fixture ${planPath} --runtime ${runtimePath} --json`);
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      validation: { valid: boolean };
+      lane_plan: {
+        eligible_implementation_cells: Array<{ cell_id: string; repo: string; issue: number }>;
+        held_cells: Array<{ cell_id: string }>;
+        visible_ops_cells: Array<{ cell_id: string }>;
+      };
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.schema).toBe("shirube-pr-cell-plan-check/v1");
+    expect(payload.validation.valid).toBe(true);
+    expect(payload.lane_plan.eligible_implementation_cells.map((cell) => cell.cell_id)).toEqual(["A", "B"]);
+    expect(payload.lane_plan.held_cells).toEqual([]);
+    expect(payload.lane_plan.visible_ops_cells.map((cell) => cell.cell_id)).toEqual(["OPS"]);
+  });
+
+  it("fails invalid PR Cell Plan fixtures with deterministic findings", () => {
+    const { planPath, runtimePath } = writeCellPlanFixture();
+    const invalidPlanPath = path.join(tmpDir, "invalid-pr-cell-plan.json");
+    const invalidPlan = JSON.parse(fs.readFileSync(planPath, "utf-8")) as {
+      cells: Array<{ forbidden: string[]; evidence_required: string[] }>;
+    };
+    invalidPlan.cells[0].forbidden = ["merge"];
+    invalidPlan.cells[0].evidence_required = ["exact_head"];
+    fs.writeFileSync(invalidPlanPath, JSON.stringify(invalidPlan), "utf-8");
+
+    const result = runConveyor(`cell-plan validate --fixture ${invalidPlanPath} --runtime ${runtimePath} --json`);
+    const payload = JSON.parse(result.stdout) as {
+      validation: { valid: boolean; findings: Array<{ code: string; path: string }> };
+      lane_plan: { eligible_implementation_cells: Array<{ cell_id: string }>; held_cells: Array<{ cell_id: string; reason_codes: string[] }> };
+    };
+
+    expect(result.exitCode).not.toBe(0);
+    expect(payload.validation.valid).toBe(false);
+    expect(payload.validation.findings.map((finding) => finding.code)).toEqual(
+      expect.arrayContaining(["missing_forbidden_operation", "missing_evidence_requirement", "missing_ceo_bypass_guard"]),
+    );
+    expect(payload.lane_plan.eligible_implementation_cells.map((cell) => cell.cell_id)).toEqual(["B"]);
+    expect(payload.lane_plan.held_cells).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          cell_id: "A",
+          reason_codes: expect.arrayContaining(["invalid_cell_plan:missing_forbidden_operation"]),
+        }),
+      ]),
+    );
   });
 
   it("selects the next role target deterministically", () => {
