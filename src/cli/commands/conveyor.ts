@@ -64,10 +64,12 @@ import {
 } from "../lib/user-outcome-gate.js";
 import {
   buildPrCellLanePlan,
+  buildPrCellTemplateBundle,
   parsePrCellPlanFromText,
   validatePrCellPlan,
   type PrCellLanePlan,
   type PrCellPlan,
+  type PrCellTemplateBundle,
   type PrCellPlanValidationReport,
   type PrCellRuntimeState,
 } from "../lib/pr-cell-plan.js";
@@ -130,6 +132,17 @@ interface ConveyorOutcomeGateOptions {
 interface ConveyorCellPlanOptions {
   fixture?: string;
   runtime?: string;
+  json?: boolean;
+}
+
+interface ConveyorCellPlanTemplateOptions {
+  fixture?: string;
+  cell?: string;
+  pr?: string;
+  head?: string;
+  base?: string;
+  generatedBy?: string;
+  generatedAt?: string;
   json?: boolean;
 }
 
@@ -509,6 +522,43 @@ export function registerConveyorCommand(program: Command): void {
         if (!validation.valid) process.exitCode = 1;
       });
     });
+
+  cellPlan
+    .command("template")
+    .description("Generate implementation prompt, audit request, and handoff templates from a PR Cell Plan fixture")
+    .option("--fixture <path>", "JSON plan or marked issue-comment fixture")
+    .requiredOption("--cell <id>", "Cell id to render templates for")
+    .option("--pr <number>", "Optional pull request number boundary for this cell")
+    .option("--head <sha>", "Optional exact PR head SHA boundary")
+    .option("--base <ref>", "Optional exact base ref or SHA boundary")
+    .option("--generated-by <actor>", "Actor id for generated template placeholders", "conveyor")
+    .option("--generated-at <timestamp>", "Optional ISO timestamp for generated template placeholders")
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorCellPlanTemplateOptions) => {
+      runConveyorAction(options, () => {
+        if (!options.fixture) {
+          throw new Error("Missing --fixture. PR Cell Plan template generation requires an explicit fixture.");
+        }
+        if (!options.cell) {
+          throw new Error("Missing --cell.");
+        }
+        const plan = readPrCellPlanFixture(options.fixture);
+        const bundle = buildPrCellTemplateBundle(plan, {
+          cellId: options.cell,
+          pr: options.pr === undefined ? undefined : parsePrNumber(options.pr),
+          head: options.head,
+          base: options.base,
+          generatedBy: options.generatedBy,
+          generatedAt: options.generatedAt,
+        });
+        if (options.json) {
+          process.stdout.write(JSON.stringify(bundle, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatPrCellTemplateBundle(bundle));
+        }
+        if (!bundle.validation.valid) process.exitCode = 1;
+      });
+    });
 }
 
 function runConveyorAction(options: ConveyorReconcileOptions, action: () => void): void {
@@ -554,6 +604,14 @@ function readPrCellRuntimeFixture(runtimePath: string): PrCellRuntimeState[] {
     throw new Error("Invalid --runtime. Expected a JSON array of PR Cell runtime states.");
   }
   return runtime as PrCellRuntimeState[];
+}
+
+function parsePrNumber(value: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error("Invalid --pr. Expected a positive integer.");
+  }
+  return parsed;
 }
 
 function parseRole(role: string | undefined): ConveyorActorRole {
@@ -858,6 +916,24 @@ function formatPrCellPlanCheck(check: ConveyorCellPlanCheck): string {
     }
   }
   return `${lines.join("\n")}\n`;
+}
+
+function formatPrCellTemplateBundle(bundle: PrCellTemplateBundle): string {
+  if (!bundle.validation.valid) {
+    const lines = [
+      "Shirube PR Cell Template",
+      `Plan: ${bundle.plan.cell_plan_id}`,
+      `Issue: ${bundle.plan.issue}`,
+      "Valid: no",
+      "",
+      "Findings:",
+    ];
+    for (const finding of bundle.validation.findings) {
+      lines.push(`  ${finding.code} ${finding.path}: ${finding.message}`);
+    }
+    return `${lines.join("\n")}\n`;
+  }
+  return `${bundle.templates.map((template) => template.body.trimEnd()).join("\n---\n")}\n`;
 }
 
 function appendCellTargets(lines: string[], cells: PrCellLanePlan["eligible_implementation_cells"]): void {

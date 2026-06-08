@@ -17,6 +17,7 @@ export interface PrCell {
   id: string;
   title: string;
   objective?: string;
+  scope?: string[];
   repo: string;
   issue: number;
   kind?: PrCellKind;
@@ -91,6 +92,35 @@ export interface PrCellLaneTarget {
 
 export interface PrCellLaneHold extends PrCellLaneTarget {
   reason_codes: string[];
+}
+
+export type PrCellTemplateKind = "implementation_prompt" | "audit_request" | "implementation_handoff";
+
+export interface PrCellTemplateOptions {
+  cellId: string;
+  pr?: number;
+  head?: string;
+  base?: string;
+  generatedBy?: string;
+  generatedAt?: string;
+}
+
+export interface PrCellTemplateBlock {
+  kind: PrCellTemplateKind;
+  title: string;
+  body: string;
+}
+
+export interface PrCellTemplateBundle {
+  schema: "shirube-pr-cell-template-bundle/v1";
+  plan: {
+    cell_plan_id: string;
+    issue: string;
+    objective: string;
+  };
+  cell: PrCellLaneTarget | null;
+  validation: PrCellPlanValidationReport;
+  templates: PrCellTemplateBlock[];
 }
 
 const PLAN_MARKER = "<!-- codex-goal-cell-plan/v1 -->";
@@ -194,6 +224,27 @@ export function buildPrCellLanePlan(plan: PrCellPlan, runtime: PrCellRuntimeStat
   };
 }
 
+export function buildPrCellTemplateBundle(plan: PrCellPlan, options: PrCellTemplateOptions): PrCellTemplateBundle {
+  const validation = validatePrCellPlan(plan);
+  const findings = [...validation.findings];
+  const cell = prCellPlanCellEntries(plan).find(([, item]) => item.id === options.cellId)?.[1] ?? null;
+  if (!cell) {
+    findings.push(finding("missing_template_cell", "cell", `cell ${options.cellId} was not found`));
+  }
+  const templateValidation = validationReport(findings);
+  return {
+    schema: "shirube-pr-cell-template-bundle/v1",
+    plan: {
+      cell_plan_id: plan.cell_plan_id,
+      issue: `${plan.issue?.repo ?? "unknown"}#${plan.issue?.number ?? "unknown"}`,
+      objective: plan.objective,
+    },
+    cell: templateValidation.valid && cell ? laneTarget(cell, plan) : null,
+    validation: templateValidation,
+    templates: templateValidation.valid && cell ? buildCellTemplates(plan, cell, options) : [],
+  };
+}
+
 function validateCell(cell: PrCell, path: string, findings: PrCellValidationFinding[]): void {
   if (!cell.id) findings.push(finding("missing_cell_id", `${path}.id`, "cell id is required"));
   if (!cell.title) findings.push(finding("missing_cell_title", `${path}.title`, "cell title is required"));
@@ -232,6 +283,199 @@ function validateCell(cell: PrCell, path: string, findings: PrCellValidationFind
   if (cell.owner_role === "implementation" && !cell.forbidden?.includes("ceo_approval_bypass")) {
     findings.push(finding("missing_ceo_bypass_guard", `${path}.forbidden`, "implementation cells must forbid ceo_approval_bypass"));
   }
+}
+
+function buildCellTemplates(plan: PrCellPlan, cell: PrCell, options: PrCellTemplateOptions): PrCellTemplateBlock[] {
+  return [
+    {
+      kind: "implementation_prompt",
+      title: "Implementation Prompt",
+      body: formatImplementationPrompt(plan, cell, options),
+    },
+    {
+      kind: "audit_request",
+      title: "Audit Request",
+      body: formatAuditRequest(plan, cell, options),
+    },
+    {
+      kind: "implementation_handoff",
+      title: "Implementation Handoff",
+      body: formatImplementationHandoff(plan, cell, options),
+    },
+  ];
+}
+
+function formatImplementationPrompt(plan: PrCellPlan, cell: PrCell, options: PrCellTemplateOptions): string {
+  const boundary = templateBoundary(plan, cell, options);
+  return [
+    "# Implementation Prompt",
+    "",
+    "Role: repo-specific implementation bot.",
+    "",
+    "## Cell Boundary",
+    `- Plan: ${plan.cell_plan_id}`,
+    `- Work order: ${formatIssue(plan.issue)}`,
+    `- Cell: ${cell.id} - ${cell.title}`,
+    `- Repo: ${cell.repo}`,
+    `- Issue: ${cell.issue}`,
+    `- PR: ${boundary.pr}`,
+    `- Expected head: ${boundary.head}`,
+    `- Base: ${boundary.base}`,
+    "",
+    "## Scope",
+    ...formatBullets(cellScope(cell)),
+    "",
+    "## Dependency / Continuation",
+    `- Depends on: ${formatInlineList(cell.depends_on)}`,
+    `- Parallel group: ${cell.parallel_group ?? "-"}`,
+    `- Continue after: ${cell.continuation_policy?.continue_after ?? plan.continuation_policy.continue_after}`,
+    `- Stop on: ${formatInlineList(cell.stop_conditions)}`,
+    "",
+    "## Required Evidence",
+    ...formatBullets(cell.evidence_required),
+    "",
+    "## Required Labels",
+    ...formatBullets(cell.required_labels),
+    "",
+    "## Forbidden Operations",
+    ...formatBullets(cell.forbidden),
+    "",
+    "## Required Output",
+    "- Implementation Handoff with exact head, changed files, validation commands, known risks, and next required review.",
+    "- Do not merge, approve, perform live AUN dispatch, mutate production DB/storage, or bypass audit/CEO gates.",
+    "",
+  ].join("\n");
+}
+
+function formatAuditRequest(plan: PrCellPlan, cell: PrCell, options: PrCellTemplateOptions): string {
+  const boundary = templateBoundary(plan, cell, options);
+  return [
+    "# Audit Request",
+    "",
+    "## Cell Boundary",
+    `- Plan: ${plan.cell_plan_id}`,
+    `- Work order: ${formatIssue(plan.issue)}`,
+    `- Cell: ${cell.id} - ${cell.title}`,
+    `- Repo: ${cell.repo}`,
+    `- Issue: ${cell.issue}`,
+    `- PR: ${boundary.pr}`,
+    `- Exact head: ${boundary.head}`,
+    `- Base: ${boundary.base}`,
+    `- Risk / audit route: ${cell.risk_route}/${cell.audit_route}`,
+    "",
+    "## Audit Focus",
+    "- Verify the implementation stays inside the cell scope and repo/issue/PR boundary.",
+    "- Verify required evidence is present and current-head exact.",
+    "- Verify forbidden operations were not performed.",
+    "- Verify dependency and continuation rules are preserved.",
+    "",
+    "## Required Evidence Checks",
+    ...formatBullets(cell.evidence_required),
+    "",
+    "## Forbidden Operations",
+    ...formatBullets(cell.forbidden),
+    "",
+    "## Fixed Audit Result Format",
+    "<!-- conveyor:audit-result/v1 -->",
+    `repo: ${cell.repo}`,
+    `pr: ${boundary.pr}`,
+    "role: <l1|l2|l3>",
+    "verdict: <PASS|BLOCK|STALE_HEAD|NEEDS_INFO>",
+    `head: ${boundary.head}`,
+    `base: ${boundary.base}`,
+    `route: ${cell.audit_route}`,
+    `next_state_recommendation: ${defaultTemplateNextState(cell)}`,
+    `reported_by: ${options.generatedBy ?? "<auditor>"}`,
+    `recorded_at: ${options.generatedAt ?? "<iso8601>"}`,
+    "",
+    "Findings:",
+    "- <fill audit findings>",
+    "",
+    "Evidence:",
+    "- <fill validation evidence>",
+    "",
+    "L2 focus seed:",
+    `- Risk route: ${cell.risk_route}`,
+    `- Dependencies: ${formatInlineList(cell.depends_on)}`,
+    `- Stop conditions: ${formatInlineList(cell.stop_conditions)}`,
+    "",
+  ].join("\n");
+}
+
+function formatImplementationHandoff(plan: PrCellPlan, cell: PrCell, options: PrCellTemplateOptions): string {
+  const boundary = templateBoundary(plan, cell, options);
+  return [
+    "# Implementation Handoff",
+    "",
+    "## Cell Boundary",
+    `- Plan: ${plan.cell_plan_id}`,
+    `- Work order: ${formatIssue(plan.issue)}`,
+    `- Cell: ${cell.id} - ${cell.title}`,
+    `- Repo: ${cell.repo}`,
+    `- Issue: ${cell.issue}`,
+    `- PR: ${boundary.pr}`,
+    `- Exact head: ${boundary.head}`,
+    `- Base: ${boundary.base}`,
+    "",
+    "## Scope Completed",
+    ...formatBullets(cellScope(cell)),
+    "",
+    "## Changed Files",
+    "- <fill changed files>",
+    "",
+    "## Tests / Checks Run",
+    ...formatBullets(cell.evidence_required.map((item) => `<fill ${item}>`)),
+    "",
+    "## Known Risks",
+    "- <fill known risks or none>",
+    "",
+    "## Boundaries Observed",
+    ...formatBullets(cell.forbidden.map((item) => `no ${item}`)),
+    "",
+    "## Next Required Review",
+    `- Audit route: ${cell.audit_route}`,
+    `- L2 required: ${cell.l2_required ? "yes" : "no"}`,
+    `- Continue after: ${cell.continuation_policy?.continue_after ?? plan.continuation_policy.continue_after}`,
+    "",
+  ].join("\n");
+}
+
+function templateBoundary(plan: PrCellPlan, cell: PrCell, options: PrCellTemplateOptions): {
+  pr: string;
+  head: string;
+  base: string;
+} {
+  return {
+    pr: options.pr === undefined ? `<${cell.repo} PR number for cell ${cell.id}>` : String(options.pr),
+    head: options.head ?? "<exact-head>",
+    base: options.base ?? `${plan.issue.repo}#${plan.issue.number} base`,
+  };
+}
+
+function cellScope(cell: PrCell): string[] {
+  if (Array.isArray(cell.scope) && cell.scope.length > 0) return cell.scope;
+  if (cell.objective) return [cell.objective];
+  return [cell.title];
+}
+
+function formatIssue(issue: PrCellPlanIssueRef): string {
+  return `${issue.repo}#${issue.number}`;
+}
+
+function formatBullets(values: string[]): string[] {
+  return values.length > 0 ? values.map((value) => `- ${value}`) : ["-"];
+}
+
+function formatInlineList(values: string[] | undefined): string {
+  return values && values.length > 0 ? values.join(", ") : "-";
+}
+
+function defaultTemplateNextState(cell: PrCell): string {
+  if (cell.audit_route === "l1" || cell.audit_route === "minimal") return "<state:impl-l2|state:impl-l3|state:rework|no_transition>";
+  if (cell.audit_route === "l2" || cell.audit_route === "standard" || cell.audit_route === "strict") {
+    return "<state:impl-l3|state:rework|no_transition>";
+  }
+  return "<state:done+merge-ready|state:rework|no_transition>";
 }
 
 function validateContinuationPolicy(

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildPrCellLanePlan,
+  buildPrCellTemplateBundle,
   parsePrCellPlanFromText,
   validatePrCellPlan,
   type PrCell,
@@ -252,5 +253,67 @@ describe("PR Cell Plan", () => {
 
     expect(lanePlan.eligible_implementation_cells.map((cell) => cell.cell_id)).toEqual(["A"]);
     expect(lanePlan.visible_ops_cells.map((cell) => cell.cell_id)).toEqual(["OPS"]);
+  });
+
+  it("generates implementation, audit request, and handoff templates from a cell", () => {
+    const bundle = buildPrCellTemplateBundle(plan([
+      baseCell({
+        id: "C4",
+        title: "template generator",
+        objective: "Generate implementation prompt, audit request, and handoff templates",
+        scope: ["render templates from structured cell plan", "include boundaries and forbidden operations"],
+      }),
+    ]), {
+      cellId: "C4",
+      pr: 320,
+      head: "head-sha",
+      base: "main@base-sha",
+      generatedBy: "codex-dev",
+      generatedAt: "2026-06-08T02:00:00.000Z",
+    });
+
+    expect(bundle.schema).toBe("shirube-pr-cell-template-bundle/v1");
+    expect(bundle.validation.valid).toBe(true);
+    expect(bundle.cell).toEqual(expect.objectContaining({ cell_id: "C4", repo: "watchout/ai-dev-framework", issue: 304 }));
+    expect(bundle.templates.map((template) => template.kind)).toEqual([
+      "implementation_prompt",
+      "audit_request",
+      "implementation_handoff",
+    ]);
+    const body = bundle.templates.map((template) => template.body).join("\n");
+    expect(body).toContain("Work order: watchout/ai-dev-framework#304");
+    expect(body).toContain("PR: 320");
+    expect(body).toContain("Exact head: head-sha");
+    expect(body).toContain("Base: main@base-sha");
+    expect(body).toContain("Continue after: pr_evidence_posted_and_state_impl_l1");
+    expect(body).toContain("production_db_mutation");
+    expect(body).toContain("<!-- conveyor:audit-result/v1 -->");
+    expect(body).toContain("## Changed Files");
+    expect(body).toContain("Next Required Review");
+  });
+
+  it("fails template generation deterministically for missing cells", () => {
+    const bundle = buildPrCellTemplateBundle(plan(), { cellId: "missing" });
+
+    expect(bundle.validation.valid).toBe(false);
+    expect(bundle.validation.findings).toEqual([
+      expect.objectContaining({ code: "missing_template_cell", path: "cell" }),
+    ]);
+    expect(bundle.cell).toBeNull();
+    expect(bundle.templates).toEqual([]);
+  });
+
+  it("does not render templates from an invalid cell plan", () => {
+    const bundle = buildPrCellTemplateBundle(plan([
+      baseCell({
+        id: "C4",
+        forbidden: ["merge"],
+      }),
+    ]), { cellId: "C4" });
+
+    expect(bundle.validation.valid).toBe(false);
+    expect(bundle.validation.findings.map((finding) => finding.code)).toContain("missing_forbidden_operation");
+    expect(bundle.cell).toBeNull();
+    expect(bundle.templates).toEqual([]);
   });
 });
