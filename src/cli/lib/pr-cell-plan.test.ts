@@ -99,6 +99,31 @@ describe("PR Cell Plan", () => {
     expect(nonArrayLanePlan.visible_ops_cells).toEqual([]);
   });
 
+  it("fails closed when cell entries are not objects", () => {
+    const malformedCells = {
+      ...plan(),
+      cells: [null, "not-a-cell", []] as unknown as PrCell[],
+    };
+
+    const report = validatePrCellPlan(malformedCells);
+    const lanePlan = buildPrCellLanePlan(malformedCells);
+
+    expect(report.valid).toBe(false);
+    expect(report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "invalid_cell_shape", path: "cells[0]" }),
+        expect.objectContaining({ code: "invalid_cell_shape", path: "cells[1]" }),
+        expect.objectContaining({ code: "invalid_cell_shape", path: "cells[2]" }),
+      ]),
+    );
+    expect(lanePlan).toEqual({
+      schema: "shirube-pr-cell-lane-plan/v1",
+      eligible_implementation_cells: [],
+      held_cells: [],
+      visible_ops_cells: [],
+    });
+  });
+
   it("rejects implementation cells with forbidden-op or evidence gaps", () => {
     const report = validatePrCellPlan(plan([
       baseCell({
