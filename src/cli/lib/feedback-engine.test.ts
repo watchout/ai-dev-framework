@@ -1,11 +1,20 @@
 /**
  * Tests for feedback-engine.ts
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import type { Proposal, ProposalStore } from "./feedback-model.js";
+
+const spawnSyncMock = vi.hoisted(() =>
+  vi.fn(() => ({ status: 0, stdout: "", stderr: "" })),
+);
+
+vi.mock("node:child_process", () => ({
+  spawnSync: spawnSyncMock,
+}));
+
 import {
   loadProposals,
   saveProposals,
@@ -339,11 +348,20 @@ describe("applyDiff", () => {
 // ─────────────────────────────────────────────
 
 describe("notifyProposal", () => {
+  beforeEach(() => {
+    spawnSyncMock.mockClear();
+  });
+
   it("does not throw when openclaw is not available", () => {
     const proposal = makeProposal();
     // notifyProposal uses spawnSync which returns an error object if command not found
     // but does not throw — so this should not throw either
     expect(() => notifyProposal(proposal)).not.toThrow();
+    expect(spawnSyncMock).toHaveBeenCalledWith(
+      "openclaw",
+      expect.arrayContaining(["system", "event"]),
+      expect.objectContaining({ timeout: 10000 }),
+    );
   });
 });
 
@@ -394,6 +412,7 @@ describe("requestApproval", () => {
   let tmpDir: string;
 
   beforeEach(() => {
+    spawnSyncMock.mockClear();
     tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "fb-reqapproval-"));
   });
 
@@ -430,6 +449,19 @@ describe("requestApproval", () => {
     expect(approvals.pending).toHaveLength(1);
     expect(approvals.pending[0].proposalId).toBe("P1");
     expect(approvals.pending[0].status).toBe("awaiting");
+    expect(spawnSyncMock).toHaveBeenCalledTimes(2);
+    expect(spawnSyncMock).toHaveBeenNthCalledWith(
+      1,
+      "openclaw",
+      expect.arrayContaining(["message", "--channel", "telegram"]),
+      expect.objectContaining({ timeout: 15000 }),
+    );
+    expect(spawnSyncMock).toHaveBeenNthCalledWith(
+      2,
+      "openclaw",
+      expect.arrayContaining(["system", "event"]),
+      expect.objectContaining({ timeout: 10000 }),
+    );
   });
 
   it("prevents duplicate approval requests", () => {

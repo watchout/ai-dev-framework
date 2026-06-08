@@ -1,11 +1,20 @@
 /**
  * Tests for auto-feedback.ts
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";
 import type { AutoFeedbackContext } from "./feedback-model.js";
+
+const spawnSyncMock = vi.hoisted(() =>
+  vi.fn(() => ({ status: 0, stdout: "", stderr: "" })),
+);
+
+vi.mock("node:child_process", () => ({
+  spawnSync: spawnSyncMock,
+}));
+
 import {
   detectErrorPatterns,
   generateAutoProposal,
