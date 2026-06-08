@@ -5,6 +5,10 @@ import type {
   WorkflowGateDecisionValue,
   WorkflowState,
 } from "./workflow-state.js";
+import {
+  WORKFLOW_ACTION_REGISTRY,
+  getWorkflowActionRuleIds,
+} from "./workflow-action-registry.js";
 
 export interface WorkflowDecisionCounts {
   PASS: number;
@@ -14,16 +18,7 @@ export interface WorkflowDecisionCounts {
 }
 
 export type WorkflowCheckAction =
-  | "audit_ledger"
-  | "design_draft"
-  | "implementation_start"
-  | "implementation_split"
-  | "phase_closure"
-  | "runtime_step"
-  | "work_order"
-  | "remote_publish"
-  | "merge"
-  | "release";
+  (typeof WORKFLOW_ACTION_REGISTRY)[number]["action"];
 
 export type WorkflowCheckFailOn = "block" | "warn" | "observe";
 
@@ -106,7 +101,7 @@ export function createWorkflowCheckReport(
   failOn: WorkflowCheckFailOn,
 ): WorkflowCheckReport {
   const doctorReport = createWorkflowDoctorReport(state);
-  const applicableRuleIds = ACTION_RULE_IDS[action];
+  const applicableRuleIds = [...getWorkflowActionRuleIds(action)];
   const scopedDecisions = state.gate_decisions.filter((decision) =>
     applicableRuleIds.includes(decision.rule_id),
   );
@@ -226,82 +221,6 @@ export function formatWorkflowExplanation(
     ...formatEvidenceList(explanation.evidence),
   ].join("\n");
 }
-
-const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
-  audit_ledger: [
-    "G19.audit_ledger.record.present",
-    "G19.audit_ledger.required_fields",
-    "G19.audit_ledger.record_shape",
-    "G19.audit_ledger.next_action_derivable",
-  ],
-  design_draft: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G2.hearing.required_confirmation",
-  ],
-  implementation_start: [
-    "G0.start_boundary.project_applied",
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G2.hearing.required_confirmation",
-    "G10.goal_contract.approved",
-    "G10.phase_plan.present",
-    "G10.task_trace.present",
-    "G10.doc4l.readiness",
-    "G11.pre_impl_audit.disposition",
-    "G18.admin_notice.sink_ready",
-  ],
-  implementation_split: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G2.hearing.required_confirmation",
-  ],
-  phase_closure: [
-    "G12.phase_closure.record.present",
-    "G12.phase_closure.required_fields",
-    "G12.phase_closure.blockers_cleared",
-    "G12.phase_closure.carryovers_justified",
-    "G12.phase_closure.postmerge_evidence",
-    "G12.phase_closure.audit_ledger_refs",
-  ],
-  runtime_step: [
-    "G20.runtime_step.adapter.present",
-    "G20.runtime_step.injection_policy.present",
-    "G20.runtime_step.step_contract.present",
-    "G20.runtime_step.adapter.contract",
-    "G20.runtime_step.shell_interpolation",
-    "G20.runtime_step.injection_policy.contract",
-    "G20.runtime_step.step_contract.shape",
-    "G20.runtime_step.output_schema",
-    "G20.runtime_step.permission_scope",
-  ],
-  work_order: [
-    "G21.work_order.record.present",
-    "G21.work_order.required_fields",
-    "G21.work_order.delivery_profile_defaults",
-    "G21.work_order.dispatch_contract",
-    "G21.work_order.runtime_contract",
-    "G21.work_order.context_pack_boundary",
-    "G21.work_order.authority_boundary",
-    "G21.work_order.promotion_path",
-  ],
-  remote_publish: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G4.publish.remote",
-  ],
-  merge: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G9.merge_authority.evidence",
-  ],
-  release: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G4.publish.remote",
-    "G9.merge_authority.evidence",
-  ],
-};
 
 function countDecisions(
   decisions: WorkflowGateDecision[],
