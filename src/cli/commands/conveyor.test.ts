@@ -578,6 +578,61 @@ describe("conveyor command", () => {
     expect(JSON.parse(result.stdout).error.message).toContain("confirm-live-github");
   });
 
+  it("blocks completion claims without passing user outcome evidence", () => {
+    const fixturePath = path.join(tmpDir, "outcome-gate-fixture.json");
+    fs.writeFileSync(
+      fixturePath,
+      JSON.stringify({
+        subject: "AUN recovery canary",
+        claim_text: "AUN complete recovery is done and usable.",
+        proof: {
+          expected_user_outcome: "A user sees conversational thread behavior rather than queue ACK/script output.",
+          outcome_evidence_uri: "fixture://aun-recovery-canary/visible-output",
+          outcome_verdict: "FAIL",
+          negative_controls_checked: ["queue ack only", "script-style output"],
+        },
+      }),
+      "utf-8",
+    );
+    const result = runConveyor(`outcome-gate --fixture ${fixturePath} --json`);
+    const report = JSON.parse(result.stdout) as {
+      schema: string;
+      verdict: string;
+      claim_blocked: boolean;
+      findings: Array<{ code: string }>;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(report.schema).toBe("shirube-user-outcome-gate-report/v1");
+    expect(report.verdict).toBe("BLOCK");
+    expect(report.claim_blocked).toBe(true);
+    expect(report.findings.map((finding) => finding.code)).toContain("completion_claim_without_user_outcome");
+  });
+
+  it("prints a human-readable user outcome gate report", () => {
+    const fixturePath = path.join(tmpDir, "outcome-gate-pass-fixture.json");
+    fs.writeFileSync(
+      fixturePath,
+      JSON.stringify({
+        subject: "Shirube M0",
+        claim_text: "Shirube M0 is usable.",
+        proof: {
+          expected_user_outcome: "Operator can inspect next actions and blockers.",
+          outcome_evidence_uri: "fixture://shirube-m0/outcome-pass",
+          outcome_verdict: "PASS",
+          negative_controls_checked: ["no chat-only audit", "no label-only pass"],
+        },
+      }),
+      "utf-8",
+    );
+    const result = runConveyor(`outcome-gate --fixture ${fixturePath}`);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Shirube User Outcome Gate");
+    expect(result.stdout).toContain("Verdict: PASS");
+    expect(result.stdout).toContain("Claim blocked: no");
+  });
+
   it("builds an observe-only stack gate report from a fixture", () => {
     const fixturePath = path.join(tmpDir, "conveyor-stack-fixture.json");
     fs.writeFileSync(

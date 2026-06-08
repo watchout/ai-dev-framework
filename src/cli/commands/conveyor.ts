@@ -57,6 +57,11 @@ import {
   type ConveyorLiveStateInput,
   type ConveyorLiveStateReport,
 } from "../lib/conveyor-live-state.js";
+import {
+  evaluateUserOutcomeGate,
+  type UserOutcomeGateInput,
+  type UserOutcomeGateReport,
+} from "../lib/user-outcome-gate.js";
 import { logger } from "../lib/logger.js";
 
 interface ConveyorReconcileOptions {
@@ -105,6 +110,11 @@ interface ConveyorAuditReportOptions {
   reportedBy?: string;
   recordedAt?: string;
   template?: boolean;
+  json?: boolean;
+}
+
+interface ConveyorOutcomeGateOptions {
+  fixture?: string;
   json?: boolean;
 }
 
@@ -415,6 +425,26 @@ export function registerConveyorCommand(program: Command): void {
         process.stdout.write(formatAuditReportEvidence(evidence));
       });
     });
+
+  conveyor
+    .command("outcome-gate")
+    .description("Evaluate user outcome proof before done/recovered/usable/complete claims")
+    .option("--fixture <path>", "JSON fixture with claim text and user outcome proof")
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorOutcomeGateOptions) => {
+      runConveyorAction(options, () => {
+        if (!options.fixture) {
+          throw new Error("Missing --fixture. User outcome gate requires explicit claim/proof input.");
+        }
+        const input = JSON.parse(readFileSync(options.fixture, "utf8")) as UserOutcomeGateInput;
+        const report = evaluateUserOutcomeGate(input);
+        if (options.json) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatUserOutcomeGateReport(report));
+      });
+    });
 }
 
 function runConveyorAction(options: ConveyorReconcileOptions, action: () => void): void {
@@ -696,6 +726,23 @@ function formatGuardedApplyExecution(execution: ConveyorGuardedApplyExecution): 
     for (const operation of execution.blocked) {
       lines.push(`  ${operation.repo}#${operation.pr} reason=${operation.reason_codes.join(",")}`);
     }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function formatUserOutcomeGateReport(report: UserOutcomeGateReport): string {
+  const lines = [
+    "Shirube User Outcome Gate",
+    `Subject: ${report.subject}`,
+    `Verdict: ${report.verdict}`,
+    `Claim blocked: ${report.claim_blocked ? "yes" : "no"}`,
+    `Outcome satisfied: ${report.outcome_satisfied ? "yes" : "no"}`,
+    `Claim terms: ${report.claim_terms_detected.join(", ") || "-"}`,
+    "",
+    "Findings:",
+  ];
+  for (const finding of report.findings) {
+    lines.push(`  ${finding.severity} ${finding.code}: ${finding.message}`);
   }
   return `${lines.join("\n")}\n`;
 }
