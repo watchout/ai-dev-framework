@@ -129,22 +129,28 @@ export function validatePrCellPlan(plan: PrCellPlan): PrCellPlanValidationReport
   }
   if (!plan.objective) findings.push(finding("missing_objective", "objective", "objective is required"));
   validateContinuationPolicy(plan.continuation_policy, "continuation_policy", findings);
-  if (!Array.isArray(plan.cells) || plan.cells.length === 0) {
+  const cells = prCellPlanCells(plan);
+  if (cells.length === 0) {
     findings.push(finding("missing_cells", "cells", "at least one cell is required"));
     return validationReport(findings);
   }
 
   const cellIds = new Set<string>();
-  for (const [index, cell] of plan.cells.entries()) {
+  for (const [index, cell] of cells.entries()) {
     const path = `cells[${index}]`;
+    if (!isPrCellObject(cell)) {
+      findings.push(finding("invalid_cell_shape", path, "cell must be a non-null object"));
+      continue;
+    }
     validateCell(cell, path, findings);
     if (cell.id) {
       if (cellIds.has(cell.id)) findings.push(finding("duplicate_cell_id", `${path}.id`, `duplicate cell id ${cell.id}`));
       cellIds.add(cell.id);
     }
   }
-  for (const [index, cell] of plan.cells.entries()) {
-    for (const dependency of cell.depends_on ?? []) {
+  for (const [index, cell] of cells.entries()) {
+    if (!isPrCellObject(cell)) continue;
+    for (const dependency of Array.isArray(cell.depends_on) ? cell.depends_on : []) {
       if (!cellIds.has(dependency)) {
         findings.push(finding("unknown_dependency", `cells[${index}].depends_on`, `unknown dependency ${dependency}`));
       }
@@ -156,11 +162,12 @@ export function validatePrCellPlan(plan: PrCellPlan): PrCellPlanValidationReport
 export function buildPrCellLanePlan(plan: PrCellPlan, runtime: PrCellRuntimeState[] = []): PrCellLanePlan {
   const runtimeByCell = new Map(runtime.map((state) => [state.cell_id, state]));
   const invalidReasonCodes = invalidLaneReasonCodesByCell(plan);
+  const cells = prCellPlanCellEntries(plan);
   const eligible: PrCellLaneTarget[] = [];
   const held: PrCellLaneHold[] = [];
   const ops: PrCellLaneTarget[] = [];
 
-  for (const [index, cell] of plan.cells.entries()) {
+  for (const [index, cell] of cells) {
     const target = laneTarget(cell, plan);
     const schemaReasons = invalidReasonCodes.get(index) ?? [];
     if (schemaReasons.length > 0) {
@@ -287,7 +294,7 @@ function holdReasons(
 ): string[] {
   const reasons: string[] = [];
   for (const dependencyId of cell.depends_on) {
-    const dependency = plan.cells.find((item) => item.id === dependencyId);
+    const dependency = prCellPlanCellEntries(plan).find(([, item]) => item.id === dependencyId)?.[1];
     const dependencyState = runtimeByCell.get(dependencyId);
     if (!dependency) {
       reasons.push(`unknown_dependency:${dependencyId}`);
@@ -334,6 +341,7 @@ function laneTarget(cell: PrCell, plan: PrCellPlan): PrCellLaneTarget {
 function invalidLaneReasonCodesByCell(plan: PrCellPlan): Map<number, string[]> {
   const report = validatePrCellPlan(plan);
   const byCell = new Map<number, string[]>();
+  const cells = prCellPlanCellEntries(plan);
   const planReasons = report.findings
     .filter((item) => !item.path.startsWith("cells["))
     .map((item) => `invalid_cell_plan:${item.code}`);
@@ -351,11 +359,26 @@ function invalidLaneReasonCodesByCell(plan: PrCellPlan): Map<number, string[]> {
     byCell.set(index, [...new Set([...planReasons, ...reasons])]);
   }
   if (planReasons.length > 0) {
-    for (const [index] of plan.cells.entries()) {
+    for (const [index] of cells) {
       byCell.set(index, [...new Set([...(byCell.get(index) ?? []), ...planReasons])]);
     }
   }
   return byCell;
+}
+
+function prCellPlanCells(plan: PrCellPlan): unknown[] {
+  const cells = (plan as { cells?: unknown }).cells;
+  return Array.isArray(cells) ? cells : [];
+}
+
+function prCellPlanCellEntries(plan: PrCellPlan): Array<[number, PrCell]> {
+  return prCellPlanCells(plan).flatMap((cell, index): Array<[number, PrCell]> => (
+    isPrCellObject(cell) ? [[index, cell]] : []
+  ));
+}
+
+function isPrCellObject(value: unknown): value is PrCell {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function finding(code: string, path: string, message: string): PrCellValidationFinding {

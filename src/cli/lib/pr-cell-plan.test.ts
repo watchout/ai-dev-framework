@@ -72,6 +72,58 @@ describe("PR Cell Plan", () => {
     );
   });
 
+  it("fails closed when cells are missing or not an array", () => {
+    const missingCells = { ...plan() } as unknown as PrCellPlan;
+    delete (missingCells as { cells?: unknown }).cells;
+
+    const missingReport = validatePrCellPlan(missingCells);
+    const missingLanePlan = buildPrCellLanePlan(missingCells);
+
+    expect(missingReport.valid).toBe(false);
+    expect(missingReport.findings.map((finding) => finding.code)).toContain("missing_cells");
+    expect(missingLanePlan).toEqual({
+      schema: "shirube-pr-cell-lane-plan/v1",
+      eligible_implementation_cells: [],
+      held_cells: [],
+      visible_ops_cells: [],
+    });
+
+    const nonArrayCells = { ...plan(), cells: "not-an-array" as unknown as PrCell[] };
+    const nonArrayReport = validatePrCellPlan(nonArrayCells);
+    const nonArrayLanePlan = buildPrCellLanePlan(nonArrayCells);
+
+    expect(nonArrayReport.valid).toBe(false);
+    expect(nonArrayReport.findings.map((finding) => finding.code)).toContain("missing_cells");
+    expect(nonArrayLanePlan.eligible_implementation_cells).toEqual([]);
+    expect(nonArrayLanePlan.held_cells).toEqual([]);
+    expect(nonArrayLanePlan.visible_ops_cells).toEqual([]);
+  });
+
+  it("fails closed when cell entries are not objects", () => {
+    const malformedCells = {
+      ...plan(),
+      cells: [null, "not-a-cell", []] as unknown as PrCell[],
+    };
+
+    const report = validatePrCellPlan(malformedCells);
+    const lanePlan = buildPrCellLanePlan(malformedCells);
+
+    expect(report.valid).toBe(false);
+    expect(report.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "invalid_cell_shape", path: "cells[0]" }),
+        expect.objectContaining({ code: "invalid_cell_shape", path: "cells[1]" }),
+        expect.objectContaining({ code: "invalid_cell_shape", path: "cells[2]" }),
+      ]),
+    );
+    expect(lanePlan).toEqual({
+      schema: "shirube-pr-cell-lane-plan/v1",
+      eligible_implementation_cells: [],
+      held_cells: [],
+      visible_ops_cells: [],
+    });
+  });
+
   it("rejects implementation cells with forbidden-op or evidence gaps", () => {
     const report = validatePrCellPlan(plan([
       baseCell({
