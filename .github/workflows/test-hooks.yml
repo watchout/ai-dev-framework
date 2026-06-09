@@ -1,0 +1,49 @@
+name: Pre-impl Gate Hook Tests
+
+on:
+  pull_request:
+    paths:
+      - '.claude/scripts/lead-pre-impl-gate-check/**'
+      - 'tests/hooks/**'
+      - '.github/workflows/test-hooks.yml'
+      - 'package.json'
+  push:
+    branches: [main]
+
+jobs:
+  test-hooks:
+    name: T1-T9 Pre-impl gate hook
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: agent_comms
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: agent_comms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agent_comms"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://agent_comms:test@localhost:5432/agent_comms
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install psql + jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client jq
+
+      - name: Wait for postgres
+        run: |
+          until pg_isready -h localhost -U agent_comms; do sleep 1; done
+
+      - name: Run T1-T9
+        run: npm run test:hooks

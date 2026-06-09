@@ -368,6 +368,60 @@ approver は `.framework/config.json` の `approver` フィールドで設定可
 | WARNING | 動作に影響しない | follow-up、merge 可 |
 | INFO | 推奨 / スタイル | 記録のみ、merge 可 |
 
+## Pre-impl gate skip 禁止 — framework hook で機械強制 (Sub-PR 2.7)
+
+> **Effective: 2026-05-02**
+> **CEO directive**: `bc79b603` 「framework に impl 作成時の auditor 監査をスクリプト的に導入、忘れる余地なく」
+> **Sub-PR ref**: `lead-impl-workflow` Phase 2 Sub-PR 2.7
+
+5-section 指示書を dev-bot に dispatch する前に **codex-auditor の Pre-impl gate LGTM** を取得する rule (governance-flow.md 上部 §Pre-impl gate section、2026-05-02 effective) は、本 sub-PR で **framework hook により機械強制** される。LLM 判断による skip は不可能になる。
+
+### 強制機構 (Sub-PR 2.7 で land)
+
+```
+mcp__agent-comms__send / notify 呼出
+  → ~/.claude/scripts/lead-pre-impl-gate-check/dispatch.sh (PreToolUse hook)
+      ├─ Layer 1: hookInput parser (stdin JSON → tool_name / content / mentions)
+      ├─ Layer 2: eventClassifier (5-section header AND dev-bot mention 両方真で gate 発動)
+      ├─ Layer 3: preImplGateChecker (DATABASE_URL 経由で arc → auditor LGTM ≦ AGENT_COMMS_PRE_IMPL_WINDOW_SEC count)
+      └─ Layer 4: dbAdapter (psql 実装、port 契約は §1 interface)
+  → count > 0 → exit 0 (pass、silent)
+  → count = 0 → exit 2 + JSON {"error_message", "blocked_for", "lgtm_search_window"} → 送信 block
+```
+
+### 適用範囲
+
+- **対象 tool**: `mcp__agent-comms__send` / `mcp__agent-comms__notify`
+- **対象 message**: `## 1. Interface contract` 〜 `## 5. Open decisions` 全 5 個 header AND `mentions` array に dev-bot agent_id (`adf-dev` / `hotel-dev` / `agent-com-dev` / `agent-mem-dev` / `nyusatsu-dev` / `wbs-dev` / `webb-dev` / `haishin-dev` / `xmarketing-dev` / `org-build-dev` / `upwork-dev` 等) 1 つ以上
+- **検出 LGTM**: `agent_messages` table で `author_id='arc'` AND `'auditor' = ANY(input_mentions)` AND `created_at >= NOW() - WINDOW_SEC` AND `content ~ 'Pre-impl gate.*LGTM|Pre-impl gate.*PASS'`
+
+### Window / fail-open / emergency bypass
+
+- `AGENT_COMMS_PRE_IMPL_WINDOW_SEC` 環境変数 (default 3600 秒 = 1 時間)
+- `DATABASE_URL` 不在 / DB 接続失敗 → fail-open + stderr WARN (production 中断回避)
+- `AGENT_COMMS_PRE_IMPL_DISABLE=1` で gate 全 disable (emergency 専用、stderr に audit trail WARN)
+
+### 過去 incident に対する mitigation
+
+- msg `52c134fb` CEO 「日付の概念」「Pre-impl gate skip」reminder で発覚した skip pattern → 機械 hook で skip 不可化
+- PR #110 cycle 1-3 overclaim BLOCK 連発 → Pre-impl gate 通過後の 5-section 凍結原則を hook で前置
+- agent-comms-mcp PR #291 17 cycle (msg expansion stale LGTM 再利用) → window 1 hour で stale 再利用 block
+
+### Repo / home の関係
+
+- 本 file (`.claude/rules/governance-flow.md`) は repo derived snapshot。runtime authority は home `~/.claude/rules/governance-flow.md` (Sub-PR 2.7 (B) scope で ARC が同 section を home に sync)
+- hook script 自体も Sub-PR 2.7 (B) で `~/.claude/scripts/lead-pre-impl-gate-check/dispatch.sh` に同 commit 内容で配置、`~/.claude/settings.json` PreToolUse matcher に登録される
+
+### Test fixtures (本 repo 内、CI 強制)
+
+- `tests/hooks/fixtures/*.json` (4 file): Claude Code PreToolUse payload shape、dev-bot mention 有無 / 5-section header 有無 の 4 組合せ
+- `tests/hooks/seeds/*.sql` (3 file): clean / auditor-lgtm-recent / auditor-lgtm-stale (window 内外を分離)
+- `tests/hooks/run.sh` + `npm run test:hooks`: T1-T9 を CI 上で実行、merge gate
+
+詳細 lifecycle / failure mode は本 file 上部 §Pre-impl gate (2026-05-02 effective、CEO directive `c4fb8e6c`) と本 sub-PR PR description を参照。
+
+---
+
 ## See also
 
 - `~/Developer/tech-lead/docs/lead-playbook.md` §2 (詳細 & rationale)
@@ -376,3 +430,4 @@ approver は `.framework/config.json` の `approver` フィールドで設定可
 - `ai-dev-framework/docs/tools/audit-depth-control-v3.md` (Layer 0/1/2 原典)
 - `ai-dev-framework/docs/tools/breaking-change-detection.md` (検出スクリプト原典)
 - `ai-dev-framework/docs/tools/preflight-check-design.md` (必読検証機構)
+- `ai-dev-framework/.claude/scripts/lead-pre-impl-gate-check/dispatch.sh` (Sub-PR 2.7 enforcement hook)
