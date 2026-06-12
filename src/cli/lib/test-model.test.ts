@@ -85,11 +85,11 @@ describe("test-model", () => {
       expect(score.ssotCoverage).toBe(30);
     });
 
-    it("proportionally scores ssotCoverage", () => {
+    it("uses coverage ratio when it is stronger than file ratio", () => {
       const score = calculateTestScore(
         5, 10, 25, 0, 0, makeCoverage(),
       );
-      expect(score.ssotCoverage).toBe(15);
+      expect(score.ssotCoverage).toBe(24);
     });
 
     it("gives full executionResult when all tests pass", () => {
@@ -148,6 +148,15 @@ describe("test-model", () => {
         8, 10, 40, 0, 0, makeCoverage(),
       );
       expect(score.maintainability).toBe(5);
+    });
+
+    it("scores dense feature suites with full source coverage as pass-ready", () => {
+      const score = calculateTestScore(
+        4, 19, 30, 0, 0,
+        { statements: 100, branches: 100, functions: 100, lines: 100 },
+      );
+      expect(score.edgeCases).toBe(10);
+      expect(score.total).toBe(100);
     });
   });
 

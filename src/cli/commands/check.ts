@@ -1,4 +1,16 @@
 import type { Command } from "commander";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { extname, join } from "node:path";
+import {
+  validateActionProfiles,
+  type ActionProfileDocument,
+  type ActionProfileResult,
+} from "../lib/action-profile-validator.js";
+import {
+  validateGovernanceBone,
+  type GovernanceBoneDocument,
+  type GovernanceBoneResult,
+} from "../lib/governance-bone-validator.js";
 import { checkTests, formatTestQualityReport } from "../lib/test-quality-checker.js";
 
 export function registerCheckCommand(program: Command): void {
@@ -21,4 +33,140 @@ export function registerCheckCommand(program: Command): void {
       }
       if (result.verdict === "BLOCK") process.exit(1);
     });
+
+  check
+    .command("governance")
+    .description("Validate Goal/Phase/Work Order/script/evidence governance fields")
+    .argument("<files...>", "Markdown files to validate")
+    .option("--strict", "Block when required governance fields are missing")
+    .option("--require", "Require governance fields even if no governance trigger is detected")
+    .option("--json", "Output machine-readable JSON")
+    .action(
+      (
+        files: string[],
+        options: { strict?: boolean; require?: boolean; json?: boolean },
+      ) => {
+        const documents: GovernanceBoneDocument[] = files.map((file) => ({
+          path: file,
+          content: readFileSync(file, "utf-8"),
+        }));
+
+        const result = validateGovernanceBone(documents, {
+          mode: options.strict ? "strict" : "warning",
+          requireGovernanceBone: options.require,
+        });
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatGovernanceBoneResult(result) + "\n");
+        }
+
+        if (result.status === "BLOCK") process.exit(1);
+      },
+    );
+
+  check
+    .command("action-profile")
+    .description("Validate governed action surface profile JSON files")
+    .argument("<paths...>", "Profile JSON files or directories to validate")
+    .option("--strict", "Block when profile fields are missing or invalid")
+    .option("--json", "Output machine-readable JSON")
+    .action(
+      (
+        paths: string[],
+        options: { strict?: boolean; json?: boolean },
+      ) => {
+        const files = collectActionProfileFiles(paths);
+        const documents: ActionProfileDocument[] = files.map((file) => ({
+          path: file,
+          content: readFileSync(file, "utf-8"),
+        }));
+
+        const result = validateActionProfiles(documents, {
+          mode: options.strict ? "strict" : "warning",
+        });
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatActionProfileResult(result) + "\n");
+        }
+
+        if (result.status === "BLOCK") process.exit(1);
+      },
+    );
+}
+
+function formatGovernanceBoneResult(result: GovernanceBoneResult): string {
+  const lines = [
+    `Governance Bone: ${result.status}`,
+    `Mode: ${result.mode}`,
+    `Governance detected: ${result.governanceDetected ? "yes" : "no"}`,
+    `Checked documents: ${result.checkedDocuments.length}`,
+  ];
+
+  if (result.findings.length > 0) {
+    lines.push("");
+    lines.push("Findings:");
+    for (const finding of result.findings) {
+      const field = finding.field ? ` ${finding.field}:` : "";
+      lines.push(`- [${finding.severity}]${field} ${finding.message} (${finding.path})`);
+    }
+  }
+
+  return lines.join("\n");
+}
+
+function collectActionProfileFiles(paths: string[]): string[] {
+  const files = new Set<string>();
+
+  for (const inputPath of paths) {
+    const stat = statSync(inputPath);
+    if (stat.isDirectory()) {
+      for (const file of walkJsonFiles(inputPath)) {
+        files.add(file);
+      }
+    } else {
+      files.add(inputPath);
+    }
+  }
+
+  return [...files].sort();
+}
+
+function walkJsonFiles(dir: string): string[] {
+  const results: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...walkJsonFiles(fullPath));
+    } else if (entry.isFile() && extname(entry.name) === ".json") {
+      results.push(fullPath);
+    }
+  }
+  return results;
+}
+
+function formatActionProfileResult(result: ActionProfileResult): string {
+  const lines = [
+    `Governed Action Profile: ${result.status}`,
+    `Mode: ${result.mode}`,
+    `Checked documents: ${result.checkedDocuments.length}`,
+    `Checked surfaces: ${result.checkedSurfaces}`,
+  ];
+
+  if (result.findings.length > 0) {
+    lines.push("");
+    lines.push("Findings:");
+    for (const finding of result.findings) {
+      const surface = finding.surfaceId ? ` ${finding.surfaceId}` : "";
+      const field = finding.field ? ` ${finding.field}:` : "";
+      lines.push(
+        `- [${finding.severity}]${surface}${field} ${finding.message} (${finding.path})`,
+      );
+    }
+  }
+
+  return lines.join("\n");
 }

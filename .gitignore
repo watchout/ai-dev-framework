@@ -57,10 +57,13 @@ agent-com.db
 agent-com.db-shm
 agent-com.db-wal
 adf-dev-state.md
+.mcp.json
 .mcp.json.bak*
 .claude/settings.json.bak*
 .claude/settings.json.*-bak*
+.claude/hooks/*.envvar.*
 .claude/discord-state.md
+.framework/active-skill.json
 .framework/current-session.json
 .framework/audit/
 .framework/gate-context/

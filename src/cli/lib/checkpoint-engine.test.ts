@@ -6,6 +6,7 @@ import {
   type CheckpointIO,
   runCheckpoint,
   collectSourceFiles,
+  collectTestFiles,
   scoreSSOTAlignment,
   scoreCodeQuality,
   scoreTestCoverage,
@@ -173,6 +174,31 @@ describe("checkpoint-engine", () => {
       expect(score).toBe(33);
     });
 
+    it("test coverage follows imports from top-level tests", () => {
+      writeFile(
+        tmpDir,
+        "src/service.ts",
+        "import { helper } from './helper.js';\nexport const value = helper();\n",
+      );
+      writeFile(tmpDir, "src/helper.ts", "export const helper = () => 1;\n");
+      writeFile(
+        tmpDir,
+        "tests/service.test.ts",
+        "import '../src/service.js';\n",
+      );
+
+      const srcFiles = [
+        path.join(tmpDir, "src", "service.ts"),
+        path.join(tmpDir, "src", "helper.ts"),
+      ];
+      const testFiles = [path.join(tmpDir, "tests", "service.test.ts")];
+
+      const issues: Parameters<typeof scoreTestCoverage>[2] = [];
+      const score = scoreTestCoverage(srcFiles, testFiles, issues);
+      expect(score).toBe(100);
+      expect(issues).toHaveLength(0);
+    });
+
     it("type safety detects any usage", () => {
       writeFile(
         tmpDir,
@@ -240,6 +266,16 @@ describe("checkpoint-engine", () => {
     it("returns empty for missing directory", () => {
       const files = collectSourceFiles(tmpDir, "nonexistent");
       expect(files).toHaveLength(0);
+    });
+
+    it("collects test files from src and top-level tests", () => {
+      writeFile(tmpDir, "src/index.test.ts", "export {};\n");
+      writeFile(tmpDir, "tests/service.test.ts", "export {};\n");
+      writeFile(tmpDir, "tests/readme.md", "# README\n");
+
+      const files = collectTestFiles(tmpDir);
+      expect(files).toHaveLength(2);
+      expect(files.every((f) => f.endsWith(".test.ts"))).toBe(true);
     });
   });
 });

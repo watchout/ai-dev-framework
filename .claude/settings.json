@@ -88,5 +88,49 @@
       "Bash(git push --force *)",
       "Bash(git reset --hard *)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DATABASE_URL=postgresql:///agent_comms?host=/tmp AGENT_MEMORY_AGENT_ID=adf-dev AGENT_MEMORY_PROJECT=ai-dev-framework AGENT_MEMORY_BOOT_MODE=restart_pack AGENT_MEMORY_CAPTURE_MODE=raw AGENT_MEMORY_TAG_CAPTURE=0 AGENT_MEMORY_BOOT_CATCH_UP=0 AGENT_MEMORY_INDEXER_MODE=rules bash /Users/yuji/Developer/agent-memory/scripts/boot-hook.sh 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DATABASE_URL=postgresql:///agent_comms?host=/tmp AGENT_MEMORY_AGENT_ID=adf-dev AGENT_MEMORY_PROJECT=ai-dev-framework AGENT_MEMORY_HOST=claude bash /Users/yuji/Developer/agent-memory/scripts/context-health-hook.sh 2>/dev/null || true"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DATABASE_URL=postgresql:///agent_comms?host=/tmp AGENT_MEMORY_AGENT_ID=adf-dev AGENT_MEMORY_PROJECT=ai-dev-framework AGENT_MEMORY_BOOT_MODE=restart_pack AGENT_MEMORY_CAPTURE_MODE=raw AGENT_MEMORY_TAG_CAPTURE=0 AGENT_MEMORY_BOOT_CATCH_UP=0 AGENT_MEMORY_INDEXER_MODE=rules bash /Users/yuji/Developer/agent-memory/scripts/boot-hook.sh 2>/dev/null || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DATABASE_URL=postgresql:///agent_comms?host=/tmp AGENT_MEMORY_AGENT_ID=adf-dev AGENT_MEMORY_PROJECT=ai-dev-framework AGENT_MEMORY_HOST=claude bash /Users/yuji/Developer/agent-memory/scripts/context-health-hook.sh 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
   }
 }
