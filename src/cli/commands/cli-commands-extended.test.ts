@@ -129,12 +129,14 @@ describe("compact command", () => {
 // complete
 // ---------------------------------------------------------------------------
 describe("complete command", () => {
-  it("--help shows --pr, --sha, --status, --force options", () => {
+  it("--help shows --pr, --sha, --status, --gate-file, --json, --force options", () => {
     const output = runCli("complete --help");
     expect(output).toContain("complete");
     expect(output).toContain("--pr");
     expect(output).toContain("--sha");
     expect(output).toContain("--status");
+    expect(output).toContain("--gate-file");
+    expect(output).toContain("--json");
     expect(output).toContain("--force");
   });
 
@@ -154,7 +156,79 @@ describe("complete command", () => {
       expect(combined).toMatch(/sha|commit|required/i);
     });
   });
+
+  it("--gate-file --json returns a machine-readable conditional pass for accepted debt", () => {
+    withTmpDir((cwd) => {
+      const fixturePath = path.join(cwd, "completion-gate.json");
+      fs.writeFileSync(
+        fixturePath,
+        JSON.stringify({
+          schema: "shirube-completion-gate-input/v1",
+          subject: "PR #126",
+          pr: "126",
+          stages: completionGatePassingStages(),
+          defects: [
+            {
+              id: "docs-polish",
+              classification: "accepted_debt",
+              summary: "Follow-up wording polish.",
+              owner: "adf-lead",
+              issue: "https://github.com/watchout/ai-dev-framework/issues/999",
+              severity: "low",
+              reason: "Does not affect completion behavior.",
+              due: "before docs launch",
+              evidence_refs: ["https://github.com/watchout/ai-dev-framework/pull/126#issuecomment-1"],
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(`complete --gate-file ${fixturePath} --json`, { cwd });
+      expect(result.exitCode).toBe(0);
+      const report = JSON.parse(result.stdout) as { schema: string; verdict: string; can_pass: boolean };
+      expect(report.schema).toBe("shirube-completion-gate-report/v1");
+      expect(report.verdict).toBe("CONDITIONAL PASS");
+      expect(report.can_pass).toBe(true);
+    });
+  });
+
+  it("--gate-file exits non-zero when a blocking defect prevents completion", () => {
+    withTmpDir((cwd) => {
+      const fixturePath = path.join(cwd, "completion-gate-blocked.json");
+      fs.writeFileSync(
+        fixturePath,
+        JSON.stringify({
+          subject: "PR #127",
+          stages: completionGatePassingStages(),
+          defects: [
+            {
+              id: "regression",
+              classification: "blocking",
+              summary: "Touched-surface regression.",
+              evidence_refs: ["https://github.com/watchout/ai-dev-framework/pull/127#discussion_r1"],
+            },
+          ],
+        }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(`complete --gate-file ${fixturePath}`, { cwd });
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("Verdict: FAIL");
+    });
+  });
 });
+
+function completionGatePassingStages(): Record<string, { status: string; evidence_refs: string[] }> {
+  return {
+    scope: { status: "pass", evidence_refs: ["https://github.com/watchout/ai-dev-framework/issues/326"] },
+    contract: { status: "pass", evidence_refs: ["https://github.com/watchout/ai-dev-framework/issues/326"] },
+    implementation_evidence: { status: "pass", evidence_refs: ["https://github.com/watchout/ai-dev-framework/pull/126"] },
+    audit: { status: "pass", evidence_refs: ["https://github.com/watchout/ai-dev-framework/pull/126#pullrequestreview-1"] },
+    qa_check: { status: "pass", evidence_refs: ["https://github.com/watchout/ai-dev-framework/pull/126#issuecomment-1"] },
+  };
+}
 
 // ---------------------------------------------------------------------------
 // config
