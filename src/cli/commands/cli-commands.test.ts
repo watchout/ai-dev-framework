@@ -756,6 +756,82 @@ describe("roles command", () => {
     });
   });
 
+  it("evidence emits Company Dev OS role evidence as JSON", () => {
+    const result = runCliWithExit(
+      [
+        "roles evidence audit",
+        "--repo watchout/ai-dev-framework",
+        "--pr 392",
+        "--head 534f227dad85274f4d752e68aa7fce432431c118",
+        "--recorded-by adf-lead",
+        "--recorded-at 2026-06-12T09:37:45.000Z",
+        "--json",
+      ].join(" "),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      passed: boolean;
+      evidence: {
+        role: string;
+        role_profile_hash: string;
+        skill_bindings: string;
+        authority_can_edit_files: boolean;
+      };
+    };
+    expect(payload.schema).toBe("shirube-company-dev-os-role-evidence-render/v1");
+    expect(payload.passed).toBe(true);
+    expect(payload.evidence).toEqual(
+      expect.objectContaining({
+        role: "audit",
+        role_profile_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        skill_bindings: expect.stringMatching(/^company-dev-os-runtime:[a-f0-9]{64}$/),
+        authority_can_edit_files: false,
+      }),
+    );
+  });
+
+  it("drift-check accepts current markdown role evidence", () => {
+    withNonFrameworkDir((cwd) => {
+      const evidence = runCliWithExit(
+        [
+          "roles evidence audit",
+          "--repo watchout/ai-dev-framework",
+          "--pr 392",
+          "--head 534f227dad85274f4d752e68aa7fce432431c118",
+          "--recorded-by adf-lead",
+          "--recorded-at 2026-06-12T09:37:45.000Z",
+        ].join(" "),
+      );
+      expect(evidence.exitCode).toBe(0);
+
+      const evidenceFile = path.join(cwd, "role-evidence.md");
+      fs.writeFileSync(evidenceFile, evidence.stdout, "utf-8");
+
+      const result = runCliWithExit(
+        [
+          "roles drift-check",
+          `--evidence-file ${evidenceFile}`,
+          "--repo watchout/ai-dev-framework",
+          "--pr 392",
+          "--head 534f227dad85274f4d752e68aa7fce432431c118",
+          "--json",
+        ].join(" "),
+      );
+
+      expect(result.exitCode).toBe(0);
+      const payload = JSON.parse(result.stdout) as {
+        schema: string;
+        passed: boolean;
+        findings: unknown[];
+      };
+      expect(payload.schema).toBe("shirube-company-dev-os-role-evidence-drift-check/v1");
+      expect(payload.passed).toBe(true);
+      expect(payload.findings).toEqual([]);
+    });
+  });
+
   it("sets and lists a role binding", () => {
     withFrameworkConfig((cwd) => {
       const setResult = runCliWithExit(

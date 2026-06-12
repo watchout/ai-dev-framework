@@ -14,9 +14,17 @@ import {
   type RoleTargetType,
 } from "../lib/workflow-config.js";
 import {
+  COMPANY_DEV_OS_ROLE_NAMES,
+  type CompanyDevOsRoleName,
   validateCompanyDevOsRoleProfiles,
   type CompanyDevOsRoleProfileValidationResult,
 } from "../lib/company-dev-os-role-profile.js";
+import {
+  driftCheckCompanyDevOsRoleEvidence,
+  renderCompanyDevOsRoleEvidence,
+  type CompanyDevOsRoleEvidenceDriftCheckResult,
+  type CompanyDevOsRoleEvidenceRenderResult,
+} from "../lib/company-dev-os-role-evidence.js";
 import {
   doctorCompanyDevOsRuntimeBindings,
   type CompanyDevOsRuntimeBindingDoctorResult,
@@ -32,6 +40,26 @@ interface DoctorRolesOptions {
   json?: boolean;
   companyDevOs?: boolean;
   configDir?: string;
+}
+
+interface RoleEvidenceOptions {
+  json?: boolean;
+  configDir?: string;
+  repo?: string;
+  pr?: string;
+  head?: string;
+  recordedBy?: string;
+  recordedAt?: string;
+}
+
+interface RoleDriftCheckOptions {
+  json?: boolean;
+  configDir?: string;
+  evidenceFile?: string;
+  repo?: string;
+  pr?: string;
+  head?: string;
+  requireHead?: boolean;
 }
 
 interface SetRoleOptions {
@@ -82,6 +110,45 @@ export function registerRolesCommand(program: Command): void {
     )
     .action((options: ValidateRolesOptions) => {
       const passed = validateCompanyDevOsRoles(process.cwd(), options);
+      if (!passed) process.exit(1);
+    });
+
+  roles
+    .command("evidence")
+    .description("Emit a Company Dev OS role evidence block")
+    .argument("<role>", `Company Dev OS role (${COMPANY_DEV_OS_ROLE_NAMES.join("|")})`)
+    .requiredOption("--repo <repo>", "Repository full name")
+    .requiredOption("--head <sha>", "Exact head SHA for the evidence")
+    .requiredOption("--recorded-by <actor>", "Actor recording the evidence")
+    .option("--pr <number>", "Pull request number")
+    .option("--recorded-at <iso8601>", "Evidence timestamp")
+    .option("--json", "Emit machine-readable JSON")
+    .option(
+      "--config-dir <path>",
+      "Company Dev OS config directory",
+      ".shirube/company-dev-os",
+    )
+    .action((roleInput: string, options: RoleEvidenceOptions) => {
+      const passed = emitCompanyDevOsRoleEvidence(process.cwd(), roleInput, options);
+      if (!passed) process.exit(1);
+    });
+
+  roles
+    .command("drift-check")
+    .description("Check Company Dev OS role evidence against current role and skill hashes")
+    .requiredOption("--evidence-file <path>", "Markdown or JSON role evidence fixture")
+    .option("--repo <repo>", "Expected repository full name")
+    .option("--pr <number>", "Expected pull request number")
+    .option("--head <sha>", "Expected exact head SHA")
+    .option("--require-head", "Block evidence without exact head")
+    .option("--json", "Emit machine-readable JSON")
+    .option(
+      "--config-dir <path>",
+      "Company Dev OS config directory",
+      ".shirube/company-dev-os",
+    )
+    .action((options: RoleDriftCheckOptions) => {
+      const passed = driftCheckCompanyDevOsRoles(process.cwd(), options);
       if (!passed) process.exit(1);
     });
 
@@ -275,6 +342,91 @@ function printCompanyDevOsRoleValidation(
   }
 }
 
+function emitCompanyDevOsRoleEvidence(
+  projectDir: string,
+  roleInput: string,
+  options: RoleEvidenceOptions,
+): boolean {
+  const role = parseCompanyDevOsRole(roleInput);
+  const result = renderCompanyDevOsRoleEvidence(projectDir, {
+    configDir: options.configDir,
+    repo: options.repo ?? "",
+    pr: options.pr,
+    head: options.head ?? "",
+    role,
+    recordedBy: options.recordedBy ?? "",
+    recordedAt: options.recordedAt,
+  });
+
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return result.passed;
+  }
+
+  printCompanyDevOsRoleEvidence(result);
+  return result.passed;
+}
+
+function driftCheckCompanyDevOsRoles(
+  projectDir: string,
+  options: RoleDriftCheckOptions,
+): boolean {
+  const result = driftCheckCompanyDevOsRoleEvidence(projectDir, {
+    configDir: options.configDir,
+    evidenceFile: options.evidenceFile,
+    expectedRepo: options.repo,
+    expectedPr: options.pr,
+    expectedHead: options.head,
+    requireHead: options.requireHead,
+  });
+
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return result.passed;
+  }
+
+  printCompanyDevOsRoleDriftCheck(result);
+  return result.passed;
+}
+
+function printCompanyDevOsRoleEvidence(
+  result: CompanyDevOsRoleEvidenceRenderResult,
+): void {
+  if (result.passed && result.markdown) {
+    process.stdout.write(result.markdown);
+    return;
+  }
+
+  logger.header("Company Dev OS Role Evidence");
+  logger.error("Role evidence could not be emitted.");
+  for (const finding of result.findings) {
+    const role = finding.role ? `${finding.role}: ` : "";
+    const field = finding.field ? ` (${finding.field})` : "";
+    logger.info(`  - ${role}${finding.code}${field}: ${finding.message}`);
+  }
+}
+
+function printCompanyDevOsRoleDriftCheck(
+  result: CompanyDevOsRoleEvidenceDriftCheckResult,
+): void {
+  logger.header("Company Dev OS Role Evidence Drift Check");
+
+  if (result.passed) {
+    logger.success("Role evidence matches current role profiles and skill bindings.");
+    for (const evidence of result.evidence) {
+      logger.info(`  ${evidence.role ?? "unknown"}: ${evidence.repo ?? "unknown repo"}`);
+    }
+    return;
+  }
+
+  logger.error("Role evidence is missing, stale, or authority-invalid.");
+  for (const finding of result.findings) {
+    const role = finding.role ? `${finding.role}: ` : "";
+    const field = finding.field ? ` (${finding.field})` : "";
+    logger.info(`  - ${role}${finding.code}${field}: ${finding.message}`);
+  }
+}
+
 function setRole(
   projectDir: string,
   roleInput: string,
@@ -331,6 +483,15 @@ function parseRole(value: string): RequiredRoleName {
   }
   logger.error(`Invalid role: ${value}`);
   logger.info(`Valid roles: ${REQUIRED_ROLE_NAMES.join(", ")}`);
+  process.exit(1);
+}
+
+function parseCompanyDevOsRole(value: string): CompanyDevOsRoleName {
+  if ((COMPANY_DEV_OS_ROLE_NAMES as readonly string[]).includes(value)) {
+    return value as CompanyDevOsRoleName;
+  }
+  logger.error(`Invalid Company Dev OS role: ${value}`);
+  logger.info(`Valid roles: ${COMPANY_DEV_OS_ROLE_NAMES.join(", ")}`);
   process.exit(1);
 }
 
