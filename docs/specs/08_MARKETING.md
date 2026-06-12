@@ -311,6 +311,75 @@ Real-time energy + two-way communication + scarcity + community feel.
 
 ---
 
+## Part 7: OSS / International Go-to-Market
+
+Shirube's public adoption path must work for English-speaking developer
+communities and enterprise evaluation teams, not only Japanese-language launch
+channels.
+
+### 7.1 GitHub-Native Adoption Funnel
+
+| Funnel stage | Primary signal | Required operating motion |
+|--------------|----------------|---------------------------|
+| Awareness | GitHub stars, README views, external mentions | Publish clear English positioning and examples |
+| Activation | Clone/install attempts, first issue, first PR | Keep quickstart, examples, and labels easy to follow |
+| Contribution | PRs from non-maintainers | Maintain `good first issue`, `help wanted`, and review SLA labels |
+| Retention | Repeat contributors, discussions, roadmap comments | Close feedback loops through issues, releases, and changelog notes |
+
+Issue triage should keep public work discoverable:
+
+- Label beginner-safe tasks with `good first issue`.
+- Label maintainer-reviewed extension points with `help wanted`.
+- Keep bug reports, questions, and design proposals in GitHub Issues unless a
+  private security or customer channel is required.
+
+### 7.2 English Documentation Requirements
+
+Public OSS surfaces must be usable without Japanese context:
+
+- README includes an English "Why Shirube" section.
+- CLI examples use `shirube` as the primary command name.
+- API, schema, and extension docs use English identifiers and examples.
+- Architecture and governance docs may be bilingual, but the evaluation path
+  for install, first run, contribution, and enterprise trial must exist in
+  English.
+
+### 7.3 Contributor Guide
+
+The repository must include:
+
+- `CONTRIBUTING.md` with setup, branch, test, PR, and review expectations.
+- `CODE_OF_CONDUCT.md` with behavior standards and reporting path.
+- PR review SLA guidance: first maintainer response target within two business
+  days for external contributors.
+- A clear distinction between routine PRs and protected/high-risk PRs.
+
+### 7.4 Enterprise Trial Path
+
+A Fortune 500 or regulated engineering team should be able to evaluate Shirube
+without granting production authority on day one:
+
+1. Run local CLI gates against a sample repository.
+2. Create a draft PR with PR evidence, CI output, and review routing.
+3. Validate role separation for producer, audit, QA, and merge authority.
+4. Run a non-production pilot with runtime evidence capture.
+5. Decide whether to enable stricter policies such as protected-category
+   auto-promotion, merge authority gates, and post-merge completion checks.
+
+### 7.5 Ecosystem Positioning
+
+| Tool family | Primary job | Shirube positioning |
+|-------------|-------------|---------------------|
+| Nx | Monorepo project graph, task execution, affected builds | Complements Nx by governing AI delivery evidence and review authority |
+| Turborepo | Fast task orchestration and cache for JavaScript monorepos | Complements Turborepo by defining gates, roles, and completion evidence |
+| Rush Stack | Large-scale package management and policy for TypeScript repos | Complements Rush by adding AI workflow governance and PR evidence contracts |
+
+Shirube should not claim to replace build orchestration. Its OSS message is:
+bring deterministic gates, role separation, and auditable completion evidence to
+AI-assisted software delivery.
+
+---
+
 ## Related Templates
 
 | Template | Purpose |
