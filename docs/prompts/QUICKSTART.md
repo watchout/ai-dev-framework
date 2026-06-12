@@ -1,6 +1,7 @@
 # フレームワーク適用クイックスタート
 
 > CLI不要。Claude Code セッションにプロンプトを貼るだけ。
+> Gate A/B/C と Gate 1/2/3 の違いは [Gate Overview](../GATE_OVERVIEW.md) を参照。
 
 ---
 
