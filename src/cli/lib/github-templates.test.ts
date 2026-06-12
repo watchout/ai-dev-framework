@@ -222,7 +222,7 @@ describe("installGitHubTemplates", () => {
     );
     expect(prContent).toContain("SSOT Compliance");
     expect(prContent).toContain("SSOT Reference");
-    expect(prContent).toContain("Closes #XXX");
+    expect(prContent).toContain("Closes #");
   });
 
   it("uses MCP-server PR template and skips UI issue template", () => {

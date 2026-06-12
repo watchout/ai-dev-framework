@@ -43,6 +43,7 @@ import { registerInitFeatureCommand } from "./commands/init-feature.js";
 import { registerTraceCommand } from "./commands/trace.js";
 import { registerMergeAuthorityCommand } from "./commands/merge-authority.js";
 import { registerWorkflowCommand } from "./commands/workflow.js";
+import { registerCompleteCommand } from "./commands/complete.js";
 import { setWriteThrough, type RunState } from "./lib/run-model.js";
 import { syncTaskStatusToGitHub, resolveIssueNumber } from "./lib/state-writer.js";
 
@@ -80,6 +81,7 @@ registerResequenceCommand(program);
 registerPruneCommand(program);
 registerStatusCommand(program);
 registerWorkflowCommand(program);
+registerCompleteCommand(program);
 
 // Design ingest
 registerIngestCommand(program);
