@@ -107,7 +107,7 @@ type SingleTarget = Exclude<VerifyTarget, "all">;
 
 function resolveTargets(target: VerifyTarget): SingleTarget[] {
   if (target === "all") {
-    return ["ssot", "code", "tests", "types"];
+    return ["ssot", "code", "tests", "types", "lint"];
   }
   return [target];
 }
@@ -134,6 +134,8 @@ function runSingleCheck(
       return scoreTestCoverage(nonTestFiles, testFiles, issues);
     case "types":
       return scoreTypeSafety(projectDir, nonTestFiles, issues);
+    case "lint":
+      return scoreLint(projectDir, nonTestFiles, issues);
   }
 }
 
@@ -154,6 +156,9 @@ function assignScore(
       break;
     case "types":
       scores.typeSafety = value;
+      break;
+    case "lint":
+      scores.lint = value;
       break;
   }
 }

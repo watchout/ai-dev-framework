@@ -3,7 +3,7 @@
  * Reference: 25_VERIFICATION_LOOPS.md
  *
  * Verifies individual quality axes or all combined:
- * ssot, code, tests, types, or all (default).
+ * ssot, code, tests, types, lint, or all (default).
  *
  * Usage:
  *   shirube verify              Verify all targets
@@ -23,18 +23,18 @@ import {
 import { logger } from "../lib/logger.js";
 
 const VALID_TARGETS: VerifyTarget[] = [
-  "ssot", "code", "tests", "types", "all",
+  "ssot", "code", "tests", "types", "lint", "all",
 ];
 
 export function registerVerifyCommand(program: Command): void {
   program
     .command("verify")
     .description(
-      "Run targeted quality verification (ssot, code, tests, types, all)",
+      "Run targeted quality verification (ssot, code, tests, types, lint, all)",
     )
     .argument(
       "[target]",
-      "Verify target: ssot | code | tests | types | all",
+      "Verify target: ssot | code | tests | types | lint | all",
       "all",
     )
     .option("--strict", "Treat warnings as failures")
