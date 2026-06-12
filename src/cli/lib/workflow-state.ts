@@ -1230,7 +1230,7 @@ function applyWorkOrderReadiness(
       remediation:
         validation.deliveryGaps.length === 0
           ? "No action required."
-          : "Declare risk class, owner fields, action envelope, or delivery profile evidence so strategy, lane, PR mode, and audit timing can be resolved.",
+          : "Declare risk class, runner policy, owner fields, action envelope, or delivery profile evidence so strategy, lane, runner policy, PR mode, and audit timing can be resolved.",
     }),
   );
 

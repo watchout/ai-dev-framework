@@ -43,11 +43,13 @@ describe("resolveWorkOrderDeliveryDefaults", () => {
         riskClass: "R2",
         lane: "Fast",
         deliveryStrategy: "pr_conveyor",
+        runnerPolicy: "codex_native_fast_lane",
         auditTiming: "after_pr",
         prMode: "normal",
       }),
     );
     expect(result.defaults?.inherited.deliveryStrategy).toBe(true);
+    expect(result.defaults?.inherited.runnerPolicy).toBe(true);
   });
 
   it("uses governed defaults for R3 work", () => {
@@ -59,10 +61,23 @@ describe("resolveWorkOrderDeliveryDefaults", () => {
         riskClass: "R3",
         lane: "Governed",
         deliveryStrategy: "phase_conveyor",
+        runnerPolicy: "runner_agnostic_manual",
         auditTiming: "before_merge",
         prMode: "draft_or_reference_until_owner_adopts",
       }),
     );
+  });
+
+  it("reports R3 Work Orders that declare Codex native fast lane", () => {
+    const result = resolveWorkOrderDeliveryDefaults(
+      profile(),
+      workOrder({
+        risk_class: "R3",
+        runner_policy: "codex_native_fast_lane",
+      }),
+    );
+
+    expect(result.gaps).toContain("R3.runner_policy:codex_native_fast_lane");
   });
 
   it("blocks R3 after-pr audit declarations", () => {

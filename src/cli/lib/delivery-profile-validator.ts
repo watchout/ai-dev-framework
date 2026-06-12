@@ -21,6 +21,7 @@ export interface DeliveryProfileFinding {
     | "unsupported_version"
     | "unknown_strategy"
     | "unsafe_risk_mapping"
+    | "unsafe_runner_policy"
     | "runner_specific_contract"
     | "unsafe_merge_policy"
     | "unsafe_stop_policy";
@@ -60,6 +61,14 @@ const AUDIT_TIMINGS = [
   "before_execution",
 ] as const;
 
+const RUNNER_POLICIES = [
+  "codex_native_fast_lane",
+  "runner_agnostic_manual",
+  "claude_bounded_work_order",
+  "headless_ci_runner",
+  "aun_dispatched_runner",
+] as const;
+
 const PR_MODES = [
   "normal",
   "draft_or_reference_until_owner_adopts",
@@ -70,8 +79,12 @@ const REQUIRED_ROOT_FIELDS = [
   "profile_version",
   "profile_id",
   "default_delivery_strategy",
+  "default_runner_policy",
   "allowed_delivery_strategies",
+  "allowed_runner_policies",
   "strategy_by_risk",
+  "runner_policy_by_risk",
+  "runner_policies",
   "queue_states",
   "wip_policy",
   "work_order_required_fields",
@@ -117,6 +130,7 @@ const REQUIRED_WORK_ORDER_FIELDS = [
   "repo",
   "product",
   "delivery_strategy",
+  "runner_policy",
   "work_unit",
   "lane",
   "risk_class",
@@ -229,7 +243,10 @@ export function validateDeliveryProfiles(
     validateRootFields(findings, document.path, parsed);
 
     const allowedStrategies = validateAllowedStrategies(findings, document.path, parsed);
+    const allowedRunnerPolicies = validateAllowedRunnerPolicies(findings, document.path, parsed);
     validateStrategyByRisk(findings, mode, document.path, parsed, allowedStrategies);
+    validateRunnerPolicyByRisk(findings, mode, document.path, parsed, allowedRunnerPolicies);
+    validateRunnerPolicies(findings, mode, document.path, parsed.runner_policies);
     validateArrayIncludes(
       findings,
       mode,
@@ -295,6 +312,12 @@ function validateRootFields(
     profile.default_delivery_strategy,
     "default_delivery_strategy",
   );
+  validateRunnerPolicyValue(
+    findings,
+    path,
+    profile.default_runner_policy,
+    "default_runner_policy",
+  );
 }
 
 function validateAllowedStrategies(
@@ -327,6 +350,43 @@ function validateAllowedStrategies(
   for (const [index, value] of profile.allowed_delivery_strategies.entries()) {
     const field = `allowed_delivery_strategies[${index}]`;
     if (validateStrategyValue(findings, path, value, field)) {
+      allowed.add(value);
+    }
+  }
+
+  return allowed;
+}
+
+function validateAllowedRunnerPolicies(
+  findings: DeliveryProfileFinding[],
+  path: string,
+  profile: JsonObject,
+): Set<string> {
+  const allowed = new Set<string>();
+  if (!Array.isArray(profile.allowed_runner_policies)) {
+    findings.push({
+      severity: "BLOCK",
+      path,
+      type: "invalid_field",
+      field: "allowed_runner_policies",
+      message: "allowed_runner_policies must be a non-empty array.",
+    });
+    return allowed;
+  }
+
+  if (profile.allowed_runner_policies.length === 0) {
+    findings.push({
+      severity: "BLOCK",
+      path,
+      type: "invalid_field",
+      field: "allowed_runner_policies",
+      message: "allowed_runner_policies must not be empty.",
+    });
+  }
+
+  for (const [index, value] of profile.allowed_runner_policies.entries()) {
+    const field = `allowed_runner_policies[${index}]`;
+    if (validateRunnerPolicyValue(findings, path, value, field)) {
       allowed.add(value);
     }
   }
@@ -420,6 +480,149 @@ function validateStrategyByRisk(
       : undefined;
 
     validateRiskSafety(findings, path, riskClass, strategy, auditTiming, prMode);
+  }
+}
+
+function validateRunnerPolicyByRisk(
+  findings: DeliveryProfileFinding[],
+  mode: DeliveryProfileMode,
+  path: string,
+  profile: JsonObject,
+  allowedRunnerPolicies: Set<string>,
+): void {
+  const runnerPolicyByRisk = profile.runner_policy_by_risk;
+  if (!isObject(runnerPolicyByRisk)) {
+    pushModeFinding(findings, mode, {
+      path,
+      type: "invalid_field",
+      field: "runner_policy_by_risk",
+      message: "runner_policy_by_risk must be an object keyed by R0-R4.",
+    });
+    return;
+  }
+
+  for (const riskClass of RISK_CLASSES) {
+    const field = `runner_policy_by_risk.${riskClass}`;
+    const value = runnerPolicyByRisk[riskClass];
+    const runnerPolicy = validateRunnerPolicyValue(findings, path, value, field, riskClass)
+      ? value
+      : undefined;
+
+    if (
+      runnerPolicy &&
+      allowedRunnerPolicies.size > 0 &&
+      !allowedRunnerPolicies.has(runnerPolicy)
+    ) {
+      findings.push({
+        severity: "BLOCK",
+        path,
+        type: "unsafe_runner_policy",
+        field,
+        riskClass,
+        message: `${runnerPolicy} is not listed in allowed_runner_policies.`,
+      });
+    }
+
+    if ((riskClass === "R3" || riskClass === "R4") && runnerPolicy === "codex_native_fast_lane") {
+      findings.push({
+        severity: "BLOCK",
+        path,
+        type: "unsafe_runner_policy",
+        field,
+        riskClass,
+        message: `${riskClass} work must not use codex_native_fast_lane.`,
+      });
+    }
+  }
+}
+
+function validateRunnerPolicies(
+  findings: DeliveryProfileFinding[],
+  mode: DeliveryProfileMode,
+  path: string,
+  value: unknown,
+): void {
+  if (!isObject(value)) {
+    pushModeFinding(findings, mode, {
+      path,
+      type: "invalid_field",
+      field: "runner_policies",
+      message: "runner_policies must be an object.",
+    });
+    return;
+  }
+
+  const codexFastLane = value.codex_native_fast_lane;
+  if (!isObject(codexFastLane)) {
+    pushModeFinding(findings, mode, {
+      path,
+      type: "missing_field",
+      field: "runner_policies.codex_native_fast_lane",
+      message: "runner_policies.codex_native_fast_lane must define fast-lane boundaries.",
+    });
+    return;
+  }
+
+  validateArrayIncludes(
+    findings,
+    "strict",
+    path,
+    codexFastLane.eligible_risk_classes,
+    ["R0", "R1", "R2"],
+    "runner_policies.codex_native_fast_lane.eligible_risk_classes",
+  );
+  validateArrayIncludes(
+    findings,
+    "strict",
+    path,
+    codexFastLane.forbidden_risk_classes,
+    ["R3", "R4"],
+    "runner_policies.codex_native_fast_lane.forbidden_risk_classes",
+  );
+
+  if (codexFastLane.aun_coupling !== "minimal_async_optional") {
+    findings.push({
+      severity: "BLOCK",
+      path,
+      type: "unsafe_runner_policy",
+      field: "runner_policies.codex_native_fast_lane.aun_coupling",
+      message: "codex_native_fast_lane must keep AUN coupling minimal_async_optional.",
+    });
+  }
+
+  validateArrayIncludes(
+    findings,
+    "strict",
+    path,
+    codexFastLane.aun_forbidden_roles,
+    [
+      "select_next_work_order",
+      "dispatch_runner",
+      "approve_execution",
+      "merge",
+      "override_stop_policy",
+    ],
+    "runner_policies.codex_native_fast_lane.aun_forbidden_roles",
+  );
+
+  if (codexFastLane.queue_source_of_truth !== "github_issue_pr_labels") {
+    findings.push({
+      severity: "BLOCK",
+      path,
+      type: "unsafe_runner_policy",
+      field: "runner_policies.codex_native_fast_lane.queue_source_of_truth",
+      message: "codex_native_fast_lane must use GitHub issue/PR labels as queue SSOT.",
+    });
+  }
+
+  if (codexFastLane.evidence_source_of_truth !== "github_pr_body_or_comment") {
+    findings.push({
+      severity: "BLOCK",
+      path,
+      type: "unsafe_runner_policy",
+      field: "runner_policies.codex_native_fast_lane.evidence_source_of_truth",
+      message: "codex_native_fast_lane evidence must remain in GitHub PR body/comment.",
+    });
   }
 }
 
@@ -787,6 +990,24 @@ function validateStrategyValue(
     field,
     DELIVERY_STRATEGIES,
     "unknown_strategy",
+    riskClass,
+  );
+}
+
+function validateRunnerPolicyValue(
+  findings: DeliveryProfileFinding[],
+  path: string,
+  value: unknown,
+  field: string,
+  riskClass?: DeliveryRiskClass,
+): value is (typeof RUNNER_POLICIES)[number] {
+  return validateEnumValue(
+    findings,
+    path,
+    value,
+    field,
+    RUNNER_POLICIES,
+    "unsafe_runner_policy",
     riskClass,
   );
 }
