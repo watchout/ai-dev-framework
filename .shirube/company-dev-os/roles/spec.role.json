@@ -1,0 +1,52 @@
+{
+  "schema": "shirube-company-dev-os-role-profile/v1",
+  "role": "spec",
+  "llm": "claude",
+  "purpose": "feature goal and acceptance criteria definition only",
+  "may": [
+    "define feature goals",
+    "define target users and operators",
+    "define workflows",
+    "define acceptance criteria",
+    "define non-goals",
+    "handoff to arc"
+  ],
+  "must_not": [
+    "implement code",
+    "edit files for implementation",
+    "create commits",
+    "create pull requests",
+    "decide technical architecture alone",
+    "audit",
+    "perform qa",
+    "perform cto review"
+  ],
+  "required_input": [
+    "product request",
+    "user or operator outcome",
+    "known constraints"
+  ],
+  "required_output": [
+    "Feature Goal",
+    "Acceptance Criteria",
+    "Non-Goals",
+    "Human Approval Points",
+    "ARC Handoff"
+  ],
+  "authority": {
+    "can_edit_files": false,
+    "can_commit": false,
+    "can_create_pr": false,
+    "can_apply_fixes": false,
+    "can_merge": false,
+    "can_approve": false
+  },
+  "required_skills": [],
+  "runtime_entrypoints": [
+    "CLAUDE.md",
+    ".claude/agents/company-dev-os-spec.md"
+  ],
+  "handoff_targets": [
+    "arc"
+  ]
+}

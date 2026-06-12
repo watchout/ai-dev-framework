@@ -10,9 +10,20 @@ import {
   formatWorkflowDoctor,
   formatWorkflowExplanation,
   formatWorkflowStatus,
-  type WorkflowCheckAction,
   type WorkflowCheckFailOn,
 } from "../lib/workflow-observability.js";
+import {
+  formatWorkflowActionRegistryList,
+  parseWorkflowCheckAction,
+  type WorkflowCheckAction,
+} from "../lib/workflow-action-registry.js";
+import {
+  createWorkflowChainCheckReport,
+  createWorkflowChainReport,
+  formatWorkflowChainActionList,
+  formatWorkflowChainCheck,
+  formatWorkflowChainStatus,
+} from "../lib/workflow-chain.js";
 import { logger } from "../lib/logger.js";
 
 interface WorkflowOptions {
@@ -20,6 +31,7 @@ interface WorkflowOptions {
   profile?: string;
   failOn?: string;
   action?: string;
+  feature?: string;
 }
 
 export function registerWorkflowCommand(program: Command): void {
@@ -32,10 +44,12 @@ export function registerWorkflowCommand(program: Command): void {
     .description("Show synthesized workflow-state/v1")
     .option("--json", "Output machine-readable JSON")
     .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .action((options: WorkflowOptions) => {
       runWorkflowAction(options, () => {
         const state = buildWorkflowState(process.cwd(), {
           profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
         });
         if (options.json) {
           process.stdout.write(JSON.stringify(state, null, 2) + "\n");
@@ -50,10 +64,12 @@ export function registerWorkflowCommand(program: Command): void {
     .description("Summarize workflow findings and remediation")
     .option("--json", "Output machine-readable JSON")
     .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .action((options: WorkflowOptions) => {
       runWorkflowAction(options, () => {
         const state = buildWorkflowState(process.cwd(), {
           profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
         });
         const report = createWorkflowDoctorReport(state);
         if (options.json) {
@@ -69,15 +85,17 @@ export function registerWorkflowCommand(program: Command): void {
     .description("Fail when action-scoped workflow decisions cross a threshold")
     .option("--json", "Output machine-readable JSON")
     .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .option(
       "--action <action>",
-      "Action to evaluate (design_draft|implementation_start|implementation_split|remote_publish|merge|release)",
+      `Action to evaluate (${formatWorkflowActionRegistryList()})`,
     )
     .option("--fail-on <decision>", "Decision threshold (block|warn|observe)", "block")
     .action((options: WorkflowOptions) => {
       runWorkflowAction(options, () => {
         const state = buildWorkflowState(process.cwd(), {
           profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
         });
         const action = parseAction(options.action);
         const failOn = parseFailOn(options.failOn);
@@ -100,16 +118,81 @@ export function registerWorkflowCommand(program: Command): void {
       });
     });
 
+  const chain = workflow
+    .command("chain")
+    .description("Inspect deterministic workflow-chain/v1 state");
+
+  chain
+    .command("status")
+    .description("Show derived workflow-chain/v1")
+    .option("--json", "Output machine-readable JSON")
+    .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
+    .action((options: WorkflowOptions) => {
+      runWorkflowAction(options, () => {
+        const state = buildWorkflowState(process.cwd(), {
+          profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
+        });
+        const report = createWorkflowChainReport(process.cwd(), state);
+        if (options.json) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          return;
+        }
+        process.stdout.write(formatWorkflowChainStatus(report) + "\n");
+      });
+    });
+
+  chain
+    .command("check")
+    .description("Fail when workflow-chain/v1 decisions cross a threshold")
+    .option("--json", "Output machine-readable JSON")
+    .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
+    .option(
+      "--action <action>",
+      `Transition or registry action to evaluate (${formatWorkflowChainActionList()})`,
+    )
+    .option("--fail-on <decision>", "Decision threshold (block|warn|observe)", "block")
+    .action((options: WorkflowOptions) => {
+      runWorkflowAction(options, () => {
+        const state = buildWorkflowState(process.cwd(), {
+          profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
+        });
+        const action = parseChainAction(options.action);
+        const failOn = parseFailOn(options.failOn);
+        const report = createWorkflowChainCheckReport(
+          createWorkflowChainReport(process.cwd(), state),
+          action,
+          failOn,
+        );
+        const failed = report.check.status === "failed";
+
+        if (options.json) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatWorkflowChainCheck(report) + "\n");
+        }
+
+        if (failed) {
+          process.exitCode = 1;
+        }
+      });
+    });
+
   workflow
     .command("explain")
     .description("Explain a workflow rule id, gate, decision, or action")
     .argument("<query>", "Rule id or action, such as G2.hearing.required_confirmation")
     .option("--json", "Output machine-readable JSON")
     .option("--profile <profile>", "Profile (minimal|standard|strict)")
+    .option("--feature <id>", "Feature/task identifier for action-scoped evidence")
     .action((query: string, options: WorkflowOptions) => {
       runWorkflowAction(options, () => {
         const state = buildWorkflowState(process.cwd(), {
           profile: parseProfile(options.profile),
+          feature: options.feature ?? null,
         });
         const explanation = explainWorkflowQuery(state, query);
         if (options.json) {
@@ -161,17 +244,20 @@ function parseFailOn(value: string | undefined): WorkflowCheckFailOn {
 }
 
 function parseAction(value: string | undefined): WorkflowCheckAction {
-  if (
-    value === "design_draft" ||
-    value === "implementation_start" ||
-    value === "implementation_split" ||
-    value === "remote_publish" ||
-    value === "merge" ||
-    value === "release"
-  ) {
+  const action = parseWorkflowCheckAction(value);
+  if (action) {
+    return action;
+  }
+  throw new Error(
+    `Invalid or missing workflow action: ${value ?? "(missing)"}. Expected one of: ${formatWorkflowActionRegistryList()}`,
+  );
+}
+
+function parseChainAction(value: string | undefined): string {
+  if (value) {
     return value;
   }
   throw new Error(
-    `Invalid or missing workflow action: ${value ?? "(missing)"}`,
+    `Invalid or missing workflow chain action: (missing). Expected one of: ${formatWorkflowChainActionList()}`,
   );
 }

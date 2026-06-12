@@ -1,0 +1,194 @@
+{
+  "schema": "shirube-pr-cell-plan/v1",
+  "cell_plan_id": "pr-cell-plan-large-batch-example",
+  "issue": {
+    "repo": "watchout/ai-dev-framework",
+    "number": 304
+  },
+  "objective": "Example large PR Cell batch with independent implementation lanes, a dependent cell, and a human approval gate.",
+  "continuation_policy": {
+    "continue_after": "pr_evidence_posted_and_state_impl_l1",
+    "stop_on": [
+      "direct_dependency_blocked",
+      "merge_required",
+      "ceo_approval_required",
+      "live_operation_required",
+      "production_db_or_secret_mutation"
+    ]
+  },
+  "cells": [
+    {
+      "id": "CORE",
+      "title": "core cell plan schema helpers",
+      "objective": "Extend shared PR Cell Plan helpers for the batch.",
+      "scope": [
+        "Update deterministic model helpers.",
+        "Keep validation fixture-only and read-only."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [],
+      "parallel_group": "alpha",
+      "risk_route": "R2",
+      "audit_route": "l2",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals",
+        "dependency_notes"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    },
+    {
+      "id": "CLI",
+      "title": "cell plan CLI projection",
+      "objective": "Expose the CORE helpers through fixture-only CLI output.",
+      "scope": [
+        "Render deterministic CLI JSON.",
+        "Do not post comments or mutate labels."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [
+        "CORE"
+      ],
+      "parallel_group": "beta",
+      "risk_route": "R2",
+      "audit_route": "l2",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals",
+        "dependency_notes"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    },
+    {
+      "id": "DOCS",
+      "title": "operator documentation",
+      "objective": "Document how implementation, audit, and manual operators use the same cell plan.",
+      "scope": [
+        "Add rollout runbook.",
+        "List exact commands for validate and template generation."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [],
+      "parallel_group": "alpha",
+      "risk_route": "R1",
+      "audit_route": "l1",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": false,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    },
+    {
+      "id": "OPS",
+      "title": "human rollout approval",
+      "objective": "Represent rollout approval without assigning it to implementation runners.",
+      "scope": [
+        "Review merged implementation evidence.",
+        "Approve documentation rollout only after audit evidence is current."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "human_approval",
+      "expected_pr_count": 0,
+      "depends_on": [
+        "CLI",
+        "DOCS"
+      ],
+      "risk_route": "R4",
+      "audit_route": "ceo",
+      "owner_role": "human_approval",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    }
+  ]
+}

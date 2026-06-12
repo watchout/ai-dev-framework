@@ -1,0 +1,154 @@
+{
+  "schema": "shirube-pr-cell-plan/v1",
+  "cell_plan_id": "pr-cell-plan-dependency-blocked-stack-example",
+  "issue": {
+    "repo": "watchout/ai-dev-framework",
+    "number": 304
+  },
+  "objective": "Example stacked PR Cell Plan where upper cells must hold when a foundation cell is blocked.",
+  "continuation_policy": {
+    "continue_after": "pr_evidence_posted_and_state_impl_l1",
+    "stop_on": [
+      "direct_dependency_blocked",
+      "merge_required",
+      "ceo_approval_required",
+      "live_operation_required",
+      "production_db_or_secret_mutation"
+    ]
+  },
+  "cells": [
+    {
+      "id": "FOUNDATION",
+      "title": "foundation contract",
+      "objective": "Add the foundation contract required by the stack.",
+      "scope": [
+        "Implement only the lower contract.",
+        "Produce exact-head PR evidence before any upper stack cell continues."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [],
+      "parallel_group": "stack-a",
+      "risk_route": "R2",
+      "audit_route": "l2",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals",
+        "dependency_notes"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    },
+    {
+      "id": "STACK_A",
+      "title": "dependent adapter",
+      "objective": "Build the first dependent adapter only after FOUNDATION evidence is usable.",
+      "scope": [
+        "Depend on FOUNDATION.",
+        "Hold when FOUNDATION is blocked."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [
+        "FOUNDATION"
+      ],
+      "parallel_group": "stack-b",
+      "risk_route": "R2",
+      "audit_route": "l2",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals",
+        "dependency_notes"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    },
+    {
+      "id": "STACK_B",
+      "title": "upper stack projection",
+      "objective": "Build the upper projection after STACK_A enters impl-l1 evidence state.",
+      "scope": [
+        "Depend on STACK_A.",
+        "Do not advance if lower stack evidence is blocked or stale."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [
+        "STACK_A"
+      ],
+      "parallel_group": "stack-c",
+      "risk_route": "R2",
+      "audit_route": "l2",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals",
+        "dependency_notes"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    }
+  ]
+}

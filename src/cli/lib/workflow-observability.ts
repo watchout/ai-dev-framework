@@ -5,6 +5,10 @@ import type {
   WorkflowGateDecisionValue,
   WorkflowState,
 } from "./workflow-state.js";
+import {
+  WORKFLOW_ACTION_REGISTRY,
+  getWorkflowActionRuleIds,
+} from "./workflow-action-registry.js";
 
 export interface WorkflowDecisionCounts {
   PASS: number;
@@ -14,12 +18,7 @@ export interface WorkflowDecisionCounts {
 }
 
 export type WorkflowCheckAction =
-  | "design_draft"
-  | "implementation_start"
-  | "implementation_split"
-  | "remote_publish"
-  | "merge"
-  | "release";
+  (typeof WORKFLOW_ACTION_REGISTRY)[number]["action"];
 
 export type WorkflowCheckFailOn = "block" | "warn" | "observe";
 
@@ -102,7 +101,7 @@ export function createWorkflowCheckReport(
   failOn: WorkflowCheckFailOn,
 ): WorkflowCheckReport {
   const doctorReport = createWorkflowDoctorReport(state);
-  const applicableRuleIds = ACTION_RULE_IDS[action];
+  const applicableRuleIds = [...getWorkflowActionRuleIds(action)];
   const scopedDecisions = state.gate_decisions.filter((decision) =>
     applicableRuleIds.includes(decision.rule_id),
   );
@@ -222,40 +221,6 @@ export function formatWorkflowExplanation(
     ...formatEvidenceList(explanation.evidence),
   ].join("\n");
 }
-
-const ACTION_RULE_IDS: Record<WorkflowCheckAction, string[]> = {
-  design_draft: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G2.hearing.required_confirmation",
-  ],
-  implementation_start: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G2.hearing.required_confirmation",
-  ],
-  implementation_split: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G2.hearing.required_confirmation",
-  ],
-  remote_publish: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G4.publish.remote",
-  ],
-  merge: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G9.merge_authority.evidence",
-  ],
-  release: [
-    "G1.roles.required_bindings",
-    "G1.roles.separation",
-    "G4.publish.remote",
-    "G9.merge_authority.evidence",
-  ],
-};
 
 function countDecisions(
   decisions: WorkflowGateDecision[],

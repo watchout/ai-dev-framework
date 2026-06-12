@@ -11,7 +11,16 @@ import {
   type RoleBinding,
   type RoleTargetType,
 } from "../lib/workflow-config.js";
+import {
+  validateCompanyDevOsRoleProfiles,
+  type CompanyDevOsRoleProfileValidationResult,
+} from "../lib/company-dev-os-role-profile.js";
 import { logger } from "../lib/logger.js";
+
+interface ValidateRolesOptions {
+  json?: boolean;
+  configDir?: string;
+}
 
 interface SetRoleOptions {
   type?: string;
@@ -41,6 +50,20 @@ export function registerRolesCommand(program: Command): void {
     .action(() => {
       const ready = doctorRoles(process.cwd());
       if (!ready) process.exit(1);
+    });
+
+  roles
+    .command("validate")
+    .description("Validate Company Dev OS role profiles")
+    .option("--json", "Emit machine-readable JSON")
+    .option(
+      "--config-dir <path>",
+      "Company Dev OS config directory",
+      ".shirube/company-dev-os",
+    )
+    .action((options: ValidateRolesOptions) => {
+      const passed = validateCompanyDevOsRoles(process.cwd(), options);
+      if (!passed) process.exit(1);
     });
 
   roles
@@ -111,6 +134,48 @@ function doctorRoles(projectDir: string): boolean {
   logger.info("Configure roles before `shirube start --audit-level strict`:");
   logger.info("  shirube roles set auditor --type mcp_agent --id <agent-id>");
   return false;
+}
+
+function validateCompanyDevOsRoles(
+  projectDir: string,
+  options: ValidateRolesOptions,
+): boolean {
+  const result = validateCompanyDevOsRoleProfiles(projectDir, {
+    configDir: options.configDir,
+  });
+
+  if (options.json) {
+    process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+    return result.passed;
+  }
+
+  printCompanyDevOsRoleValidation(result);
+  return result.passed;
+}
+
+function printCompanyDevOsRoleValidation(
+  result: CompanyDevOsRoleProfileValidationResult,
+): void {
+  logger.header("Company Dev OS Role Profiles");
+  logger.info(`  Config: ${result.config_dir}`);
+  logger.info(`  Required roles: ${result.required_roles.join(", ")}`);
+
+  if (result.passed) {
+    logger.success("All Company Dev OS role profiles are valid.");
+    for (const profile of result.profiles) {
+      logger.info(
+        `  ${profile.role}: ${profile.path} ${profile.role_profile_hash.slice(0, 12)}`,
+      );
+    }
+    return;
+  }
+
+  logger.error("Company Dev OS role profiles are invalid.");
+  for (const finding of result.findings) {
+    const role = finding.role ? `${finding.role}: ` : "";
+    const field = finding.field ? ` (${finding.field})` : "";
+    logger.info(`  - ${role}${finding.code}${field}: ${finding.message}`);
+  }
 }
 
 function setRole(

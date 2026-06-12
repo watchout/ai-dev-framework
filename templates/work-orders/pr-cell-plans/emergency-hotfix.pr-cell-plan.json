@@ -1,0 +1,109 @@
+{
+  "schema": "shirube-pr-cell-plan/v1",
+  "cell_plan_id": "pr-cell-plan-emergency-hotfix-example",
+  "issue": {
+    "repo": "watchout/ai-dev-framework",
+    "number": 304
+  },
+  "objective": "Example emergency hotfix plan that stays reviewable and stops before protected operations.",
+  "continuation_policy": {
+    "continue_after": "pr_evidence_posted_and_state_impl_l1",
+    "stop_on": [
+      "direct_dependency_blocked",
+      "merge_required",
+      "ceo_approval_required",
+      "live_operation_required",
+      "production_db_or_secret_mutation"
+    ]
+  },
+  "cells": [
+    {
+      "id": "PATCH",
+      "title": "minimal emergency patch",
+      "objective": "Apply the smallest bounded fix with exact-head evidence.",
+      "scope": [
+        "Patch only the failing guard path.",
+        "Add focused regression coverage.",
+        "Keep the PR draft until audit confirms route."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [],
+      "parallel_group": "hotfix",
+      "risk_route": "R3",
+      "audit_route": "strict",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals",
+        "dependency_notes"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required",
+        "live_operation_required"
+      ]
+    },
+    {
+      "id": "RELEASE_APPROVAL",
+      "title": "hotfix release approval",
+      "objective": "Represent release approval as a human gate, not implementation work.",
+      "scope": [
+        "Confirm current-head audit evidence.",
+        "Confirm rollback notes before any live release."
+      ],
+      "repo": "watchout/ai-dev-framework",
+      "issue": 304,
+      "kind": "human_approval",
+      "expected_pr_count": 0,
+      "depends_on": [
+        "PATCH"
+      ],
+      "risk_route": "R4",
+      "audit_route": "ceo",
+      "owner_role": "human_approval",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals"
+      ],
+      "stop_conditions": [
+        "merge_required",
+        "ceo_approval_required",
+        "live_operation_required",
+        "production_db_or_secret_mutation"
+      ]
+    }
+  ]
+}

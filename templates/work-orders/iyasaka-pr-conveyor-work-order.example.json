@@ -1,0 +1,119 @@
+{
+  "schema_version": "work-order/v1",
+  "work_order_id": "SHIRUBE-CONVEYOR-001",
+  "repo": "watchout/ai-dev-framework",
+  "product": "shirube",
+  "issue": "watchout/ai-dev-framework#269",
+  "work_package_id": "pr-conveyor-profile-contract",
+  "objective": "Add a bounded PR Conveyor delivery profile capability.",
+  "delivery_profile_ref": "iyasaka-internal.pr-conveyor",
+  "risk_class": "R2",
+  "work_unit": "PR",
+  "architecture_owner": "IYASAKA ARC",
+  "implementation_owner": "Shirube repo maintainer or delegated implementer",
+  "review_owner": "Shirube reviewer",
+  "audit_owner": "Shirube audit owner",
+  "merge_authority": "Shirube repo maintainer",
+  "handoff_target": "human | codex | claude_code | ci_headless_script",
+  "dispatch_surfaces": [
+    "codex",
+    "claude",
+    "structured_invocation",
+    "shirube_report"
+  ],
+  "scope": [
+    "Implement the bounded issue scope only."
+  ],
+  "non_goals": [
+    "Do not enable live AUN dispatch.",
+    "Do not merge automatically.",
+    "Do not perform R4 protected operations."
+  ],
+  "allowed_files": [
+    "src/cli/lib/*",
+    "src/cli/commands/*",
+    "docs/spec/*",
+    "docs/impl/*",
+    "docs/verify/*",
+    "docs/ops/*",
+    "templates/**/*"
+  ],
+  "allowed_actions": [
+    "edit allowed files",
+    "run tests/build/typecheck",
+    "push branch",
+    "open draft PR",
+    "request audit"
+  ],
+  "forbidden_actions": [
+    "merge",
+    "production deploy",
+    "secret or credential change",
+    "destructive DB or storage operation",
+    "customer data export",
+    "external send to real users",
+    "billing or value transfer",
+    "permission broadening"
+  ],
+  "verification_commands": [
+    "npm test -- <focused-pattern>",
+    "npm run type-check",
+    "npm run build:cli",
+    "npm run lint"
+  ],
+  "inputs": [
+    {
+      "type": "github_issue",
+      "ref": "watchout/ai-dev-framework#269"
+    }
+  ],
+  "evidence_refs": [
+    "github:watchout/ai-dev-framework#269"
+  ],
+  "context_pack_non_applicability": "No external context pack is required for this bounded repo-local Work Order.",
+  "context_pack_policy": {
+    "data_not_instruction": true,
+    "delivery": "data-only"
+  },
+  "runtime_adapter": "runner-agnostic-structured-invocation",
+  "structured_invocation": {
+    "runtime": "custom",
+    "output_mode": "json",
+    "output_schema": "work-order-result-v1"
+  },
+  "expected_output_schema": "work-order-result-v1",
+  "write_scope": "workspace-write",
+  "required_gates": [
+    "work_order",
+    "delivery_profile",
+    "audit"
+  ],
+  "report_sink": "github-pr-comment",
+  "authority_boundary": {
+    "forbidden": [
+      "merge approval",
+      "phase transition",
+      "gate pass",
+      "goal completion"
+    ],
+    "merge_authority": "not_granted",
+    "phase_transition_authority": "not_granted"
+  },
+  "non_claims": [
+    "No merge authority.",
+    "No phase transition authority.",
+    "No live AUN dispatch authority."
+  ],
+  "stop_conditions": [
+    "R4 protected operation requested",
+    "implementation authority missing",
+    "CI workflow mutation needed",
+    "dependency update outside scope needed"
+  ],
+  "fallback_next_work_policy": "Record blocker, leave worktree intact, and move to next ready Work Order if unrelated work is available.",
+  "enforcement_mode": "warning",
+  "promotion_criteria": [
+    "Delivery profile, Work Order, PR evidence, queue projection, and runner instruction slices are accepted.",
+    "Audit evidence shows no warning-only violations before hard-block promotion."
+  ]
+}

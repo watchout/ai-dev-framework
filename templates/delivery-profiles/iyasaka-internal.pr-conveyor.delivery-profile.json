@@ -1,0 +1,197 @@
+{
+  "profile_version": "0.1.0",
+  "profile_id": "iyasaka-internal.pr-conveyor",
+  "status": "draft",
+  "organization": "IYASAKA",
+  "owner": "IYASAKA ARC",
+  "created": "2026-06-02",
+  "source_specs": [
+    "/Users/yuji/Developer/iyasaka-arc/cross-cutting/specs/draft/2026-06-02-continuous-pr-conveyor-operating-model.md",
+    "/Users/yuji/Developer/iyasaka-arc/cross-cutting/specs/draft/2026-06-02-4mcp-completion-safety-minimum.md",
+    "/Users/yuji/Developer/iyasaka-arc/cross-cutting/specs/draft/2026-06-02-architecture-implementation-ownership-boundary.md"
+  ],
+  "tracking_issues": [
+    "watchout/ai-dev-framework#265",
+    "watchout/ai-dev-framework#264",
+    "watchout/ai-dev-framework#249"
+  ],
+  "purpose": "Internal IYASAKA default delivery profile. Use PR Conveyor for low-to-medium-risk product development while preserving audit, ownership, and protected-operation stops.",
+  "default_delivery_strategy": "pr_conveyor",
+  "allowed_delivery_strategies": [
+    "pr_conveyor",
+    "phase_conveyor",
+    "release_train",
+    "serial_gate",
+    "design_only",
+    "hotfix"
+  ],
+  "strategy_by_risk": {
+    "R0": {
+      "delivery_strategy": "pr_conveyor",
+      "audit_timing": "after_pr",
+      "pr_mode": "normal"
+    },
+    "R1": {
+      "delivery_strategy": "pr_conveyor",
+      "audit_timing": "after_pr",
+      "pr_mode": "normal"
+    },
+    "R2": {
+      "delivery_strategy": "pr_conveyor",
+      "audit_timing": "after_pr",
+      "pr_mode": "normal"
+    },
+    "R3": {
+      "delivery_strategy": "phase_conveyor",
+      "audit_timing": "before_merge",
+      "pr_mode": "draft_or_reference_until_owner_adopts"
+    },
+    "R4": {
+      "delivery_strategy": "serial_gate",
+      "audit_timing": "before_execution",
+      "pr_mode": "blocked_until_approved"
+    }
+  },
+  "queue_states": [
+    "backlog",
+    "ready_for_spec",
+    "ready_for_implementation",
+    "implementing",
+    "pr_opened_evidence_ready",
+    "audit_pending",
+    "changes_requested",
+    "rework_implementing",
+    "audit_passed",
+    "merge_ready",
+    "merged_closed"
+  ],
+  "wip_policy": {
+    "fast_lane_prs_per_repo": 3,
+    "governed_draft_prs_per_repo": 2,
+    "rework_prs_per_repo": 2,
+    "stop_lane_prs_without_approval": 0,
+    "max_runner_sessions_per_repo": 2,
+    "max_changed_files_per_work_order": 12
+  },
+  "work_order_required_fields": [
+    "work_order_id",
+    "repo",
+    "product",
+    "delivery_strategy",
+    "work_unit",
+    "lane",
+    "risk_class",
+    "architecture_owner",
+    "implementation_owner",
+    "review_owner",
+    "audit_owner",
+    "merge_authority",
+    "scope",
+    "non_goals",
+    "allowed_files",
+    "allowed_actions",
+    "forbidden_actions",
+    "verification_commands",
+    "pr_mode",
+    "audit_timing",
+    "stop_conditions",
+    "fallback_next_work_policy"
+  ],
+  "runner_contract": {
+    "runner_agnostic": true,
+    "allowed_runners": [
+      "human",
+      "codex",
+      "claude_code",
+      "ci_headless_script",
+      "aun_dispatched_runner",
+      "other_bounded_agent_runtime"
+    ],
+    "required_result_states": [
+      "completed_pr_opened",
+      "completed_no_pr_needed",
+      "blocked_requires_input",
+      "blocked_requires_audit",
+      "blocked_requires_approval",
+      "failed_verification",
+      "skipped_not_authorized"
+    ],
+    "required_evidence": [
+      "runner_identity",
+      "runtime_mode",
+      "work_order_id",
+      "branch_or_pr_ref",
+      "changed_files",
+      "verification_results",
+      "residual_risk",
+      "stop_conditions_encountered"
+    ]
+  },
+  "audit_contract": {
+    "fast_lane": "audit_after_pr_before_merge",
+    "governed_lane": "audit_before_merge_or_owner_adoption",
+    "stop_lane": "audit_or_approval_before_execution",
+    "finding_handling": "create_rework_slice_or_pr_review_comment",
+    "audit_levels": [
+      "L1_scope_tests_evidence",
+      "L2_architecture_security_cross_product",
+      "CTO_merge_authority_when_required"
+    ]
+  },
+  "merge_policy": {
+    "automatic_merge_allowed": false,
+    "implementation_runner_may_merge": false,
+    "merge_requires": [
+      "audit_passed",
+      "merge_authority",
+      "green_required_checks",
+      "no_active_stop_condition"
+    ]
+  },
+  "stop_policy": {
+    "no_run_sentinel_required": true,
+    "hard_stop_blocks_new_work_orders": true,
+    "protected_operations_require_approval": [
+      "merge",
+      "production_deploy",
+      "secret_or_credential_change",
+      "destructive_db_or_storage_operation",
+      "customer_data_export",
+      "external_send_to_real_users",
+      "billing_or_value_transfer",
+      "permission_broadening"
+    ]
+  },
+  "initial_rollout": [
+    {
+      "product": "shirube",
+      "repo": "watchout/ai-dev-framework",
+      "default_strategy": "pr_conveyor",
+      "notes": "Implement the profile, Work Order fields, evidence template, and gates first."
+    },
+    {
+      "product": "aun",
+      "repo": "watchout/agent-comms-mcp",
+      "default_strategy": "pr_conveyor",
+      "notes": "Use for internal stabilization PRs only. Live autonomous dispatch remains blocked until safety stack acceptance."
+    },
+    {
+      "product": "kodama",
+      "repo": "watchout/kodama",
+      "default_strategy": "pr_conveyor",
+      "notes": "Use for context-pack/get_context implementation and tests. Do not treat context as execution authorization."
+    },
+    {
+      "product": "wasurezu",
+      "repo": "watchout/agent-memory",
+      "default_strategy": "pr_conveyor",
+      "notes": "Use for memory/recovery safety PRs. Secrets and uncontrolled raw capture remain Stop Lane."
+    },
+    {
+      "product": "totonoe",
+      "repo": "watchout/totonoe",
+      "default_strategy": "pr_conveyor",
+      "notes": "Use after 4MCP minimum is usable; customer-impacting SaaS operations remain governed or stop lane."
+    }
+  ]
+}
