@@ -6,6 +6,7 @@
  * - .github/workflows/ci.yml (from templates/ci/{profileType}.yml)
  * - .github/PULL_REQUEST_TEMPLATE.md
  * - .github/ISSUE_TEMPLATE/ (profile-aware)
+ * - .github/setup-labels.sh
  * - .github/CODEOWNERS
  */
 import * as fs from "node:fs";
@@ -192,6 +193,11 @@ export function installGitHubTemplates(
   const codeownersSrc = path.join(frameworkRoot, "templates/github/CODEOWNERS");
   const codeownersDest = path.join(projectDir, ".github/CODEOWNERS");
   copyTemplateFile(codeownersSrc, codeownersDest, force, installed, skipped, errors);
+
+  // 5. Label setup script
+  const labelsSrc = path.join(frameworkRoot, "templates/github/setup-labels.sh");
+  const labelsDest = path.join(projectDir, ".github/setup-labels.sh");
+  copyTemplateFile(labelsSrc, labelsDest, force, installed, skipped, errors);
 
   return { installed, skipped, errors };
 }
