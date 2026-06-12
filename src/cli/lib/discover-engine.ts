@@ -27,11 +27,11 @@ import {
   pauseSession,
   resumeSession,
 } from "./discover-session.js";
+import type { BaseIO } from "./io-model.js";
 
 /** Abstraction for I/O to allow testing */
-export interface DiscoverIO {
+export interface DiscoverIO extends BaseIO {
   ask(prompt: string): Promise<string>;
-  print(message: string): void;
   printBox(title: string, lines: string[]): void;
   printStageHeader(stage: StageDefinition): void;
   printQuestion(question: Question, index: number, total: number): void;
