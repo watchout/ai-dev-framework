@@ -3,6 +3,74 @@
 > **Source**: Consolidates `10_GENERATION_CHAIN.md`
 > **Purpose**: Step-by-step document generation chain from Discovery to Development
 > **Principle**: Generate documents one at a time, in order, each using the previous as input. User confirms before proceeding.
+> **v1.2.0 update**: Tier-aware flow added (Nano/Standard/Full). See §Tier-to-Step Matrix below.
+
+---
+
+## Tier System (v1.2.0)
+
+Changes are classified into 3 tiers based on **risk / contract impact / protected category**, not size alone.
+
+### Tier Definitions
+
+**Nano** — existing contract, no new product decisions
+- Scope: bugfix, docs, test addition, small refactor within existing specs
+- Excludes: new product decision / public API / DB schema / auth / credentials / runtime routing / production behavior
+- SSOT: existing canonical docs + GitHub issue/PR + tests/evidence + explicit no-contract-change statement (no new formal docs required)
+- Gate: machine CI Gate 0 only (exact-head). No formal doc gate.
+- Review: CI green + async audit signal. CTO does NOT participate.
+- Complete: merge ≠ done. Evidence required even for Nano.
+
+**Standard** — known domain, bounded scope
+- Scope: new feature in known domain, existing-contract bounded extension, UI/API minor expansion
+- SSOT: compact PR Design / decision delta (not full formal SSOT)
+- Gate: CI Gate 0 + PR Design lite + acceptance criteria + test plan + rollback note
+- Review: CI + audit/qa/check as applicable to change surface
+- Complete: deployed evidence + key metric no regression
+
+**Full** — new domain, protected surface, or public impact
+- Scope: new domain, public API/MCP/external protocol, auth/security/permissions/credentials/encryption, DB migration/data-loss, agent routing/queue/recovery/runtime, production deploy, governance changes
+- SSOT: full formal docs (all Freeze levels)
+- Gate: full CI Gate 0 + contract/security/migration checks + required audit/qa/check/CTO/CEO
+- Review: full 5-layer chain
+- Complete: live evidence + runtime identity + SLO + error rate + smoke
+
+### Protected Category Auto-Promotion
+
+If ANY of the following is detected in a diff, tier auto-promotes to **Full** regardless of declared tier:
+
+| Category | Patterns |
+|----------|---------|
+| Security/Auth | auth, permission, credential, token, encryption, secret, session |
+| Data | DB schema, migration, DROP, ALTER TABLE, data-loss |
+| Public API | public API route, MCP tool contract, external protocol, response shape |
+| Agent infra | routing, queue lifecycle, claim-finalize, recovery-complete |
+| Runtime | process lifecycle, runtime adapter, live transport, state-daemon |
+| Production | deploy, billing, pricing, customer-impacting send |
+| Governance | merge authority, branch protection, gate-bypass, governance-flow |
+
+**merge ≠ complete**: Every tier requires evidence before marking done. Runtime repos require live health evidence.
+
+---
+
+## Tier-to-Step Matrix
+
+| Step | Nano | Standard | Full |
+|------|------|----------|------|
+| **0 Discovery** | Skip | Fast-track (≤5 confirmatory questions) | Full 30Q interview |
+| **1 Business docs** | Skip | Skip if domain known | Required (IDEA_CANVAS, USER_PERSONA, VALUE_PROP) |
+| **COMPETITOR_ANALYSIS** | Skip | Optional (skip if `domain_known: true`) | Required |
+| **2 Product / Feature Spec** | Skip | Compact PR Design + acceptance criteria | Full SSOT per feature (Freeze 1-4) |
+| **Deliberation Protocol** | Skip | Skip | Required for P0/security/L+ features |
+| **3 Technical docs** | Skip | Skip if no new API/data model | Required (API_CONTRACT, DATA_MODEL) |
+| **3.5 Planning** | GitHub issue only | PR with slice DAG | Full Wave classification + GitHub Issues |
+| **4 Implementation** | Single branch + single PR | slice-mode (1 feature = 1 PR) | layered-mode (DB/API/UI separate PRs) |
+| **Code audit** | Exact-head CI + targeted tests + diff risk check | Relevant integration tests | Full Gate 0 + contract/security checks |
+| **Review chain** | CI green + async audit | CI + audit/qa/check (change-surface) | Full 5-layer (dev→lead→auditor→CTO) |
+| **Merge gate** | CI Gate 0 green, no red audit finding | CI Gate 0 + audit green/yellow | CI + all required approvals |
+| **Complete gate** | PR evidence (issue/tests) | Deploy + key metric no regression | Live evidence + runtime + SLO + smoke |
+
+---
 
 ---
 

@@ -1,0 +1,21 @@
+{
+  "repo_id": "watchout/kodama",
+  "repo_type": "product",
+  "runtime": true,
+  "protected_surfaces": ["auth", "db", "deploy"],
+  "allowed_tier": "all",
+  "ci_gate_0": {
+    "required_checks": ["test", "lint", "typecheck", "build"],
+    "integration_commands": ["npm test"],
+    "exact_head_required": true
+  },
+  "complete_evidence": {
+    "types": ["pr-merged", "deploy-confirmed", "health-check", "smoke-test"],
+    "health_endpoint": "/api/health",
+    "smoke_command": "npm run smoke"
+  },
+  "audit_route": "async",
+  "rollback_owner": "codex-cto",
+  "implementation_bot": "dev-001",
+  "aun_pilot": "watchout/iyasaka-arc#722"
+}
