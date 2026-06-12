@@ -12,6 +12,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { isTestFile, walkDir } from "./fs-utils.js";
 
 // ─────────────────────────────────────────────
 // Core Types
@@ -213,25 +214,6 @@ export function loadTestReports(projectDir: string): TestReport[] {
 
 const TEST_FILE_PATTERN = /\.(test|spec)\.(ts|tsx|js|jsx)$/;
 const SOURCE_FILE_PATTERN = /\.(ts|tsx|js|jsx)$/;
-const IGNORED_DIRS = ["node_modules", ".next", "dist", "coverage", ".framework"];
-
-function walkDir(dir: string, pattern: RegExp): string[] {
-  const results: string[] = [];
-  if (!fs.existsSync(dir)) return results;
-
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (IGNORED_DIRS.includes(entry.name)) continue;
-
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...walkDir(fullPath, pattern));
-    } else if (pattern.test(entry.name)) {
-      results.push(fullPath);
-    }
-  }
-  return results;
-}
 
 /**
  * Analyze project for test files and source files
@@ -244,8 +226,8 @@ export function analyzeTestFiles(projectDir: string): {
   const srcDir = path.join(projectDir, "src");
   const allFiles = walkDir(srcDir, SOURCE_FILE_PATTERN);
 
-  const testFiles = allFiles.filter((f) => TEST_FILE_PATTERN.test(f));
-  const sourceFiles = allFiles.filter((f) => !TEST_FILE_PATTERN.test(f));
+  const testFiles = allFiles.filter(isTestFile);
+  const sourceFiles = allFiles.filter((f) => !isTestFile(f));
 
   // Find source files without corresponding test files
   const testBaseNames = new Set(
