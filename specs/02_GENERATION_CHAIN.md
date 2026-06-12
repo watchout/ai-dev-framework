@@ -4,6 +4,7 @@
 > **Purpose**: Step-by-step document generation chain from Discovery to Development
 > **Principle**: Generate documents one at a time, in order, each using the previous as input. User confirms before proceeding.
 > **v1.2.0 update**: Tier-aware flow added (Nano/Standard/Full). See §Tier-to-Step Matrix below.
+> **Extended doc4l references**: Step 3.4 and Step 3.45 details live in [docs/specs/02_GENERATION_CHAIN.md](../docs/specs/02_GENERATION_CHAIN.md), [docs/specs/04b_IMPL_FORMAT.md](../docs/specs/04b_IMPL_FORMAT.md), and [docs/specs/04c_FEASIBILITY_POC_FORMAT.md](../docs/specs/04c_FEASIBILITY_POC_FORMAT.md).
 
 ---
 
