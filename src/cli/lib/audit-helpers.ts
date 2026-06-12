@@ -3,7 +3,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { type AuditResult } from "./audit-engine.js";
+import { type AuditIO, type AuditResult } from "./audit-engine.js";
 import { generateAuditMarkdown } from "./audit-model.js";
 import { logger } from "./logger.js";
 
@@ -14,6 +14,7 @@ import { logger } from "./logger.js";
 export function resolveAuditTarget(
   projectDir: string,
   target: string | undefined,
+  io?: Pick<AuditIO, "onFatalError">,
 ): { targetPath: string; target: string } {
   if (!target) {
     // Default: use ssot/SSOT-0_PRD.md for project-level audit
@@ -24,7 +25,7 @@ export function resolveAuditTarget(
           "Usage: shirube audit <mode> <target>\n" +
           "Or create: ssot/SSOT-0_PRD.md",
       );
-      process.exit(1);
+      fatalExit(io, 1);
     }
     return { targetPath: defaultTarget, target: "ssot/SSOT-0_PRD.md" };
   }
@@ -32,7 +33,7 @@ export function resolveAuditTarget(
   const targetPath = path.resolve(projectDir, target);
   if (!fs.existsSync(targetPath)) {
     logger.error(`Target not found: ${target}`);
-    process.exit(1);
+    fatalExit(io, 1);
   }
 
   return { targetPath, target };
@@ -41,7 +42,12 @@ export function resolveAuditTarget(
 /**
  * Output audit result as JSON
  */
-export function outputJson(mode: string, target: string, result: AuditResult): void {
+export function outputJson(
+  mode: string,
+  target: string,
+  result: AuditResult,
+  io?: Pick<AuditIO, "onFatalError">,
+): void {
   const jsonOutput = {
     mode,
     target,
@@ -52,7 +58,7 @@ export function outputJson(mode: string, target: string, result: AuditResult): v
     absoluteConditions: result.report.absoluteConditions,
   };
   process.stdout.write(JSON.stringify(jsonOutput, null, 2) + "\n");
-  process.exit(result.report.verdict === "pass" ? 0 : 1);
+  fatalExit(io, result.report.verdict === "pass" ? 0 : 1);
 }
 
 /**
@@ -73,4 +79,9 @@ export function outputMarkdown(
   
   fs.writeFileSync(fullPath, markdown, "utf-8");
   logger.success(`Report written to ${outputPath}`);
+}
+
+function fatalExit(io: Pick<AuditIO, "onFatalError"> | undefined, code: number): never {
+  if (io?.onFatalError) return io.onFatalError(code);
+  process.exit(code);
 }
