@@ -14,6 +14,7 @@ import {
   loadDecisions,
   loadOpenIssues,
 } from "./memory-model.js";
+import { safeReadJson } from "./fs-utils.js";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -43,13 +44,7 @@ interface ProjectConfig {
 function readProjectConfig(projectDir: string): ProjectConfig {
   const configPath = path.join(projectDir, ".framework", "project.json");
   if (!fs.existsSync(configPath)) return {};
-
-  try {
-    const content = fs.readFileSync(configPath, "utf-8");
-    return JSON.parse(content) as ProjectConfig;
-  } catch {
-    return {};
-  }
+  return safeReadJson<ProjectConfig>(configPath, {});
 }
 
 function detectActiveFiles(projectDir: string): string[] {

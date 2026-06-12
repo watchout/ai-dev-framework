@@ -21,6 +21,7 @@ import {
   resolveWorkOrderDeliveryDefaults,
   type WorkOrderDeliveryDefaults,
 } from "./work-order-delivery-defaults.js";
+import { parseJsonOrThrow } from "./fs-utils.js";
 
 export const WORKFLOW_STATE_SCHEMA_VERSION = "workflow-state/v1" as const;
 
@@ -707,6 +708,7 @@ function applyProjectApplied(
   const projectPath = path.join(projectDir, PROJECT_PATH);
   const configPath = path.join(projectDir, CONFIG_PATH);
   if (fs.existsSync(projectPath)) {
+    const projectState = parseJsonOrThrow<Record<string, unknown>>(projectPath);
     const artifactPath = PROJECT_PATH;
     const projectEvidence = createEvidence({
       projectDir,
@@ -718,6 +720,12 @@ function applyProjectApplied(
       metadata: {
         projectPathPresent: fs.existsSync(projectPath),
         configPathPresent: fs.existsSync(configPath),
+        name:
+          typeof projectState.name === "string" ? projectState.name : null,
+        profileType:
+          typeof projectState.profileType === "string"
+            ? projectState.profileType
+            : null,
       },
     });
     evidence.push(projectEvidence);
@@ -4160,7 +4168,7 @@ function readJsonFile<T>(projectDir: string, relativePath: string): T | null {
   if (!fs.existsSync(filePath)) {
     return null;
   }
-  return JSON.parse(fs.readFileSync(filePath, "utf-8")) as T;
+  return parseJsonOrThrow<T>(filePath);
 }
 
 function hashFileIfPresent(filePath: string): string | null {

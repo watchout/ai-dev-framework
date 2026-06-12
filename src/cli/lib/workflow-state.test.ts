@@ -241,6 +241,17 @@ describe("workflow-state", () => {
     ).toContain("preserved-on-disk");
   });
 
+  it("throws actionable file context for corrupt project state", () => {
+    saveFrameworkConfig(tmpDir, readyConfig());
+    const projectPath = path.join(tmpDir, ".framework/project.json");
+    fs.mkdirSync(path.dirname(projectPath), { recursive: true });
+    fs.writeFileSync(projectPath, "{ invalid", "utf-8");
+
+    expect(() => buildWorkflowState(tmpDir, { now: NOW })).toThrow(
+      `Failed to read JSON file ${projectPath}`,
+    );
+  });
+
   it("keeps local-only projects independent of GitHub", () => {
     const config = readyConfig();
     config.workflow = { publishPolicy: "draft_only", outputs: ["local_files"] };

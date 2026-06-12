@@ -6,6 +6,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { parseJsonOrThrow, safeReadJson } from "./fs-utils.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -118,13 +119,8 @@ const PROJECT_JSON = ".framework/project.json";
 
 export function loadTestingConfig(projectDir: string): TestingConfig | null {
   const filePath = path.join(projectDir, PROJECT_JSON);
-  if (!fs.existsSync(filePath)) return null;
-  try {
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-    return (raw.testing as TestingConfig) ?? null;
-  } catch {
-    return null;
-  }
+  const raw = safeReadJson<{ testing?: TestingConfig } | null>(filePath, null);
+  return raw?.testing ?? null;
 }
 
 export function saveTestingConfig(projectDir: string, config: TestingConfig): void {
@@ -132,7 +128,7 @@ export function saveTestingConfig(projectDir: string, config: TestingConfig): vo
   if (!fs.existsSync(filePath)) return;
 
   try {
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+    const raw = parseJsonOrThrow<Record<string, unknown>>(filePath);
     raw.testing = config;
     raw.updatedAt = new Date().toISOString();
     const tmpPath = filePath + ".tmp";

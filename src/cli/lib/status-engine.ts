@@ -11,6 +11,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { safeReadJson } from "./fs-utils.js";
 import { loadGenerationState } from "./generate-state.js";
 import { loadPlan } from "./plan-model.js";
 import {
@@ -430,8 +431,11 @@ function detectStaleness(projectDir: string): StalenessWarning[] {
   const discoverPath = path.join(projectDir, ".framework/discover-session.json");
   if (fs.existsSync(discoverPath)) {
     try {
-      const session = JSON.parse(fs.readFileSync(discoverPath, "utf-8"));
-      if (session.status !== "completed" && session.updatedAt) {
+      const session = safeReadJson<{
+        status?: string;
+        updatedAt?: string;
+      } | null>(discoverPath, null);
+      if (session && session.status !== "completed" && session.updatedAt) {
         const ageMs = now - new Date(session.updatedAt).getTime();
         const ageHours = ageMs / (1000 * 60 * 60);
         if (ageHours > STALENESS_THRESHOLDS.activeSessionHours) {

@@ -1,6 +1,7 @@
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { parseJsonOrThrow } from "./fs-utils.js";
 
 export const COMPANY_DEV_OS_ROLE_PROFILE_SCHEMA =
   "shirube-company-dev-os-role-profile/v1";
@@ -118,7 +119,7 @@ export function validateCompanyDevOsRoleProfiles(
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(fs.readFileSync(profilePath, "utf-8"));
+      parsed = parseJsonOrThrow<unknown>(profilePath);
     } catch (error) {
       findings.push({
         severity: "block",

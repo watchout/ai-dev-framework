@@ -8,6 +8,7 @@
 import * as tls from "node:tls";
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { safeReadJson } from "./fs-utils.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -369,9 +370,7 @@ export function saveGateDEntry(
 
   let state: Record<string, unknown> = {};
   if (fs.existsSync(filePath)) {
-    try {
-      state = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-    } catch { /* start fresh */ }
+    state = safeReadJson<Record<string, unknown>>(filePath, {});
   } else {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
@@ -394,11 +393,6 @@ export function loadGateDEntry(
   projectDir: string,
 ): GateDEntry | null {
   const filePath = path.join(projectDir, GATE_STATE_FILE);
-  if (!fs.existsSync(filePath)) return null;
-  try {
-    const raw = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-    return (raw.gateD as GateDEntry) ?? null;
-  } catch {
-    return null;
-  }
+  const raw = safeReadJson<{ gateD?: GateDEntry } | null>(filePath, null);
+  return raw?.gateD ?? null;
 }

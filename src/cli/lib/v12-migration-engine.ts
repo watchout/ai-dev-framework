@@ -9,6 +9,7 @@ import { dirname, join, resolve } from 'node:path';
 import { parseSsot } from './ssot-parser.js';
 import { generateFeatureTemplates } from './template-generator.js';
 import { SsotParseError } from './ssot-parser.js';
+import { parseJsonOrThrow } from './fs-utils.js';
 
 export interface V12MigrationOptions {
   ssotPath?: string;
@@ -141,7 +142,7 @@ function readConfig(configPath: string): { existed: boolean; content: string | n
 function writeDocsLayersEnabled(configPath: string): void {
   let config: Record<string, unknown> = {};
   if (existsSync(configPath)) {
-    config = JSON.parse(readFileSync(configPath, 'utf-8')) as Record<string, unknown>;
+    config = parseJsonOrThrow<Record<string, unknown>>(configPath);
   }
   config.docs_layers = {
     ...((config.docs_layers as Record<string, unknown> | undefined) ?? {}),
