@@ -655,6 +655,35 @@ describe("roles command", () => {
     );
   });
 
+  it("doctor emits bundled Company Dev OS runtime binding status as JSON", () => {
+    const result = runCliWithExit("roles doctor --json");
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      passed: boolean;
+      company_dev_os: {
+        schema: string;
+        passed: boolean;
+        repositories: Array<{ repo: string; files: unknown[] }>;
+      };
+    };
+    expect(payload.schema).toBe("shirube-roles-doctor/v1");
+    expect(payload.passed).toBe(true);
+    expect(payload.company_dev_os.schema).toBe(
+      "shirube-company-dev-os-runtime-binding-doctor/v1",
+    );
+    expect(payload.company_dev_os.passed).toBe(true);
+    expect(payload.company_dev_os.repositories).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          repo: "watchout/ai-dev-framework",
+          files: expect.any(Array),
+        }),
+      ]),
+    );
+  });
+
   it("validate exits non-zero with deterministic findings when profiles are missing", () => {
     withNonFrameworkDir((cwd) => {
       const result = runCliWithExit("roles validate --json", { cwd });
@@ -669,6 +698,59 @@ describe("roles command", () => {
         expect.arrayContaining([
           expect.objectContaining({ code: "missing_profile", role: "spec" }),
           expect.objectContaining({ code: "missing_profile", role: "cto" }),
+        ]),
+      );
+    });
+  });
+
+  it("doctor --company-dev-os exits non-zero when runtime bindings are missing", () => {
+    withFrameworkConfig((cwd) => {
+      const bindings = completeRoleBindings();
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit("roles doctor --company-dev-os --json", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      const payload = JSON.parse(result.stdout) as {
+        passed: boolean;
+        company_dev_os: { passed: boolean; findings: Array<{ code: string }> };
+      };
+      expect(payload.passed).toBe(false);
+      expect(payload.company_dev_os.passed).toBe(false);
+      expect(payload.company_dev_os.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: "missing_bindings_file" }),
+        ]),
+      );
+    });
+  });
+
+  it("doctor exits non-zero when Company Dev OS config dir exists without runtime bindings", () => {
+    withFrameworkConfig((cwd) => {
+      const bindings = completeRoleBindings();
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings } }),
+        "utf-8",
+      );
+      fs.mkdirSync(path.join(cwd, ".shirube", "company-dev-os"), { recursive: true });
+
+      const result = runCliWithExit("roles doctor --json", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      const payload = JSON.parse(result.stdout) as {
+        passed: boolean;
+        company_dev_os: { passed: boolean; findings: Array<{ code: string }> };
+      };
+      expect(payload.passed).toBe(false);
+      expect(payload.company_dev_os.passed).toBe(false);
+      expect(payload.company_dev_os.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: "missing_bindings_file" }),
         ]),
       );
     });
