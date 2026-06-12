@@ -6,51 +6,23 @@
  * that wants to execute Shirube tasks must implement LLMRuntimeAdapter.
  */
 
-// ─────────────────────────────────────────────
-// ContextPack — per-provider context schema
-// ─────────────────────────────────────────────
+export type {
+  AIChangeRecord,
+  AIChangeRecordEntry,
+  ContextPack,
+  ContextPackFile,
+  ContextPackInputFile,
+  DeliveryTier,
+  GateResultSummary,
+  OutputSpec,
+  ToolPolicy,
+} from "./gate-engine-model.js";
 
-export interface ContextPackFile {
-  path: string;
-  contentSnippet: string;
-  relevanceScore?: number;
-}
-
-export interface ContextPack {
-  providerId: string;
-  sessionId: string;
-  workingDirectory: string;
-  relevantFiles: ContextPackFile[];
-  activeTask?: string;
-  tier: "nano" | "standard" | "full";
-  protectedCategories: string[];
-  meta?: Record<string, unknown>;
-}
-
-// ─────────────────────────────────────────────
-// AIChangeRecord — audit trail entry
-// ─────────────────────────────────────────────
-
-export interface AIChangeRecordEntry {
-  file: string;
-  linesAdded: number;
-  linesRemoved: number;
-  changeType: "create" | "modify" | "delete";
-}
-
-export interface AIChangeRecord {
-  sessionId: string;
-  providerId: string;
-  taskId: string;
-  timestamp: string;
-  commitSha?: string;
-  changes: AIChangeRecordEntry[];
-  tierDeclared: "nano" | "standard" | "full";
-  tierEffective: "nano" | "standard" | "full";
-  protectedCategoriesTriggered: string[];
-  gateOutcome: "pass" | "fail" | "skip";
-  evidenceRef?: string;
-}
+import type {
+  AIChangeRecord,
+  ContextPack,
+  DeliveryTier,
+} from "./gate-engine-model.js";
 
 // ─────────────────────────────────────────────
 // Gate check types
@@ -62,7 +34,7 @@ export type GateCheckResult =
 
 export interface TaskExecutionOptions {
   taskId: string;
-  tier?: "nano" | "standard" | "full";
+  tier?: DeliveryTier;
   dryRun?: boolean;
   contextPack?: ContextPack;
 }

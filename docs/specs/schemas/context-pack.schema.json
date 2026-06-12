@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://watchout.github.io/shirube/schemas/context-pack.schema.json",
+  "title": "Shirube ContextPack",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "provider",
+    "toolPolicy",
+    "inputFiles",
+    "outputSpec",
+    "timestamp",
+    "providerId",
+    "sessionId",
+    "workingDirectory",
+    "relevantFiles",
+    "tier",
+    "protectedCategories"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "context-pack/v1" },
+    "taskId": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string", "minLength": 1 },
+    "toolPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "permissionMode",
+        "sandbox",
+        "networkAccess",
+        "allowedTools",
+        "deniedTools"
+      ],
+      "properties": {
+        "permissionMode": { "type": "string", "minLength": 1 },
+        "sandbox": { "type": "string", "minLength": 1 },
+        "networkAccess": { "type": "boolean" },
+        "allowedTools": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "deniedTools": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "inputFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "role"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "role": {
+            "type": "string",
+            "enum": ["config", "spec", "source", "evidence", "unknown"]
+          },
+          "hash": { "type": "string" }
+        }
+      }
+    },
+    "outputSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["format", "requiredArtifacts", "evidence"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["json", "markdown", "text", "mixed"]
+        },
+        "requiredArtifacts": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "providerId": { "type": "string", "minLength": 1 },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "workingDirectory": { "type": "string", "minLength": 1 },
+    "relevantFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["path", "contentSnippet"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "contentSnippet": { "type": "string" },
+          "relevanceScore": { "type": "number" },
+          "role": {
+            "type": "string",
+            "enum": ["config", "spec", "source", "evidence", "unknown"]
+          },
+          "hash": { "type": "string" }
+        }
+      }
+    },
+    "activeTask": { "type": "string" },
+    "tier": { "type": "string", "enum": ["nano", "standard", "full"] },
+    "protectedCategories": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "meta": { "type": "object" }
+  }
+}

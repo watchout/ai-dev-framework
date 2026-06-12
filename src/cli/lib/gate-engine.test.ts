@@ -695,6 +695,50 @@ Then
       expect(loaded).not.toBeNull();
     });
 
+    it("writes a ContextPack artifact for the gate check run", () => {
+      fs.mkdirSync(path.join(tmpDir, ".framework"), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, ".framework/current-session.json"),
+        JSON.stringify({ taskId: "TASK-340" }),
+        "utf-8",
+      );
+      fs.writeFileSync(path.join(tmpDir, "package.json"), "{}", "utf-8");
+
+      checkAllGates(tmpDir);
+
+      const raw = fs.readFileSync(
+        path.join(tmpDir, ".framework/context-pack.json"),
+        "utf-8",
+      );
+      const pack = JSON.parse(raw) as {
+        schemaVersion: string;
+        taskId: string;
+        provider: string;
+        inputFiles: Array<{ path: string; hash?: string }>;
+        outputSpec: { requiredArtifacts: string[] };
+        meta: { gateResults: Array<{ gateId: string; status: string }> };
+      };
+
+      expect(pack.schemaVersion).toBe("context-pack/v1");
+      expect(pack.taskId).toBe("TASK-340");
+      expect(pack.provider).toBe("shirube-gate-engine");
+      expect(pack.outputSpec.requiredArtifacts).toContain(
+        ".framework/context-pack.json",
+      );
+      expect(pack.inputFiles.map((file) => file.path)).toEqual(
+        expect.arrayContaining([
+          ".framework/current-session.json",
+          "package.json",
+        ]),
+      );
+      expect(pack.inputFiles.every((file) => file.hash)).toBe(true);
+      expect(pack.meta.gateResults.map((result) => result.gateId)).toEqual([
+        "A",
+        "B",
+        "C",
+      ]);
+    });
+
     it("returns allPassed false for empty project", () => {
       const result = checkAllGates(tmpDir);
       expect(result.allPassed).toBe(false);
