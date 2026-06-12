@@ -4,6 +4,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { parseJsonOrDefault } from "./safe-json.js";
 import type {
   CompleteCheck,
   CompleteEvidenceRecord,
@@ -18,7 +19,7 @@ export function loadCompleteEvidence(projectDir: string): CompleteEvidenceStore 
   const filePath = path.join(projectDir, EVIDENCE_FILE);
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
-    const parsed = JSON.parse(raw) as CompleteEvidenceStore;
+    const parsed = parseJsonOrDefault<CompleteEvidenceStore>(raw, { records: [] });
     return { records: Array.isArray(parsed.records) ? parsed.records : [] };
   } catch {
     return { records: [] };
@@ -38,7 +39,7 @@ export function loadShirubeProfile(projectDir: string): ShirubeProfile | null {
   const filePath = path.join(projectDir, PROFILE_FILE);
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(raw) as ShirubeProfile;
+    return parseJsonOrDefault<ShirubeProfile>(raw, null as unknown as ShirubeProfile);
   } catch {
     return null;
   }

@@ -12,7 +12,7 @@ import * as path from "node:path";
 // Core Types
 // ─────────────────────────────────────────────
 
-export type VerifyTarget = "ssot" | "code" | "tests" | "types" | "all";
+export type VerifyTarget = "ssot" | "code" | "tests" | "types" | "lint" | "all";
 export type GraderType = "auto" | "ai" | "human";
 export type ScoreLevel = "pass" | "warning" | "fail";
 

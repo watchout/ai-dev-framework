@@ -21,9 +21,9 @@ usage() {
     echo ""
     echo "オプション:"
     echo "  -a, --all          全スキルをインストール"
-    echo "  -p, --phase <name> 特定フェーズのみ (discovery|business|product|technical|implementation|review-council)"
+    echo "  -p, --phase <name> 特定フェーズのみ (discovery|design|implement|review|scan-updates|gate-design|gate-quality|gate-release|self-improve)"
     echo "  -t, --teams        Agent Teamsパターンのみ"
-    echo "  -d, --deliberation 合議制プロトコルのみ"
+    echo "  -d, --deliberation 合議制プロトコルのみ (非推奨: スキルは廃止済み)"
     echo "  -u, --update       既存スキルを上書き更新"
     echo "  -n, --dry-run      実行せずに確認のみ"
     echo "  -h, --help         このヘルプを表示"
@@ -152,14 +152,16 @@ main() {
 
     if [ "$INSTALL_ALL" = true ]; then
         SKILLS_TO_INSTALL=(
-            "deliberation"
             "agent-teams"
             "discovery"
-            "business"
-            "product"
-            "technical"
-            "implementation"
-            "review-council"
+            "design"
+            "implement"
+            "review"
+            "scan-updates"
+            "gate-design"
+            "gate-quality"
+            "gate-release"
+            "self-improve"
         )
     else
         [ "$INSTALL_DELIBERATION" = true ] && SKILLS_TO_INSTALL+=("deliberation")
