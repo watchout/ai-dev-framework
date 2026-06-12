@@ -51,3 +51,24 @@ coverage/
 # Worktrees (parallel execution)
 .worktrees/
 docs/audits/
+
+# Local runtime state (session-specific, not project source)
+agent-com.db
+agent-com.db-shm
+agent-com.db-wal
+adf-dev-state.md
+.mcp.json.bak*
+.claude/settings.json.bak*
+.claude/settings.json.*-bak*
+.claude/discord-state.md
+.framework/current-session.json
+.framework/audit/
+.framework/gate-context/
+.framework/instructions/
+.framework/reports/
+.agents/
+.codex/
+.company-dev-os/
+proposals/
+AGENTS.md
+進捗報告/
