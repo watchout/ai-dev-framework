@@ -11,6 +11,18 @@ env:
 
 jobs:
   # ============================================================
+  # Skill Inventory
+  # ============================================================
+  skill-inventory:
+    name: Skill Inventory
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify framework skill installer inventory
+        run: bin/framework-skills-install.sh --dry-run
+
+  # ============================================================
   # Lint
   # ============================================================
   lint:
@@ -179,12 +191,13 @@ jobs:
   critical-gate:
     name: Critical Gate
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test, smoke, build, security, secrets-scan]
+    needs: [skill-inventory, lint, typecheck, test, smoke, build, security, secrets-scan]
     if: always()
     steps:
       - name: Check all jobs passed
         run: |
-          if [[ "${{ needs.lint.result }}" != "success" ]] || \
+          if [[ "${{ needs.skill-inventory.result }}" != "success" ]] || \
+             [[ "${{ needs.lint.result }}" != "success" ]] || \
              [[ "${{ needs.typecheck.result }}" != "success" ]] || \
              [[ "${{ needs.test.result }}" != "success" ]] || \
              [[ "${{ needs.smoke.result }}" != "success" ]] || \

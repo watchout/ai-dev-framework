@@ -13,6 +13,10 @@
 │   ├── implement/SKILL.md         ← Implementation Phase
 │   ├── review/SKILL.md            ← Review & Audit
 │   ├── scan-updates/SKILL.md      ← AI開発エコシステム最新情報
+│   ├── gate-design/SKILL.md       ← Gate 1: Design Validation
+│   ├── gate-quality/SKILL.md      ← Gate 2: Quality Sweep
+│   ├── gate-release/SKILL.md      ← Gate 3: Adversarial Review
+│   ├── self-improve/SKILL.md      ← 知見昇格提案
 │   └── agent-teams/               ← Agent Teams運用パターン
 ├── agents/                        ← エージェント定義（独立ファイル）
 │   ├── producers/
@@ -36,6 +40,11 @@
 | implement | 実装・テスト・品質保証 | 「実装」「implement」「コーディング」 |
 | review | レビュー評議会・監査 | 「レビュー」「review」「監査」「audit」 |
 | scan-updates | AI開発ツール最新情報収集 | 「最新情報」「scan-updates」「アップデート確認」 |
+| gate-design | Gate 1: 設計検証 | 「gate-design」「設計ゲート」「design validation」 |
+| gate-quality | Gate 2: 品質検証 | 「gate-quality」「品質ゲート」「quality sweep」 |
+| gate-release | Gate 3: リリース判定 | 「gate-release」「リリースゲート」「adversarial review」 |
+| self-improve | 知見昇格提案 | 「self-improve」「知見昇格」「ルール昇格」 |
+| agent-teams | Agent Teams運用パターン | 「agent-teams」「チーム運用」「並列エージェント」 |
 
 ## エージェント一覧
 
@@ -125,6 +134,10 @@ Discovery & Business → Design → [Gate 1] → Implementation → [Gate 2] →
 「実装を開始して」          → /implement
 「レビュー評議会を開催して」→ /review
 「最新情報を確認して」      → /scan-updates
+「設計ゲートを実行して」    → /gate-design
+「品質ゲートを実行して」    → /gate-quality
+「リリースゲートを実行して」→ /gate-release
+「知見昇格を確認して」      → /self-improve
 ```
 
 ## 関連ドキュメント
