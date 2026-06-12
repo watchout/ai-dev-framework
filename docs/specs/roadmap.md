@@ -2,17 +2,18 @@
 
 > Status: Canonical roadmap draft
 > Updated: 2026-05-26
-> Direction source: Issue #211, Gate Engine SPEC-DOC4L-020, GitHub-backed strict workflow, and script-control completion audit.
+> Direction source: Issues #211 and #238, Gate Engine SPEC-DOC4L-020, GitHub-backed strict workflow, and script-control completion audit.
 
 ## 1. Roadmap Goal
 
 Shirube's end state is:
 
 ```text
-Shirube = AI PR Safety Gate + Evidence Control Plane
+Shirube = Agentic SDLC Control Plane
+        = AI PR Safety Gate + Evidence Control Plane for governed delivery
 ```
 
-The roadmap therefore does not optimize for "more AI coding features" first. It builds the control plane that lets AI coding agents work toward explicit product goals without skipping design, evidence, audit, merge authority, or post-merge verification.
+The roadmap therefore does not optimize for "more AI coding features" first. It builds the control plane that lets AI coding agents work toward explicit product goals without skipping design, evidence, audit, merge authority, post-merge verification, phase closure, or goal progress verification.
 
 The release ladder is:
 
@@ -67,6 +68,7 @@ Unify the existing v1.2.x, framework-overhaul, Gate Engine, distribution, and #2
 - #136/#139: spec-audit implementation and cleanup.
 - #197-#204: Gate Engine alignment and rollout.
 - #211: structural intelligence / enterprise positioning.
+- #238: Agentic SDLC Control Plane parent spec and enterprise delivery graph.
 - #212: Phase 0 Script Control Completion Baseline.
 - PR #208 / #200: workflow observability PR C.
 
@@ -135,8 +137,10 @@ Phase 0 execution tasks:
 | T3 | #215 | Action-to-surface map for `workflow check` |
 | T4 | #216 | Baseline verification and L1/L2/L3 review evidence |
 | T5 | #217 | Dogfood feedback intake, phase assignment, and spec seed |
+| T6 | #220 | Formal post-merge verification gate addendum |
 
 T3 artifact: [Phase 0 Action-To-Surface Map](./phase0-action-to-surface-map.md).
+T6 artifact: [POSTMERGE-001: Post-Merge Verification Gate](./postmerge-001.md).
 
 Dogfood feedback rule:
 
@@ -152,6 +156,7 @@ Dogfood feedback rule:
 - PR #200/#208 observability surface is merged or has an explicit blocking reason.
 - #212 tracks the Script Control Completion Baseline.
 - #64/#65/#67/#68/#69/#91/#123/#126/#127/#136/#139/#200/#201/#202/#203/#204 each has a disposition.
+- `POSTMERGE-001` defines the post-merge verification record required for PRs that contribute to phase exit claims.
 - No new strict enforcement is wired before the action-to-surface map is reviewed.
 
 ### Verification
@@ -160,12 +165,14 @@ Dogfood feedback rule:
 - targeted workflow tests for `workflow status/doctor/check/explain`
 - `git diff --check`
 - manual GitHub issue/PR inventory attached to the baseline issue
+- post-merge records or post-merge evidence for PRs that contribute to the Phase 0 exit claim
 
 ### Not complete if
 
 - The roadmap only lists next tasks but does not define phase exit conditions.
 - Runtime wiring is introduced before the action-to-surface map is approved.
 - Existing open issues remain duplicated under different names without disposition.
+- A PR contributes to a phase exit claim without post-merge verification or explicit L3 disposition.
 
 ## 5. Phase 1: Internal Applied Dogfood
 
@@ -178,11 +185,25 @@ Shirube can govern its own development and at least one internal project through
 | Work item | Level to implement in Phase 1 |
 |---|---|
 | Shirube self-dogfood | Shirube repo has workflow state, roles, goal contract, and gates visible through CLI. |
+| Carryover ledger | Findings from the previous phase are completed, assigned, deferred with rationale, or blocked before the next readiness claim. |
 | Goal Contract | V0/V1 goal artifact approved by configured governance/human role. |
 | Phase plan | Goal sufficient conditions decomposed into phases with exit criteria. |
 | Feature catalog | P0/P1 catalog traced to goal sufficient conditions. |
 | Task DAG | Tasks derive from approved features and preserve dependency order. |
+| Enterprise Delivery Graph | Parent `delivery-graph/v1` contract links goal, phase, work package/task, PR, gate, evidence, and progress without runtime enforcement in PR A. |
+| Product-wide Governance Bone | #249 provides reusable Goal -> Phase -> Work Order -> PR / Change Slice -> Scripted Step -> Tool Execution -> Evidence templates and a warning-first/strict governance check for product repos. |
+| 4MCP Fast Track Minimum Safety Profile | #264 defines lane/risk/action-envelope/stop-sentinel evidence so AUN, Shirube, Kodama, and Wasurezu can continue current work before the full autonomous runner platform exists. |
+| IYASAKA PR Conveyor Delivery Profile | #266/#269 defines the internal `iyasaka-internal.pr-conveyor` profile schema, risk defaults, runner-agnostic contract, and no-automatic-merge stop policy before Work Order/queue/AUN bridge wiring. |
+| Work Order Delivery Defaults | #270 makes delivery strategy, risk class, lane, PR mode, audit timing, and owner/action-envelope fields first-class Work Order evidence resolved from the selected delivery profile. |
+| M0 Conveyor Audit Result And Reconcile | #309 M0-A/B makes PR-local exact-head `conveyor:audit-result/v1` evidence and deterministic transition plans mandatory before internal usability claims. |
+| M0 Conveyor Current Ops Tick | #309 M0-C makes `conveyor tick` output lane queues, reconcile backlog, dirty audit queue, merged stale cleanup, dependency releases, human approvals, and deployed commit blockers. |
+| M0 Conveyor Guarded Apply | #309 M0-D adds dry-run-default guarded label/comment apply with explicit live confirmation and exact-head checks. |
+| M0 User Outcome Gate | #309 M0-E blocks done/recovered/usable/complete claims without explicit user outcome PASS evidence or waiver. |
 | SPEC/IMPL/VERIFY/OPS readiness | Each implementation task has required docs or explicit non-applicability. |
+| Workflow chain control | The development chain is modeled as deterministic state transitions before external enforcement wiring. |
+| Phase Closure Audit | A closure record assembles task, audit, residual risk, non-claim, carryover, and post-merge evidence before Phase 1 completion is claimed. |
+| Audit Ledger | Audit/approval evidence has a structured record shape beyond ad hoc comments. |
+| Action registry and wrapper semantics | Workflow actions have a canonical registry, and diagnostic vs enforcement command behavior is explicit. |
 | Pre-implementation audit | #123 behavior re-homed as Gate Engine G11 pre-impl audit or explicitly retired. |
 | Read receipts | #64/#91 re-homed as evidence, not authority. |
 | Bypass audit | #65 implemented enough that bypasses are tokened, logged, and visible. |
@@ -198,12 +219,95 @@ Shirube can govern its own development and at least one internal project through
 
 ### Sufficient exit conditions
 
+- Phase 0 carryover findings have a completed, assigned, deferred, blocked, or non-actionable disposition.
 - Shirube can run `workflow status --json` and show goal, phase, feature/task, evidence, role, and publish readiness.
 - Strict implementation start blocks or warns on missing Goal Contract, missing hearing, missing role readiness, missing SPEC/IMPL/VERIFY/OPS, missing pre-impl audit, and missing task trace according to profile.
+- The target development chain from intake through phase closure is represented as deterministic state or a reviewed implementation split.
+- Phase closure audit and audit ledger minimum records exist or are explicitly L3-dispositioned before Phase 1 completion is claimed.
 - Internal dogfood report exists with at least one real Shirube PR/change traced from goal to post-implementation evidence.
 - Bypass events are not invisible.
 - Hook/settings changes are not invisible.
 - Read receipts are recorded as provenance evidence, not treated as reviewer authority.
+
+### Phase 1 start artifacts
+
+| Task | Issue | Purpose |
+|---|---|---|
+| T0 | #223 | Phase 0 carryover ledger, task assignment, and completed-phase addendum policy. |
+| T1 | #222 | Internal dogfood start gate for `init/start/run` and required process evidence. |
+| T2 | #224 | Phase Closure Audit Gate. |
+| T3 | #225 | `AUDITLEDGER-001` Audit Evidence and Approval Ledger. |
+| T4a0 | #244 | Work Order contract and warning gate for AUN/runtime/report dispatch. |
+| T4a | #240 | Runtime command adapter and injection policy pack for Delivery Graph steps. |
+| T4 | #226 | Workflow Action Registry and Wrapper Semantics. |
+| T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain. |
+
+T0/T1 start artifact: [Phase 1 Internal Dogfood Start](./phase1-internal-dogfood-start.md).
+Parent enterprise control-plane artifact:
+SPEC `docs/spec/phase1-enterprise-delivery-graph.md`, IMPL
+`docs/impl/phase1-enterprise-delivery-graph.md`, VERIFY
+`docs/verify/phase1-enterprise-delivery-graph.md`, OPS
+`docs/ops/phase1-enterprise-delivery-graph.md`.
+Runtime adapter and injection policy child artifact:
+SPEC `docs/spec/phase1-runtime-command-adapter-policy.md`, IMPL
+`docs/impl/phase1-runtime-command-adapter-policy.md`, VERIFY
+`docs/verify/phase1-runtime-command-adapter-policy.md`, OPS
+`docs/ops/phase1-runtime-command-adapter-policy.md`.
+Work Order contract child artifact:
+SPEC `docs/spec/phase1-work-order-contract.md`, IMPL
+`docs/impl/phase1-work-order-contract.md`, VERIFY
+`docs/verify/phase1-work-order-contract.md`, OPS
+`docs/ops/phase1-work-order-contract.md`.
+4MCP fast-track safety artifact:
+SPEC `docs/spec/phase1-4mcp-fast-track-safety-profile.md`, IMPL
+`docs/impl/phase1-4mcp-fast-track-safety-profile.md`, VERIFY
+`docs/verify/phase1-4mcp-fast-track-safety-profile.md`, OPS
+`docs/ops/phase1-4mcp-fast-track-safety-profile.md`.
+IYASAKA PR Conveyor delivery profile artifact:
+SPEC `docs/spec/phase1-delivery-profile-schema-validator.md`, IMPL
+`docs/impl/phase1-delivery-profile-schema-validator.md`, VERIFY
+`docs/verify/phase1-delivery-profile-schema-validator.md`, OPS
+`docs/ops/phase1-delivery-profile-schema-validator.md`.
+Work Order delivery defaults artifact:
+SPEC `docs/spec/phase1-work-order-delivery-defaults.md`, IMPL
+`docs/impl/phase1-work-order-delivery-defaults.md`, VERIFY
+`docs/verify/phase1-work-order-delivery-defaults.md`, OPS
+`docs/ops/phase1-work-order-delivery-defaults.md`.
+M0 conveyor audit/reconcile artifact:
+SPEC `docs/spec/phase1-m0-conveyor-audit-reconcile.md`, IMPL
+`docs/impl/phase1-m0-conveyor-audit-reconcile.md`, VERIFY
+`docs/verify/phase1-m0-conveyor-audit-reconcile.md`, OPS
+`docs/ops/phase1-m0-conveyor-audit-reconcile.md`.
+M0 conveyor current-ops tick artifact:
+SPEC `docs/spec/phase1-m0-conveyor-current-ops-tick.md`, IMPL
+`docs/impl/phase1-m0-conveyor-current-ops-tick.md`, VERIFY
+`docs/verify/phase1-m0-conveyor-current-ops-tick.md`, OPS
+`docs/ops/phase1-m0-conveyor-current-ops-tick.md`.
+M0 conveyor guarded apply artifact:
+SPEC `docs/spec/phase1-m0-conveyor-guarded-apply.md`, IMPL
+`docs/impl/phase1-m0-conveyor-guarded-apply.md`, VERIFY
+`docs/verify/phase1-m0-conveyor-guarded-apply.md`, OPS
+`docs/ops/phase1-m0-conveyor-guarded-apply.md`.
+M0 user outcome gate artifact:
+SPEC `docs/spec/phase1-m0-user-outcome-gate.md`, IMPL
+`docs/impl/phase1-m0-user-outcome-gate.md`, VERIFY
+`docs/verify/phase1-m0-user-outcome-gate.md`, OPS
+`docs/ops/phase1-m0-user-outcome-gate.md`.
+Workflow action registry child artifact:
+SPEC `docs/spec/phase1-workflow-action-registry.md`, IMPL
+`docs/impl/phase1-workflow-action-registry.md`, VERIFY
+`docs/verify/phase1-workflow-action-registry.md`, OPS
+`docs/ops/phase1-workflow-action-registry.md`.
+Workflow chain child artifact:
+SPEC `docs/spec/phase1-workflow-chain.md`, IMPL
+`docs/impl/phase1-workflow-chain.md`, VERIFY
+`docs/verify/phase1-workflow-chain.md`, OPS
+`docs/ops/phase1-workflow-chain.md`.
+T1 4-layer artifact set:
+SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
+`docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY
+`docs/verify/phase1-internal-dogfood-start-gate.md`, OPS
+`docs/ops/phase1-internal-dogfood-start-gate.md`.
 
 ### Verification
 
@@ -393,6 +497,8 @@ Shirube can be evaluated by large engineering organizations as an AI PR safety g
 | G18 change_intake | Phase 1 |
 
 Phase 4 hardens all gates for enterprise use. The table above names the first phase where a gate must be useful and enforceable for its intended profile.
+
+Phase 0 addendum #220 defines the `POSTMERGE-001` record schema before Phase 1 implementation expansion. This does not make G16 enforceable in Phase 0; it makes the evidence record explicit so Phase Closure Audit can require it.
 
 ## 10. Existing Issue Disposition
 

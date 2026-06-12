@@ -1,0 +1,151 @@
+{
+  "schema": "shirube-pr-cell-plan/v1",
+  "cell_plan_id": "pr-cell-plan-saas-ui-batch-example",
+  "issue": {
+    "repo": "watchout/aun-platform",
+    "number": 24
+  },
+  "objective": "Example SaaS UI batch with parallel UI and API slices plus a manual verification gate.",
+  "continuation_policy": {
+    "continue_after": "pr_evidence_posted_and_state_impl_l1",
+    "stop_on": [
+      "direct_dependency_blocked",
+      "merge_required",
+      "ceo_approval_required",
+      "live_operation_required",
+      "production_db_or_secret_mutation"
+    ]
+  },
+  "cells": [
+    {
+      "id": "UI",
+      "title": "thread stream UI",
+      "objective": "Build the read-only thread stream surface.",
+      "scope": [
+        "Render fixture-backed thread list and selected thread view.",
+        "Do not connect live Discord or AUN dispatch."
+      ],
+      "repo": "watchout/aun-platform",
+      "issue": 24,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [],
+      "parallel_group": "ui",
+      "risk_route": "R2",
+      "audit_route": "l2",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals",
+        "dependency_notes"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    },
+    {
+      "id": "API",
+      "title": "fixture adapter",
+      "objective": "Add a fixture adapter that projects thread data without live writes.",
+      "scope": [
+        "Parse local fixture data.",
+        "Expose deterministic read-only API results."
+      ],
+      "repo": "watchout/aun-platform",
+      "issue": 24,
+      "kind": "implementation",
+      "expected_pr_count": 1,
+      "depends_on": [],
+      "parallel_group": "api",
+      "risk_route": "R2",
+      "audit_route": "l2",
+      "owner_role": "implementation",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation",
+        "ceo_approval_bypass"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals",
+        "dependency_notes"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required"
+      ]
+    },
+    {
+      "id": "MANUAL_CHECK",
+      "title": "manual SaaS UI verification",
+      "objective": "Represent human UI verification before claiming the batch usable.",
+      "scope": [
+        "Check visual behavior from fixture data.",
+        "Confirm no live external send or queue mutation occurred."
+      ],
+      "repo": "watchout/aun-platform",
+      "issue": 24,
+      "kind": "human_approval",
+      "expected_pr_count": 0,
+      "depends_on": [
+        "UI",
+        "API"
+      ],
+      "risk_route": "R4",
+      "audit_route": "ceo",
+      "owner_role": "human_approval",
+      "required_labels": [
+        "state:impl-l1",
+        "audit:l1-pending",
+        "needs:l1-audit",
+        "evidence-ready"
+      ],
+      "l2_required": true,
+      "forbidden": [
+        "merge",
+        "approve",
+        "live_aun_dispatch",
+        "production_db_mutation"
+      ],
+      "evidence_required": [
+        "exact_head",
+        "validation_commands",
+        "non_goals"
+      ],
+      "stop_conditions": [
+        "direct_dependency_blocked",
+        "merge_required",
+        "ceo_approval_required",
+        "live_operation_required"
+      ]
+    }
+  ]
+}

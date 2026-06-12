@@ -47,6 +47,7 @@ const completeGovernanceIssue = `
 - Goal: Govern hotel work.
 - Phase: Phase 1.
 - Work Order: WO-001.
+- Risk classification: medium.
 - PR slice: Slice 1.
 - Script/gate owner: Shirube.
 - Action tools: not applicable.
@@ -55,6 +56,11 @@ const completeGovernanceIssue = `
 - Approval policy: human approval for risky changes.
 - Audit evidence: audit ref.
 - Rollback/replay: revert PR and replay audit.
+- Architecture owner: IYASAKA ARC.
+- Implementation owner: repo maintainer.
+- Review owner: independent reviewer.
+- Merge authority: repo maintainer.
+- Audit owner: independent auditor.
 `;
 
 describe("shirube check governance", () => {
@@ -77,13 +83,150 @@ describe("shirube check governance", () => {
     });
   });
 
+  it("fails for high-risk work when mode is risk-derived", () => {
+    withTempMarkdown("This Work Order changes customer data mutation.", (file) => {
+      const result = runCli(["check", "governance", "--risk", "high", file]);
+
+      expect(result.exitCode).not.toBe(0);
+      expect(result.stdout).toContain("Governance Bone: BLOCK");
+      expect(result.stdout).toContain("Mode: strict");
+      expect(result.stdout).toContain("Risk: high");
+    });
+  });
+
+  it("keeps explicit warning mode for warning-first high-risk adoption", () => {
+    withTempMarkdown("This Work Order changes customer data mutation.", (file) => {
+      const result = runCli([
+        "check",
+        "governance",
+        "--mode",
+        "warning",
+        "--risk",
+        "high",
+        file,
+      ]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Governance Bone: WARNING");
+      expect(result.stdout).toContain("Mode: warning");
+      expect(result.stdout).toContain("Risk: high");
+    });
+  });
+
+  it("uses profile-specific triggers", () => {
+    withTempMarkdown("Update guest reservation recovery behavior.", (file) => {
+      const result = runCli(["check", "governance", "--profile", "hotel", file]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Governance Bone: WARNING");
+      expect(result.stdout).toContain("Profile: hotel");
+      expect(result.stdout).toContain("Governance detected: yes");
+    });
+  });
+
   it("outputs JSON for complete governance evidence", () => {
     withTempMarkdown(completeGovernanceIssue, (file) => {
       const result = runCli(["check", "governance", "--json", "--strict", file]);
-      const parsed = JSON.parse(result.stdout) as { status: string };
+      const parsed = JSON.parse(result.stdout) as {
+        status: string;
+        profile: string;
+        risk: string;
+      };
 
       expect(result.exitCode).toBe(0);
       expect(parsed.status).toBe("PASS");
+      expect(parsed.profile).toBe("default");
+      expect(parsed.risk).toBe("low");
     });
   });
+
+  it("rejects invalid governance option values", () => {
+    withTempMarkdown(completeGovernanceIssue, (file) => {
+      const result = runCli(["check", "governance", "--risk", "severe", file]);
+
+      expect(result.exitCode).toBe(2);
+      expect(result.stderr).toContain("Invalid governance risk");
+    });
+  });
+
+  it("fails when implementation owner is unset in strict mode", () => {
+    withTempMarkdown(
+      completeGovernanceIssue.replace(
+        "- Implementation owner: repo maintainer.",
+        "- Implementation owner: TBD.",
+      ),
+      (file) => {
+        const result = runCli(["check", "governance", "--strict", file]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Governance Bone: BLOCK");
+        expect(result.stdout).toContain("Implementation owner");
+      },
+    );
+  });
+
+  it("blocks ARC implementation ownership without explicit delegation", () => {
+    withTempMarkdown(
+      completeGovernanceIssue.replace(
+        "- Implementation owner: repo maintainer.",
+        "- Implementation owner: IYASAKA ARC.",
+      ),
+      (file) => {
+        const result = runCli(["check", "governance", "--mode", "warning", file]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Governance Bone: BLOCK");
+        expect(result.stdout).toContain("explicit repository-owner delegation");
+      },
+    );
+  });
+
+  it("blocks ARC authority with a non-concrete template delegation field", () => {
+    withTempMarkdown(
+      `${completeGovernanceIssue
+        .replace("- Implementation owner: repo maintainer.", "- Implementation owner: IYASAKA ARC.")
+        .replace("- Merge authority: repo maintainer.", "- Merge authority: ARC.")}
+## Ownership Boundary
+
+- ARC/design role involvement: implementation support.
+- Repo implementation owner: IYASAKA ARC.
+- Reference implementation: draft.
+- Explicit delegation: none.
+- Adoption decision owner: repo maintainer.
+`,
+      (file) => {
+        const result = runCli(["check", "governance", "--mode", "warning", file]);
+
+        expect(result.exitCode).not.toBe(0);
+        expect(result.stdout).toContain("Governance Bone: BLOCK");
+        expect(result.stdout).toContain("explicit repository-owner delegation");
+      },
+    );
+  });
+
+  it.each([
+    "repository owner did not approve ARC implementation or merge authority.",
+    "repository owner did not delegate ARC implementation or merge authority.",
+    "repo owner requested delegation for ARC implementation.",
+  ])(
+    "blocks ARC authority with negative delegation evidence: %s",
+    (delegationValue) => {
+      withTempMarkdown(
+        `${completeGovernanceIssue
+          .replace("- Implementation owner: repo maintainer.", "- Implementation owner: IYASAKA ARC.")
+          .replace("- Merge authority: repo maintainer.", "- Merge authority: ARC.")}
+## Ownership Boundary
+
+- Explicit delegation: ${delegationValue}
+`,
+        (file) => {
+          const result = runCli(["check", "governance", "--mode", "warning", file]);
+
+          expect(result.exitCode).not.toBe(0);
+          expect(result.stdout).toContain("Governance Bone: BLOCK");
+          expect(result.stdout).toContain("explicit repository-owner delegation");
+        },
+      );
+    },
+  );
 });

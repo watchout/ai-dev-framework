@@ -11,6 +11,11 @@
 - Human approval:
 - Verification:
 - Audit refs:
+- Architecture owner:
+- Implementation owner:
+- Review owner:
+- Merge authority:
+- Audit owner:
 
 ## Control Hierarchy
 
@@ -23,11 +28,20 @@
 
 ## Risk And Scope
 
+- Risk classification:
 - Customer data impact:
 - External mutation impact:
 - Runtime/queue impact:
 - Security/privacy impact:
 - Rollback/replay:
+
+## Ownership Boundary
+
+- ARC/design role involvement:
+- Repo implementation owner:
+- Reference implementation: no | draft | label:
+- Explicit delegation:
+- Adoption decision owner:
 
 ## Verification
 

@@ -28,7 +28,7 @@ function runCli(args: string): string {
 
 function runCliWithExit(
   args: string,
-  options: { cwd?: string } = {},
+  options: { cwd?: string; env?: Record<string, string | undefined> } = {},
 ): {
   stdout: string;
   exitCode: number;
@@ -40,6 +40,7 @@ function runCliWithExit(
       timeout: 15000,
       stdio: ["pipe", "pipe", "pipe"],
       cwd: options.cwd,
+      env: options.env ? { ...process.env, ...options.env } : process.env,
     });
     return { stdout, exitCode: 0, stderr: "" };
   } catch (error) {
@@ -204,6 +205,40 @@ describe("start command", () => {
     );
   }
 
+  function withFakeActiveGh<T>(
+    fn: (env: Record<string, string | undefined>) => T,
+  ): T {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-fake-gh-"));
+    try {
+      const binDir = path.join(dir, "bin");
+      fs.mkdirSync(binDir, { recursive: true });
+      const ghPath = path.join(binDir, "gh");
+      fs.writeFileSync(
+        ghPath,
+        [
+          "#!/bin/sh",
+          "if [ \"$1\" = \"api\" ]; then",
+          "  printf '[\"framework-managed\"]\\n'",
+          "  exit 0",
+          "fi",
+          "if [ \"$1\" = \"repo\" ] && [ \"$2\" = \"edit\" ]; then",
+          "  exit 0",
+          "fi",
+          "printf 'unexpected gh invocation: %s\\n' \"$*\" >&2",
+          "exit 1",
+          "",
+        ].join("\n"),
+        "utf-8",
+      );
+      fs.chmodSync(ghPath, 0o755);
+      return fn({
+        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
   function withFrameworkProject<T>(fn: (dir: string) => T): T {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-start-test-"));
     try {
@@ -222,6 +257,54 @@ describe("start command", () => {
     } finally {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  }
+
+  function writeStrictDogfoodEvidence(dir: string, feature = "FEAT-001"): void {
+    fs.writeFileSync(
+      path.join(dir, ".framework", "discover-session.json"),
+      JSON.stringify({
+        id: "discover-1",
+        status: "completed",
+        currentStage: 5,
+        startedAt: "2026-05-23T00:00:00.000Z",
+        updatedAt: "2026-05-23T00:00:00.000Z",
+        completedAt: "2026-05-23T00:00:00.000Z",
+        stages: [
+          { stageNumber: 1, status: "confirmed", summary: "stage 1" },
+          { stageNumber: 2, status: "confirmed", summary: "stage 2" },
+          { stageNumber: 3, status: "confirmed", summary: "stage 3" },
+          { stageNumber: 4, status: "confirmed", summary: "stage 4" },
+          { stageNumber: 5, status: "confirmed", summary: "stage 5" },
+        ],
+        answers: { "Q1-1": "strict dogfood" },
+      }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "goal-contract.json"),
+      JSON.stringify({ status: "approved" }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "phase-plan.json"),
+      JSON.stringify({ phase: 1, feature, goalContract: "approved" }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "task-trace.json"),
+      JSON.stringify({ task: feature, feature, issue: 222, phase: 1 }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "doc4l-readiness.json"),
+      JSON.stringify({ status: "ready", feature }),
+      "utf-8",
+    );
+    fs.writeFileSync(
+      path.join(dir, ".framework", "pre-impl-audit.json"),
+      JSON.stringify({ verdict: "PASS", feature }),
+      "utf-8",
+    );
   }
 
   it("blocks strict start when role bindings are missing", () => {
@@ -340,6 +423,7 @@ describe("start command", () => {
         JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
         "utf-8",
       );
+      writeStrictDogfoodEvidence(cwd);
 
       const result = runCliWithExit(
         "start . --feature FEAT-001 --audit-level strict --dry-run",
@@ -351,6 +435,131 @@ describe("start command", () => {
     });
   });
 
+  it("keeps workflow check and start dry-run aligned for config-only projects", () => {
+    withFrameworkProject((cwd) => {
+      fs.rmSync(path.join(cwd, ".framework", "project.json"));
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({
+          roles: { bindings: completeRoleBindings() },
+          workflow: { publishPolicy: "auto_publish", outputs: ["local_files", "github"] },
+        }),
+        "utf-8",
+      );
+      writeStrictDogfoodEvidence(cwd);
+
+      const check = runCliWithExit(
+        "workflow check --action implementation_start --profile strict --feature FEAT-001 --json",
+        { cwd },
+      );
+      const start = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict --dry-run",
+        { cwd },
+      );
+
+      expect(check.exitCode).toBe(1);
+      expect(start.exitCode).toBe(1);
+      expect(check.stdout + check.stderr).toContain(".framework/project.json");
+      expect(start.stdout + start.stderr).toContain("not applied to Shirube");
+    });
+  });
+
+  it("records strict task_start lifecycle evidence before writing the session", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({
+          roles: { bindings: completeRoleBindings() },
+          workflow: { publishPolicy: "auto_publish", outputs: ["local_files", "github"] },
+        }),
+        "utf-8",
+      );
+      writeStrictDogfoodEvidence(cwd);
+
+      withFakeActiveGh((env) => {
+        const result = runCliWithExit(
+          "start . --feature FEAT-001 --audit-level strict",
+          { cwd, env },
+        );
+
+        expect(result.exitCode).toBe(0);
+      });
+
+      const lifecyclePath = path.join(cwd, ".framework", "lifecycle-events.jsonl");
+      expect(fs.existsSync(lifecyclePath)).toBe(true);
+      const record = JSON.parse(fs.readFileSync(lifecyclePath, "utf-8").trim()) as {
+        event: string;
+        task_id: string;
+        result: string;
+      };
+      expect(record.event).toBe("task_start");
+      expect(record.task_id).toBe("FEAT-001");
+      expect(record.result).toBe("recorded");
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(true);
+    });
+  });
+
+  it("blocks strict start when task_start lifecycle append fails before session write", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({
+          roles: { bindings: completeRoleBindings() },
+          workflow: {
+            publishPolicy: "auto_publish",
+            outputs: ["local_files", "github"],
+            lifecycleSink: { path: ".framework" },
+          },
+        }),
+        "utf-8",
+      );
+      writeStrictDogfoodEvidence(cwd);
+
+      withFakeActiveGh((env) => {
+        const result = runCliWithExit(
+          "start . --feature FEAT-001 --audit-level strict",
+          { cwd, env },
+        );
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr + result.stdout).toContain("Lifecycle evidence write failed");
+      });
+
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(false);
+    });
+  });
+
+  it("blocks strict start when dogfood evidence is missing and records a blocked lifecycle event", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
+        "utf-8",
+      );
+
+      const result = runCliWithExit(
+        "start . --feature FEAT-001 --audit-level strict",
+        { cwd },
+      );
+
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr + result.stdout).toContain("Strict implementation_start workflow check failed");
+      const lifecyclePath = path.join(cwd, ".framework", "lifecycle-events.jsonl");
+      expect(fs.existsSync(lifecyclePath)).toBe(true);
+      const record = JSON.parse(fs.readFileSync(lifecyclePath, "utf-8").trim()) as {
+        event: string;
+        task_id: string;
+        blocking_rule_ids: string[];
+      };
+      expect(record.event).toBe("blocked");
+      expect(record.task_id).toBe("FEAT-001");
+      expect(record.blocking_rule_ids).toEqual(
+        expect.arrayContaining(["G10.goal_contract.approved"]),
+      );
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(false);
+    });
+  });
+
   it("does not write a session when framework mode activation fails", () => {
     withFrameworkProject((cwd) => {
       fs.writeFileSync(
@@ -358,6 +567,7 @@ describe("start command", () => {
         JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
         "utf-8",
       );
+      writeStrictDogfoodEvidence(cwd);
 
       const result = runCliWithExit(
         "start . --feature FEAT-001 --audit-level strict",
@@ -419,6 +629,48 @@ describe("roles command", () => {
 
       expect(result.exitCode).toBe(1);
       expect(result.stderr + result.stdout).toContain("Required orchestration roles");
+    });
+  });
+
+  it("validates bundled Company Dev OS role profiles as JSON", () => {
+    const result = runCliWithExit("roles validate --json");
+
+    expect(result.exitCode).toBe(0);
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      passed: boolean;
+      profiles: Array<{ role: string; role_profile_hash: string }>;
+      findings: unknown[];
+    };
+    expect(payload.schema).toBe("shirube-company-dev-os-role-profile-validation/v1");
+    expect(payload.passed).toBe(true);
+    expect(payload.findings).toEqual([]);
+    expect(payload.profiles).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          role: "implementation",
+          role_profile_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        }),
+      ]),
+    );
+  });
+
+  it("validate exits non-zero with deterministic findings when profiles are missing", () => {
+    withNonFrameworkDir((cwd) => {
+      const result = runCliWithExit("roles validate --json", { cwd });
+
+      expect(result.exitCode).toBe(1);
+      const payload = JSON.parse(result.stdout) as {
+        passed: boolean;
+        findings: Array<{ code: string; role: string }>;
+      };
+      expect(payload.passed).toBe(false);
+      expect(payload.findings).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ code: "missing_profile", role: "spec" }),
+          expect.objectContaining({ code: "missing_profile", role: "cto" }),
+        ]),
+      );
     });
   });
 

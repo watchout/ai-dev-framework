@@ -31,6 +31,12 @@ export type PublishPolicy =
   | "approval_required"
   | "auto_publish";
 
+export interface LifecycleSinkConfig {
+  enabled?: boolean;
+  type?: string;
+  path?: string;
+}
+
 export interface RoleBinding {
   type: RoleTargetType;
   id: string;
@@ -44,6 +50,7 @@ export interface RoleConfig {
 export interface WorkflowConfig {
   publishPolicy?: PublishPolicy;
   outputs?: string[];
+  lifecycleSink?: LifecycleSinkConfig;
 }
 
 export interface FrameworkConfig {

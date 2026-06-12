@@ -39,6 +39,11 @@ Governance Bone:
 - Approval policy:
 - Audit evidence:
 - Rollback/replay:
+- Architecture owner:
+- Implementation owner:
+- Review owner:
+- Merge authority:
+- Audit owner:
 ```
 
 Every substantial PR must include:
@@ -53,10 +58,19 @@ Governance Evidence:
 - Human approval:
 - Verification:
 - Audit refs:
+- Architecture owner:
+- Implementation owner:
+- Review owner:
+- Merge authority:
+- Audit owner:
 ```
 
 Small copy-only tasks may mark fields as `not applicable`, but must not omit the
 section when a project profile requires governance evidence.
+
+Ownership fields are stricter: they must name concrete actors or teams.
+`implementation_owner`, `merge_authority`, and `audit_owner` must not be
+`TBD`, `n/a`, `not applicable`, or another placeholder.
 
 ## 3. Enforcement Levels
 
@@ -76,6 +90,9 @@ warnings. This is the default adoption mode for existing products.
 risky work. Strict mode is required for action tools, customer data, external
 mutation, queue/runtime behavior, approval policy, memory/context boundary, and
 enterprise-readiness claims.
+
+When mode is not explicitly supplied, `high` and `critical` risk derive strict
+mode. `low` and `medium` risk derive warning mode.
 
 ### Level 3: Runtime Policy Integration
 
@@ -99,6 +116,13 @@ Shirube does not own:
 - Wasurezu memory/recovery source authority.
 - AUN Platform operator UI semantics.
 - Hotel domain business authority.
+- Repository implementation, dependency update, CI change, adoption, or merge
+  authority unless that exact repository owner explicitly delegates it.
+
+ARC/design roles may define specs, issues, acceptance criteria, roadmap entries,
+and gate conditions. Implementation PRs created by ARC are draft reference
+implementations by default. Repository owners decide whether to adopt, revise,
+reimplement, or close them.
 
 ## 5. Product Profiles
 
@@ -106,6 +130,14 @@ Initial product profile order:
 
 1. Core infrastructure: AUN, Shirube, Kodama, Wasurezu, AUN Platform.
 2. Hotel products: Totonoe, AI Concierge, PMS, CRM.
+
+The first deterministic profiles are:
+
+| Profile | Intended products | Additional trigger terms |
+|---------|-------------------|--------------------------|
+| `default` | generic local adoption | common Work Order / approval / evidence terms |
+| `infrastructure` | AUN, Shirube, Kodama, Wasurezu, AUN Platform | runtime, queue, MCP, context pack, recovery pack, memory, tool contract |
+| `hotel` | Totonoe, AI Concierge, PMS, CRM | hotel, guest, reservation, booking, PMS, CRM, tenant/customer data |
 
 Default rollout:
 
@@ -119,6 +151,10 @@ The validator must block these patterns even in warning mode:
 
 - LLM output owns Goal, Phase, Work Order, gate, approval, or state transition.
 - LLM output owns action-tool approval or external/customer-data mutation authority.
+- ARC/design roles own implementation or merge authority without explicit
+  repository-owner delegation.
+- Reference implementation PRs are not identifiable as Draft or by an explicit
+  reference/proposal label.
 - Missing approval, context, audit, or evidence silently falls back to execution.
 
 ## 7. First Implementation Slice
@@ -138,8 +174,24 @@ Initial CLI usage:
 ```bash
 shirube check governance docs/work-order.md
 shirube check governance --strict docs/work-order.md
+shirube check governance --profile infrastructure --risk high docs/work-order.md
+shirube check governance --profile hotel --mode warning --risk high docs/work-order.md
 shirube check governance --json --strict docs/work-order.md
 ```
 
-Warning mode exits 0 unless a non-negotiable block is detected. Strict mode exits
-non-zero when required governance fields are missing.
+Warning mode exits 0 unless a non-negotiable block is detected. Strict mode
+exits non-zero when required governance fields are missing. `--mode warning`
+keeps first-phase warning-only adoption explicit even when a product marks the
+work high risk. Omitting `--mode` lets `high` and `critical` risk derive strict
+mode.
+
+The GitHub template installer also distributes:
+
+- `.github/workflows/governance.yml`;
+- `.github/ISSUE_TEMPLATE/governance-work-order.md`;
+- `.github/PULL_REQUEST_TEMPLATE/governance.md`.
+
+The workflow validates pull request body governance evidence in warning mode by
+default. Product repositories can set `SHIRUBE_GOVERNANCE_PROFILE`,
+`SHIRUBE_GOVERNANCE_RISK`, and `SHIRUBE_GOVERNANCE_MODE` to move from warning
+adoption to strict blocking for risky action-tool or customer-data changes.

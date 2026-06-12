@@ -3,7 +3,7 @@
 > Status: Draft for L1/L2/L3 review
 > Updated: 2026-05-26
 > Tracking: #212 / #215
-> Related: #200, #208, SPEC-DOC4L-020, IMPL-DOC4L-020
+> Related: #200, #208, #220, SPEC-DOC4L-020, IMPL-DOC4L-020, POSTMERGE-001
 
 ## 1. Purpose
 
@@ -96,6 +96,8 @@ Per-action fail behavior:
 | `merge` | Merge authority fixture. | Post-implementation audit, AI Change Record, GitHub Check status, merge-authority decision, exception evidence if any. |
 | `release` | Release authority fixture. | Release readiness report, GitHub Checks, merge authority, post-merge verification, goal progress coverage. |
 
+`POSTMERGE-001` defines the record required after merge for PRs that contribute to phase exit claims. In Phase 0 it is a documentation/schema addendum only. It does not wire `workflow check` to GitHub Checks, CI, hooks, MCP, or merge automation.
+
 Before any automatic surface is wired, the implementation issue must name the evidence fixtures and expected fail-open/fail-closed behavior for each profile.
 
 ## 8. Hook Allowance
@@ -150,3 +152,5 @@ These are the approval points for #215:
 This T3 artifact satisfies the Phase 0 requirement to define an action-to-surface map before automatic enforcement is introduced.
 
 T3 does not approve enforcement wiring. It moves #215 to review-ready state. Runtime work must wait for the review decisions above.
+
+Phase 0 addendum #220 extends the evidence baseline with `POSTMERGE-001`. That addendum does not change the T3 observe-only status; it makes post-merge evidence explicit for Phase Closure Audit.

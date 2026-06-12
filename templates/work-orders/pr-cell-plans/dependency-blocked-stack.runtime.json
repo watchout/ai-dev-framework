@@ -1,0 +1,15 @@
+[
+  {
+    "cell_id": "FOUNDATION",
+    "pr": {
+      "repo": "watchout/ai-dev-framework",
+      "number": 401,
+      "labels": [
+        "state:rework",
+        "changes-requested"
+      ]
+    },
+    "blocked": true,
+    "block_reason": "L2 BLOCK at current head"
+  }
+]

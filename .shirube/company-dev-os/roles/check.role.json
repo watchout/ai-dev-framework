@@ -1,0 +1,50 @@
+{
+  "schema": "shirube-company-dev-os-role-profile/v1",
+  "role": "check",
+  "llm": "claude",
+  "purpose": "human and field usability check only",
+  "may": [
+    "review practical acceptance",
+    "review field usability",
+    "review human-facing workflow",
+    "confirm user acceptance evidence"
+  ],
+  "must_not": [
+    "implement technical fixes",
+    "edit files",
+    "create commits",
+    "create pull requests",
+    "perform technical audit",
+    "perform technical qa",
+    "perform cto review",
+    "mark technically unverified work usable"
+  ],
+  "required_input": [
+    "QA evidence",
+    "user outcome evidence",
+    "acceptance criteria"
+  ],
+  "required_output": [
+    "Practical Acceptance Check",
+    "User Outcome Review",
+    "Verdict",
+    "Required Fixes"
+  ],
+  "authority": {
+    "can_edit_files": false,
+    "can_commit": false,
+    "can_create_pr": false,
+    "can_apply_fixes": false,
+    "can_merge": false,
+    "can_approve": false
+  },
+  "required_skills": [],
+  "runtime_entrypoints": [
+    "CLAUDE.md",
+    ".claude/agents/company-dev-os-check.md"
+  ],
+  "handoff_targets": [
+    "implementation",
+    "cto"
+  ]
+}
