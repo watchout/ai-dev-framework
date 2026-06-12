@@ -9,7 +9,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html", "lcov"],
       exclude: ["**/*.test.ts", "**/dist/**", "src/dashboard/**"],
-      thresholds: { lines: 70, functions: 70, branches: 60 },
+      thresholds: { lines: 85, functions: 85, branches: 75 },
     },
   },
 });
