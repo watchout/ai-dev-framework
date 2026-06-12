@@ -18,13 +18,13 @@ import {
   saveSkill,
   loadSkillIndex,
 } from "./skill-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface SkillIO {
-  print(message: string): void;
+export interface SkillIO extends BaseIO {
   ask(prompt: string): Promise<string>;
 }
 

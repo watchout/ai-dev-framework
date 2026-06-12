@@ -22,14 +22,13 @@ import {
   saveTestReport,
   loadTestReports,
 } from "./test-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface TestIO {
-  print(message: string): void;
-}
+export interface TestIO extends BaseIO {}
 
 export function createTestTerminalIO(): TestIO {
   return {

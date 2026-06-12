@@ -22,13 +22,13 @@ import {
   parseVersion,
   bumpVersion,
 } from "./deploy-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface DeployIO {
-  print(message: string): void;
+export interface DeployIO extends BaseIO {
   ask(prompt: string): Promise<string>;
 }
 

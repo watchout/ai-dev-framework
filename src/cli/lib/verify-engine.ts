@@ -24,13 +24,13 @@ import {
   scoreTypeSafety,
   scoreLint,
 } from "./checkpoint-engine.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface VerifyIO {
-  print(message: string): void;
+export interface VerifyIO extends BaseIO {
   ask(prompt: string): Promise<string>;
 }
 

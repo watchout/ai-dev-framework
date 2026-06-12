@@ -24,14 +24,13 @@ import {
   determineVerdict,
   saveAuditReport,
 } from "./audit-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface AuditIO {
-  print(message: string): void;
-}
+export interface AuditIO extends BaseIO {}
 
 export interface AuditOptions {
   projectDir: string;

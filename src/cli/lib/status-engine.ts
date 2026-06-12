@@ -32,6 +32,7 @@ import {
   isGhAvailable,
   syncStatusFromGitHub,
 } from "./github-engine.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -110,9 +111,7 @@ export interface StatusResult {
   stalenessWarnings: StalenessWarning[];
 }
 
-export interface StatusIO {
-  print(message: string): void;
-}
+export interface StatusIO extends BaseIO {}
 
 export function createStatusTerminalIO(): StatusIO {
   return {

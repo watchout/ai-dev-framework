@@ -24,14 +24,13 @@ import {
   saveAcceptanceReport,
   loadAcceptanceReports,
 } from "./accept-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface AcceptIO {
-  print(message: string): void;
-}
+export interface AcceptIO extends BaseIO {}
 
 export function createAcceptTerminalIO(): AcceptIO {
   return {

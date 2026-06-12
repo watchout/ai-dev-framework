@@ -23,14 +23,13 @@ import {
   saveVisualTestReport,
   loadVisualTestReports,
 } from "./visual-test-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface VisualTestIO {
-  print(message: string): void;
-}
+export interface VisualTestIO extends BaseIO {}
 
 export function createVisualTestTerminalIO(): VisualTestIO {
   return {

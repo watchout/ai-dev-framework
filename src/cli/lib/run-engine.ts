@@ -51,6 +51,7 @@ import {
 } from "./plan-model.js";
 import { closeTaskIssue, closeFeatureIssue, labelTaskIssue, syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
 import { loadSyncState } from "./github-model.js";
+import type { BaseIO } from "./io-model.js";
 import { acquireLock, releaseLock } from "./lock-model.js";
 
 const RUN_LOCK_NAME = "run-state";
@@ -59,8 +60,7 @@ const RUN_LOCK_NAME = "run-state";
 // Public API
 // ─────────────────────────────────────────────
 
-export interface RunIO {
-  print(message: string): void;
+export interface RunIO extends BaseIO {
   ask(prompt: string): Promise<string>;
 }
 
