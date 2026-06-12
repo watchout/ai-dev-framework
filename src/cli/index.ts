@@ -45,6 +45,7 @@ import { registerMergeAuthorityCommand } from "./commands/merge-authority.js";
 import { registerWorkflowCommand } from "./commands/workflow.js";
 import { registerCompleteCommand } from "./commands/complete.js";
 import { registerConveyorCommand } from "./commands/conveyor.js";
+import { registerRegenerateProjectStateCommand } from "./commands/regenerate-project-state.js";
 import { setWriteThrough, type RunState } from "./lib/run-model.js";
 import { syncTaskStatusToGitHub, resolveIssueNumber } from "./lib/state-writer.js";
 
@@ -120,6 +121,7 @@ registerExitCommand(program);
 registerInitFeatureCommand(program);
 registerTraceCommand(program);
 registerMergeAuthorityCommand(program);
+registerRegenerateProjectStateCommand(program);
 
 // Connect write-through hook: sync RunState transitions to GitHub Issues (#61)
 setWriteThrough((state: RunState, prev: RunState | null) => {
