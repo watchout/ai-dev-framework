@@ -51,6 +51,7 @@ export interface WorkflowConfig {
   publishPolicy?: PublishPolicy;
   outputs?: string[];
   lifecycleSink?: LifecycleSinkConfig;
+  requireRepoTopic?: boolean;
 }
 
 export interface FrameworkConfig {

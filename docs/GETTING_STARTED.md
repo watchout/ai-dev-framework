@@ -154,6 +154,11 @@ shirube audit all
 既存セッションを続ける場合は `shirube start --resume`、新しい feature として切り直す場合は `shirube start --force --feature <id>` を使います。
 `shirube exit` で framework mode を抜けた後も、適用済みプロジェクトであれば `shirube start --resume` で再開・再アクティベートできます。
 
+`framework-managed` repository topic は discoverability と hook activation の補助 marker です。
+framework-led development の正本は `.framework/current-session.json` と `.framework/config.json` であり、topic ではありません。
+GitHub 権限不足などで topic 追加に失敗しても、local/draft/design workflow の `shirube start` は構造化 warning (`repo_topic_activation_unavailable`) を記録して続行します。
+topic を開始条件として厳格に要求する場合だけ、`shirube start --require-repo-topic` または `.framework/config.json` の `workflow.requireRepoTopic: true` を使います。
+
 Shirube の基本条件はフルオーケストラ運用です。
 デフォルトでは `qualityMode: "multi-agent"` として、producer と gate/review を別エージェントまたは別ロールに分離します。
 
@@ -189,8 +194,8 @@ producer と gate/review/L3 authority が同一 target、または同一 actor l
 | `shirube update [path]` | 適用済みリポジトリを最新 Shirube に追従させる時 | docs/templates/hooks/GitHub templates/gates cache を更新 | applied |
 | `shirube roles doctor` | init/retrofit 後、start 前 | role binding の未設定/placeholder を診断 | role readiness checked |
 | `shirube roles set <role> --type <type> --id <id>` | strict 開始前、または担当変更時 | `.framework/config.json` の role binding を更新 | roles configured |
-| `shirube start [path] --feature <id>` | applied だが active session がない時 | `.framework/current-session.json` を作成し framework-led development を開始、framework mode を有効化 | framework-led |
-| `shirube start [path] --resume` | active session があり、継続または exit 後に戻る時 | 既存 session を読み、framework mode を再有効化 | framework-led |
+| `shirube start [path] --feature <id>` | applied だが active session がない時 | `.framework/current-session.json` を作成し framework-led development を開始、framework mode 有効化を試行 | framework-led |
+| `shirube start [path] --resume` | active session があり、継続または exit 後に戻る時 | 既存 session を読み、framework mode 再有効化を試行 | framework-led |
 | `shirube start [path] --force --feature <id>` | 既存 session を破棄して新しい feature で切り直す時 | `.framework/current-session.json` を明示的に置き換える | framework-led |
 | `shirube gate check` | 実装前、または update 後 | Gate A/B/C を評価し `.framework/gates.json` を hook cache として再生成 | gate status refreshed |
 | `shirube trace verify` | 4-layer docs の整合性確認時 | SPEC/IMPL/VERIFY/OPS の trace を検証 | trace checked |

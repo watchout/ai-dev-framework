@@ -27,6 +27,15 @@ function validateTokenHash(token: string, expectedHash: string): boolean {
 
 export type FrameworkMode = "active" | "inactive" | "unknown";
 
+export interface RepoTopicActivationWarning {
+  code: "repo_topic_activation_unavailable";
+  provider: "github";
+  repo: string;
+  attemptedTopic: string;
+  status?: number;
+  evidence: string;
+}
+
 export async function getFrameworkMode(): Promise<FrameworkMode> {
   try {
     const output = await execGh([
@@ -50,6 +59,7 @@ export async function activateFrameworkMode(): Promise<{
   ok: boolean;
   alreadyActive: boolean;
   error?: string;
+  warning?: RepoTopicActivationWarning;
 }> {
   try {
     const mode = await getFrameworkMode();
@@ -65,12 +75,32 @@ export async function activateFrameworkMode(): Promise<{
     ]);
     return { ok: true, alreadyActive: false };
   } catch (e) {
+    const error = e instanceof Error ? e.message : String(e);
     return {
       ok: false,
       alreadyActive: false,
-      error: e instanceof Error ? e.message : String(e),
+      error,
+      warning: createRepoTopicActivationWarning(error),
     };
   }
+}
+
+export function createRepoTopicActivationWarning(
+  evidence: string,
+): RepoTopicActivationWarning {
+  const statusMatch = evidence.match(/HTTP\s+(\d+)/i);
+  const repoMatch =
+    evidence.match(/repos\/([^/\s]+\/[^/\s]+)\/topics/) ??
+    evidence.match(/github\.com[:/]([^/\s]+\/[^/\s.]+)(?:\.git)?/);
+
+  return {
+    code: "repo_topic_activation_unavailable",
+    provider: "github",
+    repo: repoMatch?.[1] ?? "unknown",
+    attemptedTopic: FRAMEWORK_TOPIC,
+    ...(statusMatch ? { status: Number(statusMatch[1]) } : {}),
+    evidence,
+  };
 }
 
 export async function deactivateFrameworkMode(

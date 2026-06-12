@@ -48,6 +48,14 @@
 - `framework init` / `framework retrofit` adds the `framework-managed` repo topic
 - All local hooks check for this topic at invocation time
 - Topic present → hooks enforce gates; topic absent → hooks are passthrough no-ops
+- The topic is a discoverability / hook activation marker, not the source of truth
+  for framework-led development state.
+- `.framework/current-session.json` and `.framework/config.json` are the local
+  source of truth for start/session authority.
+- `shirube start` treats topic mutation failure as advisory by default and records
+  `repo_topic_activation_unavailable` readiness evidence. Workflows that require
+  remote topic mutation must opt in with `--require-repo-topic` or
+  `workflow.requireRepoTopic: true`.
 
 ### Exit
 
