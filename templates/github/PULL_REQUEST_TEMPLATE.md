@@ -6,6 +6,9 @@
 - [ ] **Standard** — known domain, bounded scope, PR Design + acceptance criteria
 - [ ] **Full** — new domain / protected surface / public impact
 
+Gate profile reference:
+<!-- e.g. .shirube/profile.json, templates/shirube-profile.schema.json, delivery-profile id, or "not applicable" -->
+
 ## Protected Categories
 <!-- If any checked → tier auto-promotes to Full regardless of declaration above -->
 - [ ] None
@@ -34,6 +37,9 @@
 - [ ] Unit tests added / updated and passing
 - [ ] Integration tests passing
 - [ ] No regression in existing tests
+
+Evidence source:
+<!-- PR comment / CI run / review / runtime evidence. Do not use ACKs or queue IDs as completion evidence. -->
 
 ## Rollback Note
 <!-- How to revert if issues arise post-merge -->

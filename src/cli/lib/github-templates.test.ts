@@ -77,11 +77,8 @@ describe("installGitHubTemplates", () => {
     expect(ciContent).not.toContain("{{PROJECT_NAME}}");
 
     // PR template
-    expect(
-      fs.existsSync(
-        path.join(tmpDir, ".github/PULL_REQUEST_TEMPLATE.md"),
-      ),
-    ).toBe(true);
+    const prTemplatePath = path.join(tmpDir, ".github/PULL_REQUEST_TEMPLATE.md");
+    expect(fs.existsSync(prTemplatePath)).toBe(true);
 
     // Issue templates
     expect(
@@ -119,6 +116,12 @@ describe("installGitHubTemplates", () => {
     expect(
       fs.existsSync(path.join(tmpDir, ".github/CODEOWNERS")),
     ).toBe(true);
+
+    // Label setup script
+    const labelsScriptPath = path.join(tmpDir, ".github/setup-labels.sh");
+    expect(fs.existsSync(labelsScriptPath)).toBe(true);
+    expect(fs.statSync(labelsScriptPath).mode & 0o111).not.toBe(0);
+    expect(result.installed).toContain(".github/setup-labels.sh");
 
     // Governance workflow and optional PR template
     expect(
@@ -237,7 +240,24 @@ describe("installGitHubTemplates", () => {
     );
     expect(prContent).toContain("SSOT Compliance");
     expect(prContent).toContain("SSOT Reference");
+    expect(prContent).toContain("Gate profile reference");
+    expect(prContent).toContain("Evidence source");
     expect(prContent).toContain("Closes #");
+  });
+
+  it("installs tier-aware label setup script", () => {
+    const result = installGitHubTemplates(tmpDir, "app", frameworkRoot);
+
+    const labelsScriptPath = path.join(tmpDir, ".github/setup-labels.sh");
+    const labelsScript = fs.readFileSync(labelsScriptPath, "utf-8");
+
+    expect(result.installed).toContain(".github/setup-labels.sh");
+    expect(labelsScript).toContain("upsert_label \"tier:nano\"");
+    expect(labelsScript).toContain("upsert_label \"tier:standard\"");
+    expect(labelsScript).toContain("upsert_label \"tier:full\"");
+    expect(labelsScript).toContain("upsert_label \"protected:governance\"");
+    expect(labelsScript).toContain("upsert_label \"complete:pending\"");
+    expect(labelsScript).toContain("upsert_label \"audit:red\"");
   });
 
   it("uses MCP-server PR template and skips UI issue template", () => {
