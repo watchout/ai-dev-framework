@@ -388,7 +388,7 @@ Gate / Review への遷移はユーザー承認後に行う。
 | \`shirube trace verify\` | checking 4-layer docs | verify SPEC/IMPL/VERIFY/OPS traceability | trace checked |
 | \`shirube exit --reason <reason>\` | CEO-approved temporary exit | remove \`framework-managed\` topic and log audit event; session file remains | exited |
 
-\`framework\` は後方互換 alias とする。新しい docs、公開例、MCP 利用ガイドでは \`shirube\` を primary command とする。
+\`framework\` は deprecated alias とする。新しい docs、公開例、MCP 利用ガイドでは \`shirube\` を primary command とする。
 
 ### Quality Modes And Audit Levels
 

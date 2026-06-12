@@ -2,7 +2,7 @@
 import { Command } from "commander";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { dirname, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { registerInitCommand } from "./commands/init.js";
 import { registerDiscoverCommand } from "./commands/discover.js";
 import { registerGenerateCommand } from "./commands/generate.js";
@@ -56,6 +56,14 @@ const packageJson = JSON.parse(
 const version = packageJson.version;
 
 const program = new Command();
+const invokedCommand = basename(process.argv[1] ?? "");
+
+if (
+  invokedCommand === "framework" ||
+  process.env.npm_lifecycle_event === "framework"
+) {
+  console.error("Note: 'framework' is deprecated, use 'shirube'");
+}
 
 program
   .name("shirube")

@@ -5,7 +5,7 @@
  * and non-framework directory scenarios correctly.
  */
 import { describe, it, expect, beforeAll } from "vitest";
-import { execSync, execFileSync } from "node:child_process";
+import { execSync, execFileSync, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -894,6 +894,23 @@ describe("distribution CLI contract (node_modules/.bin/framework)", () => {
       expect(exitCode).toBe(0);
       const combined = stdout + stderr;
       expect(combined).toMatch(/docs_layers|skip|not configured/i);
+    });
+  });
+
+  it("node_modules/.bin/framework prints a deprecation notice on stderr", () => {
+    expect(fs.existsSync(FRAMEWORK_BIN)).toBe(true);
+    withNonFrameworkDir((cwd) => {
+      const result = spawnSync(FRAMEWORK_BIN, ["--version"], {
+        encoding: "utf-8",
+        cwd,
+        timeout: 15000,
+      });
+
+      expect(result.status).toBe(0);
+      expect(result.stdout.trim()).toMatch(/^\d+\.\d+\.\d+$/);
+      expect(result.stderr).toContain(
+        "Note: 'framework' is deprecated, use 'shirube'",
+      );
     });
   });
 });
