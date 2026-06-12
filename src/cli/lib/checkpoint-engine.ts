@@ -48,8 +48,8 @@ export function runCheckpoint(
 
   io.print("\n  [1/4] Scanning project files...");
   const srcFiles = collectSourceFiles(projectDir, "src");
-  const testFiles = srcFiles.filter((f) => f.includes(".test."));
-  const nonTestFiles = srcFiles.filter((f) => !f.includes(".test."));
+  const testFiles = srcFiles.filter(isTestFile);
+  const nonTestFiles = srcFiles.filter((f) => !isTestFile(f));
   io.print(
     `  Found ${srcFiles.length} source files (${testFiles.length} tests)`,
   );
@@ -133,6 +133,12 @@ export function collectSourceFiles(
     }
   }
   return results;
+}
+
+export function isTestFile(filePath: string): boolean {
+  return /\.(test|spec)\.(ts|tsx|js|jsx)$/.test(
+    path.basename(filePath),
+  );
 }
 
 // ─────────────────────────────────────────────
@@ -241,7 +247,7 @@ export function scoreTestCoverage(
 
   const testBasenames = new Set(
     testFiles.map((f) =>
-      path.basename(f).replace(/\.test\.(ts|tsx|js|jsx)$/, ""),
+      path.basename(f).replace(/\.(test|spec)\.(ts|tsx|js|jsx)$/, ""),
     ),
   );
 
