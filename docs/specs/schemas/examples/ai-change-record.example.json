@@ -1,0 +1,34 @@
+{
+  "schemaVersion": "ai-change-record/v1",
+  "prId": "PR-384",
+  "aiProvider": "codex",
+  "promptHash": "sha256:example-prompt",
+  "gateResults": [
+    {
+      "gateId": "Gate 0",
+      "status": "passed",
+      "checkedAt": "2026-06-12T00:10:00.000Z",
+      "warnings": [],
+      "failures": []
+    }
+  ],
+  "humanReviewedAt": null,
+  "sessionId": "codex-session-example",
+  "providerId": "codex",
+  "taskId": "ISSUE-340",
+  "timestamp": "2026-06-12T00:15:00.000Z",
+  "commitSha": "0123456789abcdef0123456789abcdef01234567",
+  "changes": [
+    {
+      "file": "src/cli/lib/gate-engine-model.ts",
+      "linesAdded": 80,
+      "linesRemoved": 0,
+      "changeType": "create"
+    }
+  ],
+  "tierDeclared": "standard",
+  "tierEffective": "standard",
+  "protectedCategoriesTriggered": [],
+  "gateOutcome": "pass",
+  "evidenceRef": "https://github.com/watchout/ai-dev-framework/pull/384"
+}

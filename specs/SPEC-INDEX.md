@@ -38,6 +38,6 @@ Direction: LLM judgment dependency → deterministic script control.
 
 - `docs/spec/v1.2.0-gate-engine.md` — Full Gate Engine spec (SPEC-DOC4L-020)
 - `docs/spec/v1.2.0-merge-authority-gate.md` — Merge authority gate spec
-- `src/cli/lib/llm-adapter-model.ts` — ContextPack + AIChangeRecord TypeScript interfaces
+- `src/cli/lib/gate-engine-model.ts` — ContextPack + AIChangeRecord TypeScript interfaces and schema-facing artifact fields
 - `src/cli/lib/protected-pattern-detector.ts` — Tier auto-promotion diff scanner
 - `docs/specs/SPEC-INDEX.md` — Extended index with additional specs (04b, 04c, 10)

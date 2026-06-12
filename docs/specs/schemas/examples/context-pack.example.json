@@ -1,0 +1,63 @@
+{
+  "schemaVersion": "context-pack/v1",
+  "taskId": "ISSUE-340",
+  "provider": "shirube-gate-engine",
+  "toolPolicy": {
+    "permissionMode": "local-cli",
+    "sandbox": "current-process",
+    "networkAccess": false,
+    "allowedTools": [
+      "filesystem:read",
+      "filesystem:write:.framework/gates.json",
+      "filesystem:write:.framework/context-pack.json"
+    ],
+    "deniedTools": ["external-send", "merge", "deploy", "secret-read"]
+  },
+  "inputFiles": [
+    {
+      "path": "package.json",
+      "role": "config",
+      "hash": "sha256:example-package"
+    },
+    {
+      "path": "docs/spec/v1.2.0-gate-engine.md",
+      "role": "spec",
+      "hash": "sha256:example-spec"
+    }
+  ],
+  "outputSpec": {
+    "format": "json",
+    "requiredArtifacts": [
+      ".framework/gates.json",
+      ".framework/context-pack.json"
+    ],
+    "evidence": ["gateA", "gateB", "gateC"]
+  },
+  "timestamp": "2026-06-12T00:00:00.000Z",
+  "providerId": "shirube-gate-engine",
+  "sessionId": "gate-check-2026-06-12T00-00-00-000Z",
+  "workingDirectory": "/repo",
+  "relevantFiles": [
+    {
+      "path": "package.json",
+      "contentSnippet": "",
+      "role": "config",
+      "hash": "sha256:example-package"
+    }
+  ],
+  "activeTask": "ISSUE-340",
+  "tier": "standard",
+  "protectedCategories": [],
+  "meta": {
+    "profile": "app",
+    "gateResults": [
+      {
+        "gateId": "A",
+        "status": "passed",
+        "checkedAt": "2026-06-12T00:00:00.000Z",
+        "warnings": [],
+        "failures": []
+      }
+    ]
+  }
+}

@@ -402,7 +402,7 @@ A Context Pack is the reproducible input given to an AI coding agent for a task.
 
 Context Packs must be inspectable, hashable, and replayable. A worker prompt that only says "implement task X" is insufficient for strict/public workflows.
 
-See `src/cli/lib/llm-adapter-model.ts` for the `ContextPack` TypeScript interface.
+See `src/cli/lib/gate-engine-model.ts` for the `ContextPack` TypeScript interface and `docs/specs/schemas/context-pack.schema.json` for the JSON Schema.
 
 ### AI Change Record
 
@@ -421,7 +421,7 @@ An AI Change Record (ACR) is the structured evidence package for an AI-generated
 
 The ACR is the minimum artifact for enterprise auditability. A PR without it can be code-complete but cannot be enterprise-ready.
 
-See `src/cli/lib/llm-adapter-model.ts` for the `AIChangeRecord` TypeScript interface.
+See `src/cli/lib/gate-engine-model.ts` for the `AIChangeRecord` TypeScript interface and `docs/specs/schemas/ai-change-record.schema.json` for the JSON Schema.
 
 ### Tier Auto-Promotion (Protected Categories)
 
