@@ -1,4 +1,6 @@
 import { type Command } from "commander";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import {
   formatRoleSeparationViolation,
   loadFrameworkConfig,
@@ -15,10 +17,20 @@ import {
   validateCompanyDevOsRoleProfiles,
   type CompanyDevOsRoleProfileValidationResult,
 } from "../lib/company-dev-os-role-profile.js";
+import {
+  doctorCompanyDevOsRuntimeBindings,
+  type CompanyDevOsRuntimeBindingDoctorResult,
+} from "../lib/company-dev-os-runtime-binding.js";
 import { logger } from "../lib/logger.js";
 
 interface ValidateRolesOptions {
   json?: boolean;
+  configDir?: string;
+}
+
+interface DoctorRolesOptions {
+  json?: boolean;
+  companyDevOs?: boolean;
   configDir?: string;
 }
 
@@ -47,8 +59,15 @@ export function registerRolesCommand(program: Command): void {
   roles
     .command("doctor")
     .description("Check whether required orchestration roles are ready")
-    .action(() => {
-      const ready = doctorRoles(process.cwd());
+    .option("--json", "Emit machine-readable JSON")
+    .option("--company-dev-os", "Require Company Dev OS runtime binding checks")
+    .option(
+      "--config-dir <path>",
+      "Company Dev OS config directory",
+      ".shirube/company-dev-os",
+    )
+    .action((options: DoctorRolesOptions) => {
+      const ready = doctorRoles(process.cwd(), options);
       if (!ready) process.exit(1);
     });
 
@@ -103,37 +122,115 @@ function listRoles(projectDir: string): void {
   }
 }
 
-function doctorRoles(projectDir: string): boolean {
+function doctorRoles(projectDir: string, options: DoctorRolesOptions = {}): boolean {
+  const readiness = evaluateRoleReadiness(projectDir);
+  const shouldRunCompanyDevOs =
+    options.companyDevOs === true || hasCompanyDevOsConfigDir(projectDir, options.configDir);
+  const companyDevOs = shouldRunCompanyDevOs
+    ? doctorCompanyDevOsRuntimeBindings(projectDir, { configDir: options.configDir })
+    : null;
+  const passed = readiness.passed && (companyDevOs?.passed ?? true);
+
+  if (options.json) {
+    process.stdout.write(
+      `${JSON.stringify({
+        schema: "shirube-roles-doctor/v1",
+        passed,
+        orchestration: readiness,
+        company_dev_os: companyDevOs,
+      }, null, 2)}\n`,
+    );
+    return passed;
+  }
+
+  printRoleReadiness(readiness);
+  if (companyDevOs) {
+    printCompanyDevOsRuntimeDoctor(companyDevOs);
+  }
+  return passed;
+}
+
+function evaluateRoleReadiness(projectDir: string): {
+  passed: boolean;
+  status: "ready" | "not_ready";
+  missing_roles: RequiredRoleName[];
+  placeholder_roles: RequiredRoleName[];
+  separation_violations: string[];
+} {
   const result = resolveRequiredRoles(loadFrameworkConfig(projectDir));
+  if (result.status !== "ready") {
+    return {
+      passed: false,
+      status: "not_ready",
+      missing_roles: result.missingRoles,
+      placeholder_roles: result.placeholderRoles,
+      separation_violations: [],
+    };
+  }
+
+  const violations = validateRoleSeparation(result.bindings);
+  return {
+    passed: violations.length === 0,
+    status: "ready",
+    missing_roles: [],
+    placeholder_roles: [],
+    separation_violations: violations.map(formatRoleSeparationViolation),
+  };
+}
+
+function printRoleReadiness(readiness: ReturnType<typeof evaluateRoleReadiness>): void {
   logger.header("Shirube Role Readiness");
 
-  if (result.status === "ready") {
-    const violations = validateRoleSeparation(result.bindings);
-    if (violations.length > 0) {
-      logger.error("Producer and gate/review/L3 authority roles are not separated.");
-      for (const violation of violations) {
-        logger.info(`  - ${formatRoleSeparationViolation(violation)}`);
-      }
-      logger.info("");
-      logger.info("Use distinct targets before `shirube start --audit-level standard|strict`.");
-      return false;
-    }
-
+  if (readiness.passed) {
     logger.success("All required orchestration roles are configured.");
-    return true;
+    return;
+  }
+
+  if (readiness.separation_violations.length > 0) {
+    logger.error("Producer and gate/review/L3 authority roles are not separated.");
+    for (const violation of readiness.separation_violations) {
+      logger.info(`  - ${violation}`);
+    }
+    logger.info("");
+    logger.info("Use distinct targets before `shirube start --audit-level standard|strict`.");
+    return;
   }
 
   logger.error("Required orchestration roles are not ready.");
-  if (result.missingRoles.length > 0) {
-    logger.info(`  Missing roles: ${result.missingRoles.join(", ")}`);
+  if (readiness.missing_roles.length > 0) {
+    logger.info(`  Missing roles: ${readiness.missing_roles.join(", ")}`);
   }
-  if (result.placeholderRoles.length > 0) {
-    logger.info(`  Placeholder roles: ${result.placeholderRoles.join(", ")}`);
+  if (readiness.placeholder_roles.length > 0) {
+    logger.info(`  Placeholder roles: ${readiness.placeholder_roles.join(", ")}`);
   }
   logger.info("");
   logger.info("Configure roles before `shirube start --audit-level strict`:");
   logger.info("  shirube roles set auditor --type mcp_agent --id <agent-id>");
-  return false;
+}
+
+function printCompanyDevOsRuntimeDoctor(result: CompanyDevOsRuntimeBindingDoctorResult): void {
+  logger.header("Company Dev OS Runtime Bindings");
+  logger.info(`  Config: ${result.config_dir}`);
+  logger.info(`  Bindings: ${result.bindings_path}`);
+
+  if (result.passed) {
+    logger.success("Company Dev OS runtime bindings are valid.");
+    for (const repository of result.repositories) {
+      logger.info(`  ${repository.repo}: ${repository.files.length} runtime file(s) checked`);
+    }
+    return;
+  }
+
+  logger.error("Company Dev OS runtime bindings are invalid.");
+  for (const finding of result.findings) {
+    const repo = finding.repo ? `${finding.repo}: ` : "";
+    const filePath = finding.path ? ` (${finding.path})` : "";
+    logger.info(`  - ${repo}${finding.code}${filePath}: ${finding.message}`);
+  }
+}
+
+function hasCompanyDevOsConfigDir(projectDir: string, configDir = ".shirube/company-dev-os"): boolean {
+  return fs.existsSync(path.resolve(projectDir, configDir));
 }
 
 function validateCompanyDevOsRoles(

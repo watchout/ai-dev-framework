@@ -1,0 +1,42 @@
+{
+  "schema": "shirube-company-dev-os-role-routing/v1",
+  "standard_flow": [
+    "spec",
+    "arc",
+    "implementation",
+    "audit",
+    "qa",
+    "check",
+    "cto"
+  ],
+  "routing": {
+    "spec": {
+      "next": ["arc"],
+      "may_implement": false
+    },
+    "arc": {
+      "next": ["implementation"],
+      "may_implement": false
+    },
+    "implementation": {
+      "next": ["audit", "qa"],
+      "may_implement": true
+    },
+    "audit": {
+      "next": ["implementation", "qa", "cto"],
+      "may_implement": false
+    },
+    "qa": {
+      "next": ["implementation", "check", "cto"],
+      "may_implement": false
+    },
+    "check": {
+      "next": ["implementation", "cto"],
+      "may_implement": false
+    },
+    "cto": {
+      "next": ["implementation", "merge-authority"],
+      "may_implement": false
+    }
+  }
+}
