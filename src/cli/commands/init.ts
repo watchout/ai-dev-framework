@@ -113,7 +113,10 @@ function printResult(result: InitResult, profileType: ProfileType): void {
   logger.info("");
   logger.header("Next steps:");
   logger.info("  1. cd " + result.projectPath);
-  logger.info("  2. shirube discover    <- Start the discovery flow");
-  logger.info("  3. shirube generate    <- Generate SSOT documents");
+  logger.info("  2. shirube roles doctor   <- Configure role bindings (required before strict start)");
+  logger.info("  3. shirube discover       <- Start the discovery flow");
+  logger.info("  4. shirube generate       <- Generate SSOT documents");
   logger.info("");
+  logger.warn("  Role bindings in .framework/config.json are placeholders.");
+  logger.warn("  Run 'shirube roles doctor' to check, 'shirube roles set <role> --type <type> --id <id>' to configure.");
 }

@@ -17,6 +17,7 @@ import {
   saveVerifyResult,
 } from "./verification-model.js";
 import {
+  collectTestFiles,
   collectSourceFiles,
   scoreSSOTAlignment,
   scoreCodeQuality,
@@ -107,7 +108,7 @@ type SingleTarget = Exclude<VerifyTarget, "all">;
 
 function resolveTargets(target: VerifyTarget): SingleTarget[] {
   if (target === "all") {
-    return ["ssot", "code", "tests", "types"];
+    return ["ssot", "code", "tests", "types", "lint"];
   }
   return [target];
 }
@@ -122,8 +123,10 @@ function runSingleCheck(
   issues: CheckpointIssue[],
 ): number {
   const srcFiles = collectSourceFiles(projectDir, "src");
-  const testFiles = srcFiles.filter((f) => f.includes(".test."));
-  const nonTestFiles = srcFiles.filter((f) => !f.includes(".test."));
+  const testFiles = collectTestFiles(projectDir);
+  const nonTestFiles = srcFiles.filter(
+    (f) => !f.includes(".test.") && !f.includes(".spec."),
+  );
 
   switch (target) {
     case "ssot":
@@ -134,6 +137,8 @@ function runSingleCheck(
       return scoreTestCoverage(nonTestFiles, testFiles, issues);
     case "types":
       return scoreTypeSafety(projectDir, nonTestFiles, issues);
+    case "lint":
+      return scoreLint(projectDir, nonTestFiles, issues);
   }
 }
 
@@ -154,6 +159,9 @@ function assignScore(
       break;
     case "types":
       scores.typeSafety = value;
+      break;
+    case "lint":
+      scores.lint = value;
       break;
   }
 }

@@ -114,6 +114,19 @@ describe("verify-engine", () => {
       expect(result.scores.codeQuality).toBeUndefined();
     });
 
+    it("verifies tests target with top-level tests directory", async () => {
+      writeFile(tmpDir, "src/a.ts", "export const a = 1;\n");
+      writeFile(tmpDir, "tests/a.test.ts", "import '../src/a.js';\n");
+
+      const io = createMockIO();
+      const result = await runVerify(
+        tmpDir, "tests", {}, io,
+      );
+
+      expect(result.scores.testCoverage).toBe(100);
+      expect(result.verdict).toBe("pass");
+    });
+
     it("verifies types target only", async () => {
       writeFile(tmpDir, "src/typed.ts", "const x: string = 'ok';\n");
 

@@ -7,6 +7,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
+import { parseJsonOrDefault } from "./safe-json.js";
 import type {
   Proposal,
   ProposalStore,
@@ -33,7 +34,7 @@ export function loadProposals(dir: string): ProposalStore {
   }
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(raw) as ProposalStore;
+    return parseJsonOrDefault<ProposalStore>(raw, { proposals: [] });
   } catch {
     return { proposals: [] };
   }
@@ -215,7 +216,7 @@ export function loadApprovals(dir: string): ApprovalStore {
   }
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(raw) as ApprovalStore;
+    return parseJsonOrDefault<ApprovalStore>(raw, { pending: [] });
   } catch {
     return { pending: [] };
   }

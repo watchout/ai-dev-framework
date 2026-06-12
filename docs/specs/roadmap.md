@@ -10,6 +10,7 @@ Shirube's end state is:
 
 ```text
 Shirube = Agentic SDLC Control Plane
+        = AI PR Safety Gate + Evidence Control Plane for governed delivery
 ```
 
 The roadmap therefore does not optimize for "more AI coding features" first. It builds the control plane that lets AI coding agents work toward explicit product goals without skipping design, evidence, audit, merge authority, post-merge verification, phase closure, or goal progress verification.
@@ -135,11 +136,18 @@ Phase 0 execution tasks:
 | T2 | #214 | Disposition matrix and re-home decisions |
 | T3 | #215 | Action-to-surface map for `workflow check` |
 | T4 | #216 | Baseline verification and L1/L2/L3 review evidence |
-| T5 | #217 | Dogfood feedback intake and phase assignment loop |
+| T5 | #217 | Dogfood feedback intake, phase assignment, and spec seed |
 | T6 | #220 | Formal post-merge verification gate addendum |
 
 T3 artifact: [Phase 0 Action-To-Surface Map](./phase0-action-to-surface-map.md).
 T6 artifact: [POSTMERGE-001: Post-Merge Verification Gate](./postmerge-001.md).
+
+Dogfood feedback rule:
+
+- Any workflow gap discovered while developing Shirube itself must be captured before it is forgotten.
+- The first capture artifact is an issue or issue comment with observed trigger, affected phase, proposed owner gate, whether it needs SPEC/IMPL/VERIFY/OPS, and whether it blocks current work.
+- The default disposition is not implementation. The default disposition is phase assignment plus spec seed.
+- Implementation may start only after the item has an approved phase, scope, evidence requirement, and review level.
 
 ### Sufficient exit conditions
 

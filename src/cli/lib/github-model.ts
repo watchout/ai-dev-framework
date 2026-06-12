@@ -9,6 +9,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { parseJsonOrDefault } from "./safe-json.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -124,7 +125,7 @@ export function loadSyncState(
 
   try {
     const raw = fs.readFileSync(filePath, "utf-8");
-    return JSON.parse(raw) as GitHubSyncState;
+    return parseJsonOrDefault<GitHubSyncState>(raw, null as unknown as GitHubSyncState);
   } catch {
     return null;
   }

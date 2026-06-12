@@ -48,8 +48,8 @@ export function runCheckpoint(
 
   io.print("\n  [1/4] Scanning project files...");
   const srcFiles = collectSourceFiles(projectDir, "src");
-  const testFiles = srcFiles.filter((f) => f.includes(".test."));
-  const nonTestFiles = srcFiles.filter((f) => !f.includes(".test."));
+  const testFiles = collectTestFiles(projectDir);
+  const nonTestFiles = srcFiles.filter((f) => !isTestFile(f));
   io.print(
     `  Found ${srcFiles.length} source files (${testFiles.length} tests)`,
   );
@@ -58,7 +58,11 @@ export function runCheckpoint(
   const issues: CheckpointIssue[] = [];
   const ssotAlignment = scoreSSOTAlignment(projectDir, issues);
   const codeQuality = scoreCodeQuality(projectDir, nonTestFiles, issues);
-  const testCoverage = scoreTestCoverage(nonTestFiles, testFiles, issues);
+  const testCoverage = scoreTestCoverage(
+    nonTestFiles,
+    testFiles,
+    issues,
+  );
   const typeSafety = scoreTypeSafety(projectDir, nonTestFiles, issues);
   const lint = scoreLint(projectDir, nonTestFiles, issues);
 
@@ -107,6 +111,10 @@ export function runCheckpoint(
 // File collection
 // ─────────────────────────────────────────────
 
+const TEST_FILE_PATTERN = /\.(test|spec)\.(ts|tsx|js|jsx)$/;
+const SOURCE_EXTENSIONS = [".ts", ".tsx", ".js", ".jsx"];
+const TEST_DIRS = ["src", "tests", "test", "__tests__"];
+
 export function collectSourceFiles(
   projectDir: string,
   subdir: string,
@@ -133,6 +141,21 @@ export function collectSourceFiles(
     }
   }
   return results;
+}
+
+export function collectTestFiles(projectDir: string): string[] {
+  const files = TEST_DIRS.flatMap((dir) =>
+    collectSourceFiles(projectDir, dir),
+  );
+  return uniqueFiles(files).filter((file) => isTestFile(file));
+}
+
+function isTestFile(file: string): boolean {
+  return TEST_FILE_PATTERN.test(path.basename(file));
+}
+
+function uniqueFiles(files: string[]): string[] {
+  return [...new Set(files.map((file) => path.normalize(file)))];
 }
 
 // ─────────────────────────────────────────────
@@ -239,30 +262,144 @@ export function scoreTestCoverage(
 ): number {
   if (sourceFiles.length === 0) return 100;
 
-  const testBasenames = new Set(
-    testFiles.map((f) =>
-      path.basename(f).replace(/\.test\.(ts|tsx|js|jsx)$/, ""),
-    ),
-  );
-
-  let covered = 0;
-  for (const src of sourceFiles) {
-    const base = path.basename(src).replace(/\.(ts|tsx|js|jsx)$/, "");
-    if (testBasenames.has(base)) covered++;
-  }
-
-  const ratio = covered / sourceFiles.length;
+  const normalizedSources = sourceFiles.map((file) => path.normalize(file));
+  const coveredSources = findCoveredSourceFiles(sourceFiles, testFiles);
+  const ratio = coveredSources.size / normalizedSources.length;
   const score = Math.round(ratio * 100);
 
   if (score < 60) {
     issues.push({
       category: "tests", file: "src/",
-      message: `${sourceFiles.length - covered} source files have no test`,
+      message: `${normalizedSources.length - coveredSources.size} source files have no test`,
       severity: "error",
     });
   }
 
   return score;
+}
+
+export function findCoveredSourceFiles(
+  sourceFiles: string[],
+  testFiles: string[],
+): Set<string> {
+  const normalizedSources = sourceFiles.map((file) => path.normalize(file));
+  const sourceSet = new Set(normalizedSources);
+  const coveredSources = new Set<string>();
+
+  markBasenameMatches(normalizedSources, testFiles, coveredSources);
+  for (const testFile of testFiles) {
+    for (const sourceFile of findImportedSourceFiles(testFile, sourceSet)) {
+      markSourceAndDependencies(sourceFile, sourceSet, coveredSources);
+    }
+  }
+
+  return coveredSources;
+}
+
+function markBasenameMatches(
+  sourceFiles: string[],
+  testFiles: string[],
+  coveredSources: Set<string>,
+): void {
+  const testStems = new Set(
+    testFiles.map((file) =>
+      path.basename(file).replace(TEST_FILE_PATTERN, ""),
+    ),
+  );
+
+  for (const src of sourceFiles) {
+    const base = path.basename(src).replace(/\.(ts|tsx|js|jsx)$/, "");
+    if (testStems.has(base)) {
+      coveredSources.add(src);
+    }
+  }
+}
+
+function findImportedSourceFiles(
+  file: string,
+  sourceSet: Set<string>,
+): string[] {
+  const content = safeReadFile(file);
+  if (!content) return [];
+
+  return extractImportSpecifiers(content)
+    .map((specifier) => resolveSourceImport(file, specifier, sourceSet))
+    .filter((sourceFile): sourceFile is string => sourceFile !== undefined);
+}
+
+function markSourceAndDependencies(
+  sourceFile: string,
+  sourceSet: Set<string>,
+  coveredSources: Set<string>,
+  seen = new Set<string>(),
+): void {
+  const normalized = path.normalize(sourceFile);
+  if (!sourceSet.has(normalized) || seen.has(normalized)) return;
+
+  seen.add(normalized);
+  coveredSources.add(normalized);
+
+  for (const imported of findImportedSourceFiles(normalized, sourceSet)) {
+    markSourceAndDependencies(imported, sourceSet, coveredSources, seen);
+  }
+}
+
+function extractImportSpecifiers(content: string): string[] {
+  const specifiers: string[] = [];
+  const importPattern =
+    /(?:import|export)\s+(?:type\s+)?(?:[\s\S]*?\s+from\s+)?["']([^"']+)["']|import\(\s*["']([^"']+)["']\s*\)/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = importPattern.exec(content)) !== null) {
+    const specifier = match[1] ?? match[2];
+    if (specifier) specifiers.push(specifier);
+  }
+
+  return specifiers;
+}
+
+function resolveSourceImport(
+  fromFile: string,
+  specifier: string,
+  sourceSet: Set<string>,
+): string | undefined {
+  if (!specifier.startsWith(".")) return undefined;
+
+  const resolved = path.resolve(path.dirname(fromFile), specifier);
+  for (const candidate of sourceImportCandidates(resolved)) {
+    const normalized = path.normalize(candidate);
+    if (sourceSet.has(normalized)) return normalized;
+  }
+
+  return undefined;
+}
+
+function sourceImportCandidates(resolved: string): string[] {
+  const ext = path.extname(resolved);
+  const candidates = new Set<string>();
+
+  if (ext) {
+    const base = resolved.slice(0, -ext.length);
+    for (const sourceExt of SOURCE_EXTENSIONS) {
+      candidates.add(`${base}${sourceExt}`);
+    }
+  } else {
+    for (const sourceExt of SOURCE_EXTENSIONS) {
+      candidates.add(`${resolved}${sourceExt}`);
+      candidates.add(path.join(resolved, `index${sourceExt}`));
+    }
+  }
+
+  candidates.add(resolved);
+  return [...candidates];
+}
+
+function safeReadFile(file: string): string | undefined {
+  try {
+    return fs.readFileSync(file, "utf-8");
+  } catch {
+    return undefined;
+  }
 }
 
 export function scoreTypeSafety(
