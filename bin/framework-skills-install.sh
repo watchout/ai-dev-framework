@@ -12,8 +12,21 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # フレームワークのルートディレクトリ
-FRAMEWORK_ROOT="${FRAMEWORK_ROOT:-$(dirname "$(dirname "$(readlink -f "$0")")")}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FRAMEWORK_ROOT="${FRAMEWORK_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 SKILLS_SOURCE="$FRAMEWORK_ROOT/.claude/skills"
+ALL_SKILLS=(
+    "agent-teams"
+    "design"
+    "discovery"
+    "gate-design"
+    "gate-quality"
+    "gate-release"
+    "implement"
+    "review"
+    "scan-updates"
+    "self-improve"
+)
 
 # 使い方
 usage() {
@@ -21,17 +34,17 @@ usage() {
     echo ""
     echo "オプション:"
     echo "  -a, --all          全スキルをインストール"
-    echo "  -p, --phase <name> 特定フェーズのみ (discovery|business|product|technical|implementation|review-council)"
+    echo "  -p, --phase <name> 特定フェーズのみ ($(skill_names_with_separator '|'))"
     echo "  -t, --teams        Agent Teamsパターンのみ"
-    echo "  -d, --deliberation 合議制プロトコルのみ"
     echo "  -u, --update       既存スキルを上書き更新"
-    echo "  -n, --dry-run      実行せずに確認のみ"
+    echo "  -n, --dry-run      実行せずに確認のみ（対象パスなしならインベントリ検証のみ）"
     echo "  -h, --help         このヘルプを表示"
     echo ""
     echo "例:"
     echo "  $0 -a /path/to/my-project"
-    echo "  $0 -p discovery -p product /path/to/my-project"
-    echo "  $0 -t -d /path/to/my-project"
+    echo "  $0 -p discovery -p design /path/to/my-project"
+    echo "  $0 -t /path/to/my-project"
+    echo "  $0 --dry-run"
 }
 
 # ログ関数
@@ -39,6 +52,66 @@ log_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+skill_names_with_separator() {
+    local separator=$1
+    local IFS="$separator"
+    echo "${ALL_SKILLS[*]}"
+}
+
+has_skill() {
+    local requested=$1
+    local skill
+    for skill in "${ALL_SKILLS[@]}"; do
+        if [ "$skill" = "$requested" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+validate_skill_inventory() {
+    local expected
+    local actual
+
+    expected="$(printf '%s\n' "${ALL_SKILLS[@]}" | sort)"
+    actual="$(find "$SKILLS_SOURCE" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort)"
+
+    if [ "$expected" != "$actual" ]; then
+        log_error "スキル一覧が .claude/skills と一致していません"
+        log_error "期待値: $(printf '%s\n' "${ALL_SKILLS[@]}" | sort | tr '\n' ' ')"
+        log_error "実際:   $(find "$SKILLS_SOURCE" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | tr '\n' ' ')"
+        exit 1
+    fi
+
+    local skill
+    for skill in "${ALL_SKILLS[@]}"; do
+        if [ ! -d "$SKILLS_SOURCE/$skill" ]; then
+            log_error "スキルディレクトリが見つかりません: $skill"
+            exit 1
+        fi
+        if [ ! -f "$SKILLS_SOURCE/$skill/SKILL.md" ]; then
+            log_error "SKILL.md が見つかりません: $skill"
+            exit 1
+        fi
+    done
+
+    if [ ! -f "$SKILLS_SOURCE/_INDEX.md" ]; then
+        log_error "スキル INDEX が見つかりません: $SKILLS_SOURCE/_INDEX.md"
+        exit 1
+    fi
+}
+
+validate_requested_skills() {
+    local skill
+    for skill in "$@"; do
+        if ! has_skill "$skill"; then
+            log_error "未対応のスキルです: $skill"
+            log_error "利用可能なスキル: $(skill_names_with_separator ' ')"
+            exit 1
+        fi
+    done
+}
 
 # スキルのコピー
 copy_skill() {
@@ -87,9 +160,9 @@ main() {
     local INSTALL_ALL=false
     local PHASES=()
     local INSTALL_TEAMS=false
-    local INSTALL_DELIBERATION=false
     local UPDATE=false
     local DRY_RUN=false
+    local INVENTORY_ONLY=false
 
     # 引数解析
     while [[ $# -gt 0 ]]; do
@@ -99,6 +172,10 @@ main() {
                 shift
                 ;;
             -p|--phase)
+                if [ $# -lt 2 ] || [[ "$2" == -* ]]; then
+                    log_error "--phase にはスキル名が必要です"
+                    exit 1
+                fi
                 PHASES+=("$2")
                 shift 2
                 ;;
@@ -107,8 +184,8 @@ main() {
                 shift
                 ;;
             -d|--deliberation)
-                INSTALL_DELIBERATION=true
-                shift
+                log_error "--deliberation は廃止されました。現在の実在スキルは: $(skill_names_with_separator ' ')"
+                exit 1
                 ;;
             -u|--update)
                 UPDATE=true
@@ -122,6 +199,11 @@ main() {
                 usage
                 exit 0
                 ;;
+            -*)
+                log_error "不明なオプションです: $1"
+                usage
+                exit 1
+                ;;
             *)
                 TARGET_DIR="$1"
                 shift
@@ -129,40 +211,20 @@ main() {
         esac
     done
 
-    # 検証
-    if [ -z "$TARGET_DIR" ]; then
-        log_error "対象プロジェクトパスを指定してください"
-        usage
-        exit 1
-    fi
-
-    if [ ! -d "$TARGET_DIR" ]; then
-        log_error "ディレクトリが存在しません: $TARGET_DIR"
-        exit 1
-    fi
-
     if [ ! -d "$SKILLS_SOURCE" ]; then
         log_error "フレームワークのスキルが見つかりません: $SKILLS_SOURCE"
         log_error "FRAMEWORK_ROOT環境変数を設定してください"
         exit 1
     fi
 
+    validate_skill_inventory
+
     # 対象スキルの決定
     local SKILLS_TO_INSTALL=()
 
     if [ "$INSTALL_ALL" = true ]; then
-        SKILLS_TO_INSTALL=(
-            "deliberation"
-            "agent-teams"
-            "discovery"
-            "business"
-            "product"
-            "technical"
-            "implementation"
-            "review-council"
-        )
+        SKILLS_TO_INSTALL=("${ALL_SKILLS[@]}")
     else
-        [ "$INSTALL_DELIBERATION" = true ] && SKILLS_TO_INSTALL+=("deliberation")
         [ "$INSTALL_TEAMS" = true ] && SKILLS_TO_INSTALL+=("agent-teams")
 
         for phase in "${PHASES[@]}"; do
@@ -171,19 +233,50 @@ main() {
     fi
 
     if [ ${#SKILLS_TO_INSTALL[@]} -eq 0 ]; then
-        log_error "インストールするスキルが指定されていません"
-        log_info "使用例: $0 -a /path/to/project"
+        if [ "$DRY_RUN" = true ] && [ -z "$TARGET_DIR" ]; then
+            SKILLS_TO_INSTALL=("${ALL_SKILLS[@]}")
+            INVENTORY_ONLY=true
+        else
+            log_error "インストールするスキルが指定されていません"
+            log_info "使用例: $0 -a /path/to/project"
+            exit 1
+        fi
+    fi
+
+    validate_requested_skills "${SKILLS_TO_INSTALL[@]}"
+
+    if [ -z "$TARGET_DIR" ]; then
+        if [ "$DRY_RUN" = true ]; then
+            INVENTORY_ONLY=true
+        else
+            log_error "対象プロジェクトパスを指定してください"
+            usage
+            exit 1
+        fi
+    fi
+
+    if [ "$INVENTORY_ONLY" != true ] && [ ! -d "$TARGET_DIR" ]; then
+        log_error "ディレクトリが存在しません: $TARGET_DIR"
         exit 1
     fi
 
     # 実行
     echo ""
     log_info "====== AI開発フレームワーク スキルインストーラー ======"
-    log_info "対象: $TARGET_DIR"
+    if [ "$INVENTORY_ONLY" = true ]; then
+        log_info "対象: インベントリ検証のみ"
+    else
+        log_info "対象: $TARGET_DIR"
+    fi
     log_info "スキル: ${SKILLS_TO_INSTALL[*]}"
     [ "$UPDATE" = true ] && log_info "モード: 上書き更新"
     [ "$DRY_RUN" = true ] && log_warn "DRY-RUNモード（実際には変更しません）"
     echo ""
+
+    if [ "$INVENTORY_ONLY" = true ]; then
+        log_success "スキルインベントリ検証完了"
+        return 0
+    fi
 
     # .claude/skills ディレクトリ作成
     if [ "$DRY_RUN" != true ]; then
