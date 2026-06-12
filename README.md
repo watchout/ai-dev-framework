@@ -120,7 +120,7 @@ shirube audit all
 shirube status
 ```
 
-詳細は [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) を参照。
+詳細は [docs/GETTING_STARTED.md](docs/GETTING_STARTED.md) を参照。Gate A/B/C と Gate 1/2/3 の違いは [docs/GATE_OVERVIEW.md](docs/GATE_OVERVIEW.md) にまとめています。
 
 ---
 

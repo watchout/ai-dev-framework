@@ -149,6 +149,7 @@ shirube audit all
 
 `init` / `retrofit` / `update` は「適用・更新」であり、開発開始ではありません。
 `shirube start` 実行後から、`/design`、`/implement`、`/gate-design`、`/gate-quality`、`/review` の phase authority に従って進めます。
+Gate A/B/C と Gate 1/2/3 の違いは [GATE_OVERVIEW.md](GATE_OVERVIEW.md) を参照してください。
 
 既に `.framework/current-session.json` がある場合、`shirube start` は勝手に上書きしません。
 既存セッションを続ける場合は `shirube start --resume`、新しい feature として切り直す場合は `shirube start --force --feature <id>` を使います。
