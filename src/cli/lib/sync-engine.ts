@@ -16,6 +16,7 @@ import { loadPlan, savePlan, type PlanState } from "./plan-model.js";
 import { acquireLock, releaseLock, type AcquireResult } from "./lock-model.js";
 import { syncStatusFromGitHub, isGhAvailable } from "./github-engine.js";
 import { loadRunState, saveRunState } from "./run-model.js";
+import { safeReadJson } from "./fs-utils.js";
 
 const PLAN_FILE = ".framework/plan.json";
 const PLAN_TMP = ".framework/plan.json.tmp";
@@ -46,6 +47,13 @@ export interface SyncEngineResult {
   warnings: string[];
 }
 
+type GitHubSyncIssueState = {
+  featureIssues: Array<{
+    featureId: string;
+    taskIssues: Array<{ taskId: string; issueNumber: number }>;
+  }>;
+};
+
 // ─────────────────────────────────────────────
 // plan.json meta helpers
 // ─────────────────────────────────────────────
@@ -56,12 +64,7 @@ function metaPath(projectDir: string): string {
 
 export function loadSyncMeta(projectDir: string): SyncMeta | null {
   const mp = metaPath(projectDir);
-  if (!fs.existsSync(mp)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(mp, "utf-8")) as SyncMeta;
-  } catch {
-    return null;
-  }
+  return safeReadJson<SyncMeta | null>(mp, null);
 }
 
 export function saveSyncMeta(projectDir: string, meta: SyncMeta): void {
@@ -148,12 +151,10 @@ export function detectOrphans(
   plan: PlanState,
 ): OrphanedTask[] {
   // Load github sync state to get issue mappings
-  let syncState: { featureIssues: Array<{ featureId: string; taskIssues: Array<{ taskId: string; issueNumber: number }> }> } | null = null;
+  let syncState: GitHubSyncIssueState | null = null;
   const syncStatePath = path.join(projectDir, ".framework/github-sync.json");
   if (fs.existsSync(syncStatePath)) {
-    try {
-      syncState = JSON.parse(fs.readFileSync(syncStatePath, "utf-8"));
-    } catch { /* ignore */ }
+    syncState = safeReadJson<GitHubSyncIssueState | null>(syncStatePath, null);
   }
 
   if (!plan.tasks || !syncState) return [];

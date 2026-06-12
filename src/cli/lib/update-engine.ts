@@ -14,6 +14,7 @@ import {
   saveFrameworkConfig,
   type RequiredRoleName,
 } from "./workflow-config.js";
+import { safeReadJson } from "./fs-utils.js";
 
 // ─────────────────────────────────────────────
 // Agent Templates
@@ -37,8 +38,8 @@ export function updateAgentTemplates(projectDir: string): number {
   try {
     const stateFile = path.join(projectDir, ".framework/project.json");
     if (fs.existsSync(stateFile)) {
-      const state = JSON.parse(fs.readFileSync(stateFile, "utf-8"));
-      if (state.name) projectName = state.name;
+      const state = safeReadJson<Record<string, unknown>>(stateFile, {});
+      if (typeof state.name === "string") projectName = state.name;
     }
   } catch {
     // Fall back to directory name

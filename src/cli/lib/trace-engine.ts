@@ -9,6 +9,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { safeReadJson } from "./fs-utils.js";
 
 // ─────────────────────────────────────────────
 // Types (IMPL §2.1)
@@ -167,7 +168,10 @@ function readDocsLayersConfig(projectDir: string): DocsLayersConfig | null {
   const configPath = path.join(projectDir, ".framework", "config.json");
   if (!fs.existsSync(configPath)) return null;
   try {
-    const raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    const raw = safeReadJson<{
+      docs_layers?: { enabled?: boolean; strict?: boolean };
+    } | null>(configPath, null);
+    if (!raw) return null;
     if (raw.docs_layers && typeof raw.docs_layers.enabled === "boolean") {
       return {
         enabled: raw.docs_layers.enabled,

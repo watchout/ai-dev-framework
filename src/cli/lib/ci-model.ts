@@ -10,6 +10,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { safeReadJson } from "./fs-utils.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -180,7 +181,7 @@ function evaluateBuild(projectDir: string): CIStageResult {
 
   const pkgPath = path.join(projectDir, "package.json");
   if (fs.existsSync(pkgPath)) {
-    const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as Record<string, unknown>;
+    const pkg = safeReadJson<Record<string, unknown>>(pkgPath, {});
     const scripts = pkg.scripts as Record<string, string> | undefined;
     if (scripts?.build) {
       details.push("Build script found in package.json");

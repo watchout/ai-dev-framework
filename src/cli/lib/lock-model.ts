@@ -15,6 +15,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { parseJsonOrThrow, safeReadJson } from "./fs-utils.js";
 
 const DEFAULT_STALE_MS = 300_000; // 5 minutes
 
@@ -104,7 +105,7 @@ export function releaseLock(projectDir: string, lockName = "plan"): void {
   if (!fs.existsSync(lp)) return;
 
   try {
-    const data = JSON.parse(fs.readFileSync(lp, "utf-8")) as LockData;
+    const data = parseJsonOrThrow<LockData>(lp);
     if (data.pid === process.pid) {
       fs.rmSync(lp, { force: true });
     }
@@ -122,11 +123,7 @@ export function getLockStatus(
 ): LockData | null {
   const lp = lockPath(projectDir, lockName);
   if (!fs.existsSync(lp)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(lp, "utf-8")) as LockData;
-  } catch {
-    return null;
-  }
+  return safeReadJson<LockData | null>(lp, null);
 }
 
 function writeLock(

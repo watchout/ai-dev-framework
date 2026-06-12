@@ -12,6 +12,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { loadSyncState } from "./github-model.js";
+import { safeReadJson } from "./fs-utils.js";
 import {
   type GateState,
   type GateCheck,
@@ -578,10 +579,10 @@ function isDocsLayersEnabled(projectDir: string): boolean {
   const configPath = path.join(projectDir, ".framework/config.json");
   if (!fs.existsSync(configPath)) return false;
   try {
-    const raw = JSON.parse(fs.readFileSync(configPath, "utf-8")) as {
+    const raw = safeReadJson<{
       docs_layers?: { enabled?: unknown };
-    };
-    return raw.docs_layers?.enabled === true;
+    } | null>(configPath, null);
+    return raw?.docs_layers?.enabled === true;
   } catch {
     return false;
   }

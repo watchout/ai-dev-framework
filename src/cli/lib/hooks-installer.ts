@@ -11,6 +11,7 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseJsonOrThrow } from "./fs-utils.js";
 
 // ESM __dirname shim (this module runs as ESM under NodeNext).
 const __filename = fileURLToPath(import.meta.url);
@@ -85,7 +86,8 @@ if [ -f "$skill_file" ]; then
   skill_active=$(node -e "
     const fs = require('fs');
     try {
-      const d = JSON.parse(fs.readFileSync('$skill_file', 'utf8'));
+      const raw = fs.readFileSync('$skill_file', 'utf8');
+      const d = JSON.parse(raw);
       const age = Date.now() - new Date(d.activatedAt).getTime();
       console.log(age < 6 * 3600 * 1000 ? 'true' : 'false');
     } catch { console.log('false'); }
@@ -112,7 +114,8 @@ fi
 result=$(node -e "
   const fs = require('fs');
   try {
-    const g = JSON.parse(fs.readFileSync('$gates_file', 'utf8'));
+    const raw = fs.readFileSync('$gates_file', 'utf8');
+    const g = JSON.parse(raw);
     const a = g.gateA && g.gateA.status || 'pending';
     const b = g.gateB && g.gateB.status || 'pending';
     const c = g.gateC && g.gateC.status || 'pending';
@@ -152,7 +155,8 @@ task_check=$(node -e "
   try {
     const pf = '$project_dir/.framework/project.json';
     if (fs.existsSync(pf)) {
-      const p = JSON.parse(fs.readFileSync(pf, 'utf8'));
+      const raw = fs.readFileSync(pf, 'utf8');
+      const p = JSON.parse(raw);
       const pt = p.profileType || p.type || '';
       if (pt === 'lp' || pt === 'hp') { console.log('SKIP'); process.exit(0); }
     }
@@ -316,7 +320,7 @@ export function installClaudeCodeHook(projectDir: string): {
   let existing: Record<string, unknown> = {};
   if (fs.existsSync(settingsPath)) {
     try {
-      existing = JSON.parse(fs.readFileSync(settingsPath, "utf-8"));
+      existing = parseJsonOrThrow<Record<string, unknown>>(settingsPath);
     } catch {
       warnings.push(
         ".claude/settings.json exists but is invalid JSON. Creating fresh.",

@@ -8,6 +8,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { safeReadJson } from "./fs-utils.js";
 
 // ─────────────────────────────────────────────
 // Types
@@ -116,12 +117,7 @@ export function createIngestState(): IngestState {
 
 export function loadIngestState(projectDir: string): IngestState | null {
   const filePath = path.join(projectDir, INGEST_STATE_FILE);
-  if (!fs.existsSync(filePath)) return null;
-  try {
-    return JSON.parse(fs.readFileSync(filePath, "utf-8")) as IngestState;
-  } catch {
-    return null;
-  }
+  return safeReadJson<IngestState | null>(filePath, null);
 }
 
 export function saveIngestState(projectDir: string, state: IngestState): void {

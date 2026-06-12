@@ -15,6 +15,7 @@ import type {
   ContextPackFile,
 } from "./llm-adapter-model.js";
 import { detectProtectedPatterns } from "./protected-pattern-detector.js";
+import { parseJsonOrThrow } from "./fs-utils.js";
 
 export class ClaudeCodeAdapter implements LLMRuntimeAdapter {
   readonly providerId = "claude-code";
@@ -45,7 +46,7 @@ export class ClaudeCodeAdapter implements LLMRuntimeAdapter {
     }
 
     try {
-      const data = JSON.parse(fs.readFileSync(gateFile, "utf-8")) as { status?: string };
+      const data = parseJsonOrThrow<{ status?: string }>(gateFile);
       if (data.status === "pass") {
         return { passed: true };
       }
