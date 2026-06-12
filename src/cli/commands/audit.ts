@@ -107,15 +107,18 @@ export function registerAuditCommand(program: Command): void {
             process.exit(1);
           }
 
-          // Resolve target path
-          const resolved = resolveAuditTarget(projectDir, target);
-          const targetPath = resolved.targetPath;
-          target = resolved.target;
-
           // Use silent IO for JSON output mode
           const io = options.json
-            ? { print: () => {} }  // Silent IO
+            ? {
+                print: () => {},
+                onFatalError: (code: number): never => process.exit(code),
+              }
             : createAuditTerminalIO();
+
+          // Resolve target path
+          const resolved = resolveAuditTarget(projectDir, target, io);
+          const targetPath = resolved.targetPath;
+          target = resolved.target;
           
           const result = await runAudit({
             projectDir,
@@ -134,7 +137,7 @@ export function registerAuditCommand(program: Command): void {
 
           // Output JSON if requested
           if (options.json) {
-            outputJson(mode, target, result);
+            outputJson(mode, target, result, io);
           }
 
           // Output markdown if requested
