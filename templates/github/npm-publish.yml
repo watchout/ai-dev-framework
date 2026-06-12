@@ -1,0 +1,63 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  gate0:
+    name: CI Gate 0 (pre-publish)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run type-check 2>/dev/null || npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+  publish:
+    name: Publish @watchout/shirube
+    runs-on: ubuntu-latest
+    needs: gate0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Build CLI
+        run: npm run build:cli
+
+      - name: Smoke-test npx bootstrap (Gate D)
+        run: |
+          TMPDIR=$(mktemp -d)
+          node ./dist/cli/index.js init shirube-smoke-test --project-dir "$TMPDIR" || true
+          ls "$TMPDIR" | grep -q shirube-smoke-test && echo "Gate D: templates rendered OK" || (echo "Gate D FAILED"; exit 1)
+          rm -rf "$TMPDIR"
+
+      - name: Publish
+        run: npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

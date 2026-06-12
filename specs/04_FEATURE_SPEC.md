@@ -6,6 +6,7 @@
 > AI-driven hearing, IEEE/ISO-compliant SSOT generation, and quality audit.
 >
 > Agent Skill: `framework-feature-spec` (Deliberation Protocol built-in)
+> **v1.2.0 update**: Deliberation Protocol (§7.5) is now **Full tier / protected surface only**. Nano and Standard tier skip §7.5.
 
 ---
 
@@ -197,7 +198,9 @@ Example:
 
 ---
 
-## 7.5. Deliberation (Multi-Perspective Review)
+## 7.5. Deliberation (Multi-Perspective Review) — Full tier / protected surface only
+
+> **v1.2.0**: Skip this section for Nano and Standard tier. Only required for Full tier or when any protected category (auth/DB/public-API/routing/runtime/deploy/governance) is detected.
 
 Three experts review hearing results before SSOT generation:
 

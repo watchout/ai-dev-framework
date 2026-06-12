@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/watchout/ai-dev-framework/templates/shirube-profile.schema.json",
+  "title": "Shirube Repo Profile",
+  "description": "Per-repository configuration for Shirube tier system and Company Dev OS gate policy",
+  "type": "object",
+  "required": ["repo_id", "repo_type", "runtime", "protected_surfaces", "allowed_tier", "ci_gate_0", "complete_evidence"],
+  "properties": {
+    "repo_id": {
+      "type": "string",
+      "description": "GitHub repo in org/name format",
+      "pattern": "^[a-zA-Z0-9_-]+/[a-zA-Z0-9_.-]+$"
+    },
+    "repo_type": {
+      "type": "string",
+      "enum": ["mcp-core", "framework", "memory", "product", "ui", "docs", "platform", "infra"],
+      "description": "Repository category"
+    },
+    "runtime": {
+      "type": "boolean",
+      "description": "Whether this repo runs a live process (bot, server, daemon)"
+    },
+    "protected_surfaces": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["auth", "db", "credential", "public-api", "routing", "deploy", "governance", "billing", "mcp-contract", "agent-queue"]
+      },
+      "description": "Protected categories present in this repo"
+    },
+    "allowed_tier": {
+      "type": "string",
+      "enum": ["nano", "standard", "full", "all"],
+      "description": "Minimum tier required for changes. 'all' means Nano/Standard/Full all permitted."
+    },
+    "ci_gate_0": {
+      "type": "object",
+      "required": ["required_checks"],
+      "properties": {
+        "required_checks": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "GitHub status check names that must pass"
+        },
+        "integration_commands": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Commands to run for full-stack integration test on changed surface"
+        },
+        "exact_head_required": {
+          "type": "boolean",
+          "default": true,
+          "description": "Require CI to pass on exact PR head SHA"
+        }
+      }
+    },
+    "complete_evidence": {
+      "type": "object",
+      "required": ["types"],
+      "properties": {
+        "types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["pr-merged", "deploy-confirmed", "health-check", "smoke-test", "slo-within-threshold", "error-rate-ok", "runtime-identity"]
+          }
+        },
+        "health_endpoint": {
+          "type": "string",
+          "description": "Health check URL for runtime repos"
+        },
+        "smoke_command": {
+          "type": "string",
+          "description": "Command to run smoke test"
+        }
+      }
+    },
+    "audit_route": {
+      "type": "string",
+      "enum": ["async", "required", "skip"],
+      "default": "async",
+      "description": "audit: required = blocking pre-merge, async = non-blocking, skip = not applicable"
+    },
+    "rollback_owner": {
+      "type": "string",
+      "description": "Agent ID responsible for rollback decisions"
+    },
+    "implementation_bot": {
+      "type": "string",
+      "description": "Primary implementation bot agent ID for this repo"
+    },
+    "aun_pilot": {
+      "type": "string",
+      "description": "Linked AUN pilot issue (e.g. watchout/iyasaka-arc#722)"
+    }
+  }
+}

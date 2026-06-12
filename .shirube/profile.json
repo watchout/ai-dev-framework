@@ -1,0 +1,20 @@
+{
+  "repo_id": "watchout/ai-dev-framework",
+  "repo_type": "framework",
+  "runtime": false,
+  "protected_surfaces": ["governance", "public-api"],
+  "allowed_tier": "all",
+  "ci_gate_0": {
+    "required_checks": ["test", "lint", "typecheck", "coverage"],
+    "integration_commands": ["npm test"],
+    "exact_head_required": true
+  },
+  "complete_evidence": {
+    "types": ["pr-merged", "smoke-test"],
+    "smoke_command": "npm run framework -- --version"
+  },
+  "audit_route": "async",
+  "rollback_owner": "codex-cto",
+  "implementation_bot": "dev-001",
+  "aun_pilot": "watchout/iyasaka-arc#722"
+}

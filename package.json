@@ -1,12 +1,21 @@
 {
   "name": "@watchout/shirube",
   "version": "1.2.0",
-  "private": true,
   "type": "module",
   "description": "Shirube - SSOT, CLI, Dashboard, and Skills for AI-driven development",
   "bin": {
     "shirube": "./dist/cli/index.js",
     "framework": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist/cli/**",
+    "templates/**",
+    "specs/**",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "dev": "next dev",

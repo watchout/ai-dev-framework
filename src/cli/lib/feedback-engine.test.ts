@@ -1,7 +1,19 @@
 /**
  * Tests for feedback-engine.ts
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+
+vi.mock("node:child_process", () => ({
+  spawnSync: vi.fn(() => ({
+    status: 0,
+    stdout: "",
+    stderr: "",
+    error: undefined,
+    pid: 0,
+    output: [null, null, null],
+    signal: null,
+  })),
+}));
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as os from "node:os";

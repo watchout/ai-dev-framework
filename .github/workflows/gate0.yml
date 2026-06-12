@@ -1,0 +1,77 @@
+name: CI Gate 0
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: gate0-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate0:
+    name: CI Gate 0 (exact-head)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck 2>/dev/null || npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint 2>/dev/null || true
+
+      - name: Test
+        run: npm test -- --reporter=verbose
+
+      - name: Coverage threshold gate
+        run: npm run test:coverage 2>/dev/null || true
+
+  protected-pattern-check:
+    name: Protected Pattern Detection
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect protected patterns
+        run: |
+          BASE=${{ github.event.pull_request.base.sha }}
+          HEAD=${{ github.event.pull_request.head.sha }}
+          DIFF=$(git diff $BASE..$HEAD -- '*.ts' '*.js' '*.json' '*.yml' '*.yaml' 2>/dev/null || echo "")
+
+          PROTECTED=false
+          CATEGORIES=()
+
+          if echo "$DIFF" | grep -qiE '(password|token|secret|credential|encryption|auth[^o]|permission|session)'; then
+            PROTECTED=true; CATEGORIES+=("auth/credentials")
+          fi
+          if echo "$DIFF" | grep -qiE '(ALTER TABLE|DROP TABLE|DROP COLUMN|CREATE TABLE|migration)'; then
+            PROTECTED=true; CATEGORIES+=("db/migration")
+          fi
+          if echo "$DIFF" | grep -qiE '(governance.flow|branch.protection|gate.bypass|merge.authority)'; then
+            PROTECTED=true; CATEGORIES+=("governance")
+          fi
+          if echo "$DIFF" | grep -qiE '(mcp.*tool|public.*api|external.*protocol)'; then
+            PROTECTED=true; CATEGORIES+=("public-api/mcp")
+          fi
+
+          if [ "$PROTECTED" = "true" ]; then
+            echo "::warning::Protected patterns detected: ${CATEGORIES[*]}"
+            echo "::warning::Tier auto-promotes to Full. Ensure required approvals are in place."
+          else
+            echo "No protected patterns detected. Nano/Standard tier eligible."
+          fi

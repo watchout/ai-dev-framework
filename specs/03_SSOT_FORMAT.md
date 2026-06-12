@@ -5,6 +5,26 @@
 
 ---
 
+## SSOT Artifact Hierarchy by Tier (v1.2.0)
+
+The required SSOT sections depend on the declared implementation tier.
+
+| Tier | Required SSOT artifacts | Gate C enforcement |
+|------|------------------------|-------------------|
+| **Nano** | §1 Purpose + brief description | Passthrough — no Gate C check |
+| **Standard** | §1 Purpose, §2 Scope, §3 Requirements (CORE) | §3-E/F required; §3-G/H optional (api/cli profile) |
+| **Full** | All §1–§12 sections per profile | Full Gate C — all required sections must score ≥80 |
+
+Profile-based exceptions (Gate C v4.0):
+- `lp`/`hp` profiles → auto-pass Gate C (marketing/landing pages)
+- `api`/`cli` profiles → §3-F (UI screens) optional
+- `app` profile → all sections mandatory for Full tier
+
+The tier is declared per-PR and must match the declared tier in `.shirube/profile.json`.
+Auto-promotion to `full` occurs when protected surfaces are detected (see `07_AI_PROTOCOL.md §0`).
+
+---
+
 ## RFC 2119 Requirement Levels
 
 ```
