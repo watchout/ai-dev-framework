@@ -1,18 +1,21 @@
-# Shirube v3.2
+# Shirube
 
-Shirube は、AI駆動の開発フレームワークです。曖昧なプロダクトアイデアから実装まで、品質を保証しながら自動化します。
+Shirube は、Claude Code / Codex などの AI coding agents を実プロジェクトの仕様、証跡、レビュー、merge governance に接続する AI Development OS / AI Coding Control Plane です。
+
+AI agent はコードを書けます。Shirube は、その作業に必要な構造、文脈、検証、証跡、承認境界を管理します。
 
 > 旧称: AI Development Framework / ADF。既存プロジェクトとの互換性のため、`framework` コマンドと `.framework/` ディレクトリは当面維持します。
 
+詳しいプロダクト位置付けは [docs/POSITIONING.md](docs/POSITIONING.md) を参照してください。
+
 ## 特徴
 
-- **IEEE/ISO準拠のSSOT**: 機能仕様書を国際規格ベースで定義（3層構造: Core/Contract/Detail）
-- **8段階の品質ゲート**: SSOT監査からCI/PRまで、各工程で品質を保証
-- **AI中断プロトコル**: AIが不明点を推測せず、必ず確認する体制
-- **止まらないルール**: DETAIL層はデフォルトで進み、Decision Backlogで管理
-- **完全な開発ライフサイクル**: アイデア → 仕様 → 実装 → テスト → デプロイ → 保守
-- **5種類のプロジェクトタイプ**: app / lp / hp / api / cli
-- **知識データベース**: docs/knowledge/ にドメイン知識を蓄積し、仕様品質を向上
+- **Spec-first development structure**: SSOT、4層ドキュメント、実装計画、タスク順序を接続
+- **Deterministic traceability**: SPEC / IMPL / VERIFY / OPS の trace を機械的に検証
+- **AI work control**: task lifecycle、blocker、heartbeat、lease、escalation、stop reason を管理
+- **Merge governance**: role binding、route label、audit level、producer/approver separation を merge authority へ接続
+- **Agent-neutral execution boundary**: Claude Code / Codex / 将来の CLI agent を provider として扱い、Shirube 本体は実行 agent に依存しない
+- **Evidence-first workflow**: PR、CI、review、post-merge、audit evidence を作業完了の根拠にする
 - **外部ランナー連携**: `--json` / heartbeat / lease により openclaw 等の外部オーケストレータと接続可能
 
 ---
@@ -163,6 +166,7 @@ shirube update            フレームワーク更新
 | ドキュメント | 対象 |
 |------------|------|
 | [GETTING_STARTED.md](docs/GETTING_STARTED.md) | 初めての方 |
+| [POSITIONING.md](docs/POSITIONING.md) | AI Development OS / Coding Control Plane としての位置付け |
 | [GUIDE_NEW_PROJECT.md](docs/GUIDE_NEW_PROJECT.md) | 新規プロジェクト |
 | [GUIDE_EXISTING_PROJECT.md](docs/GUIDE_EXISTING_PROJECT.md) | 既存プロジェクト導入 |
 | [FRAMEWORK_SUMMARY.md](docs/FRAMEWORK_SUMMARY.md) | 全体サマリー・引き継ぎ |
