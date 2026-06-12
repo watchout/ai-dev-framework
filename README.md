@@ -78,6 +78,10 @@ MCP product として利用する場合、Shirube は内部エージェント名
 
 `publishPolicy` は `draft_only` / `approval_required` / `auto_publish` を指定できます。`draft_only` は GitHub Issue/PR などの remote artifact を作成せず、外部公開には concrete role bindings と policy approval が必要です。Secrets、bot tokens、API keys、platform credentials は `.framework/config.json` に保存しません。
 
+Concrete examples for Codex, Claude Code, external MCP auditors, human approvers,
+release owners, and worker pools are documented in
+[`docs/ROLE_BINDING_EXAMPLES.md`](docs/ROLE_BINDING_EXAMPLES.md).
+
 ### インストール
 ```bash
 git clone https://github.com/watchout/ai-dev-framework.git
