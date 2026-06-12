@@ -2,6 +2,46 @@
 
 > Consolidates: `08_DISCOVERY_FLOW.md`
 > Transforms a vague idea into structured initial documents via staged interview (~30 questions).
+> **v1.2.0 update**: Tier-aware discovery modes added. See §Tier Modes below.
+
+---
+
+## Tier Modes (v1.2.0)
+
+Discovery depth scales with tier. Determine tier before starting.
+
+| Tier | When | Discovery Mode |
+|------|------|---------------|
+| **Nano** | existing contract, no new product decision | **Skip** — use GitHub issue + PR description as sole context. No interview. |
+| **Standard** | known domain, bounded scope | **Fast-track** — ≤5 confirmatory questions (goal, constraints, acceptance). Stage 5.5 Deliberation skipped. |
+| **Full** | new domain / protected surface / public impact | **Full 30Q interview** — all 5 stages + Stage 5.5 Deliberation. |
+
+**Protected category auto-promotion**: If diff touches auth/DB/public-API/routing/runtime/deploy/governance → tier upgrades to Full automatically, even if originally declared Nano.
+
+### Nano: Skip Mode
+
+No discovery questions. Use:
+1. GitHub issue body as product brief
+2. PR description as implementation scope
+3. SSOT: existing canonical docs (no new formal docs required)
+
+Proceed directly to implementation if PR passes CI Gate 0.
+
+### Standard: Fast-track Mode
+
+Run ≤5 confirmatory questions from the list below, then proceed:
+- Q1: "What is the user-facing goal of this change?"
+- Q2: "What is explicitly out of scope?"
+- Q3: "What does acceptance look like? (observable behavior)"
+- Q4: "Any known constraints or dependencies?"
+- Q5: "Rollback plan if this goes wrong?"
+
+Skip Stage 5.5 Deliberation Protocol entirely.
+
+### Full: Full Discovery Mode
+
+Run all 5 stages (~30 questions) as documented below.
+Stage 5.5 Deliberation Protocol required.
 
 ---
 
@@ -23,10 +63,6 @@ OUTPUT:  Initial document set auto-generated
 
 **Agent Skill**: `framework-discovery` auto-runs this flow with Deliberation Protocol.
 Details: `templates/skills/discovery/SKILL.md`
-
-> **v1.1.0 Note**: Deliberation Protocol (multi-perspective review) は framework が強制する
-> メカニズムではなく、project governance として任意に適用するプラクティスです。
-> framework の enforcement は決定論的スクリプト (09_ENFORCEMENT.md) のみです。
 
 ---
 
@@ -242,9 +278,6 @@ Marketing:    [parallel/later/none]
 ---
 
 ## Stage 5.5: Deliberation (Multi-perspective Verification)
-
-> **v1.1.0 Note**: Review chain (Deliberation) は framework 強制ではありません。
-> Project governance として任意に適用してください。(09_ENFORCEMENT.md 参照)
 
 **Purpose**: Before generating documents, 3 experts verify the summary from multiple angles.
 
