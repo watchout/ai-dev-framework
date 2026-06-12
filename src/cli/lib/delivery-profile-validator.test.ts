@@ -147,6 +147,59 @@ describe("validateDeliveryProfiles", () => {
     );
   });
 
+  it("blocks R3 and R4 from using the Codex native fast lane", () => {
+    const profile = validProfileObject();
+    profile.runner_policy_by_risk = {
+      R0: "codex_native_fast_lane",
+      R1: "codex_native_fast_lane",
+      R2: "codex_native_fast_lane",
+      R3: "codex_native_fast_lane",
+      R4: "codex_native_fast_lane",
+    };
+
+    const result = validateDeliveryProfiles([
+      { path: "profile.json", content: JSON.stringify(profile) },
+    ]);
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        type: "unsafe_runner_policy",
+        field: "runner_policy_by_risk.R3",
+        riskClass: "R3",
+      }),
+    );
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        type: "unsafe_runner_policy",
+        field: "runner_policy_by_risk.R4",
+        riskClass: "R4",
+      }),
+    );
+  });
+
+  it("blocks Codex native fast lane policies that allow AUN dispatch authority", () => {
+    const profile = validProfileObject();
+    const runnerPolicies = profile.runner_policies as Record<string, Record<string, unknown>>;
+    runnerPolicies.codex_native_fast_lane = {
+      ...runnerPolicies.codex_native_fast_lane,
+      aun_forbidden_roles: ["merge", "override_stop_policy"],
+    };
+
+    const result = validateDeliveryProfiles([
+      { path: "profile.json", content: JSON.stringify(profile) },
+    ]);
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        type: "missing_field",
+        field: "runner_policies.codex_native_fast_lane.aun_forbidden_roles",
+        message: expect.stringContaining("dispatch_runner"),
+      }),
+    );
+  });
+
   it("blocks Codex-only runner contracts", () => {
     const profile = validProfileObject();
     profile.runner_contract = {

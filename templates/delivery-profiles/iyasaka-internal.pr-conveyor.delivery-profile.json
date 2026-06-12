@@ -17,6 +17,7 @@
   ],
   "purpose": "Internal IYASAKA default delivery profile. Use PR Conveyor for low-to-medium-risk product development while preserving audit, ownership, and protected-operation stops.",
   "default_delivery_strategy": "pr_conveyor",
+  "default_runner_policy": "codex_native_fast_lane",
   "allowed_delivery_strategies": [
     "pr_conveyor",
     "phase_conveyor",
@@ -25,6 +26,75 @@
     "design_only",
     "hotfix"
   ],
+  "allowed_runner_policies": [
+    "codex_native_fast_lane",
+    "runner_agnostic_manual",
+    "claude_bounded_work_order",
+    "headless_ci_runner",
+    "aun_dispatched_runner"
+  ],
+  "runner_policies": {
+    "codex_native_fast_lane": {
+      "description": "Fastest internal runner mode for IYASAKA R0-R2 work. Codex executes directly from GitHub-native Work Orders and PR evidence. AUN is not in the critical path.",
+      "eligible_risk_classes": [
+        "R0",
+        "R1",
+        "R2"
+      ],
+      "forbidden_risk_classes": [
+        "R3",
+        "R4"
+      ],
+      "aun_coupling": "minimal_async_optional",
+      "aun_allowed_roles": [
+        "read_or_mirror_work_order_state",
+        "receive_pr_evidence_event",
+        "notify_audit_queue"
+      ],
+      "aun_forbidden_roles": [
+        "select_next_work_order",
+        "dispatch_runner",
+        "approve_execution",
+        "merge",
+        "override_stop_policy"
+      ],
+      "queue_source_of_truth": "github_issue_pr_labels",
+      "execution_source_of_truth": "codex_local_session",
+      "evidence_source_of_truth": "github_pr_body_or_comment",
+      "required_runtime_evidence": [
+        "runner_identity",
+        "runtime_mode",
+        "cwd",
+        "branch_or_pr_ref",
+        "approval_mode",
+        "sandbox_mode",
+        "goal_or_objective_ref_when_available"
+      ],
+      "required_runner_behavior": [
+        "pick_one_ready_work_order",
+        "execute_inside_allowed_files_and_actions",
+        "run_verification",
+        "open_or_update_pr",
+        "write_pr_evidence",
+        "move_pr_to_audit_pending",
+        "continue_to_next_ready_work_order_unless_stop_sentinel_exists"
+      ]
+    },
+    "aun_dispatched_runner": {
+      "description": "Future orchestration mode. AUN selects and dispatches Work Orders only after the safety-control stack is accepted.",
+      "eligible_risk_classes": [
+        "R0",
+        "R1",
+        "R2"
+      ],
+      "requires": [
+        "watchout/agent-comms-mcp#673 accepted",
+        "hard_stop_enforcement",
+        "runner_identity_and_audit_ledger",
+        "no_run_sentinel"
+      ]
+    }
+  },
   "strategy_by_risk": {
     "R0": {
       "delivery_strategy": "pr_conveyor",
@@ -52,6 +122,13 @@
       "pr_mode": "blocked_until_approved"
     }
   },
+  "runner_policy_by_risk": {
+    "R0": "codex_native_fast_lane",
+    "R1": "codex_native_fast_lane",
+    "R2": "codex_native_fast_lane",
+    "R3": "runner_agnostic_manual",
+    "R4": "runner_agnostic_manual"
+  },
   "queue_states": [
     "backlog",
     "ready_for_spec",
@@ -78,6 +155,7 @@
     "repo",
     "product",
     "delivery_strategy",
+    "runner_policy",
     "work_unit",
     "lane",
     "risk_class",
