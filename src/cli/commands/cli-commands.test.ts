@@ -5,7 +5,7 @@
  * and non-framework directory scenarios correctly.
  */
 import { describe, it, expect, beforeAll } from "vitest";
-import { execSync, execFileSync } from "node:child_process";
+import { execSync, execFileSync, spawnSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -34,27 +34,19 @@ function runCliWithExit(
   exitCode: number;
   stderr: string;
 } {
-  try {
-    const stdout = execSync(`${TSX} ${CLI_PATH} ${args}`, {
-      encoding: "utf-8",
-      timeout: 15000,
-      stdio: ["pipe", "pipe", "pipe"],
-      cwd: options.cwd,
-      env: options.env ? { ...process.env, ...options.env } : process.env,
-    });
-    return { stdout, exitCode: 0, stderr: "" };
-  } catch (error) {
-    const err = error as {
-      stdout?: string;
-      stderr?: string;
-      status?: number;
-    };
-    return {
-      stdout: err.stdout ?? "",
-      stderr: err.stderr ?? "",
-      exitCode: err.status ?? 1,
-    };
-  }
+  const result = spawnSync(`${TSX} ${CLI_PATH} ${args}`, {
+    encoding: "utf-8",
+    timeout: 15000,
+    shell: true,
+    stdio: ["pipe", "pipe", "pipe"],
+    cwd: options.cwd,
+    env: options.env ? { ...process.env, ...options.env } : process.env,
+  });
+  return {
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+    exitCode: result.status ?? 1,
+  };
 }
 
 // Creates a fresh non-framework directory (no .framework/project.json) so that
@@ -70,6 +62,71 @@ function withNonFrameworkDir<T>(fn: (dir: string) => T): T {
   }
 }
 
+function writeCompletedDiscoverSession(dir: string): void {
+  fs.mkdirSync(path.join(dir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, ".framework", "discover-session.json"),
+    JSON.stringify(
+      {
+        id: "discover-1",
+        status: "completed",
+        currentStage: 5,
+        startedAt: "2026-05-23T00:00:00.000Z",
+        updatedAt: "2026-05-23T00:00:00.000Z",
+        completedAt: "2026-05-23T00:00:00.000Z",
+        stages: [
+          { stageNumber: 1, status: "confirmed", summary: "stage 1" },
+          { stageNumber: 2, status: "confirmed", summary: "stage 2" },
+          { stageNumber: 3, status: "confirmed", summary: "stage 3" },
+          { stageNumber: 4, status: "confirmed", summary: "stage 4" },
+          { stageNumber: 5, status: "confirmed", summary: "stage 5" },
+        ],
+        answers: {
+          "Q1-1": "A workflow-safe product planning tool",
+          "Q2-1": "Small teams",
+          "Q3-1": "Guided planning",
+        },
+      },
+      null,
+      2,
+    ),
+    "utf-8",
+  );
+}
+
+function writeReadyWorkflowConfig(dir: string): void {
+  fs.mkdirSync(path.join(dir, ".framework"), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, ".framework", "config.json"),
+    JSON.stringify(
+      {
+        roles: {
+          bindings: {
+            architecture_owner: { type: "github_user", id: "arc" },
+            l3_governance_owner: { type: "github_user", id: "cto" },
+            implementation_lead: {
+              type: "local_agent",
+              id: "codex-implementation-lead",
+            },
+            reviewer: { type: "github_user", id: "lead-reviewer" },
+            auditor: { type: "github_user", id: "auditor" },
+            release_owner: { type: "github_user", id: "release-owner" },
+            human_approver: { type: "github_user", id: "approver" },
+            worker_pool: { type: "local_agent", id: "worker-pool" },
+          },
+        },
+        workflow: {
+          publishPolicy: "approval_required",
+          outputs: ["local_files", "github"],
+        },
+      },
+      null,
+      2,
+    ),
+    "utf-8",
+  );
+}
+
 // ---------------------------------------------------------------------------
 // generate
 // ---------------------------------------------------------------------------
@@ -79,6 +136,7 @@ describe("generate command", () => {
     expect(output).toContain("generate");
     expect(output).toContain("--step");
     expect(output).toContain("--status");
+    expect(output).toContain("--workflow-profile");
   });
 
   it("--status in a non-framework dir prints 'No generation state'", () => {
@@ -91,6 +149,69 @@ describe("generate command", () => {
   it("--step 3 in a non-framework dir exits with error", () => {
     const result = runCliWithExit("generate --step 3");
     expect(result.exitCode).not.toBe(0);
+  });
+
+  it("--workflow-profile rejects invalid profiles", () => {
+    const result = runCliWithExit("generate --workflow-profile invalid");
+    const combined = result.stdout + result.stderr;
+
+    expect(result.exitCode).not.toBe(0);
+    expect(combined).toContain("Invalid workflow profile");
+  });
+
+  it("strict workflow profile blocks generation when role readiness is missing", () => {
+    withNonFrameworkDir((dir) => {
+      writeCompletedDiscoverSession(dir);
+
+      const result = runCliWithExit("generate --workflow-profile strict", {
+        cwd: dir,
+      });
+      const combined = result.stdout + result.stderr;
+
+      expect(result.exitCode).not.toBe(0);
+      expect(combined).toContain("G1.roles.required_bindings");
+      expect(combined).toContain("Workflow design_draft gate failed");
+      expect(
+        fs.existsSync(path.join(dir, "docs/idea/IDEA_CANVAS.md")),
+      ).toBe(false);
+    });
+  });
+
+  it("standard workflow profile reports findings and continues generation", () => {
+    withNonFrameworkDir((dir) => {
+      writeCompletedDiscoverSession(dir);
+
+      const result = runCliWithExit(
+        "generate --workflow-profile standard --step 1",
+        { cwd: dir },
+      );
+      const combined = result.stdout + result.stderr;
+
+      expect(result.exitCode).toBe(0);
+      expect(combined).toContain("G1.roles.required_bindings");
+      expect(combined).toContain("continuing because only strict profile");
+      expect(
+        fs.existsSync(path.join(dir, "docs/idea/IDEA_CANVAS.md")),
+      ).toBe(true);
+    });
+  });
+
+  it("strict workflow profile allows generation with hearing and role evidence", () => {
+    withNonFrameworkDir((dir) => {
+      writeCompletedDiscoverSession(dir);
+      writeReadyWorkflowConfig(dir);
+
+      const result = runCliWithExit(
+        "generate --workflow-profile strict --step 1",
+        { cwd: dir },
+      );
+
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain("Workflow design_draft gate passed");
+      expect(
+        fs.existsSync(path.join(dir, "docs/idea/IDEA_CANVAS.md")),
+      ).toBe(true);
+    });
   });
 });
 
