@@ -196,7 +196,7 @@ producer と gate/review/L3 authority が同一 target、または同一 actor l
 | `shirube trace verify` | 4-layer docs の整合性確認時 | SPEC/IMPL/VERIFY/OPS の trace を検証 | trace checked |
 | `shirube exit --reason <reason>` | CEO 承認で一時的に Shirube 管理を抜ける時 | `framework-managed` topic を外し、監査ログへ記録。session file は残す | exited |
 
-`framework` は後方互換 alias です。新しいドキュメント、公開例、MCP 利用ガイドでは `shirube` を primary command とします。
+`framework` は deprecated alias です。新しいドキュメント、公開例、MCP 利用ガイドでは `shirube` を primary command とします。
 
 ### shirube discover
 対話形式でヒアリングを行い、アイデアを構造化します。
