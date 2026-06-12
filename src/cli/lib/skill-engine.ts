@@ -7,6 +7,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { walkDir } from "./fs-utils.js";
 import {
   type Skill,
   type SkillCategory,
@@ -71,37 +72,24 @@ function collectSourceFiles(
   if (!fs.existsSync(srcDir)) return [];
 
   const files: FileInfo[] = [];
-  walkDir(srcDir, projectDir, files);
+  for (const filePath of walkDir(srcDir, /\.(ts|tsx|js|jsx)$/)) {
+    if (!isSourceFile(filePath)) continue;
+
+    try {
+      const content = fs.readFileSync(filePath, "utf-8");
+      files.push({
+        relativePath: path.relative(projectDir, filePath),
+        content,
+      });
+    } catch {
+      // Skip unreadable files
+    }
+  }
   return files;
 }
 
-function walkDir(
-  dir: string,
-  rootDir: string,
-  results: FileInfo[],
-): void {
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (entry.name === "node_modules" || entry.name === ".git") continue;
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      walkDir(fullPath, rootDir, results);
-    } else if (isSourceFile(entry.name)) {
-      try {
-        const content = fs.readFileSync(fullPath, "utf-8");
-        results.push({
-          relativePath: path.relative(rootDir, fullPath),
-          content,
-        });
-      } catch {
-        // Skip unreadable files
-      }
-    }
-  }
-}
-
-function isSourceFile(name: string): boolean {
-  return /\.(ts|tsx|js|jsx)$/.test(name) && !name.endsWith(".d.ts");
+function isSourceFile(filePath: string): boolean {
+  return /\.(ts|tsx|js|jsx)$/.test(filePath) && !filePath.endsWith(".d.ts");
 }
 
 export function detectStructurePatterns(

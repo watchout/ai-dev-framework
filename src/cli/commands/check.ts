@@ -1,6 +1,5 @@
 import type { Command } from "commander";
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { extname, join } from "node:path";
+import { readFileSync, statSync } from "node:fs";
 import {
   validateDeliveryProfiles,
   type DeliveryProfileDocument,
@@ -15,6 +14,7 @@ import {
   type GovernanceBoneRisk,
   type GovernanceBoneResult,
 } from "../lib/governance-bone-validator.js";
+import { walkJsonFiles } from "../lib/fs-utils.js";
 import { checkTests, formatTestQualityReport } from "../lib/test-quality-checker.js";
 
 const GOVERNANCE_MODES = ["warning", "strict"] as const;
@@ -209,19 +209,6 @@ function collectJsonFiles(paths: string[]): string[] {
   }
 
   return [...files].sort();
-}
-
-function walkJsonFiles(dir: string): string[] {
-  const results: string[] = [];
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const fullPath = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      results.push(...walkJsonFiles(fullPath));
-    } else if (entry.isFile() && extname(entry.name) === ".json") {
-      results.push(fullPath);
-    }
-  }
-  return results;
 }
 
 function formatDeliveryProfileResult(result: DeliveryProfileResult): string {

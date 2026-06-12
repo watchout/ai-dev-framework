@@ -15,6 +15,7 @@ import {
   analyzeTestFiles,
   detectTestIssues,
 } from "./test-model.js";
+import { collectSourceFiles } from "./checkpoint-engine.js";
 
 function makeReport(overrides?: Partial<TestReport>): TestReport {
   return {
@@ -258,6 +259,19 @@ describe("test-model", () => {
       const result = analyzeTestFiles(tmpDir);
       expect(result.sourceFiles).toHaveLength(1);
       expect(result.testFiles).toHaveLength(1);
+    });
+
+    it("uses the same traversal list as checkpoint collection", () => {
+      fs.writeFileSync(path.join(tmpDir, "src", "lib", "utils.ts"), "export const x = 1;");
+      fs.writeFileSync(path.join(tmpDir, "src", "lib", "utils.spec.ts"), "it('works', () => {});");
+      fs.writeFileSync(path.join(tmpDir, "src", "lib", "readme.md"), "# Readme");
+
+      const checkpointFiles = collectSourceFiles(tmpDir, "src").sort();
+      const result = analyzeTestFiles(tmpDir);
+
+      expect([...result.sourceFiles, ...result.testFiles].sort()).toEqual(
+        checkpointFiles,
+      );
     });
 
     it("identifies orphaned source files without tests", () => {
