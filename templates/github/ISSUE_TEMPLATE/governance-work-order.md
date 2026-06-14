@@ -12,9 +12,12 @@ labels: governance, work-order
 - Goal:
 - Phase:
 - Work Order:
+- GitHub durable state URL:
 - Risk classification:
 - Delivery profile:
 - Delivery strategy:
+- Phase goal:
+- Runner policy:
 - Work unit:
 - Lane:
 - PR mode:
@@ -24,6 +27,7 @@ labels: governance, work-order
 - Action tools:
 - Context evidence:
 - Memory/recovery evidence:
+- Evidence contract:
 - Approval policy:
 - Audit evidence:
 - Rollback/replay:
@@ -35,12 +39,41 @@ labels: governance, work-order
 
 ## Scope
 - In scope:
-- Out of scope:
+- Non-scope / non-goals:
+- Acceptance criteria:
+- Role flow:
+- Current owner:
+- Next action:
+- Evidence required:
+- Required review:
 - Allowed files:
 - Allowed actions:
 - Forbidden actions:
 - Stop conditions:
 - Fallback next work policy:
+
+## Runner Policy
+- Policy: codex_native_fast_lane | claude_code_autonomous_lane | headless_runtime_adapter_lane | governed_manual_lane | stop_lane
+- Runtime mode:
+- Bounded phase goal:
+- Pull rule: startup/restart | after completion | before idle | AUN notification with GitHub URL | supervised idle worker
+- Stop lane triggers:
+- AUN usage: optional acceleration only; GitHub remains durable SSOT.
+
+## GitHub Work Queue
+- Needs label: needs:arc | needs:impl | needs:audit | needs:qa | needs:check | needs:cto
+- Owner label: owner:<role-or-bot>
+- Route label: route:fast | route:protected
+- Blocked label:
+- Ready/done label:
+
+## Evidence Contract
+- PR comment / handoff evidence:
+- CI/check evidence:
+- Review/audit evidence:
+- Runtime evidence:
+- Exact head SHA:
+- Not sufficient: AUN ACK, queue row, outbound queued, Discord projection, TUI/tmux text, green CI alone for runtime-impacting changes.
 
 ## Risk Classification
 - Level: R0 | R1 | R2 | R3 | R4

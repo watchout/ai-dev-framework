@@ -13,6 +13,20 @@ function workOrder(overrides: Record<string, unknown> = {}): Record<string, unkn
     work_order_id: "SHIRUBE-CONVEYOR-001",
     repo: "watchout/ai-dev-framework",
     product: "shirube",
+    github_state_ref: {
+      issue_url: "https://github.com/watchout/ai-dev-framework/issues/401",
+      pr_url: "https://github.com/watchout/ai-dev-framework/pull/401",
+    },
+    phase_goal: {
+      phase_type: "implementation",
+      goal: "Implement a bounded Work Order contract update.",
+      next_phase_handoff: "L1 audit",
+    },
+    runner_policy: "codex_native_fast_lane",
+    evidence_contract: {
+      required: ["pr_comment", "checks", "review"],
+      not_sufficient: ["aun_ack", "queue_id"],
+    },
     risk_class: "R1",
     work_unit: "PR",
     architecture_owner: "IYASAKA ARC",
@@ -22,6 +36,12 @@ function workOrder(overrides: Record<string, unknown> = {}): Record<string, unkn
     merge_authority: "Shirube repo maintainer",
     scope: ["Implement bounded profile work."],
     non_goals: ["Do not merge automatically."],
+    acceptance_criteria: ["A draft PR captures implementation evidence."],
+    role_flow: ["arc", "adf-lead", "audit", "qa", "cto-if-required"],
+    current_owner: "adf-lead",
+    next_action: "open implementation PR",
+    evidence_required: ["PR comment", "local checks", "review links"],
+    required_review: ["L1 audit"],
     allowed_files: ["src/cli/lib/*"],
     allowed_actions: ["edit code", "run tests", "open PR"],
     forbidden_actions: ["merge", "production deploy"],
@@ -114,6 +134,27 @@ describe("resolveWorkOrderDeliveryDefaults", () => {
     );
 
     expect(result.gaps).toContain("owner:implementation_owner");
+  });
+
+  it("reports missing GitHub-first phase contract fields", () => {
+    const result = resolveWorkOrderDeliveryDefaults(
+      profile(),
+      workOrder({
+        github_state_ref: "",
+        phase_goal: "",
+        runner_policy: "",
+        evidence_contract: "",
+      }),
+    );
+
+    expect(result.gaps).toEqual(
+      expect.arrayContaining([
+        "envelope:github_state_ref",
+        "envelope:phase_goal",
+        "envelope:runner_policy",
+        "envelope:evidence_contract",
+      ]),
+    );
   });
 
   it("reports profile reference mismatches", () => {

@@ -187,6 +187,7 @@ Shirube can govern its own development and at least one internal project through
 | 4MCP Fast Track Minimum Safety Profile | #264 defines lane/risk/action-envelope/stop-sentinel evidence so AUN, Shirube, Kodama, and Wasurezu can continue current work before the full autonomous runner platform exists. |
 | IYASAKA PR Conveyor Delivery Profile | #266/#269 defines the internal `iyasaka-internal.pr-conveyor` profile schema, risk defaults, runner-agnostic contract, and no-automatic-merge stop policy before Work Order/queue/AUN bridge wiring. |
 | Work Order Delivery Defaults | #270 makes delivery strategy, risk class, lane, PR mode, audit timing, and owner/action-envelope fields first-class Work Order evidence resolved from the selected delivery profile. |
+| GitHub-First Autonomous Pull Contract | #401 makes GitHub issue/PR state the durable Work Order and phase goal SSOT, adds runner_policy and evidence_contract fields, and keeps AUN as optional acceleration until runtime puller evidence exists. |
 | M0 Conveyor Audit Result And Reconcile | #309 M0-A/B makes PR-local exact-head `conveyor:audit-result/v1` evidence and deterministic transition plans mandatory before internal usability claims. |
 | M0 Conveyor Current Ops Tick | #309 M0-C makes `conveyor tick` output lane queues, reconcile backlog, dirty audit queue, merged stale cleanup, dependency releases, human approvals, and deployed commit blockers. |
 | M0 Conveyor Guarded Apply | #309 M0-D adds dry-run-default guarded label/comment apply with explicit live confirmation and exact-head checks. |

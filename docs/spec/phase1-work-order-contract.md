@@ -14,6 +14,7 @@ traces:
 - Source instruction: AUN notification `3602251b-ce84-46aa-9e9c-f17b83ea3d99`
 - Parent: #238 / Enterprise Delivery Graph
 - Early dependencies: #227, #240, #242
+- GitHub-first autonomous pull addendum: #401 / SPEC-GHFIRST-401
 
 ## 1. Purpose
 Define `work-order/v1` as a versioned, verifiable dispatch contract before the
@@ -54,10 +55,49 @@ type WorkOrderV1 = {
   schema_version: "work-order/v1";
   work_order_id: string;
   issue?: number | string;
+  github_state_ref?: {
+    issue_url: string;
+    pr_url?: string;
+    durable_state: "github_issue_pr" | string;
+  };
   task_id?: string;
   work_package_id?: string;
   pr?: string;
   objective: string;
+  phase_goal?: {
+    phase_id: string;
+    phase_type: string;
+    goal: string;
+    scope: string[];
+    non_scope: string[];
+    acceptance_criteria: string[];
+    allowed_implementation_actions: string[];
+    required_checks: string[];
+    stop_conditions: string[];
+    evidence_writeback: string[];
+    next_phase_handoff: string;
+  };
+  runner_policy?: {
+    policy:
+      | "codex_native_fast_lane"
+      | "claude_code_autonomous_lane"
+      | "headless_runtime_adapter_lane"
+      | "governed_manual_lane"
+      | "stop_lane";
+    github_queue_ssot?: true;
+    aun_usage?: "optional_acceleration_only" | string;
+  };
+  evidence_contract?: {
+    required_evidence: string[];
+    not_sufficient_evidence: string[];
+    merge_done_separation: true;
+  };
+  acceptance_criteria?: string[];
+  role_flow?: string[];
+  current_owner?: string;
+  next_action?: string;
+  evidence_required?: string[];
+  required_review?: string[];
   handoff_target: string;
   dispatch_surfaces: Array<
     | "aun"
@@ -129,6 +169,18 @@ A Work Order must not include generated shell commands or direct argv payloads.
 It names runtime adapter or structured invocation requirements; #240 owns the
 actual runtime command adapter and injection policy validation.
 
+## 5.1 GitHub-First Autonomous Pull Addendum
+For GitHub-first autonomous pull adoption, #401 requires a concrete
+`github_state_ref`, bounded `phase_goal`, `runner_policy`, and
+`evidence_contract`. These fields make the Work Order executable by Codex,
+Claude Code, headless adapters, or manual runners without making any runner the
+core architecture.
+
+The addendum also requires acceptance criteria, role flow, current owner, next
+action, evidence required, and required review. AUN may accelerate notification
+or evidence transport, but GitHub issue/PR evidence remains the durable source
+of truth.
+
 ## 6. Context-Pack Boundary
 When a Work Order uses Kodama context, it must cite `context-pack/v1` evidence
 by `pack_id` and citation/source metadata. It may also declare explicit
@@ -145,6 +197,9 @@ cites them.
   context pack refs or non-applicability, runtime adapter needs, expected output
   schema, write scope, authority boundary, gates, non-claims, and handoff
   target.
+- GitHub-first Work Orders also cover durable GitHub state, phase goal,
+  runner policy, evidence contract, current owner, next action, acceptance
+  criteria, required evidence, and required review.
 - `workflow check --action work_order` is warning-first for missing records and
   advisory boundaries, but blocks a present Work Order with missing or invalid
   required fields.

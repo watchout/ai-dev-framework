@@ -32,10 +32,55 @@ traces:
   "schema_version": "work-order/v1",
   "work_order_id": "WO-244",
   "issue": 244,
+  "repo": "watchout/ai-dev-framework",
+  "product": "shirube",
+  "github_state_ref": {
+    "issue_url": "https://github.com/watchout/ai-dev-framework/issues/244",
+    "pr_url": "https://github.com/watchout/ai-dev-framework/pull/<number>",
+    "durable_state": "github_issue_pr"
+  },
   "work_package_id": "phase1-work-order-contract",
   "objective": "Implement warning-first Work Order contract validation.",
+  "phase_goal": {
+    "phase_id": "phase1-work-order-contract.impl",
+    "phase_type": "implementation",
+    "goal": "Implement warning-first Work Order contract validation.",
+    "scope": ["workflow check and Work Order docs"],
+    "non_scope": ["live AUN dispatch", "merge automation"],
+    "acceptance_criteria": ["strict work_order fixture passes"],
+    "allowed_implementation_actions": ["edit files", "run checks", "open PR"],
+    "required_checks": ["workflow tests", "type-check"],
+    "stop_conditions": ["protected approval boundary"],
+    "evidence_writeback": ["GitHub PR comment"],
+    "next_phase_handoff": "L1 implementation audit"
+  },
+  "runner_policy": {
+    "policy": "codex_native_fast_lane",
+    "github_queue_ssot": true,
+    "aun_usage": "optional_acceleration_only"
+  },
+  "evidence_contract": {
+    "required_evidence": ["PR comment", "checks", "review links"],
+    "not_sufficient_evidence": ["AUN ACK", "queue row", "Discord projection"],
+    "merge_done_separation": true
+  },
   "handoff_target": "codex",
   "dispatch_surfaces": ["aun", "codex", "claude", "shirube_report"],
+  "risk_class": "R2",
+  "work_unit": "PR",
+  "architecture_owner": "IYASAKA ARC",
+  "implementation_owner": "Shirube repo maintainer",
+  "review_owner": "Shirube reviewer",
+  "audit_owner": "Shirube audit owner",
+  "merge_authority": "Shirube repo maintainer",
+  "scope": ["Implement warning-first Work Order contract validation."],
+  "non_goals": ["Do not enable live AUN dispatch.", "Do not merge automatically."],
+  "acceptance_criteria": ["Complete Work Order fixture passes strict migration audit."],
+  "role_flow": ["arc", "repo-specific implementation bot", "audit", "qa/check", "cto-if-required"],
+  "current_owner": "repo-specific implementation bot",
+  "next_action": "Open implementation PR with evidence handoff.",
+  "evidence_required": ["PR comment", "checks", "review links"],
+  "required_review": ["L1 implementation audit"],
   "inputs": [
     {
       "type": "aun_message",

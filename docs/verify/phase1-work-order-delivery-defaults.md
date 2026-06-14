@@ -39,6 +39,7 @@ Full `npm test` should run before audit/merge readiness.
 | R4 missing declarations with profile | PASS, serial gate defaults |
 | R4 declaring PR Conveyor/after-PR/normal | WARN |
 | placeholder implementation owner | BLOCK under `required_fields`, WARN under delivery defaults |
+| missing GitHub-first phase contract fields | WARN under delivery defaults and BLOCK when required fields are enforced |
 | mismatched profile ref | resolver gap |
 
 ## 4. Residual Risks
