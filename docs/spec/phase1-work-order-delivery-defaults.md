@@ -14,6 +14,7 @@ traces:
 - Parent Issue: #266
 - Depends on: #269 delivery profile schema and validator
 - Related: #244 work-order/v1, #249 Governance Bone, #264 4MCP safety profile
+- Related GitHub-first addendum: #401 / SPEC-GHFIRST-401
 
 ## 1. Purpose
 Make `delivery_strategy` first-class in Shirube Work Orders and allow Work
@@ -36,6 +37,10 @@ Work Order defaults are routing evidence, not authority grants.
 PR Conveyor Work Orders must include or inherit:
 
 - `delivery_profile_ref`;
+- `github_state_ref`;
+- `phase_goal`;
+- `runner_policy`;
+- `evidence_contract`;
 - `delivery_strategy`;
 - `work_unit`;
 - `lane`;
@@ -49,6 +54,12 @@ PR Conveyor Work Orders must include or inherit:
 - `merge_authority`;
 - `scope`;
 - `non_goals`;
+- `acceptance_criteria`;
+- `role_flow`;
+- `current_owner`;
+- `next_action`;
+- `evidence_required`;
+- `required_review`;
 - `allowed_files`;
 - `allowed_actions`;
 - `forbidden_actions`;
@@ -57,6 +68,8 @@ PR Conveyor Work Orders must include or inherit:
 - `fallback_next_work_policy`.
 
 The existing `work-order/v1` runtime fields remain required by #244.
+The GitHub-first autonomous pull fields remain required by #401 when a profile
+is used for GitHub queue work.
 
 ## 4. Default Resolution
 The resolver takes:
@@ -111,6 +124,8 @@ WARN for migration compatibility.
 Acceptance criteria:
 
 - a Work Order can declare or inherit `delivery_strategy=pr_conveyor`;
+- a Work Order declares durable GitHub state, phase goal, runner policy, and
+  evidence contract before runner execution;
 - R0-R2 default to normal PR and audit after PR;
 - R3 defaults to governed draft/reference behavior;
 - R4 defaults to serial gate and blocks execution until approval/audit;

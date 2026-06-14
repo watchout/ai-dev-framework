@@ -62,6 +62,28 @@ describe("validateDeliveryProfiles", () => {
     );
   });
 
+  it("requires GitHub-first Work Order fields in profile requirements", () => {
+    const profile = validProfileObject();
+    profile.work_order_required_fields = (
+      profile.work_order_required_fields as string[]
+    ).filter((field) => field !== "runner_policy");
+
+    const result = validateDeliveryProfiles(
+      [{ path: "profile.json", content: JSON.stringify(profile) }],
+      { mode: "strict" },
+    );
+
+    expect(result.status).toBe("BLOCK");
+    expect(result.findings).toContainEqual(
+      expect.objectContaining({
+        severity: "BLOCK",
+        type: "missing_field",
+        field: "work_order_required_fields",
+        message: expect.stringContaining("runner_policy"),
+      }),
+    );
+  });
+
   it("blocks unknown delivery strategies", () => {
     const profile = validProfileObject();
     profile.allowed_delivery_strategies = ["pr_conveyor", "unreviewed_parallel_merge"];
