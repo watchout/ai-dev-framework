@@ -28,6 +28,10 @@ The resolver:
 
 - requires concrete owner fields;
 - requires action-envelope fields;
+- requires GitHub-first contract fields for PR Conveyor Work Orders:
+  `github_state_ref`, `phase_goal`, `runner_policy`, `evidence_contract`,
+  acceptance criteria, role flow, current owner, next action, evidence
+  required, and required review;
 - reads `risk_class`;
 - reads the selected profile's `strategy_by_risk`;
 - resolves lane, delivery strategy, audit timing, and PR mode;

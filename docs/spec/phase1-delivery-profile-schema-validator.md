@@ -16,6 +16,7 @@ traces:
 - Safety profile dependency: #264 / PR #274
 - ARC source profile: `iyasaka-arc/cross-cutting/profiles/draft/iyasaka-internal.pr-conveyor.delivery-profile.json`
 - ARC rollout plan: `iyasaka-arc/cross-cutting/specs/draft/2026-06-02-iyasaka-pr-conveyor-rollout-plan.md`
+- GitHub-first autonomous pull addendum: #401 / SPEC-GHFIRST-401
 
 ## 1. Purpose
 Define the deterministic Shirube delivery-profile schema and validator needed
@@ -132,11 +133,26 @@ Required runner evidence:
 - `residual_risk`;
 - `stop_conditions_encountered`.
 
+GitHub-first Work Order field names required in `work_order_required_fields`:
+
+- `github_state_ref`;
+- `phase_goal`;
+- `runner_policy`;
+- `evidence_contract`;
+- `acceptance_criteria`;
+- `role_flow`;
+- `current_owner`;
+- `next_action`;
+- `evidence_required`;
+- `required_review`.
+
 ## 7. Acceptance Criteria and Scenarios
 Acceptance criteria:
 
 - valid `iyasaka-internal.pr-conveyor` profile passes;
 - missing required fields produce findings;
+- missing GitHub-first Work Order field names in
+  `work_order_required_fields` produce findings;
 - strict mode blocks missing required fields;
 - unknown delivery strategies block;
 - R3 with `normal` PR mode blocks;

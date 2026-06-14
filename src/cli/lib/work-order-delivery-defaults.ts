@@ -42,8 +42,18 @@ const REQUIRED_OWNER_FIELDS = [
 
 const REQUIRED_ENVELOPE_FIELDS = [
   "work_unit",
+  "github_state_ref",
+  "phase_goal",
+  "runner_policy",
+  "evidence_contract",
   "scope",
   "non_goals",
+  "acceptance_criteria",
+  "role_flow",
+  "current_owner",
+  "next_action",
+  "evidence_required",
+  "required_review",
   "allowed_files",
   "allowed_actions",
   "forbidden_actions",
