@@ -5,10 +5,30 @@
 
 import type { ProfileType } from "./profile-model.js";
 
+export type ProjectStateJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | ProjectStateJsonValue[]
+  | { [key: string]: ProjectStateJsonValue };
+
+export type ProjectStateJsonObject = {
+  [key: string]: ProjectStateJsonValue;
+};
+
 export interface ProjectConfig {
   projectName: string;
   description: string;
   profileType?: ProfileType;
+  version?: string;
+  repository?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  phase?: number;
+  status?: string;
+  techStack?: ProjectStateJsonObject;
+  projectSettings?: ProjectStateJsonObject;
 }
 
 function generateMcpServerClaudeMd(config: ProjectConfig, today: string): string {
@@ -897,8 +917,11 @@ export function generateMcpJson(): string {
 export function generateProjectState(config: ProjectConfig): string {
   const now = new Date().toISOString();
   const profileType = config.profileType ?? "app";
+  const createdAt = config.createdAt ?? now;
+  const updatedAt = config.updatedAt ?? now;
   const techStack =
-    profileType === "mcp-server"
+    config.techStack ??
+    (profileType === "mcp-server"
       ? {
           framework: "mcp-server",
           language: "typescript",
@@ -914,24 +937,27 @@ export function generateProjectState(config: ProjectConfig): string {
           ui: "react",
           testing: "vitest",
           hosting: "vercel",
-        };
+        });
+  const projectSettings = config.projectSettings ?? {
+    aiProvider: "anthropic",
+    aiModel: "claude-sonnet-4-20250514",
+    autoCommit: false,
+    escalationMode: "strict",
+  };
 
   return JSON.stringify(
     {
       name: config.projectName,
-      version: "0.1.0",
+      version: config.version ?? "0.1.0",
       profileType,
-      createdAt: now,
-      updatedAt: now,
-      phase: -1,
-      status: "initialized",
+      description: config.description,
+      createdAt,
+      updatedAt,
+      phase: config.phase ?? -1,
+      status: config.status ?? "initialized",
+      ...(config.repository ? { repository: config.repository } : {}),
       techStack,
-      config: {
-        aiProvider: "anthropic",
-        aiModel: "claude-sonnet-4-20250514",
-        autoCommit: false,
-        escalationMode: "strict",
-      },
+      config: projectSettings,
     },
     null,
     2,

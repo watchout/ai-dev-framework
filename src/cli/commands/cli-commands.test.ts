@@ -150,6 +150,79 @@ describe("gate command", () => {
 });
 
 // ---------------------------------------------------------------------------
+// regenerate-project-state
+// ---------------------------------------------------------------------------
+describe("regenerate-project-state command", () => {
+  it("--help shows project state options", () => {
+    const output = runCli("regenerate-project-state --help");
+    expect(output).toContain("regenerate-project-state");
+    expect(output).toContain("--check");
+    expect(output).toContain("--config");
+  });
+
+  it("regenerates project.json and detects drift", () => {
+    withNonFrameworkDir((dir) => {
+      const frameworkDir = path.join(dir, ".framework");
+      fs.mkdirSync(frameworkDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(frameworkDir, "project-state.config.json"),
+        JSON.stringify(
+          {
+            projectName: "sample-cli",
+            description: "sample CLI project",
+            profileType: "cli",
+            createdAt: "2026-04-27T07:00:00.000Z",
+            updatedAt: "2026-04-27T07:00:00.000Z",
+            techStack: {
+              framework: "nodejs-cli",
+              language: "typescript",
+              testing: "vitest",
+            },
+          },
+          null,
+          2,
+        ),
+        "utf-8",
+      );
+
+      const writeResult = runCliWithExit("regenerate-project-state", {
+        cwd: dir,
+      });
+      expect(writeResult.exitCode).toBe(0);
+      expect(
+        fs.existsSync(path.join(frameworkDir, "project.json")),
+      ).toBe(true);
+
+      const checkResult = runCliWithExit(
+        "regenerate-project-state --check",
+        { cwd: dir },
+      );
+      expect(checkResult.exitCode).toBe(0);
+      expect(checkResult.stdout).toContain("PASS");
+
+      const projectJsonPath = path.join(frameworkDir, "project.json");
+      const projectJson = JSON.parse(
+        fs.readFileSync(projectJsonPath, "utf-8"),
+      ) as { techStack: { testing: string } };
+      projectJson.techStack.testing = "manual";
+      fs.writeFileSync(
+        projectJsonPath,
+        JSON.stringify(projectJson, null, 2),
+        "utf-8",
+      );
+
+      const driftResult = runCliWithExit(
+        "regenerate-project-state --check",
+        { cwd: dir },
+      );
+      expect(driftResult.exitCode).not.toBe(0);
+      expect(driftResult.stdout).toContain("FAIL");
+      expect(driftResult.stdout).toContain("$.techStack.testing");
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // audit
 // ---------------------------------------------------------------------------
 describe("audit command", () => {
