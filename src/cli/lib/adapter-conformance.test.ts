@@ -93,6 +93,13 @@ function runConformanceSuite(
     // ── getContextPack ────────────────────────────────────────────────
     it("getContextPack returns ContextPack with required fields", async () => {
       const pack = await adapter.getContextPack(tmpDir);
+      expect(pack.schemaVersion).toBe("context-pack/v1");
+      expect(typeof pack.taskId).toBe("string");
+      expect(pack.provider).toBe(adapter.providerId);
+      expect(typeof pack.timestamp).toBe("string");
+      expect(Array.isArray(pack.inputFiles)).toBe(true);
+      expect(pack.toolPolicy.allowedTools.length).toBeGreaterThan(0);
+      expect(pack.outputSpec.requiredArtifacts.length).toBeGreaterThan(0);
       expect(pack.providerId).toBe(adapter.providerId);
       expect(typeof pack.sessionId).toBe("string");
       expect(pack.workingDirectory).toBe(tmpDir);
@@ -104,6 +111,12 @@ function runConformanceSuite(
     // ── reportAIChangeRecord ──────────────────────────────────────────
     it("reportAIChangeRecord does not throw", async () => {
       const record: AIChangeRecord = {
+        schemaVersion: "ai-change-record/v1",
+        prId: "PR-TEST",
+        aiProvider: adapter.providerId,
+        promptHash: "sha256:test",
+        gateResults: [],
+        humanReviewedAt: null,
         sessionId: "test-session",
         providerId: adapter.providerId,
         taskId: "TASK-001",

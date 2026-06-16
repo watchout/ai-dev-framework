@@ -11,6 +11,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { createHash } from "node:crypto";
 import { loadSyncState } from "./github-model.js";
 import {
   type GateState,
@@ -37,6 +38,12 @@ import {
 } from "./profile-model.js";
 import { validateAllSpecs } from "./gate-spec-validator.js";
 import { buildGraph, verifyTraceability } from "./trace-engine.js";
+import type {
+  ContextPack,
+  ContextPackInputFile,
+  DeliveryTier,
+  GateResultSummary,
+} from "./gate-engine-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
@@ -495,6 +502,7 @@ export function checkAllGates(
 
   // Save
   saveGateState(projectDir, state);
+  saveContextPack(projectDir, buildGateContextPack(projectDir, state, profile));
 
   return buildAllGatesResult(state);
 }
@@ -536,6 +544,194 @@ export function checkSingleGate(
 
   saveGateState(projectDir, state);
   return buildAllGatesResult(state);
+}
+
+// ─────────────────────────────────────────────
+// Context Pack persistence (#340)
+// ─────────────────────────────────────────────
+
+const CONTEXT_PACK_FILE = ".framework/context-pack.json";
+
+export function buildGateContextPack(
+  projectDir: string,
+  state: GateState,
+  profile?: ProfileType,
+): ContextPack {
+  const timestamp = state.updatedAt || new Date().toISOString();
+  const taskId = readContextPackTaskId(projectDir) ?? "gate-check";
+  const provider = "shirube-gate-engine";
+  const inputFiles = collectContextPackInputFiles(projectDir, state);
+  const gateResults = summarizeGateResults(state);
+  const tier: DeliveryTier = "standard";
+
+  return {
+    schemaVersion: "context-pack/v1",
+    taskId,
+    provider,
+    toolPolicy: {
+      permissionMode: "local-cli",
+      sandbox: "current-process",
+      networkAccess: false,
+      allowedTools: [
+        "filesystem:read",
+        "filesystem:write:.framework/gates.json",
+        "filesystem:write:.framework/context-pack.json",
+      ],
+      deniedTools: ["external-send", "merge", "deploy", "secret-read"],
+    },
+    inputFiles,
+    outputSpec: {
+      format: "json",
+      requiredArtifacts: [".framework/gates.json", CONTEXT_PACK_FILE],
+      evidence: ["gateA", "gateB", "gateC"],
+    },
+    timestamp,
+    providerId: provider,
+    sessionId: `gate-check-${timestamp.replace(/[:.]/g, "-")}`,
+    workingDirectory: projectDir,
+    relevantFiles: inputFiles.map((file) => ({
+      path: file.path,
+      contentSnippet: "",
+      role: file.role,
+      hash: file.hash,
+    })),
+    activeTask: taskId,
+    tier,
+    protectedCategories: [],
+    meta: {
+      profile: profile ?? loadProfileType(projectDir) ?? "app",
+      gateResults,
+    },
+  };
+}
+
+export function saveContextPack(projectDir: string, pack: ContextPack): void {
+  const filePath = path.join(projectDir, CONTEXT_PACK_FILE);
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, JSON.stringify(pack, null, 2), "utf-8");
+}
+
+function summarizeGateResults(state: GateState): GateResultSummary[] {
+  return [
+    summarizeGateResult("A", state.gateA),
+    summarizeGateResult("B", state.gateB),
+    summarizeGateResult("C", state.gateC),
+  ];
+}
+
+function summarizeGateResult(
+  gateId: "A" | "B" | "C",
+  gate: GateState["gateA"] | GateState["gateB"] | GateState["gateC"],
+): GateResultSummary {
+  return {
+    gateId,
+    status: gate.status,
+    checkedAt: gate.checkedAt,
+    warnings: gate.checks
+      .filter((check) => check.status === "warning")
+      .map((check) => check.message),
+    failures: gate.checks
+      .filter((check) => !check.passed)
+      .map((check) => check.message),
+  };
+}
+
+function collectContextPackInputFiles(
+  projectDir: string,
+  state: GateState,
+): ContextPackInputFile[] {
+  const files = new Map<string, ContextPackInputFile>();
+  const add = (relativePath: string, role?: ContextPackInputFile["role"]) => {
+    const normalized = normalizeRelativePath(relativePath);
+    const absolutePath = path.join(projectDir, normalized);
+    if (!fs.existsSync(absolutePath)) return;
+    if (!fs.statSync(absolutePath).isFile()) return;
+    files.set(normalized, {
+      path: normalized,
+      role: role ?? inferContextPackFileRole(normalized),
+      hash: hashFile(absolutePath),
+    });
+  };
+
+  add("package.json", "config");
+  add(".framework/project.json", "config");
+  add(".framework/config.json", "config");
+  add(".framework/current-session.json", "config");
+  add(".framework/plan.json", "config");
+  add(".github/workflows/ci.yml", "config");
+  add(".github/workflows/ci.yaml", "config");
+  add("docs/spec/v1.2.0-gate-engine.md", "spec");
+  add("docs/specs/09_ENFORCEMENT.md", "spec");
+  add("specs/09_ENFORCEMENT.md", "spec");
+
+  for (const check of state.gateC.checks) {
+    if (check.filePath) add(check.filePath, "spec");
+  }
+
+  return Array.from(files.values()).sort((a, b) =>
+    a.path.localeCompare(b.path),
+  );
+}
+
+function readContextPackTaskId(projectDir: string): string | null {
+  const sessionPath = path.join(projectDir, ".framework/current-session.json");
+  if (!fs.existsSync(sessionPath)) return null;
+  try {
+    const raw = JSON.parse(fs.readFileSync(sessionPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
+    return firstStringValue(raw, [
+      "taskId",
+      "task_id",
+      "featureId",
+      "feature",
+      "id",
+    ]);
+  } catch {
+    return null;
+  }
+}
+
+function firstStringValue(
+  record: Record<string, unknown>,
+  keys: string[],
+): string | null {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === "string" && value.trim()) return value;
+  }
+  return null;
+}
+
+function inferContextPackFileRole(
+  relativePath: string,
+): ContextPackInputFile["role"] {
+  if (
+    relativePath === "package.json" ||
+    relativePath.startsWith(".framework/") ||
+    relativePath.startsWith(".github/")
+  ) {
+    return "config";
+  }
+  if (relativePath.startsWith("docs/") || relativePath.startsWith("specs/")) {
+    return "spec";
+  }
+  return "source";
+}
+
+function hashFile(filePath: string): string | undefined {
+  try {
+    return createHash("sha256")
+      .update(fs.readFileSync(filePath))
+      .digest("hex");
+  } catch {
+    return undefined;
+  }
+}
+
+function normalizeRelativePath(relativePath: string): string {
+  return path.normalize(relativePath).split(path.sep).join("/");
 }
 
 // ─────────────────────────────────────────────

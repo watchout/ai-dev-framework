@@ -59,12 +59,37 @@ export class ClaudeCodeAdapter implements LLMRuntimeAdapter {
     const relevantFiles = collectRelevantFiles(projectDir);
     const diff = getGitDiff(projectDir);
     const detection = diff ? detectProtectedPatterns(diff) : { categories: [] as string[] };
+    const timestamp = new Date().toISOString();
+    const sessionId = `claude-code-${Date.now()}`;
+    const taskId = "adapter-context-pack";
 
     return {
+      schemaVersion: "context-pack/v1",
+      taskId,
+      provider: this.providerId,
+      toolPolicy: {
+        permissionMode: "adapter-default",
+        sandbox: "adapter-runtime",
+        networkAccess: false,
+        allowedTools: ["filesystem:read", "git:diff"],
+        deniedTools: ["external-send", "merge", "deploy"],
+      },
+      inputFiles: relevantFiles.map((file) => ({
+        path: file.path,
+        role: file.role ?? "unknown",
+        hash: file.hash,
+      })),
+      outputSpec: {
+        format: "mixed",
+        requiredArtifacts: ["implementation diff", "test evidence"],
+        evidence: ["gate-results", "ai-change-record"],
+      },
+      timestamp,
       providerId: this.providerId,
-      sessionId: `claude-code-${Date.now()}`,
+      sessionId,
       workingDirectory: projectDir,
       relevantFiles,
+      activeTask: taskId,
       tier: detection.categories.length > 0 ? "full" : "standard",
       protectedCategories: detection.categories,
     };

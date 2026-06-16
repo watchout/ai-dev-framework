@@ -196,6 +196,48 @@ producer と gate/review/L3 authority が同一 target、または同一 actor l
 | `shirube trace verify` | 4-layer docs の整合性確認時 | SPEC/IMPL/VERIFY/OPS の trace を検証 | trace checked |
 | `shirube exit --reason <reason>` | CEO 承認で一時的に Shirube 管理を抜ける時 | `framework-managed` topic を外し、監査ログへ記録。session file は残す | exited |
 
+### Context Pack / AI Change Record
+
+`shirube gate check` は `.framework/gates.json` と同時に `.framework/context-pack.json` を書き出します。Context Pack は「このgate評価が何を入力に、どの権限で、どの出力artifactを期待して実行されたか」を再現するための機械可読証跡です。schema は `docs/specs/schemas/context-pack.schema.json`、example は `docs/specs/schemas/examples/context-pack.example.json` です。
+
+```json
+{
+  "schemaVersion": "context-pack/v1",
+  "taskId": "ISSUE-340",
+  "provider": "shirube-gate-engine",
+  "toolPolicy": {
+    "permissionMode": "local-cli",
+    "sandbox": "current-process",
+    "networkAccess": false,
+    "allowedTools": ["filesystem:read"],
+    "deniedTools": ["external-send", "merge", "deploy"]
+  },
+  "inputFiles": [{ "path": "package.json", "role": "config" }],
+  "outputSpec": {
+    "format": "json",
+    "requiredArtifacts": [".framework/gates.json", ".framework/context-pack.json"],
+    "evidence": ["gateA", "gateB", "gateC"]
+  },
+  "timestamp": "2026-06-12T00:00:00.000Z"
+}
+```
+
+AI Change Record はPR単位のAI実装証跡です。PR番号、AI provider、prompt hash、gate結果、review evidence、変更ファイルをひとつのrecordにまとめます。schema は `docs/specs/schemas/ai-change-record.schema.json`、example は `docs/specs/schemas/examples/ai-change-record.example.json` です。
+
+```json
+{
+  "schemaVersion": "ai-change-record/v1",
+  "prId": "PR-384",
+  "aiProvider": "codex",
+  "promptHash": "sha256:example-prompt",
+  "gateResults": [{ "gateId": "Gate 0", "status": "passed" }],
+  "humanReviewedAt": null,
+  "taskId": "ISSUE-340",
+  "changes": [{ "file": "src/cli/lib/gate-engine-model.ts", "linesAdded": 80, "linesRemoved": 0, "changeType": "create" }],
+  "gateOutcome": "pass"
+}
+```
+
 `framework` は後方互換 alias です。新しいドキュメント、公開例、MCP 利用ガイドでは `shirube` を primary command とします。
 
 ### shirube discover
