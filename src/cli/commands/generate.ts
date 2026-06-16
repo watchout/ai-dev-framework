@@ -15,6 +15,14 @@ import {
 } from "../lib/generate-engine.js";
 import { loadGenerationState } from "../lib/generate-state.js";
 import { logger } from "../lib/logger.js";
+import {
+  buildWorkflowState,
+  type WorkflowProfile,
+} from "../lib/workflow-state.js";
+import {
+  createWorkflowCheckReport,
+  formatWorkflowDoctor,
+} from "../lib/workflow-observability.js";
 
 export function registerGenerateCommand(program: Command): void {
   program
@@ -28,8 +36,18 @@ export function registerGenerateCommand(program: Command): void {
       parseInt,
     )
     .option("--status", "Show current generation status")
+    .option(
+      "--workflow-profile <profile>",
+      "Run the explicit design_draft workflow gate before generation (minimal|standard|strict)",
+    )
     .action(
-      async (options: { step?: number; status?: boolean }) => {
+      async (
+        options: {
+          step?: number;
+          status?: boolean;
+          workflowProfile?: string;
+        },
+      ) => {
         const projectDir = process.cwd();
 
         try {
@@ -47,6 +65,10 @@ export function registerGenerateCommand(program: Command): void {
             process.exit(1);
           }
 
+          const workflowProfile = parseWorkflowProfile(
+            options.workflowProfile,
+          );
+
           // Check .framework directory
           const fs = await import("node:fs");
           const path = await import("node:path");
@@ -56,6 +78,10 @@ export function registerGenerateCommand(program: Command): void {
               "No .framework directory found. Run 'shirube init' first.",
             );
             process.exit(1);
+          }
+
+          if (workflowProfile) {
+            runDesignDraftWorkflowGate(projectDir, workflowProfile);
           }
 
           const io = createGenerateTerminalIO();
@@ -83,6 +109,42 @@ export function registerGenerateCommand(program: Command): void {
         }
       },
     );
+}
+
+function parseWorkflowProfile(
+  value: string | undefined,
+): WorkflowProfile | undefined {
+  if (!value) return undefined;
+  if (value === "minimal" || value === "standard" || value === "strict") {
+    return value;
+  }
+  throw new Error(
+    `Invalid workflow profile: ${value}. Use minimal, standard, or strict.`,
+  );
+}
+
+function runDesignDraftWorkflowGate(
+  projectDir: string,
+  profile: WorkflowProfile,
+): void {
+  const state = buildWorkflowState(projectDir, { profile });
+  const report = createWorkflowCheckReport(state, "design_draft", "block");
+  if (report.check.status === "passed") {
+    logger.success(`Workflow design_draft gate passed (${profile}).`);
+    return;
+  }
+
+  if (profile === "strict") {
+    process.stdout.write(formatWorkflowDoctor(report) + "\n");
+    throw new Error(
+      "Workflow design_draft gate failed. Complete hearing evidence and role readiness before strict generation.",
+    );
+  }
+
+  process.stderr.write(formatWorkflowDoctor(report) + "\n");
+  logger.warn(
+    `Workflow design_draft gate has blocking findings (${profile}); continuing because only strict profile blocks generation.`,
+  );
 }
 
 function printResults(
