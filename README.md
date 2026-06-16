@@ -2,7 +2,9 @@
 
 Shirube は、AI駆動の開発フレームワークです。曖昧なプロダクトアイデアから実装まで、品質を保証しながら自動化します。
 
-> 旧称: AI Development Framework / ADF。既存プロジェクトとの互換性のため、`framework` コマンドと `.framework/` ディレクトリは当面維持します。
+> 旧称: AI Development Framework / ADF。
+> The `framework` command is a deprecated alias for `shirube`.
+> `.framework/` ディレクトリ名は既存プロジェクトとの互換性のため当面維持します。
 
 ## 特徴
 
@@ -89,8 +91,6 @@ npm link
 ### 利用可能なコマンド
 ```bash
 shirube --help
-# compatibility alias
-framework --help
 ```
 
 ### 新規プロジェクト
@@ -188,7 +188,7 @@ shirube update            フレームワーク更新
 
 | リポジトリ | 説明 |
 |-----------|------|
-| [ai-dev-framework](https://github.com/watchout/ai-dev-framework) | Shirube CLI本体（`shirube` / `framework` コマンド） |
+| [ai-dev-framework](https://github.com/watchout/ai-dev-framework) | Shirube CLI本体（`shirube` コマンド） |
 
 ---
 
