@@ -36,7 +36,7 @@ jobs:
         run: npm test -- --reporter=verbose
 
       - name: Coverage threshold gate
-        run: npm run test:coverage 2>/dev/null || true
+        run: npm run test:coverage
 
   protected-pattern-check:
     name: Protected Pattern Detection
