@@ -6,6 +6,8 @@
 | 02 | [02_GENERATION_CHAIN.md](02_GENERATION_CHAIN.md) | Step-by-step document generation chain | v1.1.0 |
 | 03 | [03_SSOT_FORMAT.md](03_SSOT_FORMAT.md) | SSOT format (12 sections, IEEE/ISO) + audit | v1.0.0 |
 | 04 | [04_FEATURE_SPEC.md](04_FEATURE_SPEC.md) | Feature spec creation flow (hearing → SSOT → audit) | v1.1.0 |
+| 04b | [04b_IMPL_FORMAT.md](04b_IMPL_FORMAT.md) | Step 3.4 lead-authored IMPL.md format and evidence labels | v1.0 |
+| 04c | [04c_FEASIBILITY_POC_FORMAT.md](04c_FEASIBILITY_POC_FORMAT.md) | Step 3.45 Feasibility / PoC format for validating IMPL assumptions | v1.0 |
 | 05 | [05_IMPLEMENTATION.md](05_IMPLEMENTATION.md) | Implementation order, task decomposition, GitHub workflow | v1.1.0 |
 | 06 | [06_CODE_QUALITY.md](06_CODE_QUALITY.md) | Code quality check, 2-step review, test format, CI | v1.1.0 |
 | 07 | [07_AI_PROTOCOL.md](07_AI_PROTOCOL.md) | AI interruption/judgment protocol, decision backlog, autonomy | v1.1.0 |

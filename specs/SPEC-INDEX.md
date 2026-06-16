@@ -36,6 +36,8 @@ Direction: LLM judgment dependency → deterministic script control.
 
 ## See Also
 
+- `docs/specs/04b_IMPL_FORMAT.md` — Step 3.4 lead-authored IMPL.md format and evidence labels
+- `docs/specs/04c_FEASIBILITY_POC_FORMAT.md` — Step 3.45 Feasibility / PoC format for validating IMPL assumptions
 - `docs/spec/v1.2.0-gate-engine.md` — Full Gate Engine spec (SPEC-DOC4L-020)
 - `docs/spec/v1.2.0-merge-authority-gate.md` — Merge authority gate spec
 - `src/cli/lib/llm-adapter-model.ts` — ContextPack + AIChangeRecord TypeScript interfaces
