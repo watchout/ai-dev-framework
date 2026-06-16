@@ -31,6 +31,7 @@ import {
 
 export interface AuditIO {
   print(message: string): void;
+  onFatalError?: (code: number) => never;
 }
 
 export interface AuditOptions {
@@ -50,6 +51,9 @@ export function createAuditTerminalIO(): AuditIO {
   return {
     print(message: string): void {
       process.stdout.write(`${message}\n`);
+    },
+    onFatalError(code: number): never {
+      process.exit(code);
     },
   };
 }

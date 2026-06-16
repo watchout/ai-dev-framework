@@ -25,7 +25,7 @@ export function printAuditStatus(
       report.verdict === "pass"
         ? "PASS"
         : report.verdict === "conditional"
-          ? "COND"
+          ? "WARN"
           : "FAIL";
     logger.info(
       `  [${report.mode.toUpperCase()}] ${report.target.name} - ${report.totalScore}/100 ${verdictLabel} (${report.target.auditDate})`,
