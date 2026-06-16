@@ -6,6 +6,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { safeReadJson } from "./fs-utils.js";
 
 /**
  * Install or merge Playwright MCP server into .mcp.json.
@@ -20,11 +21,7 @@ export function installMcpJson(projectDir: string): {
 
   let existing: Record<string, unknown> = {};
   if (fs.existsSync(mcpPath)) {
-    try {
-      existing = JSON.parse(fs.readFileSync(mcpPath, "utf-8"));
-    } catch {
-      // Invalid JSON — will be overwritten
-    }
+    existing = safeReadJson<Record<string, unknown>>(mcpPath, {});
   }
 
   // Ensure mcpServers object

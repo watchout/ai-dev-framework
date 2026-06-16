@@ -1,5 +1,6 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { parseJsonOrThrow } from "./fs-utils.js";
 
 export const REQUIRED_ROLE_NAMES = [
   "architecture_owner",
@@ -149,7 +150,7 @@ export function loadFrameworkConfig(projectDir: string): FrameworkConfig {
     return createDefaultFrameworkConfig();
   }
 
-  const parsed = JSON.parse(fs.readFileSync(configPath, "utf-8")) as unknown;
+  const parsed = parseJsonOrThrow<unknown>(configPath);
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error(".framework/config.json must contain a JSON object");
   }

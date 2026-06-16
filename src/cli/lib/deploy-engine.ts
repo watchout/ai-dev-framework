@@ -10,6 +10,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { safeReadJson } from "./fs-utils.js";
 import * as readline from "node:readline";
 import {
   type Environment,
@@ -255,10 +256,7 @@ function resolveVersion(projectDir: string): string {
   const pkgPath = path.join(projectDir, "package.json");
   if (!fs.existsSync(pkgPath)) return "0.1.0";
 
-  const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf-8")) as Record<
-    string,
-    unknown
-  >;
+  const pkg = safeReadJson<Record<string, unknown>>(pkgPath, {});
   const current = pkg.version as string | undefined;
   if (!current) return "0.1.0";
 
