@@ -7,6 +7,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { isTestFile, walkDir } from "./fs-utils.js";
 import {
   type CheckpointData,
   type CheckpointScores,
@@ -48,8 +49,8 @@ export function runCheckpoint(
 
   io.print("\n  [1/4] Scanning project files...");
   const srcFiles = collectSourceFiles(projectDir, "src");
-  const testFiles = srcFiles.filter((f) => f.includes(".test."));
-  const nonTestFiles = srcFiles.filter((f) => !f.includes(".test."));
+  const testFiles = srcFiles.filter(isTestFile);
+  const nonTestFiles = srcFiles.filter((f) => !isTestFile(f));
   io.print(
     `  Found ${srcFiles.length} source files (${testFiles.length} tests)`,
   );
@@ -112,27 +113,7 @@ export function collectSourceFiles(
   subdir: string,
 ): string[] {
   const dir = path.join(projectDir, subdir);
-  if (!fs.existsSync(dir)) return [];
-
-  const results: string[] = [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-    if (entry.isDirectory() && !entry.name.startsWith(".")) {
-      results.push(
-        ...collectSourceFiles(
-          projectDir,
-          path.join(subdir, entry.name),
-        ),
-      );
-    } else if (
-      entry.isFile() &&
-      /\.(ts|tsx|js|jsx)$/.test(entry.name)
-    ) {
-      results.push(fullPath);
-    }
-  }
-  return results;
+  return walkDir(dir, /\.(ts|tsx|js|jsx)$/);
 }
 
 // ─────────────────────────────────────────────
