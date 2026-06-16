@@ -23,13 +23,15 @@ your-project/
     └── skills/
         ├── _INDEX.md
         ├── agent-teams/
-        ├── deliberation/
+        ├── design/
         ├── discovery/
-        ├── business/
-        ├── product/
-        ├── technical/
-        ├── implementation/
-        └── review-council/
+        ├── gate-design/
+        ├── gate-quality/
+        ├── gate-release/
+        ├── implement/
+        ├── review/
+        ├── scan-updates/
+        └── self-improve/
 ```
 
 ## 選択的インストール
@@ -37,17 +39,23 @@ your-project/
 ### 特定フェーズのみ
 
 ```bash
-# Discoveryとproductのみ
-./bin/framework-skills-install.sh -p discovery -p product /path/to/project
+# Discoveryとdesignのみ
+./bin/framework-skills-install.sh -p discovery -p design /path/to/project
 
 # 実装フェーズのみ
-./bin/framework-skills-install.sh -p implementation /path/to/project
+./bin/framework-skills-install.sh -p implement /path/to/project
 ```
 
-### Agent Teamsと合議制のみ
+### Agent Teamsのみ
 
 ```bash
-./bin/framework-skills-install.sh -t -d /path/to/project
+./bin/framework-skills-install.sh -t /path/to/project
+```
+
+### インベントリ検証のみ
+
+```bash
+./bin/framework-skills-install.sh --dry-run
 ```
 
 ### 使用可能なオプション
@@ -57,18 +65,21 @@ your-project/
 | `-a, --all` | 全スキルをインストール |
 | `-p, --phase <name>` | 特定フェーズのみ |
 | `-t, --teams` | Agent Teamsパターンのみ |
-| `-d, --deliberation` | 合議制プロトコルのみ |
 | `-u, --update` | 既存スキルを上書き更新 |
 | `-n, --dry-run` | 実行せずに確認のみ |
 
 ### 利用可能なフェーズ名
 
 - `discovery`
-- `business`
-- `product`
-- `technical`
-- `implementation`
-- `review-council`
+- `design`
+- `implement`
+- `review`
+- `gate-design`
+- `gate-quality`
+- `gate-release`
+- `agent-teams`
+- `scan-updates`
+- `self-improve`
 
 ## 更新方法
 
@@ -88,10 +99,13 @@ your-project/
 mkdir -p /path/to/project/.claude/skills
 
 # 必要なスキルをコピー
-cp -r /path/to/ai-dev-framework/.claude/skills/deliberation \
+cp -r /path/to/ai-dev-framework/.claude/skills/agent-teams \
       /path/to/project/.claude/skills/
 
 cp -r /path/to/ai-dev-framework/.claude/skills/discovery \
+      /path/to/project/.claude/skills/
+
+cp -r /path/to/ai-dev-framework/.claude/skills/design \
       /path/to/project/.claude/skills/
 
 # INDEXをコピー
