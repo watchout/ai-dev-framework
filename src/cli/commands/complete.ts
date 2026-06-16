@@ -11,13 +11,15 @@ import type { Command } from "commander";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
-import type { CompleteEvidenceRecord, ShirubeProfile } from "../lib/complete-model.js";
+import type { CompletionGateInput } from "../lib/complete-model.js";
 import {
+  evaluateCompletionGate,
   loadCompleteEvidence,
   saveCompleteEvidence,
   loadShirubeProfile,
   buildRecord,
   isCompleted,
+  renderCompletionGateReport,
   renderStatus,
 } from "../lib/complete-engine.js";
 
@@ -32,6 +34,8 @@ export function registerCompleteCommand(program: Command): void {
     .option("--health-check", "Run health endpoint check (runtime repos)")
     .option("--smoke", "Run smoke test command from profile")
     .option("--status", "Show current complete status without recording")
+    .option("--gate-file <path>", "Evaluate a Work Order / PR completion gate JSON file")
+    .option("--json", "Print completion gate output as JSON")
     .option("--force", "Mark complete even if checks fail (with warning)")
     .action(
       async (options: {
@@ -40,10 +44,26 @@ export function registerCompleteCommand(program: Command): void {
         healthCheck?: boolean;
         smoke?: boolean;
         status?: boolean;
+        gateFile?: string;
+        json?: boolean;
         force?: boolean;
       }) => {
         const projectDir = process.cwd();
         const profile = loadShirubeProfile(projectDir);
+
+        if (options.gateFile) {
+          const input = loadCompletionGateInput(projectDir, options.gateFile);
+          const report = evaluateCompletionGate(input);
+          if (options.json) {
+            console.log(JSON.stringify(report, null, 2));
+          } else {
+            console.log(renderCompletionGateReport(report));
+          }
+          if (!report.can_pass) {
+            process.exit(1);
+          }
+          return;
+        }
 
         if (options.status) {
           const evidence = loadCompleteEvidence(projectDir);
@@ -134,6 +154,17 @@ export function registerCompleteCommand(program: Command): void {
         console.log(`  Evidence written to .framework/complete-evidence.json`);
       },
     );
+}
+
+function loadCompletionGateInput(projectDir: string, filePath: string): CompletionGateInput {
+  const resolved = path.isAbsolute(filePath) ? filePath : path.resolve(projectDir, filePath);
+  try {
+    const raw = fs.readFileSync(resolved, "utf-8");
+    return JSON.parse(raw) as CompletionGateInput;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to read completion gate file ${resolved}: ${reason}`);
+  }
 }
 
 function resolveCurrentSha(projectDir: string): string | null {
