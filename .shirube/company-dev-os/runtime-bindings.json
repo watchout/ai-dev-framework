@@ -1,0 +1,31 @@
+{
+  "schema": "shirube-company-dev-os-runtime-bindings/v1",
+  "repositories": [
+    {
+      "repo": "watchout/ai-dev-framework",
+      "codex_entrypoints": [
+        "AGENTS.md",
+        ".codex/instructions.md",
+        ".agents/skills/company-dev-os-runtime/SKILL.md"
+      ],
+      "claude_entrypoints": [
+        "CLAUDE.md"
+      ],
+      "routing_entrypoints": [
+        ".shirube/company-dev-os/role-routing.json"
+      ],
+      "required_skills": [
+        {
+          "id": "company-dev-os-runtime",
+          "path": ".shirube/company-dev-os/skills/company-dev-os-runtime.skill.md",
+          "source_path": ".agents/skills/company-dev-os-runtime/SKILL.md"
+        }
+      ]
+    }
+  ],
+  "restart_requirement": {
+    "must_survive_session_restart": true,
+    "must_survive_context_compaction": true,
+    "startup_recovery_required": true
+  }
+}
