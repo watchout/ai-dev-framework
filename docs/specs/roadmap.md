@@ -234,6 +234,8 @@ Shirube can govern its own development and at least one internal project through
 | T4a | #240 | Runtime command adapter and injection policy pack for Delivery Graph steps. |
 | T4 | #226 | Workflow Action Registry and Wrapper Semantics. |
 | T5 | #227 | `CHAINCTRL-001` Script-Controlled Workflow Chain. |
+| T6 | #229 | Admin notification adapters for progress and state-change reports. |
+| T7 | #234 | `PROGRESSVIEW-001` Report-Time Progress Visualization. |
 
 T0/T1 start artifact: [Phase 1 Internal Dogfood Start](./phase1-internal-dogfood-start.md).
 Parent enterprise control-plane artifact:
@@ -296,6 +298,11 @@ SPEC `docs/spec/phase1-workflow-chain.md`, IMPL
 `docs/impl/phase1-workflow-chain.md`, VERIFY
 `docs/verify/phase1-workflow-chain.md`, OPS
 `docs/ops/phase1-workflow-chain.md`.
+Progress view child artifact:
+SPEC `docs/spec/phase1-progress-view.md`, IMPL
+`docs/impl/phase1-progress-view.md`, VERIFY
+`docs/verify/phase1-progress-view.md`, OPS
+`docs/ops/phase1-progress-view.md`.
 T1 4-layer artifact set:
 SPEC `docs/spec/phase1-internal-dogfood-start-gate.md`, IMPL
 `docs/impl/phase1-internal-dogfood-start-gate.md`, VERIFY

@@ -17,8 +17,17 @@ import {
   printStatus,
   createStatusTerminalIO,
 } from "../lib/status-engine.js";
+import {
+  buildProgressSnapshotFromStatusResult,
+  renderProgressSnapshotCompactText,
+  renderProgressSnapshotJapaneseAdmin,
+  renderProgressSnapshotJson,
+  renderProgressSnapshotMarkdown,
+} from "../lib/progress-view.js";
 import { syncRunStateFromGitHub } from "../lib/run-engine.js";
 import { logger } from "../lib/logger.js";
+
+type ProgressFormat = "ja-compact" | "ja-long" | "compact" | "markdown" | "json";
 
 export function registerStatusCommand(program: Command): void {
   program
@@ -26,7 +35,18 @@ export function registerStatusCommand(program: Command): void {
     .description("Show project progress and status")
     .option("--github", "Fetch live status from GitHub Issues")
     .option("--json", "Output machine-readable JSON")
-    .action(async (options: { github?: boolean; json?: boolean }) => {
+    .option("--progress-view", "Output a report-time progress snapshot")
+    .option(
+      "--progress-format <format>",
+      "Progress snapshot format: ja-compact, ja-long, compact, markdown, json",
+      "ja-compact",
+    )
+    .action(async (options: {
+      github?: boolean;
+      json?: boolean;
+      progressView?: boolean;
+      progressFormat?: ProgressFormat;
+    }) => {
       const projectDir = process.cwd();
 
       try {
@@ -84,6 +104,18 @@ export function registerStatusCommand(program: Command): void {
           }
         }
 
+        if (options.progressView) {
+          const progressFormat = parseProgressFormat(
+            options.progressFormat ?? "ja-compact",
+          );
+          const snapshot = buildProgressSnapshotFromStatusResult(
+            result.profile?.type ?? "project",
+            result,
+          );
+          process.stdout.write(renderProgressSnapshot(snapshot, progressFormat));
+          return;
+        }
+
         if (options.json) {
           process.stdout.write(JSON.stringify(result, null, 2) + "\n");
           return;
@@ -97,4 +129,38 @@ export function registerStatusCommand(program: Command): void {
         process.exit(1);
       }
     });
+}
+
+function parseProgressFormat(format: string): ProgressFormat {
+  const allowed: ProgressFormat[] = [
+    "ja-compact",
+    "ja-long",
+    "compact",
+    "markdown",
+    "json",
+  ];
+  if (allowed.includes(format as ProgressFormat)) {
+    return format as ProgressFormat;
+  }
+  throw new Error(
+    `Invalid --progress-format "${format}". Expected one of: ${allowed.join(", ")}`,
+  );
+}
+
+function renderProgressSnapshot(
+  snapshot: ReturnType<typeof buildProgressSnapshotFromStatusResult>,
+  format: ProgressFormat,
+): string {
+  switch (format) {
+    case "ja-compact":
+      return renderProgressSnapshotJapaneseAdmin(snapshot);
+    case "ja-long":
+      return renderProgressSnapshotJapaneseAdmin(snapshot, { mode: "long" });
+    case "compact":
+      return renderProgressSnapshotCompactText(snapshot);
+    case "markdown":
+      return renderProgressSnapshotMarkdown(snapshot);
+    case "json":
+      return renderProgressSnapshotJson(snapshot);
+  }
 }
