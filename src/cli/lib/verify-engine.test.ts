@@ -6,6 +6,9 @@ import {
   type VerifyIO,
   runVerify,
 } from "./verify-engine.js";
+import {
+  runCheckpoint,
+} from "./checkpoint-engine.js";
 
 function createMockIO(): VerifyIO & { output: string[] } {
   const output: string[] = [];
@@ -63,6 +66,7 @@ describe("verify-engine", () => {
       expect(result.scores.codeQuality).toBeDefined();
       expect(result.scores.testCoverage).toBeDefined();
       expect(result.scores.typeSafety).toBeDefined();
+      expect(result.scores.lint).toBeDefined();
     });
 
     it("prints VERIFY header", async () => {
@@ -124,6 +128,42 @@ describe("verify-engine", () => {
 
       expect(result.scores.typeSafety).toBeDefined();
       expect(result.scores.ssotAlignment).toBeUndefined();
+    });
+
+    it("verifies lint target only", async () => {
+      writeFile(
+        tmpDir,
+        "src/lint.ts",
+        "export function run(): void { console.log('debug'); }\n",
+      );
+
+      const io = createMockIO();
+      const result = await runVerify(
+        tmpDir, "lint", {}, io,
+      );
+
+      expect(result.scores.lint).toBeDefined();
+      expect(result.scores.lint).toBeLessThan(100);
+      expect(result.scores.codeQuality).toBeUndefined();
+    });
+
+    it("matches checkpoint lint score for the same project state", async () => {
+      writeFile(
+        tmpDir,
+        "src/lint.ts",
+        "export function run(): void { console.log('debug'); }\n",
+      );
+
+      const verifyResult = await runVerify(
+        tmpDir, "lint", {}, createMockIO(),
+      );
+      const checkpoint = runCheckpoint(
+        tmpDir,
+        { name: "lint-match" },
+        { print(): void {} },
+      );
+
+      expect(verifyResult.scores.lint).toBe(checkpoint.scores.lint);
     });
   });
 
