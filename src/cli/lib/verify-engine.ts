@@ -18,6 +18,7 @@ import {
 } from "./verification-model.js";
 import {
   collectSourceFiles,
+  isTestFile,
   scoreSSOTAlignment,
   scoreCodeQuality,
   scoreTestCoverage,
@@ -122,8 +123,8 @@ function runSingleCheck(
   issues: CheckpointIssue[],
 ): number {
   const srcFiles = collectSourceFiles(projectDir, "src");
-  const testFiles = srcFiles.filter((f) => f.includes(".test."));
-  const nonTestFiles = srcFiles.filter((f) => !f.includes(".test."));
+  const testFiles = srcFiles.filter(isTestFile);
+  const nonTestFiles = srcFiles.filter((f) => !isTestFile(f));
 
   switch (target) {
     case "ssot":

@@ -114,6 +114,45 @@ describe("verify-engine", () => {
       expect(result.scores.codeQuality).toBeUndefined();
     });
 
+    it("scores .spec.ts test files the same as .test.ts files", async () => {
+      const testProject = path.join(tmpDir, "test-project");
+      const specProject = path.join(tmpDir, "spec-project");
+
+      writeFile(
+        testProject,
+        "src/example.ts",
+        "export function example(): string { return 'ok'; }\n",
+      );
+      writeFile(
+        testProject,
+        "src/example.test.ts",
+        "import { example } from './example';\nexample();\n",
+      );
+      writeFile(
+        specProject,
+        "src/example.ts",
+        "export function example(): string { return 'ok'; }\n",
+      );
+      writeFile(
+        specProject,
+        "src/example.spec.ts",
+        "import { example } from './example';\nexample();\n",
+      );
+
+      const testResult = await runVerify(
+        testProject, "tests", {}, createMockIO(),
+      );
+      const specResult = await runVerify(
+        specProject, "tests", {}, createMockIO(),
+      );
+
+      expect(specResult.scores.testCoverage).toBe(
+        testResult.scores.testCoverage,
+      );
+      expect(specResult.scores.testCoverage).toBe(100);
+      expect(specResult.issues).toHaveLength(0);
+    });
+
     it("verifies types target only", async () => {
       writeFile(tmpDir, "src/typed.ts", "const x: string = 'ok';\n");
 
