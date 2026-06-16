@@ -14,14 +14,13 @@ import {
   loadDecisions,
   loadOpenIssues,
 } from "./memory-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface SessionIO {
-  print(message: string): void;
-}
+export interface SessionIO extends BaseIO {}
 
 export function createSessionTerminalIO(): SessionIO {
   return {

@@ -18,14 +18,13 @@ import {
   saveCIReport,
   loadCIReports,
 } from "./ci-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface CIIO {
-  print(message: string): void;
-}
+export interface CIIO extends BaseIO {}
 
 export function createCITerminalIO(): CIIO {
   return {

@@ -30,11 +30,10 @@ import {
 import { loadProfileType } from "./profile-model.js";
 import { loadRunState } from "./run-model.js";
 import { detectLayersFromFile, generateTaskList, type LayerDetectionResult } from "./layer-detector.js";
+import type { BaseIO } from "./io-model.js";
 import type { TaskKind } from "./plan-model.js";
 
-export interface PlanIO {
-  print(message: string): void;
-}
+export interface PlanIO extends BaseIO {}
 
 export interface PlanOptions {
   projectDir: string;

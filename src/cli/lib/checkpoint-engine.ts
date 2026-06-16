@@ -20,14 +20,13 @@ import {
   loadCheckpoint,
   loadCheckpointIndex,
 } from "./verification-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface CheckpointIO {
-  print(message: string): void;
-}
+export interface CheckpointIO extends BaseIO {}
 
 export function createCheckpointTerminalIO(): CheckpointIO {
   return {

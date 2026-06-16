@@ -34,14 +34,14 @@ import {
   loadPlan,
   savePlan,
 } from "./plan-model.js";
+import type { BaseIO } from "./io-model.js";
 import { logger } from "./logger.js";
 
 // ─────────────────────────────────────────────
 // IO Interface
 // ─────────────────────────────────────────────
 
-export interface IngestIO {
-  print(message: string): void;
+export interface IngestIO extends BaseIO {
   printProgress(step: string, detail: string): void;
 }
 

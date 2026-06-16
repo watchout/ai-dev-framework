@@ -13,14 +13,13 @@ import {
   analyzeContextPriority,
   calculateCompactStatus,
 } from "./memory-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface CompactIO {
-  print(message: string): void;
-}
+export interface CompactIO extends BaseIO {}
 
 export function createCompactTerminalIO(): CompactIO {
   return {

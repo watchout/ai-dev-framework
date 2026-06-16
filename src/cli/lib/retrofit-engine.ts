@@ -32,14 +32,13 @@ import {
   saveTestingConfig,
   type TestToolRecommendation,
 } from "./testing-model.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface RetrofitIO {
-  print(message: string): void;
-}
+export interface RetrofitIO extends BaseIO {}
 
 export interface RetrofitOptions {
   projectDir: string;

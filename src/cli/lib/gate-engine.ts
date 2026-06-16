@@ -37,14 +37,13 @@ import {
 } from "./profile-model.js";
 import { validateAllSpecs } from "./gate-spec-validator.js";
 import { buildGraph, verifyTraceability } from "./trace-engine.js";
+import type { BaseIO } from "./io-model.js";
 
 // ─────────────────────────────────────────────
 // Public API
 // ─────────────────────────────────────────────
 
-export interface GateIO {
-  print(message: string): void;
-}
+export interface GateIO extends BaseIO {}
 
 export function createGateTerminalIO(): GateIO {
   return {

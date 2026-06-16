@@ -25,9 +25,9 @@ import {
   TEMPLATE_GENERATORS,
   EXPECTED_COMPLETENESS,
 } from "./generate-templates.js";
+import type { BaseIO } from "./io-model.js";
 
-export interface GenerateIO {
-  print(message: string): void;
+export interface GenerateIO extends BaseIO {
   printProgress(docPath: string, completeness: number): void;
 }
 
