@@ -7,6 +7,7 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { parseJsonOrThrow } from "./safe-json.js";
 
 // ─────────────────────────────────────────────
 // Escalation Types (21_AI_ESCALATION.md)
@@ -408,7 +409,7 @@ export function loadRunState(
   const filePath = path.join(projectDir, RUN_STATE_FILE);
   if (!fs.existsSync(filePath)) return null;
   const raw = fs.readFileSync(filePath, "utf-8");
-  return JSON.parse(raw) as RunState;
+  return parseJsonOrThrow<RunState>(raw, RUN_STATE_FILE);
 }
 
 export function saveRunState(

@@ -82,7 +82,8 @@ export function runTestAudit(
   const estimatedTests = estimateTestCounts(filteredTestFiles, projectDir);
 
   // 5. Build coverage heuristic
-  const coverage = estimateCoverage(testFileCount, sourceFileCount);
+  const coveredSourceCount = sourceFileCount - analysis.orphanedSources.length;
+  const coverage = estimateCoverage(coveredSourceCount, sourceFileCount);
 
   // 6. Calculate scorecard
   const scorecard = calculateTestScore(
@@ -200,17 +201,16 @@ function estimateTestCounts(
 }
 
 function estimateCoverage(
-  testFiles: number,
+  coveredSourceFiles: number,
   sourceFiles: number,
 ): TestCoverageInfo {
-  // Heuristic: test file ratio as proxy for coverage
   const ratio = sourceFiles > 0
-    ? Math.min(100, Math.round((testFiles / sourceFiles) * 100))
+    ? Math.min(100, Math.round((coveredSourceFiles / sourceFiles) * 100))
     : 0;
 
   return {
     statements: ratio,
-    branches: Math.max(0, ratio - 10),
+    branches: ratio,
     functions: ratio,
     lines: ratio,
   };

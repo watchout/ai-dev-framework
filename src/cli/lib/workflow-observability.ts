@@ -126,17 +126,23 @@ export function explainWorkflowQuery(
   query: string,
 ): WorkflowExplanation {
   const normalized = query.trim();
+  const normalizedSearch = normalized.toLowerCase();
+  const matchesQuery = (value: string): boolean =>
+    normalizedSearch.length > 0 &&
+    value.toLowerCase().includes(normalizedSearch);
   const gateDecisions = state.gate_decisions.filter(
     (decision) =>
-      decision.rule_id === normalized ||
-      decision.gate === normalized ||
+      matchesQuery(decision.rule_id) ||
+      matchesQuery(decision.gate) ||
       decision.decision === normalized,
   );
   const allowedActions = state.allowed_actions.filter(
-    (action) => action.action === normalized || action.rule_id === normalized,
+    (action) =>
+      matchesQuery(action.action) || matchesQuery(action.rule_id),
   );
   const blockedActions = state.blocked_actions.filter(
-    (action) => action.action === normalized || action.rule_id === normalized,
+    (action) =>
+      matchesQuery(action.action) || matchesQuery(action.rule_id),
   );
   const evidenceIds = new Set(
     gateDecisions.flatMap((decision) => decision.evidence_refs),

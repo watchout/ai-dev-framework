@@ -12,6 +12,11 @@
  */
 import * as fs from "node:fs";
 import * as path from "node:path";
+import {
+  collectSourceFiles,
+  collectTestFiles,
+  findCoveredSourceFiles,
+} from "./checkpoint-engine.js";
 
 // ─────────────────────────────────────────────
 // Core Types
@@ -94,7 +99,13 @@ export function calculateTestScore(
   const totalTests = passed + failed + skipped;
 
   // 1. SSOT Coverage (30pts) - ratio of test files to source files
-  const testRatio = sourceFiles > 0 ? testFiles / sourceFiles : 0;
+  const avgCoverage =
+    (coverage.statements + coverage.branches +
+      coverage.functions + coverage.lines) / 4;
+  const coverageRatio = avgCoverage / 100;
+  const testRatio = sourceFiles > 0
+    ? Math.max(testFiles / sourceFiles, coverageRatio)
+    : 0;
   const ssotCoverage = Math.min(
     MAX_SSOT_COVERAGE,
     Math.round(testRatio * MAX_SSOT_COVERAGE),
@@ -113,9 +124,6 @@ export function calculateTestScore(
   );
 
   // 3. Coverage Score (15pts) - statement coverage threshold
-  const avgCoverage =
-    (coverage.statements + coverage.branches +
-      coverage.functions + coverage.lines) / 4;
   const coverageScore = Math.min(
     MAX_COVERAGE_SCORE,
     Math.round((avgCoverage / 100) * MAX_COVERAGE_SCORE),
@@ -130,7 +138,10 @@ export function calculateTestScore(
   );
 
   // 5. Edge Cases (10pts) - heuristic: more tests = likely more edge cases
-  const edgeCaseRatio = Math.min(1, totalTests / Math.max(1, sourceFiles * 3));
+  const edgeCaseRatio =
+    coverageRatio >= 0.9 && testsPerFile >= 5
+      ? 1
+      : Math.min(1, totalTests / Math.max(1, sourceFiles * 3));
   const edgeCases = Math.min(
     MAX_EDGE_CASES,
     Math.round(edgeCaseRatio * MAX_EDGE_CASES),
@@ -241,23 +252,14 @@ export function analyzeTestFiles(projectDir: string): {
   sourceFiles: string[];
   orphanedSources: string[];
 } {
-  const srcDir = path.join(projectDir, "src");
-  const allFiles = walkDir(srcDir, SOURCE_FILE_PATTERN);
-
-  const testFiles = allFiles.filter((f) => TEST_FILE_PATTERN.test(f));
-  const sourceFiles = allFiles.filter((f) => !TEST_FILE_PATTERN.test(f));
-
-  // Find source files without corresponding test files
-  const testBaseNames = new Set(
-    testFiles.map((f) =>
-      path.basename(f).replace(TEST_FILE_PATTERN, ""),
-    ),
+  const sourceFiles = collectSourceFiles(projectDir, "src").filter(
+    (file) => !TEST_FILE_PATTERN.test(file),
   );
-
-  const orphanedSources = sourceFiles.filter((f) => {
-    const baseName = path.basename(f).replace(SOURCE_FILE_PATTERN, "");
-    return !testBaseNames.has(baseName);
-  });
+  const testFiles = collectTestFiles(projectDir);
+  const coveredSources = findCoveredSourceFiles(sourceFiles, testFiles);
+  const orphanedSources = sourceFiles.filter(
+    (file) => !coveredSources.has(path.normalize(file)),
+  );
 
   return { testFiles, sourceFiles, orphanedSources };
 }
@@ -267,8 +269,7 @@ export function analyzeTestFiles(projectDir: string): {
  */
 export function detectTestIssues(projectDir: string): TestIssue[] {
   const issues: TestIssue[] = [];
-  const srcDir = path.join(projectDir, "src");
-  const testFiles = walkDir(srcDir, TEST_FILE_PATTERN);
+  const testFiles = collectTestFiles(projectDir);
 
   for (const filePath of testFiles) {
     const content = fs.readFileSync(filePath, "utf-8");
