@@ -239,6 +239,41 @@ describe("start command", () => {
     }
   }
 
+  function withFakeTopicFailureGh<T>(
+    fn: (env: Record<string, string | undefined>) => T,
+  ): T {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-fake-gh-"));
+    try {
+      const binDir = path.join(dir, "bin");
+      fs.mkdirSync(binDir, { recursive: true });
+      const ghPath = path.join(binDir, "gh");
+      fs.writeFileSync(
+        ghPath,
+        [
+          "#!/bin/sh",
+          "if [ \"$1\" = \"api\" ]; then",
+          "  printf '[\"other-topic\"]\\n'",
+          "  exit 0",
+          "fi",
+          "if [ \"$1\" = \"repo\" ] && [ \"$2\" = \"edit\" ]; then",
+          "  printf 'HTTP 404: Not Found (https://api.github.com/repos/watchout/totonoe/topics)\\n' >&2",
+          "  exit 1",
+          "fi",
+          "printf 'unexpected gh invocation: %s\\n' \"$*\" >&2",
+          "exit 1",
+          "",
+        ].join("\n"),
+        "utf-8",
+      );
+      fs.chmodSync(ghPath, 0o755);
+      return fn({
+        PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+      });
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  }
+
   function withFrameworkProject<T>(fn: (dir: string) => T): T {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "adf-start-test-"));
     try {
@@ -560,22 +595,92 @@ describe("start command", () => {
     });
   });
 
-  it("does not write a session when framework mode activation fails", () => {
+  it("writes a session with structured warning when topic activation fails", () => {
     withFrameworkProject((cwd) => {
       fs.writeFileSync(
         path.join(cwd, ".framework", "config.json"),
         JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
         "utf-8",
       );
-      writeStrictDogfoodEvidence(cwd);
 
-      const result = runCliWithExit(
-        "start . --feature FEAT-001 --audit-level strict",
-        { cwd },
+      withFakeTopicFailureGh((env) => {
+        const result = runCliWithExit(
+          "start . --feature FEAT-001 --audit-level standard",
+          { cwd, env },
+        );
+
+        expect(result.exitCode).toBe(0);
+        expect(result.stderr + result.stdout).toContain("repo_topic_activation_unavailable");
+      });
+
+      const sessionPath = path.join(cwd, ".framework", "current-session.json");
+      expect(fs.existsSync(sessionPath)).toBe(true);
+      const session = JSON.parse(fs.readFileSync(sessionPath, "utf-8")) as {
+        readiness: {
+          warnings?: Array<{
+            code: string;
+            provider: string;
+            repo: string;
+            attemptedTopic: string;
+            status?: number;
+            evidence: string;
+          }>;
+        };
+      };
+      expect(session.readiness.warnings?.[0]).toMatchObject({
+        code: "repo_topic_activation_unavailable",
+        provider: "github",
+        repo: "watchout/totonoe",
+        attemptedTopic: "framework-managed",
+        status: 404,
+      });
+    });
+  });
+
+  it("blocks non-dry-run start when config requires repo topic", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({
+          roles: { bindings: completeRoleBindings() },
+          workflow: { requireRepoTopic: true },
+        }),
+        "utf-8",
       );
 
-      expect(result.exitCode).toBe(1);
-      expect(result.stderr + result.stdout).toContain("Framework mode activation failed");
+      withFakeTopicFailureGh((env) => {
+        const result = runCliWithExit(
+          "start . --feature FEAT-001 --audit-level standard",
+          { cwd, env },
+        );
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr + result.stdout).toContain("Framework mode activation failed");
+        expect(result.stderr + result.stdout).toContain("repo_topic_activation_unavailable");
+      });
+
+      expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(false);
+    });
+  });
+
+  it("blocks dry-run start when --require-repo-topic sees an inactive topic", () => {
+    withFrameworkProject((cwd) => {
+      fs.writeFileSync(
+        path.join(cwd, ".framework", "config.json"),
+        JSON.stringify({ roles: { bindings: completeRoleBindings() } }),
+        "utf-8",
+      );
+
+      withFakeTopicFailureGh((env) => {
+        const result = runCliWithExit(
+          "start . --feature FEAT-001 --audit-level standard --dry-run --require-repo-topic",
+          { cwd, env },
+        );
+
+        expect(result.exitCode).toBe(1);
+        expect(result.stderr + result.stdout).toContain("repo_topic_activation_unavailable");
+      });
+
       expect(fs.existsSync(path.join(cwd, ".framework", "current-session.json"))).toBe(false);
     });
   });

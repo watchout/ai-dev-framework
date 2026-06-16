@@ -369,6 +369,11 @@ Shirube の設計・実装では、LLMに進行制御を委ねず、deterministi
 既存セッションを続ける場合は \`shirube start --resume\`、新しい feature として切り直す場合は \`shirube start --force --feature <id>\` を使う。
 \`shirube exit\` で framework mode を抜けた後も、適用済みプロジェクトであれば \`shirube start --resume\` で再開・再アクティベートできる。
 
+\`framework-managed\` repository topic は discoverability と hook activation の補助 marker とする。
+framework-led development の正本は \`.framework/current-session.json\` と \`.framework/config.json\` であり、topic ではない。
+GitHub 権限不足などで topic 追加に失敗しても、local/draft/design workflow の \`shirube start\` は構造化 warning (\`repo_topic_activation_unavailable\`) を記録して続行する。
+topic を開始条件として厳格に要求する場合だけ、\`shirube start --require-repo-topic\` または \`.framework/config.json\` の \`workflow.requireRepoTopic: true\` を使う。
+
 開始後の最初の実作業は \`/design <feature-id>\` または、既に SPEC/IMPL/VERIFY/OPS が揃っている場合のみ \`/implement <feature-id>\` とする。
 Gate / Review への遷移はユーザー承認後に行う。
 
@@ -381,8 +386,8 @@ Gate / Review への遷移はユーザー承認後に行う。
 | \`shirube update [path]\` | already applied repo | update docs/templates/hooks/GitHub templates and regenerate gates cache | applied |
 | \`shirube roles doctor\` | after init/retrofit, before strict start | check missing or placeholder role bindings | role readiness checked |
 | \`shirube roles set <role> --type <type> --id <id>\` | before strict start or when rotating owners | update role binding in \`.framework/config.json\` | roles configured |
-| \`shirube start [path] --feature <id>\` | applied repo without active session | create \`.framework/current-session.json\` and activate framework mode | framework-led |
-| \`shirube start [path] --resume\` | active session exists, or after \`shirube exit\` | load existing session and reactivate framework mode | framework-led |
+| \`shirube start [path] --feature <id>\` | applied repo without active session | create \`.framework/current-session.json\` and attempt framework mode activation | framework-led |
+| \`shirube start [path] --resume\` | active session exists, or after \`shirube exit\` | load existing session and attempt framework mode reactivation | framework-led |
 | \`shirube start [path] --force --feature <id>\` | intentionally replacing current session | replace \`.framework/current-session.json\` | framework-led |
 | \`shirube gate check\` | before implementation or after update | evaluate Gate A/B/C and regenerate local hook cache | gate status refreshed |
 | \`shirube trace verify\` | checking 4-layer docs | verify SPEC/IMPL/VERIFY/OPS traceability | trace checked |

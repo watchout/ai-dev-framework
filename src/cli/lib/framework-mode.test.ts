@@ -93,6 +93,26 @@ describe("activateFrameworkMode", () => {
     expect(result.ok).toBe(false);
     expect(result.error).toContain("permission denied");
   });
+
+  it("returns structured warning evidence on topic mutation failure", async () => {
+    restoreGh = setGhExecutor(async (args: string[]) => {
+      if (args.includes("--jq")) return JSON.stringify(["existing-topic"]);
+      throw new Error(
+        "HTTP 404: Not Found (https://api.github.com/repos/watchout/totonoe/topics)",
+      );
+    });
+
+    const result = await activateFrameworkMode();
+    expect(result.ok).toBe(false);
+    expect(result.warning).toEqual({
+      code: "repo_topic_activation_unavailable",
+      provider: "github",
+      repo: "watchout/totonoe",
+      attemptedTopic: FRAMEWORK_TOPIC,
+      status: 404,
+      evidence: "HTTP 404: Not Found (https://api.github.com/repos/watchout/totonoe/topics)",
+    });
+  });
 });
 
 describe("deactivateFrameworkMode", () => {

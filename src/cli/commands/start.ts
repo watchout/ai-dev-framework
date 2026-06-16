@@ -3,7 +3,12 @@ import * as path from "node:path";
 import { type Command } from "commander";
 import { loadProfileType } from "../lib/profile-model.js";
 import { logger } from "../lib/logger.js";
-import { activateFrameworkMode, getFrameworkMode } from "../lib/framework-mode.js";
+import {
+  activateFrameworkMode,
+  createRepoTopicActivationWarning,
+  getFrameworkMode,
+  type RepoTopicActivationWarning,
+} from "../lib/framework-mode.js";
 import { appendLifecycleEvent } from "../lib/lifecycle-events.js";
 import {
   formatRoleSeparationViolation,
@@ -30,6 +35,7 @@ interface StartOptions {
   dryRun?: boolean;
   resume?: boolean;
   force?: boolean;
+  requireRepoTopic?: boolean;
 }
 
 interface SessionState {
@@ -55,8 +61,11 @@ interface StartReadiness {
   missingRoles: RequiredRoleName[];
   placeholderRoles: RequiredRoleName[];
   roleSeparationViolations: RoleSeparationViolation[];
+  warnings?: StartReadinessWarning[];
   message: string;
 }
+
+type StartReadinessWarning = RepoTopicActivationWarning;
 
 interface ReviewLayer {
   layer: "L0" | "L1" | "L2" | "L3" | "L4";
@@ -84,6 +93,7 @@ export function registerStartCommand(program: Command): void {
     )
     .option("--resume", "Resume the existing framework-led session")
     .option("--force", "Replace an existing framework-led session")
+    .option("--require-repo-topic", "Require framework-managed repo topic activation before starting")
     .option("--dry-run", "Show start state without writing .framework/current-session.json")
     .action(async (targetPath: string | undefined, options: StartOptions) => {
       const projectDir = targetPath
@@ -126,6 +136,8 @@ export function registerStartCommand(program: Command): void {
         process.exit(1);
       }
 
+      const requireRepoTopic = resolveRequireRepoTopic(projectDir, options);
+
       if (options.resume && !fs.existsSync(sessionPath)) {
         logger.header("Framework Start");
         logger.warn("No framework-led session exists to resume.");
@@ -164,7 +176,11 @@ export function registerStartCommand(program: Command): void {
         if (!strictCheck.ok) {
           process.exit(1);
         }
-        const activation = await ensureFrameworkModeActive(options.dryRun ?? false);
+        const activation = await ensureFrameworkModeActive({
+          dryRun: options.dryRun ?? false,
+          requireRepoTopic,
+        });
+        appendStartWarning(existing.readiness, activation.warning);
         if (!activation.ok) {
           printActivationBlock(activation.message);
           process.exit(1);
@@ -240,7 +256,11 @@ export function registerStartCommand(program: Command): void {
         process.exit(1);
       }
 
-      const activation = await ensureFrameworkModeActive(options.dryRun ?? false);
+      const activation = await ensureFrameworkModeActive({
+        dryRun: options.dryRun ?? false,
+        requireRepoTopic,
+      });
+      appendStartWarning(state.readiness, activation.warning);
       if (!activation.ok) {
         printActivationBlock(activation.message);
         process.exit(1);
@@ -465,11 +485,34 @@ function printRoleReadiness(readiness: StartReadiness): void {
 interface ActivationStatus {
   ok: boolean;
   message: string;
+  warning?: StartReadinessWarning;
 }
 
-async function ensureFrameworkModeActive(dryRun: boolean): Promise<ActivationStatus> {
-  if (dryRun) {
-    return { ok: true, message: "dry-run, activation skipped" };
+async function ensureFrameworkModeActive(input: {
+  dryRun: boolean;
+  requireRepoTopic: boolean;
+}): Promise<ActivationStatus> {
+  if (input.dryRun) {
+    if (!input.requireRepoTopic) {
+      return {
+        ok: true,
+        message: "dry-run, repo topic activation advisory",
+      };
+    }
+
+    const mode = await getFrameworkMode();
+    if (mode === "active") {
+      return { ok: true, message: "active" };
+    }
+
+    const warning = createRepoTopicActivationWarning(
+      `dry-run repo topic check: framework-managed topic is ${mode}`,
+    );
+    return {
+      ok: false,
+      message: formatRepoTopicWarning(warning),
+      warning,
+    };
   }
 
   const mode = await getFrameworkMode();
@@ -487,15 +530,53 @@ async function ensureFrameworkModeActive(dryRun: boolean): Promise<ActivationSta
     };
   }
 
-  return { ok: false, message: result.error ?? "unknown" };
+  const warning =
+    result.warning ??
+    createRepoTopicActivationWarning(result.error ?? "unknown");
+
+  if (input.requireRepoTopic) {
+    return {
+      ok: false,
+      message: formatRepoTopicWarning(warning),
+      warning,
+    };
+  }
+
+  return {
+    ok: true,
+    message: formatRepoTopicWarning(warning),
+    warning,
+  };
+}
+
+function resolveRequireRepoTopic(
+  projectDir: string,
+  options: StartOptions,
+): boolean {
+  if (options.requireRepoTopic) return true;
+  return loadFrameworkConfig(projectDir).workflow?.requireRepoTopic === true;
+}
+
+function appendStartWarning(
+  readiness: StartReadiness,
+  warning: StartReadinessWarning | undefined,
+): void {
+  if (!warning) return;
+  readiness.warnings ??= [];
+  readiness.warnings.push(warning);
+}
+
+function formatRepoTopicWarning(warning: StartReadinessWarning): string {
+  const status = warning.status ? ` status=${warning.status}` : "";
+  return `${warning.code}: provider=${warning.provider} repo=${warning.repo} topic=${warning.attemptedTopic}${status} evidence=${warning.evidence}`;
 }
 
 function printActivationBlock(message: string): void {
   logger.header("Framework Start Blocked");
   logger.error(`Framework mode activation failed: ${message}`);
   logger.info("");
-  logger.info("A non-dry-run start cannot create or resume a framework-led session unless framework mode is active.");
-  logger.info("Fix GitHub CLI/repository access, or use --dry-run only for planning.");
+  logger.info("Repo topic activation is advisory by default, but this workflow explicitly requires it.");
+  logger.info("Fix GitHub CLI/repository access, or remove --require-repo-topic / workflow.requireRepoTopic for local or draft work.");
 }
 
 function parseQualityMode(value: string | undefined): QualityMode | null {
@@ -591,6 +672,14 @@ function printStartSummary(
     logger.info("Role readiness:");
     logger.info(`  ${state.readiness.message}`);
     printRoleReadiness(state.readiness);
+    logger.info("");
+  }
+
+  if (state.readiness.warnings && state.readiness.warnings.length > 0) {
+    logger.info("Readiness warnings:");
+    for (const warning of state.readiness.warnings) {
+      logger.info(`  ${formatRepoTopicWarning(warning)}`);
+    }
     logger.info("");
   }
 
