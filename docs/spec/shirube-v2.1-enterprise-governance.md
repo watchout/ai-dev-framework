@@ -71,9 +71,8 @@ context registry.
 |---|---|
 | Shirube | Work Order OS, phase conveyor, policy/evidence/trace governance, role verdict projection. |
 | AUN | Optional acceleration layer for communication, dispatch, queueing, and evidence transport. |
-| Kusabi | Future policy/evidence adapter surface; not implemented in PR1. |
+| Kusabi | Canonical product/display name for memory, recovery, and continuity evidence. `Wasurezu` is the legacy alias/tooling/runtime name where still present. Repo/package identity remains `watchout/agent-memory` / `agent-memory` unless a separate CEO-approved rename PR exists. |
 | Kodama | Source/context registry and context-pack evidence provider; not transition authority. |
-| Wasurezu | Recovery, memory, and continuity evidence provider; not execution authority. |
 | AUN Platform | Operator UI/projection surface; not canonical transition logic. |
 | GitHub | Durable issue/PR/check/review SSOT and projection surface for GitHub-backed repos. |
 | Runners | Codex, Claude, local scripts, AUN-dispatched runners, or humans execute scoped work under a runner policy. |
@@ -140,6 +139,38 @@ State transition rules:
   condition.
 - `stopped` is mandatory for R4 or forbidden-scope requests without explicit
   approval.
+
+### 5.1 Phase And Verdict Vocabulary Ownership
+
+Shirube owns the canonical Work Order state machine, phase vocabulary, verdict
+vocabulary, and merge-readiness semantics.
+
+AUN conveyor labels, comments, queue views, and audit-result comments are
+projections of Shirube state. They are not an independent second state machine,
+and adapter/projection surfaces must not define independent gate semantics or
+override Shirube state.
+
+Canonical verdict vocabulary for v2.1 is:
+
+```text
+PASS
+WARN
+BLOCK
+STOP
+OBSERVE
+```
+
+Projection mapping examples:
+
+| Shirube canonical state/verdict | AUN conveyor label/comment projection | Authority owner |
+|---|---|---|
+| `audit_pending` | `needs:l2-audit` | Shirube state machine owns the required audit state; AUN label only projects it. |
+| L2 role verdict `PASS` | `audit:l2-passed` | Shirube role-verdict contract owns the verdict; AUN label only projects current-head evidence. |
+| `merge_ready` | `state:merge-ready` | Shirube merge-readiness semantics own the state; AUN must not mark merge readiness independently. |
+| Current-head audit evidence | `conveyor:audit-result/v1` PR comment | Shirube evidence contract owns sufficiency; AUN comment is transport/projection evidence. |
+
+These examples align the Shirube canonical vocabulary with AUN #766 conveyor
+labels/comments without making AUN projection authority.
 
 ## 6. Lanes And Risk Classes
 
@@ -216,6 +247,22 @@ Each evidence record must preserve:
 - redaction status;
 - linked policy and Work Order.
 
+The core `shirube-evidence-record/v1` envelope also reserves optional,
+forward-compatible fields for Advanced v2.1+ provenance, ledger, policy, model,
+and cost metadata:
+
+| Field | Status in PR1 | Purpose |
+|---|---|---|
+| `ledger_seq` | Reserved optional field. | Future append/ordering metadata. |
+| `prev_evidence_hash` | Reserved optional field. | Future tamper-evident ledger link. |
+| `evidence_hash` | Reserved optional field. | Future evidence integrity metadata. |
+| `policy_version` | Reserved optional field. | Policy version observed when evidence was produced or evaluated. |
+| `model_version` | Reserved optional field. | AI/model version metadata when applicable. |
+| `token_cost` | Reserved optional field. | Future cost/latency governance metadata. |
+
+These are reservations only. PR1 does not implement hashing, ledger append,
+SLSA/in-toto, cost accounting, evaluators, or enforcement.
+
 ## 9. Evidence Gate And Trace Matrix
 
 The Required Evidence Evaluator and Evidence Gate are first-wave v2.1 core
@@ -254,7 +301,7 @@ fixtures, evaluators, adapters, scanners, or enforcement.
 | `shirube-policy/v2.1` | Policy-as-Code root contract. | Future PR2/PR5. |
 | `shirube-risk-classification/v1` | R0-R4 risk result and rationale. | Future PR2/PR5. |
 | `shirube-policy-evaluation-result/v1` | Deterministic policy decision output. | Future PR3/PR5. |
-| `shirube-evidence-record/v1` | Generic evidence record envelope. | Future PR2/PR3. |
+| `shirube-evidence-record/v1` | Generic evidence record envelope with reserved optional `ledger_seq`, `prev_evidence_hash`, `evidence_hash`, `policy_version`, `model_version`, and `token_cost` slots. | Future PR2/PR3. |
 | `shirube-trace-matrix/v2.1` | Cross-artifact trace graph. | Future PR2/PR3/PR4. |
 | `shirube-ai-change-record/v1` | AI-assisted change evidence. | Existing lineage, hardened in future PRs. |
 | `shirube-security-evidence/v1` | Security-specific evidence. | Future PR6. |
@@ -373,7 +420,8 @@ PR1 also must not claim:
 - company-wide rollout;
 - enterprise readiness;
 - strict enforcement readiness;
-- AUN/Kusabi/Kodama/Wasurezu adapter readiness.
+- AUN/Kusabi/Kodama adapter readiness. `Wasurezu` remains a legacy alias for
+  Kusabi tooling/runtime naming where still present.
 
 ## 15. Acceptance Criteria
 
@@ -390,5 +438,11 @@ PR1 also must not claim:
   direction are documented.
 - Core v2.1 and Advanced v2.1+ scope are separated.
 - Role boundary and CTO flow-owner model are documented.
+- Shirube canonical phase/verdict vocabulary and AUN conveyor projection
+  mapping are documented.
+- `shirube-evidence-record/v1` reserves forward-compatible ledger/provenance/
+  policy/model/cost fields without implementing them.
+- Kusabi is the canonical memory/recovery/continuity product name, with
+  Wasurezu preserved only as a legacy alias/tooling/runtime name.
 - Non-scope and protected gate constraints are explicit.
 - No runtime behavior is changed by PR1.

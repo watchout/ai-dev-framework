@@ -110,7 +110,7 @@ those into the first-wave sequence above:
 | completion gate integration | Later protected PR after post-merge evidence model is reviewed. |
 | Goal Mode runner instruction packs | Later runner-policy PR; Codex Goal Mode remains a runner policy. |
 | adoption readiness check | Later readiness PR after evidence adapters exist. |
-| AUN/Kusabi/Kodama/Wasurezu adapters | Later adapter PRs; not first-wave enforcement. |
+| AUN/Kusabi/Kodama adapters | Later adapter PRs; not first-wave enforcement. `Wasurezu` remains a legacy alias/tooling/runtime name for Kusabi where still present, not a separate integration product. |
 
 ## 5. Child Track Mapping
 
@@ -139,6 +139,24 @@ fixtures/shirube-v2.1/policy-result/block-missing-evidence.json
 
 Fixture PR2 must not add runtime scanners, GitHub checks, label sync, queue
 dispatch, or branch protection.
+
+### 6.1 PR2 Non-Enforcing Behavioral Forward Contract
+
+PR2 schema fixtures should prove these behavior contracts without enabling
+runtime enforcement:
+
+- AUN conveyor labels/comments are projection data for Shirube states and
+  verdicts, not independent state-machine authority.
+- `shirube-evidence-record/v1` accepts the reserved optional ledger/provenance/
+  policy/model/cost slots while keeping hashing, ledger append, and cost
+  accounting unimplemented.
+- Kusabi is the canonical memory/recovery/continuity product name; Wasurezu may
+  appear only as legacy alias/tooling/runtime metadata, while
+  `watchout/agent-memory` / `agent-memory` remains the repo/package identity.
+
+The PR2 fixture result is schema compatibility evidence only. It must not
+create parsers, evaluators, adapters, scanners, GitHub Checks, labels, branch
+protection, or live automation.
 
 ## 7. Read-Only Evaluator Direction
 
