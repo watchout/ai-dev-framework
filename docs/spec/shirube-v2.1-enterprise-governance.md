@@ -183,6 +183,14 @@ A later policy artifact must be able to express:
 Policy-as-Code must be deterministic and replayable. Natural-language policy
 may explain intent, but the evaluable policy must own decisions.
 
+Acceptance scenario for first-wave Policy-as-Code:
+
+```gherkin
+Given a protected Work Order declares risk class R3 and cites `shirube-policy/v2.1`
+When the future read-only policy evaluator checks required evidence for that Work Order
+Then the evaluator returns `shirube-policy-evaluation-result/v1` with a deterministic decision, cited policy refs, cited evidence refs, and no runtime mutation
+```
+
 ## 8. Evidence Model
 
 The v2.1 evidence kernel has four required evidence families for enterprise
@@ -254,6 +262,19 @@ fixtures, evaluators, adapters, scanners, or enforcement.
 | `shirube-test-evidence/v1` | Test and verification evidence. | Future PR6. |
 | `shirube-contract-evidence/v1` | Schema/API/CLI/MCP/runner contract evidence. | Future PR6. |
 
+Control mechanism selection for the schema map:
+
+script 選定根拠: schema reservation, policy evaluation, evidence gating, and
+Trace Matrix checks must be deterministic, replayable, and testable from
+versioned artifacts before any state transition or projection can be trusted.
+PR1 records the names only; later PRs must implement any evaluator as script-
+controlled logic rather than LLM judgment.
+
+Hook 選定根拠: Hook 不採用 in PR1. Hooks may later call the same deterministic
+script for local interception when an unavoidable case is reviewed, but hooks
+must not own schema truth, policy decisions, evidence sufficiency, GitHub Check
+projection, merge authority, or phase completion.
+
 ## 11. Core v2.1 Versus Advanced v2.1+
 
 Core v2.1 first-wave scope:
@@ -280,6 +301,18 @@ Advanced v2.1+ follow-up scope:
 
 Advanced features may be referenced by #408, #409, or #412, but they must not
 be first-wave enforcement requirements.
+
+### 11.1 Testing Layer For Future PRs
+
+PR1 has no runtime testing layer because it is docs/spec-only. Future PR2+
+implementation must add testing appropriate to the artifact type:
+
+- schema fixture tests for contract shape and negative examples;
+- read-only evaluator unit tests for R0-R4, missing evidence, and stop cases;
+- projection tests that prove GitHub output is exact-head and redacted;
+- adapter tests that prove evidence production does not mutate runtime state;
+- regression tests that AUN ACK, queue id, or Discord projection alone cannot
+  satisfy completion authority.
 
 ## 12. Role Boundary And CTO Flow Owner
 
