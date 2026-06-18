@@ -1,8 +1,8 @@
 # Shirube Development Roadmap
 
 > Status: Canonical roadmap draft
-> Updated: 2026-05-26
-> Direction source: Issues #211 and #238, Gate Engine SPEC-DOC4L-020, GitHub-backed strict workflow, and script-control completion audit.
+> Updated: 2026-06-18
+> Direction source: Issues #211 and #238, Gate Engine SPEC-DOC4L-020, GitHub-backed strict workflow, script-control completion audit, and Shirube v2.1 parent SSOT #405 / PR1 #406.
 
 ## 1. Roadmap Goal
 
@@ -438,6 +438,7 @@ Shirube can be evaluated by large engineering organizations as an AI PR safety g
 | Metrics | Trace coverage, complete AI Change Record rate, blocked unlinked changes, missing-test-evidence blocks, risky tool calls, bypass count, and time-to-merge impact are measurable. |
 | Privacy/redaction | Public/remote projection never exposes secrets, private reasoning traces, or unnecessary local context. |
 | Policy integration | Enterprise policy can configure roles, allowed providers, allowed tools, required checks, and exception paths. |
+| Shirube v2.1 governance kernel | PR1 #406 fixes names, boundaries, schema map, Core v2.1 versus Advanced v2.1+ split, and future PR sequence in `docs/spec/shirube-v2.1-enterprise-governance.md`. |
 
 ### Sufficient exit conditions
 
@@ -517,6 +518,14 @@ Phase 0 addendum #220 defines the `POSTMERGE-001` record schema before Phase 1 i
 | #203 | Phase 3/4 MCP/public-grade surface after core gates stabilize. |
 | #204 | Phase 0/1 hardening before broad rollout. |
 | #211 | Phase 4 positioning and enterprise adoption target. |
+| #405 | Parent SSOT for Shirube v2 enterprise Work Order OS / phase conveyor direction. |
+| #406 | Shirube v2.1 PR1 docs/spec-only governance kernel and schema map. |
+| #407 | Future machine-enforced CI security gates and AI/MCP review boundary track; projection/enforcement remains follow-up. |
+| #408 | Advanced v2.1+ cross-agent adversarial review and attribution ledger track. |
+| #409 | Advanced v2.1+ provenance, tamper-evident ledger, SLSA/in-toto, and incident replay track. |
+| #410 | Core v2.1 risk-class Policy-as-Code and required evidence evaluator track. |
+| #411 | Core v2.1 trace matrix and spec-to-test verification track. |
+| #412 | Advanced v2.1+ cost/latency, eval harness, and rollout replay track. |
 
 ## 11. Implementation Order
 
