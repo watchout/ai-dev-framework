@@ -1,0 +1,39 @@
+schema_version: shirube-runner-handoff/v1
+runner: codex
+cell_id: shirube-3.0-preflight-lite-cell-1
+repo: watchout/ai-dev-framework
+branch: codex/shirube-3.0-preflight-lite-cell-1
+ssot_ref: https://github.com/watchout/ai-dev-framework/issues/418
+design_consolidation_gate_ref: docs/spec/shirube/phase-1/design-consolidation-gate-record.yml
+cell_intake_gate_ref: docs/spec/shirube/phase-1/cell-intake-gate-record.yml
+goal: Implement preflight-lite templates, shallow validator, repository evidence files, and tests.
+non_scope:
+  - runtime behavior changes
+  - GitHub Check/status creation
+  - branch protection changes
+  - label/comment/apply automation
+  - AUN/Discord/DB/queue/LaunchAgent integration
+  - merge authority changes
+  - production activation
+allowed_actions:
+  - edit repository files in this Cell scope
+  - run local validation commands
+  - push branch and open draft PR
+forbidden_actions:
+  - merge
+  - production activation
+  - GitHub Check/status creation
+  - branch protection mutation
+  - label/comment/apply automation
+required_checks:
+  - git diff --check
+  - npm run lint
+  - npm run type-check
+  - npm run build:cli
+  - npx vitest run test/preflight-lite.test.ts
+evidence_sink:
+  - https://github.com/watchout/ai-dev-framework/issues/418
+  - Cell PR conversation when created
+stop_conditions:
+  - forbidden action becomes necessary
+  - shallow structured validation is insufficient for the requested Cell

@@ -1,0 +1,14 @@
+schema_version: shirube-post-merge-evidence/v1
+repo: watchout/ai-dev-framework
+issue: 418
+cell_id: shirube-3.0-preflight-lite-cell-1
+status: pending
+expected_after: merge
+source_pr: null
+approved_head_sha: null
+merge_commit_sha: null
+post_merge_smoke: NOT_RECORDED
+evidence_sink:
+  - docs/spec/shirube/phase-1/post-merge-evidence.yml
+  - Cell PR conversation when created
+note: Reserved only; implementation bot does not self-approve post-merge evidence.

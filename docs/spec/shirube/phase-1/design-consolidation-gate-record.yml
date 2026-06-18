@@ -1,0 +1,37 @@
+schema_version: shirube-design-consolidation-gate/v1
+record_id: design-consolidation-gate-418-phase1-cell1-001
+repo: watchout/ai-dev-framework
+issue_or_pr: https://github.com/watchout/ai-dev-framework/issues/418
+phase_id: shirube-3.0-phase-1-preflight-lite
+cell_id: shirube-3.0-preflight-lite-cell-1
+actor_role: external_gate_reviewer
+actor_id: spec
+cell_plan_ref: https://github.com/watchout/ai-dev-framework/issues/418#issuecomment-4738807792
+ssot_ref: https://github.com/watchout/ai-dev-framework/issues/418
+architecture_map_ref: null
+adr_refs: []
+external_gate_bootstrap_exception: true
+external_gate_v0_ref: https://github.com/watchout/ai-dev-framework/issues/418#issuecomment-4738894749
+checks:
+  canonical_flow_complete: PASS
+  architecture_ownership_defined: PASS
+  responsibility_boundaries_defined: PASS
+  vocabulary_consistent: PASS
+  protected_surfaces_identified: PASS
+  risk_not_underestimated: WARN
+  authority_boundaries_defined: PASS
+  machine_evidence_primary: PASS
+  ai_review_advisory_only: PASS
+  old_audit_conveyor_not_reintroduced: PASS
+  merge_authority_separated: PASS
+  stop_conditions_defined: PASS
+  rollback_evidence_explainable: PASS
+verdict: WARN
+allowed_next_action: cell_intake
+warn_closure:
+  - security_or_domain_approval added at Cell Intake.
+  - watchout named as governance/domain approver.
+  - release_owner and merge_executor pinned to watchout for this bootstrap Cell.
+evidence_sink:
+  - docs/spec/shirube/phase-1/design-consolidation-gate-record.yml
+  - https://github.com/watchout/ai-dev-framework/issues/418#issuecomment-4738894749

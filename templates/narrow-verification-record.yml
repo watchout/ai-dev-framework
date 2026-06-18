@@ -1,0 +1,14 @@
+schema_version: shirube-narrow-verification-record/v1
+repo: <owner/repo>
+cell_id: <cell-id>
+exact_head_sha: <sha|null>
+checked_records: []
+checks:
+  exact_head_matches: PASS|WARN|BLOCK
+  risk_not_under_classified: PASS|WARN|BLOCK
+  required_evidence_present: PASS|WARN|BLOCK
+  protected_surfaces_accounted: PASS|WARN|BLOCK
+  non_scope_preserved: PASS|WARN|BLOCK
+verdict: PASS|WARN|BLOCK
+allowed_next_action: release_owner_merge|revise_records
+evidence_sink: <url-or-path>

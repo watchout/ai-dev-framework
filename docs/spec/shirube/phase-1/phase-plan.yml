@@ -1,0 +1,24 @@
+schema_version: shirube-phase-plan/v1
+repo: watchout/ai-dev-framework
+issue: 418
+phase_id: shirube-3.0-phase-1-preflight-lite
+phase_ref: https://github.com/watchout/ai-dev-framework/issues/418#issuecomment-4738802741
+status: planned
+goal: Create the smallest deterministic guardrail that prevents Cell Intake and Goal Mode from proceeding without required structured gate records.
+risk_posture: R3 protected governance semantics; no runtime mutation
+acceptance_criteria:
+  - Required gate and evidence templates exist.
+  - Preflight-lite validates required record presence and shallow field shape.
+  - Design Consolidation Gate is required before Cell Intake.
+  - Cell Intake Gate is required before runner handoff.
+  - PASS/WARN/BLOCK is emitted from structured artifacts only.
+evidence_sink:
+  - https://github.com/watchout/ai-dev-framework/issues/418
+  - docs/spec/shirube/phase-1/
+non_scope:
+  - runtime behavior changes
+  - GitHub Check/status creation
+  - branch protection mutation
+  - AUN/Discord/DB/queue/LaunchAgent integration
+  - merge authority changes
+  - production activation

@@ -1,0 +1,10 @@
+schema_version: shirube-narrow-verification-record/v1
+repo: watchout/ai-dev-framework
+issue: 418
+cell_id: shirube-3.0-preflight-lite-cell-1
+status: pending
+expected_after: machine_gate_pass_or_warn
+evidence_sink:
+  - docs/spec/shirube/phase-1/narrow-verification-record.yml
+  - Cell PR conversation when created
+note: Placeholder record reserved by Cell 1; implementation bot does not self-approve narrow verification.

@@ -1,0 +1,13 @@
+schema_version: shirube-runner-result/v1
+runner: codex|claude|other
+cell_id: <cell-id>
+repo: <owner/repo>
+branch: <branch>
+pr_url: <url|null>
+head_sha: <sha|null>
+changed_files: []
+commands_run: []
+checks_run: []
+known_limitations: []
+stop_reason: <null|scope_change_required|protected_surface_found|blocked_check|missing_context>
+evidence_refs: []

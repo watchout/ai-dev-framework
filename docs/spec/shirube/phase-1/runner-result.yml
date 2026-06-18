@@ -1,0 +1,15 @@
+schema_version: shirube-runner-result/v1
+runner: codex
+cell_id: shirube-3.0-preflight-lite-cell-1
+repo: watchout/ai-dev-framework
+branch: codex/shirube-3.0-preflight-lite-cell-1
+status: pending
+pr_url: null
+head_sha: null
+changed_files: []
+commands_run: []
+checks_run: []
+known_limitations: []
+stop_reason: null
+evidence_refs: []
+note: Filled by implementation handoff; this placeholder does not claim completion.

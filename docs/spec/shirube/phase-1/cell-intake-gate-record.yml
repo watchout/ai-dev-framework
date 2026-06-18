@@ -1,0 +1,65 @@
+schema_version: shirube-cell-intake-gate/v1
+repo: watchout/ai-dev-framework
+issue: 418
+cell_id: shirube-3.0-preflight-lite-cell-1
+phase_refs:
+  - shirube-3.0-phase-1-preflight-lite
+risk_class: R3
+goal: Implement preflight-lite templates, shallow deterministic validator, repository evidence files, and tests so Shirube blocks missing gate records before Goal Mode handoff.
+non_scope:
+  - runtime behavior changes
+  - GitHub Check/status creation
+  - branch protection changes
+  - label/comment/apply automation
+  - AUN/Discord/DB/queue/LaunchAgent integration
+  - merge authority changes
+  - production activation
+protected_surfaces:
+  - governance gate semantics
+  - evidence schema semantics
+  - runner handoff guardrail semantics
+required_gates:
+  before_goal_mode:
+    - design_consolidation_enterprise_fit_gate
+    - cell_intake_gate
+    - security_or_domain_approval
+  before_merge_ready:
+    - security_or_domain_approval
+    - exact_head_machine_gate
+    - lint
+    - typecheck
+    - unit_tests
+    - relevant_cli_or_script_tests
+    - secret_scan_if_available
+    - narrow_verification
+  after_merge:
+    - cell_post_merge_evidence
+required_evidence:
+  - design_consolidation_gate_record
+  - cell_intake_gate_record
+  - runner_handoff
+  - runner_result
+  - machine_gate_record
+  - narrow_verification_record
+  - cell_post_merge_evidence
+required_approvals:
+  - type: governance_domain_approval
+    actor: watchout
+    note: watchout acts as protected-governance/domain approver for this R3 bootstrap governance Cell.
+release_owner: watchout
+merge_executor: watchout
+evidence_sink:
+  - https://github.com/watchout/ai-dev-framework/issues/418
+  - docs/spec/shirube/phase-1/
+  - Cell PR conversation when created
+stop_conditions:
+  - needs #418 canonical flow semantic change
+  - requires GitHub mutation behavior
+  - requires branch protection mutation
+  - requires AUN/Discord/DB/queue/LaunchAgent integration
+  - requires merge authority change
+  - requires LLM judgment to compute PASS/WARN/BLOCK
+  - expands beyond shallow structured field validation
+rollback_or_revert_plan: Single PR revert removes templates/script/tests/evidence files and restores prior behavior.
+verdict: PASS
+allowed_next_action: goal_mode_implementation
