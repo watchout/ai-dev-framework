@@ -2,14 +2,163 @@ schema_version: shirube-runner-result/v1
 runner: codex
 cell_id: shirube-3.0-preflight-lite-cell-1
 repo: watchout/ai-dev-framework
+issue: 418
+pr_number: 419
+pr_url: https://github.com/watchout/ai-dev-framework/pull/419
 branch: codex/shirube-3.0-preflight-lite-cell-1
-status: pending
-pr_url: null
-head_sha: null
-changed_files: []
-commands_run: []
-checks_run: []
-known_limitations: []
+base_ref: main
+head_sha: 94dde1c47562591e086801a09b5793079601d481
+exact_head_sha: 94dde1c47562591e086801a09b5793079601d481
+status: completed
+result: PASS_WITH_WARN
+record_status: finalized_for_recorded_head
+record_finalization_note: This result records the completed runner evidence for the exact head shown above. Any commit that changes this file creates a new PR head and requires Machine Gate and Gate Review re-check at that new exact head.
+changed_files:
+  - docs/spec/shirube/phase-1/cell-intake-gate-record.yml
+  - docs/spec/shirube/phase-1/cell-plan.preflight-lite.yml
+  - docs/spec/shirube/phase-1/design-consolidation-gate-record.yml
+  - docs/spec/shirube/phase-1/design-consolidation-gate-request.yml
+  - docs/spec/shirube/phase-1/machine-gate-record.yml
+  - docs/spec/shirube/phase-1/narrow-verification-record.yml
+  - docs/spec/shirube/phase-1/phase-plan.yml
+  - docs/spec/shirube/phase-1/post-merge-evidence.yml
+  - docs/spec/shirube/phase-1/runner-handoff.yml
+  - docs/spec/shirube/phase-1/runner-result.yml
+  - scripts/preflight-lite.ts
+  - templates/cell-intake-gate.yml
+  - templates/design-consolidation-gate.yml
+  - templates/external-gate-verdict.md
+  - templates/machine-gate-record.yml
+  - templates/membership-manifest.yml
+  - templates/narrow-verification-record.yml
+  - templates/runner-handoff.yml
+  - templates/runner-result.yml
+  - test/preflight-lite.test.ts
+commands_run:
+  - command: npx tsx scripts/preflight-lite.ts --json
+    result: PASS
+    evidence: local
+  - command: npx tsx scripts/preflight-lite.ts
+    result: PASS
+    evidence: local
+  - command: npx vitest run test/preflight-lite.test.ts
+    result: PASS
+    tests: 8
+    evidence: local
+  - command: npx vitest run test/preflight-lite.test.ts --reporter=verbose
+    result: PASS
+    tests: 8
+    evidence: local
+  - command: git diff --check
+    result: PASS
+    evidence: local
+  - command: git diff --check origin/main...HEAD
+    result: PASS
+    evidence: local
+  - command: npm run lint
+    result: PASS
+    evidence: local
+  - command: npm run type-check
+    result: PASS
+    evidence: local
+  - command: npm run build:cli
+    result: PASS
+    evidence: local
+  - command: npx tsx src/cli/index.ts gate validate spec --base-ref=origin/main --link-probe=fake
+    result: PASS_WITH_WARN
+    passed: true
+    warnings: 17
+    evidence: local
+checks_run:
+  local:
+    preflight_lite_json:
+      command: npx tsx scripts/preflight-lite.ts --json
+      result: PASS
+    preflight_lite_human:
+      command: npx tsx scripts/preflight-lite.ts
+      result: PASS
+    focused_tests:
+      command: npx vitest run test/preflight-lite.test.ts
+      result: PASS
+      tests: 8
+    focused_tests_verbose:
+      command: npx vitest run test/preflight-lite.test.ts --reporter=verbose
+      result: PASS
+      tests: 8
+    diff_check:
+      command: git diff --check origin/main...HEAD
+      result: PASS
+    lint:
+      command: npm run lint
+      result: PASS
+      note: Existing Next.js pages-directory warning was non-fatal.
+    type_check:
+      command: npm run type-check
+      result: PASS
+    build_cli:
+      command: npm run build:cli
+      result: PASS
+    spec_validation:
+      command: npx tsx src/cli/index.ts gate validate spec --base-ref=origin/main --link-probe=fake
+      result: PASS_WITH_WARN
+      passed: true
+      warning_count: 17
+      note: Warnings were pre-existing v1.2.x markdown-spec findings outside this Cell scope.
+  ci:
+    workflow_run:
+      id: 27743258621
+      result: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621
+    build:
+      result: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075411838
+    cli_smoke_tests:
+      result: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075392902
+    critical_gate:
+      result: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075547570
+    hardcoded_secrets_scan:
+      result: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299527
+    lint:
+      result: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299575
+    security_audit:
+      result: WARN
+      classification: non_blocking_display_api_inconsistency
+      job_conclusion: success
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299495
+    type_check:
+      result: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299500
+    unit_tests:
+      result: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299519
+known_warnings:
+  - code: security_audit_display_api_inconsistency
+    severity: WARN
+    classification: non_blocking_display_api_inconsistency
+    description: Security Audit job API and steps show success, while gh pr checks displayed the aggregate check as pending.
+    non_blocking_reason: The npm audit step and job conclusion succeeded at the exact head; the pending state is a display/API inconsistency.
+  - code: lint_next_pages_directory_warning
+    severity: INFO
+    classification: non_blocking_local_tool_warning
+    description: npm run lint emitted the existing Next.js pages-directory warning but exited successfully.
+  - code: spec_validation_pre_existing_markdown_warnings
+    severity: WARN
+    classification: non_blocking_out_of_scope_warning
+    description: Spec validation passed with 17 pre-existing v1.2.x markdown-spec warnings outside this Cell scope.
+  - code: record_finalization_creates_new_head_recheck_required
+    severity: WARN
+    classification: expected_exact_head_recheck
+    description: Finalizing this record creates a new PR head, so Machine Gate and Gate Review must be rerun at the new exact head.
+missing_gates: []
+evidence_refs:
+  - https://github.com/watchout/ai-dev-framework/pull/419
+  - https://github.com/watchout/ai-dev-framework/pull/419#issuecomment-4739129855
+  - https://github.com/watchout/ai-dev-framework/pull/419#issuecomment-4739296228
+  - https://github.com/watchout/ai-dev-framework/actions/runs/27743258621
+  - docs/spec/shirube/phase-1/machine-gate-record.yml
+  - docs/spec/shirube/phase-1/cell-intake-gate-record.yml
 stop_reason: null
-evidence_refs: []
-note: Filled by implementation handoff; this placeholder does not claim completion.

@@ -1,15 +1,123 @@
 schema_version: shirube-machine-gate-record/v1
 repo: watchout/ai-dev-framework
 issue: 418
+pr_number: 419
+pr_url: https://github.com/watchout/ai-dev-framework/pull/419
+phase_id: shirube-3.0-phase-1-preflight-lite
 cell_id: shirube-3.0-preflight-lite-cell-1
-status: pending
-expected_after: implementation_head_exists
-required_gates:
-  - lint
-  - typecheck
-  - build_cli
-  - preflight_lite_tests
+exact_head_sha: 94dde1c47562591e086801a09b5793079601d481
+base_ref: main
+head_ref: codex/shirube-3.0-preflight-lite-cell-1
+record_status: finalized_for_recorded_head
+status: completed
+verdict: WARN
+allowed_next_action: narrow_verification
+machine_gate_result: PROCEED_TO_NARROW_VERIFICATION
+record_finalization_note: This record finalizes the Machine Gate WARN evidence for the recorded exact head. Any commit that changes this file creates a new PR head and requires Machine Gate re-check at that new exact head.
 evidence_sink:
   - docs/spec/shirube/phase-1/machine-gate-record.yml
-  - Cell PR conversation when created
-note: Placeholder record reserved by Cell 1; no machine gate PASS is claimed before implementation checks run.
+  - docs/spec/shirube/phase-1/runner-result.yml
+  - https://github.com/watchout/ai-dev-framework/pull/419#issuecomment-4739129855
+  - https://github.com/watchout/ai-dev-framework/actions/runs/27743258621
+required_gates:
+  before_merge_ready:
+    - security_or_domain_approval
+    - exact_head_machine_gate
+    - lint
+    - typecheck
+    - unit_tests
+    - relevant_cli_or_script_tests
+    - secret_scan_if_available
+    - narrow_verification
+satisfied_gates:
+  - security_or_domain_approval
+  - exact_head_machine_gate
+  - lint
+  - typecheck
+  - unit_tests
+  - relevant_cli_or_script_tests
+  - secret_scan_if_available
+missing_gates: []
+pending_next_gates:
+  - narrow_verification
+warn_findings:
+  - code: security_audit_display_api_inconsistency
+    severity: WARN
+    classification: non_blocking_display_api_inconsistency
+    description: Security Audit job API and steps show success, while gh pr checks displayed the aggregate check as pending.
+    gh_pr_checks_status: pending
+    job_api_status: in_progress
+    job_api_conclusion: success
+    job_api_completed_at: 2026-06-18T07:16:58Z
+    non_blocking_reason: The npm audit step and job conclusion succeeded at the exact head; the pending state is a display/API inconsistency.
+ci_evidence:
+  head_sha: 94dde1c47562591e086801a09b5793079601d481
+  workflow_run:
+    id: 27743258621
+    conclusion: success
+    url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621
+  jobs:
+    build:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075411838
+    cli_smoke_tests:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075392902
+    critical_gate:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075547570
+    hardcoded_secrets_scan:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299527
+    lint:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299575
+    security_audit:
+      verdict: WARN
+      classification: non_blocking_display_api_inconsistency
+      job_conclusion: success
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299495
+    type_check:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299500
+    unit_tests:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258621/job/82075299519
+  gate_workflows:
+    bypass_detection:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258611/job/82075299810
+    gate_a_environment_readiness:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258609/job/82075299492
+    gate_b_planning_completeness:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258549/job/82075299440
+    gate_c_ssot_completeness:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258606/job/82075299514
+    detect:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258576/job/82075299510
+    validate:
+      verdict: PASS
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27743258635/job/82075299424
+local_evidence:
+  preflight_lite_json:
+    command: npx tsx scripts/preflight-lite.ts --json
+    verdict: PASS
+  preflight_lite_human:
+    command: npx tsx scripts/preflight-lite.ts
+    verdict: PASS
+  focused_tests:
+    command: npx vitest run test/preflight-lite.test.ts
+    verdict: PASS
+    tests: 8
+  diff_check:
+    command: git diff --check origin/main...HEAD
+    verdict: PASS
+evidence_refs:
+  - https://github.com/watchout/ai-dev-framework/pull/419#issuecomment-4739129855
+  - https://github.com/watchout/ai-dev-framework/pull/419#issuecomment-4739296228
+  - docs/spec/shirube/phase-1/runner-result.yml
+  - docs/spec/shirube/phase-1/cell-intake-gate-record.yml
