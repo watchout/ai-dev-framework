@@ -41,6 +41,7 @@ Hearing / Discovery
 -> SSOT
 -> Phase Plan
 -> Cell Plan
+-> Design Consolidation / Enterprise Fit Gate
 -> Cell Intake Gate
 -> Cell Goal Mode Implementation
 -> Cell Debug Loop
@@ -81,6 +82,9 @@ remains protected governance / CEO approval gated while #405 carries
 - As a future AUN integrator, I can map Shirube Work Orders to AUN baton or
   delivery envelope vocabulary without claiming runtime integration in this
   docs-only Cell.
+- As a future implementation owner, I cannot receive a Cell implementation
+  handoff until design ownership, boundaries, protected surfaces, evidence path,
+  and merge authority separation have a durable gate record.
 
 ## 4. Functional Requirements
 
@@ -207,7 +211,86 @@ Rules:
   non-blocking for the risk lane, recorded in the evidence sink, and accepted by
   the required release owner or approval actor.
 
-### 4.6 Cell Intake Risk to Required Gates Binding
+### 4.6 Design Consolidation / Enterprise Fit Gate
+
+`Design Consolidation / Enterprise Fit Gate` is the mandatory
+pre-implementation design gate between `Cell Plan` and `Cell Intake Gate`.
+
+Purpose:
+
+- validate architecture ownership;
+- validate system boundaries;
+- validate enterprise fit;
+- validate protected surfaces;
+- validate role and authority boundaries;
+- validate stop conditions;
+- prevent the old L1/L2 audit -> QA/check conveyor from returning as the
+  primary route;
+- ensure machine evidence remains primary;
+- ensure review remains narrow verification rather than primary acceptance;
+- ensure merge authority remains separate from goal-mode implementation.
+
+This gate is pre-implementation design consolidation. It is not broad L1/L2
+audit, QA/check, or CTO review for ordinary R0-R2 work. It confirms the Cell is
+ready to enter Cell Intake; it does not replace Cell Machine Gate evidence,
+release-owner judgment, exact-head checks, or required protected approvals.
+
+Checklist:
+
+- Shirube ownership is clear.
+- AUN / GitHub / runner boundaries are clear.
+- No second governance state machine is introduced.
+- Protected surfaces are identified.
+- Risk class is not under-classified.
+- Read vs write/apply/send/dispatch are separated where required.
+- Dry-run vs apply are separated where required.
+- R3/R4 surfaces have required approval path.
+- Rollback / recovery is representable.
+- Exact-head evidence path is clear.
+- `release_owner` / `release_executor` / `evidence_sink` are concrete or
+  explicitly pending.
+- Old broad L1/L2 audit -> QA/check is not the primary route.
+
+Gate record requirement:
+
+- No Cell Intake is valid unless a Design Consolidation / Enterprise Fit Gate
+  record exists, or the Cell explicitly inherits a still-valid gate record.
+- An inherited gate record is still valid only when the Cell's SSOT, Phase Plan,
+  Cell Plan, risk class, protected surfaces, authority boundaries, stop
+  conditions, and evidence path have not materially changed.
+- Future Cells must not receive implementation handoff without this gate record.
+- `shirube-3.0-spec-reconciliation-cell-0` may use retroactive Design
+  Consolidation verification because the gate was identified after
+  implementation began.
+- The Cell 0 exception must not apply to `shirube-3.0-bootstrap-gate-cell-1` or
+  any later Cell.
+
+Minimum gate record fields:
+
+```yaml
+design_consolidation_gate:
+  gate_version: shirube-design-consolidation-enterprise-fit/v1
+  cell_id: <id>
+  source_cell_plan: <url|path>
+  verdict: PASS|BLOCKED
+  checklist:
+    shirube_ownership_clear: true|false
+    aun_github_runner_boundaries_clear: true|false
+    no_second_governance_state_machine: true|false
+    protected_surfaces_identified: true|false
+    risk_not_under_classified: true|false
+    read_write_apply_send_dispatch_separated: true|false
+    dry_run_apply_separated: true|false
+    r3_r4_approval_path_present: true|false
+    rollback_recovery_representable: true|false
+    exact_head_evidence_path_clear: true|false
+    release_owner_executor_evidence_sink_concrete_or_pending: true|false
+    old_audit_qa_not_primary_route: true|false
+  inherited_from: <gate-record-url|null>
+  evidence_sink: <url>
+```
+
+### 4.7 Cell Intake Risk to Required Gates Binding
 
 Cell Intake must compute or record:
 
@@ -230,7 +313,11 @@ Rules:
 - Cell Machine Gate reports `required_gates`, `satisfied_gates`, and
   `missing_gates`.
 
-### 4.7 Completion State Definitions
+Cell Intake consumes the Design Consolidation / Enterprise Fit Gate record. If
+the record is missing, stale, or `BLOCKED`, Cell Intake is invalid and the Cell
+must not enter goal-mode implementation.
+
+### 4.8 Completion State Definitions
 
 `Cell Done` means:
 
@@ -269,7 +356,7 @@ production_authority:
 Production Done cannot be claimed from Cell Done, Phase Done, Release Ready, or
 goal-mode output alone.
 
-### 4.8 AUN Vocabulary Reservation
+### 4.9 AUN Vocabulary Reservation
 
 This docs/spec artifact reserves only vocabulary mapping:
 
@@ -288,7 +375,7 @@ Reserved meaning:
 This reservation does not implement AUN runtime behavior and does not claim AUN
 integration complete.
 
-### 4.9 v2.1 Compatibility and 3.0 Adoption
+### 4.10 v2.1 Compatibility and 3.0 Adoption
 
 v2.1 compatibility rules:
 
@@ -307,20 +394,23 @@ Formal 3.0 adoption rules:
 - Final 3.0 authoritative adoption remains protected governance / CEO approval
   gated while #405 retains `route:ceo-approval` / `protected:governance`.
 - `shirube-3.0-bootstrap-gate-cell-1` remains blocked until this reconciliation
-  Cell merges and its post-merge evidence is recorded.
+  Cell merges, post-merge evidence is recorded, and its own Design
+  Consolidation / Enterprise Fit Gate record exists.
 
 ## 5. Interfaces
 
-The canonical interface introduced by this artifact is the membership manifest
-contract in section 4.3:
+The canonical interfaces introduced by this artifact are the membership
+manifest contract in section 4.3 and the Design Consolidation / Enterprise Fit
+Gate record in section 4.6.
 
 ```text
 schema_version: shirube-phase-cell-membership/v1
+gate_version: shirube-design-consolidation-enterprise-fit/v1
 ```
 
-This interface is docs/spec only. No schema parser, CLI command, GitHub Check,
-runtime sync, queue adapter, DB model, or AUN integration is created by this
-Cell.
+These interfaces are docs/spec only. No schema parser, CLI command, GitHub
+Check, runtime sync, queue adapter, DB model, or AUN integration is created by
+this Cell.
 
 Consumers may reference the contract in future docs/spec, impl, verify, ops,
 fixtures, or runtime Cells, but those consumers must be implemented and reviewed
@@ -350,7 +440,11 @@ Acceptance criteria:
   referencing/coverage view.
 - manifest mutation authority is defined.
 - PASS_WITH_WARN semantics include R3 non-protected warning default.
-- Cell Intake risk-to-required-gates binding is defined.
+- Design Consolidation / Enterprise Fit Gate is defined as mandatory before
+  Cell Intake, including checklist, gate record requirement, future Cell rule,
+  and Cell 0 retroactive verification exception.
+- Cell Intake risk-to-required-gates binding is defined and consumes the Design
+  Consolidation / Enterprise Fit Gate record.
 - Cell Done, Phase Done, Release Ready, and Production Done are defined.
 - AUN baton / delivery envelope / #766 `phase_handoff` vocabulary is reserved
   without runtime implementation.
@@ -360,11 +454,20 @@ Acceptance criteria:
 Gherkin scenario:
 
 ```gherkin
-Given a Shirube 3.0 Cell has one implementation Work Order, zero or more operational Work Orders, and a membership manifest entry
+Given a Shirube 3.0 Cell has one implementation Work Order, zero or more operational Work Orders, a membership manifest entry, and a Design Consolidation / Enterprise Fit Gate record
 When the Cell Machine Gate evaluates merge readiness for the exact PR head
 Then it can map the PR to one Cell and one implementation Work Order
 And it treats required evidence gaps or protected approval gaps as BLOCKED
 And it treats only recorded non-blocking lane-appropriate warnings as PASS_WITH_WARN
+```
+
+Design gate scenario:
+
+```gherkin
+Given a future Shirube 3.0 Cell has a Cell Plan but no Design Consolidation / Enterprise Fit Gate record
+When an implementation handoff is requested
+Then the handoff is BLOCKED before Cell Intake
+And the Cell must not enter goal-mode implementation
 ```
 
 ## 8. Assumptions and Dependencies
@@ -373,6 +476,11 @@ And it treats only recorded non-blocking lane-appropriate warnings as PASS_WITH_
 - v2.1 docs-backed governance vocabulary lives in
   `docs/spec/shirube-v2.1-enterprise-governance.md`.
 - This artifact is created before `shirube-3.0-bootstrap-gate-cell-1`.
+- `shirube-3.0-spec-reconciliation-cell-0` may use retroactive Design
+  Consolidation verification only because the gate was identified after
+  implementation began.
+- `shirube-3.0-bootstrap-gate-cell-1` and later Cells cannot inherit the Cell 0
+  exception.
 - A future implementation Cell may create schemas, fixtures, validators, or
   runtime sync only after this reconciliation contract merges and the relevant
   Cell intake authorizes that work.
@@ -383,14 +491,16 @@ Narrow spec verification for this Cell checks:
 
 - the handoff acceptance criteria are represented;
 - B1 and E1-E5 from the reconciliation review are represented;
+- the Design Consolidation / Enterprise Fit Gate correction is represented;
 - only docs/spec files changed;
 - no runtime, AUN, GitHub mutation, branch protection, queue, DB, Discord, or
   merge authority behavior was added;
 - docs/spec validation and whitespace checks pass;
 - formal 3.0 adoption remains protected governance / CEO approval gated.
 
-The old broad L1/L2 audit -> QA/check conveyor is not the primary route for
-this Cell.
+The Design Consolidation / Enterprise Fit Gate is pre-implementation design
+consolidation. The old broad L1/L2 audit -> QA/check conveyor is not the
+primary route for this Cell or later Cells.
 
 ## 10. Control Mechanism Selection
 
@@ -398,6 +508,10 @@ script 選定根拠: docs/spec validation and `git diff --check` are determinist
 replayable checks for this R0 Cell. Future gates that consume the membership
 manifest must also be script-controlled before they can affect transition,
 merge-readiness, or completion state.
+
+The Design Consolidation / Enterprise Fit Gate record is a prerequisite record
+for Cell Intake. Future implementation may validate that record with scripts,
+but this Cell only freezes the docs/spec contract.
 
 Hook 選定根拠: hooks are outside this Cell. A hook may later call a deterministic
 script, but it must not become the canonical source for membership, risk,
@@ -414,6 +528,7 @@ production completion.
 |---|---|---|---|
 | Vocabulary reconciliation | docs/spec review | - | canonical prose is the source contract for later implementation |
 | Membership contract | docs/spec manifest contract | - | future parsers must consume a frozen shape |
+| Design Consolidation gate record | docs/spec gate contract | - | future Cells need a durable pre-implementation design record before handoff |
 | R0 scope guard | `git diff --check` and changed-file review | - | verifies docs/spec-only boundaries without runtime mutation |
 | Spec corpus validation | `gate validate spec` | - | deterministic repository validation is already available |
 
