@@ -1,0 +1,24 @@
+schema_version: shirube-design-consolidation-gate-request/v1
+repo: watchout/ai-dev-framework
+issue: 418
+cell_id: shirube-3.0-preflight-lite-cell-1
+cell_plan_ref: docs/spec/shirube/phase-1/cell-plan.preflight-lite.yml
+ssot_ref: https://github.com/watchout/ai-dev-framework/issues/418
+requested_by: arc
+requested_checks:
+  - canonical_flow_complete
+  - architecture_ownership_defined
+  - responsibility_boundaries_defined
+  - vocabulary_consistent
+  - protected_surfaces_identified
+  - risk_not_underestimated
+  - authority_boundaries_defined
+  - machine_evidence_primary
+  - ai_review_advisory_only
+  - old_audit_conveyor_not_reintroduced
+  - merge_authority_separated
+  - stop_conditions_defined
+  - rollback_evidence_explainable
+evidence_sink:
+  - docs/spec/shirube/phase-1/design-consolidation-gate-record.yml
+  - https://github.com/watchout/ai-dev-framework/issues/418

@@ -1,0 +1,43 @@
+schema_version: shirube-cell-plan/v1
+repo: watchout/ai-dev-framework
+issue: 418
+cell_id: shirube-3.0-preflight-lite-cell-1
+cell_ref: https://github.com/watchout/ai-dev-framework/issues/418#issuecomment-4738807792
+phase_refs:
+  - shirube-3.0-phase-1-preflight-lite
+type: implementation_cell
+risk_class: R3
+risk_reason: protected governance semantics; local deterministic validation only; no external mutation
+goal: Implement preflight-lite templates, shallow deterministic validator, repository evidence files, and tests so Shirube blocks missing gate records before Goal Mode handoff.
+implementation_owner: codex-adf
+release_owner: watchout
+merge_executor: watchout
+evidence_sink:
+  - https://github.com/watchout/ai-dev-framework/issues/418
+  - docs/spec/shirube/phase-1/
+  - Cell PR conversation when created
+required_gates:
+  before_goal_mode:
+    - design_consolidation_enterprise_fit_gate
+    - cell_intake_gate
+    - security_or_domain_approval
+  before_merge_ready:
+    - security_or_domain_approval
+    - exact_head_machine_gate
+    - lint
+    - typecheck
+    - unit_tests
+    - relevant_cli_or_script_tests
+    - secret_scan_if_available
+    - narrow_verification
+  after_merge:
+    - cell_post_merge_evidence
+stop_conditions:
+  - needs #418 canonical flow semantic change
+  - requires GitHub mutation behavior
+  - requires branch protection mutation
+  - requires AUN/Discord/DB/queue/LaunchAgent integration
+  - requires merge authority change
+  - requires LLM judgment to compute PASS/WARN/BLOCK
+  - expands beyond shallow structured field validation
+rollback_or_revert_plan: Single PR revert removes templates/script/tests/evidence files and restores prior behavior.

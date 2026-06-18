@@ -1,0 +1,16 @@
+schema_version: shirube-membership-manifest/v1
+repo: <owner/repo>
+phase_id: <phase-id>
+phase_ref: <url-or-path>
+required_cells:
+  - cell_id: <cell-id>
+    required: true
+    status: planned|design_gate_passed|intake_ready|in_progress|merged|done|blocked
+    intake_record_ref: <url-or-path|null>
+    post_merge_evidence_ref: <url-or-path|null>
+    evidence_refs: []
+deferred_cells: []
+phase_done_conditions:
+  required_cells_done: false
+  acceptance_criteria_satisfied: false
+  phase_evidence_ref: <url-or-path|null>

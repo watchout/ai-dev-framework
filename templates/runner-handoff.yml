@@ -1,0 +1,17 @@
+schema_version: shirube-runner-handoff/v1
+runner: codex|claude|other
+cell_id: <cell-id>
+repo: <owner/repo>
+branch: <branch>
+ssot_ref: <url-or-path>
+design_consolidation_gate_ref: <url-or-path>
+cell_intake_gate_ref: <url-or-path>
+goal: <one sentence>
+non_scope: []
+acceptance_criteria: []
+allowed_files: []
+allowed_actions: []
+forbidden_actions: []
+required_checks: []
+evidence_sink: <url-or-path>
+stop_conditions: []

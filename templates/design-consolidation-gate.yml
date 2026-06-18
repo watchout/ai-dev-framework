@@ -1,0 +1,29 @@
+schema_version: shirube-design-consolidation-gate/v1
+record_id: <record-id>
+repo: <owner/repo>
+issue_or_pr: <url>
+phase_id: <phase-id>
+cell_id: <cell-id>
+actor_role: external_gate_reviewer|architecture_owner|domain_owner
+actor_id: <actor>
+cell_plan_ref: <url-or-path>
+ssot_ref: <url-or-path>
+architecture_map_ref: <url|null>
+adr_refs: []
+checks:
+  canonical_flow_complete: PASS|WARN|BLOCK
+  architecture_ownership_defined: PASS|WARN|BLOCK
+  responsibility_boundaries_defined: PASS|WARN|BLOCK
+  vocabulary_consistent: PASS|WARN|BLOCK
+  protected_surfaces_identified: PASS|WARN|BLOCK
+  risk_not_underestimated: PASS|WARN|BLOCK
+  authority_boundaries_defined: PASS|WARN|BLOCK
+  machine_evidence_primary: PASS|WARN|BLOCK
+  ai_review_advisory_only: PASS|WARN|BLOCK
+  old_audit_conveyor_not_reintroduced: PASS|WARN|BLOCK
+  merge_authority_separated: PASS|WARN|BLOCK
+  stop_conditions_defined: PASS|WARN|BLOCK
+  rollback_evidence_explainable: PASS|WARN|BLOCK
+verdict: PASS|WARN|BLOCK
+allowed_next_action: cell_intake|revise_design
+evidence_sink: <url-or-path>
