@@ -1,0 +1,58 @@
+{
+  "schema_version": "shirube-test-evidence/v1",
+  "evidence_id": "test-shirube-v2.1-pr2-validation",
+  "fixture_scope": "docs_spec_fixture_only",
+  "source_refs": {
+    "parent_ssot": "https://github.com/watchout/ai-dev-framework/issues/405",
+    "pr1_source": "https://github.com/watchout/ai-dev-framework/pull/413",
+    "pr2_source": "https://github.com/watchout/ai-dev-framework/issues/414",
+    "fixture_path": "docs/spec/fixtures/shirube-v2.1/test-evidence.example.json"
+  },
+  "exact_head_binding": {
+    "required": true,
+    "example_head_sha": "8b0d9698ef0c6f807550ca0ea9104a21841f715d"
+  },
+  "commands": [
+    {
+      "command": "git diff --check",
+      "required_for_handoff": true,
+      "expected_result_shape": "exit_code plus stdout/stderr summary"
+    },
+    {
+      "command": "npx tsx src/cli/index.ts gate validate spec --base-ref=origin/main --link-probe=fake",
+      "required_for_handoff": true,
+      "expected_result_shape": "PASS/FAIL with finding list"
+    },
+    {
+      "command": "npm run lint",
+      "required_for_handoff": true,
+      "expected_result_shape": "exit_code plus lint summary"
+    },
+    {
+      "command": "npm run type-check",
+      "required_for_handoff": true,
+      "expected_result_shape": "exit_code plus type-check summary"
+    }
+  ],
+  "role_separation": {
+    "producer_role": "implementation_owner",
+    "qa_check_role": "QA/check",
+    "same_actor_allowed_for_final_verdict": false
+  },
+  "required_evidence_status": {
+    "status": "required_for_handoff",
+    "reason": "Fixture contracts and doc links are changed, so validation evidence must be reported."
+  },
+  "enterprise_reserved": {
+    "ledger_seq": null,
+    "prev_evidence_hash": null,
+    "evidence_hash": null,
+    "policy_version": "shirube-policy/v1",
+    "model_version": null,
+    "token_cost": null
+  },
+  "non_claims": [
+    "This fixture records expected evidence shape, not live command output.",
+    "Live command output belongs in the Implementation Handoff."
+  ]
+}

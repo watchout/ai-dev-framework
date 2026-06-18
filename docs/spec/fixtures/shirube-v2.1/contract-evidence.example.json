@@ -1,0 +1,55 @@
+{
+  "schema_version": "shirube-contract-evidence/v1",
+  "evidence_id": "contract-shirube-v2.1-pr2-fixture-set",
+  "fixture_scope": "docs_spec_fixture_only",
+  "source_refs": {
+    "parent_ssot": "https://github.com/watchout/ai-dev-framework/issues/405",
+    "pr1_source": "https://github.com/watchout/ai-dev-framework/pull/413",
+    "pr2_source": "https://github.com/watchout/ai-dev-framework/issues/414",
+    "fixture_directory": "docs/spec/fixtures/shirube-v2.1/"
+  },
+  "exact_head_binding": {
+    "required": true,
+    "example_head_sha": "8b0d9698ef0c6f807550ca0ea9104a21841f715d"
+  },
+  "contract_inventory": [
+    { "schema_version": "shirube-policy/v1", "path": "docs/spec/fixtures/shirube-v2.1/policy.example.yml" },
+    { "schema_version": "shirube-risk-classification/v1", "path": "docs/spec/fixtures/shirube-v2.1/risk-classification.example.yml" },
+    { "schema_version": "shirube-evidence-record/v1", "path": "docs/spec/fixtures/shirube-v2.1/evidence-record.example.json" },
+    { "schema_version": "shirube-trace-matrix/v1", "path": "docs/spec/fixtures/shirube-v2.1/trace-matrix.example.json" },
+    { "schema_version": "shirube-security-evidence/v1", "path": "docs/spec/fixtures/shirube-v2.1/security-evidence.example.json" },
+    { "schema_version": "shirube-test-evidence/v1", "path": "docs/spec/fixtures/shirube-v2.1/test-evidence.example.json" },
+    { "schema_version": "shirube-db-evidence/v1", "path": "docs/spec/fixtures/shirube-v2.1/db-evidence.example.json" },
+    { "schema_version": "shirube-contract-evidence/v1", "path": "docs/spec/fixtures/shirube-v2.1/contract-evidence.example.json" },
+    { "schema_version": "shirube-ai-change-record/v1", "path": "docs/spec/fixtures/shirube-v2.1/ai-change-record.example.json" },
+    { "schema_version": "shirube-architecture-map/v1", "path": "docs/spec/fixtures/shirube-v2.1/architecture-map.example.json" }
+  ],
+  "future_evaluator_contract": {
+    "target_pr": "PR3",
+    "loader_mode": "read_only",
+    "expected_input": "schema_version plus source_refs plus exact_head_binding plus evidence or reason",
+    "expected_output": "shirube-policy-evaluation-result/v1",
+    "mutates_runtime": false
+  },
+  "role_separation": {
+    "producer_role": "implementation_owner",
+    "contract_reviewer_role": "L1/L2 audit",
+    "same_actor_allowed_for_final_verdict": false
+  },
+  "required_evidence_status": {
+    "status": "required",
+    "reason": "PR2 adds example schema contract fixtures."
+  },
+  "enterprise_reserved": {
+    "ledger_seq": null,
+    "prev_evidence_hash": null,
+    "evidence_hash": null,
+    "policy_version": "shirube-policy/v1",
+    "model_version": null,
+    "token_cost": null
+  },
+  "non_claims": [
+    "This fixture is not a JSON Schema.",
+    "This fixture does not implement a parser, evaluator, adapter, scanner, CI gate, or GitHub Check."
+  ]
+}

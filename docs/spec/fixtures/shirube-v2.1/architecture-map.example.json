@@ -1,0 +1,68 @@
+{
+  "schema_version": "shirube-architecture-map/v1",
+  "map_id": "architecture-shirube-v2.1-core-boundaries",
+  "fixture_scope": "docs_spec_fixture_only",
+  "source_refs": {
+    "parent_ssot": "https://github.com/watchout/ai-dev-framework/issues/405",
+    "pr1_source": "https://github.com/watchout/ai-dev-framework/pull/413",
+    "pr2_source": "https://github.com/watchout/ai-dev-framework/issues/414",
+    "local_spec": "docs/spec/shirube-v2.1-enterprise-governance.md"
+  },
+  "exact_head_binding": {
+    "required_for_pr_scoped_projection": true,
+    "example_head_sha": "8b0d9698ef0c6f807550ca0ea9104a21841f715d"
+  },
+  "systems": [
+    {
+      "name": "Shirube",
+      "boundary": "Work Order OS, phase conveyor, policy/evidence/trace governance, role verdict projection.",
+      "transition_authority": true
+    },
+    {
+      "name": "AUN",
+      "boundary": "Optional acceleration layer for communication, dispatch, queueing, mirroring, and evidence transport.",
+      "transition_authority": false
+    },
+    {
+      "name": "Kusabi",
+      "boundary": "Canonical memory, recovery, and continuity evidence product. Wasurezu remains a legacy alias/tooling/runtime name where present.",
+      "transition_authority": false
+    },
+    {
+      "name": "Kodama",
+      "boundary": "Source/context registry and context-pack evidence provider.",
+      "transition_authority": false
+    },
+    {
+      "name": "GitHub",
+      "boundary": "Durable issue, PR, review, comment, and check state SSOT for GitHub-backed work.",
+      "transition_authority": "durable_projection_and_review_surface"
+    },
+    {
+      "name": "Runners",
+      "boundary": "Codex, Claude, local scripts, AUN-dispatched runners, or humans execute scoped work under runner policy.",
+      "transition_authority": false
+    }
+  ],
+  "control_boundaries": {
+    "policy_decisions": "Shirube deterministic policy/evidence/trace logic in future PRs.",
+    "transport_evidence": "AUN ACK, queue ids, and Discord messages can be cited as transport evidence only.",
+    "context_evidence": "Kusabi and Kodama can provide continuity or source context evidence, not completion authority.",
+    "merge_or_completion": "Requires durable evidence, required role verdicts, and exact-head binding."
+  },
+  "role_separation": {
+    "producer": "Creates scoped change and evidence.",
+    "reviewer": "Checks completeness and fit.",
+    "auditor": "Independently checks governance, evidence, risk, and policy.",
+    "qa_check": "Checks reproducibility and handoff usability.",
+    "cto_flow_owner": "Approves protected direction or scope expansion."
+  },
+  "non_scope": {
+    "runtime_activation": false,
+    "enforcement": false,
+    "aun_dispatch": false,
+    "db_or_queue_mutation": false,
+    "branch_protection_or_label_sync": false,
+    "discord_live_automation": false
+  }
+}

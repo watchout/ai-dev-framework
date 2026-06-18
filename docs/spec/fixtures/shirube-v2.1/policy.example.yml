@@ -1,0 +1,117 @@
+schema_version: shirube-policy/v1
+fixture_id: shirube-v2.1-policy-core-example
+fixture_scope: docs_spec_fixture_only
+product_version: Shirube v2.1
+source_refs:
+  parent_ssot: https://github.com/watchout/ai-dev-framework/issues/405
+  pr1_source: https://github.com/watchout/ai-dev-framework/pull/413
+  pr2_source: https://github.com/watchout/ai-dev-framework/issues/414
+  local_spec: docs/spec/shirube-v2.1-enterprise-governance.md
+exact_head_binding:
+  required_for_pr_scoped_decisions: true
+  example_head_sha: 8b0d9698ef0c6f807550ca0ea9104a21841f715d
+authority:
+  durable_ssot: GitHub issue, PR, review, comment, and check state
+  shirube_owns:
+    - risk classification
+    - required evidence
+    - role verdict sufficiency
+    - transition decision
+  projection_only:
+    - AUN ACK
+    - AUN queue id
+    - Discord message
+    - GitHub Check projection
+runner_policies:
+  allowed:
+    - human_manual
+    - codex_goal_mode
+    - claude_code_session
+    - script_only
+    - aun_accelerated
+  runner_policy_is_architecture: false
+risk_classes:
+  R0:
+    lane: Routine
+    description: Read-only inspection or non-mutating validation.
+    minimum_evidence:
+      - source link
+  R1:
+    lane: Routine
+    description: Local reversible docs or code mutation.
+    minimum_evidence:
+      - source link
+      - local diff summary
+      - relevant verification result
+  R2:
+    lane: Routine
+    description: Remote reversible mutation such as pushing a branch, opening a PR, or posting a review request.
+    minimum_evidence:
+      - exact head SHA
+      - source link
+      - PR or comment URL
+  R3:
+    lane: Protected
+    description: Shared control-plane, policy, CI, security gate, MCP, or AUN queue lifecycle mutation.
+    minimum_evidence:
+      - exact head SHA
+      - shirube-security-evidence/v1
+      - shirube-test-evidence/v1
+      - shirube-contract-evidence/v1
+      - independent L1/L2 role verdicts
+  R4:
+    lane: Stop
+    description: Destructive, external-impact, merge, deploy, secret, permission, DB destruction, or billing/value-transfer mutation.
+    minimum_evidence:
+      - explicit approval record
+      - stop-condition review
+      - CTO flow-owner path
+required_evidence_by_impact:
+  security:
+    schema_version: shirube-security-evidence/v1
+    required_when: Security, auth, permissions, secrets, supply chain, CI, or external exposure is affected.
+  test:
+    schema_version: shirube-test-evidence/v1
+    required_when: Behavior, gate, evaluator, adapter, or runtime code is changed.
+  db:
+    schema_version: shirube-db-evidence/v1
+    required_when: Schema, migration, storage lifecycle, queue, or persistence behavior is changed.
+  contract:
+    schema_version: shirube-contract-evidence/v1
+    required_when: Public API, CLI, schema, MCP, runner, policy, or adapter contract is changed.
+role_separation:
+  producer:
+    may_submit_evidence: true
+    may_approve_own_transition: false
+  l1_review:
+    may_review_completeness: true
+    may_replace_l2: false
+  l2_audit:
+    may_review_governance: true
+    may_be_same_actor_as_producer: false
+  qa_check:
+    may_verify_reproducibility: true
+    may_replace_cto: false
+  cto_flow_owner:
+    required_for_scope_expansion: true
+decision_outputs:
+  allowed_verdicts:
+    - PASS
+    - WARN
+    - BLOCK
+    - STOP
+    - OBSERVE
+  deterministic: true
+  mutates_runtime: false
+non_scope:
+  - enforcement
+  - runtime evaluator
+  - CI gate
+  - GitHub Check creation
+  - branch protection
+  - label sync
+  - AUN dispatch
+  - DB migration
+  - LaunchAgent change
+  - Discord automation
+  - external repository mutation

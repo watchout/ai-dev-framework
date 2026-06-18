@@ -123,22 +123,29 @@ those into the first-wave sequence above:
 | #411 | Semantic drift, trace matrix, spec-to-test verification. | Core v2.1 first wave; semantic drift hardening may extend later. |
 | #412 | Cost/latency budgets, eval harness gates, rollout replay. | Advanced v2.1+ except basic rollout evidence references. |
 
-## 6. Future Schema Fixture Direction
+## 6. PR2 Schema Fixture Direction
 
-PR2 should add schema fixtures without enabling enforcement. Minimum fixtures:
+PR2 adds reviewable schema fixture examples without enabling enforcement. The
+fixture directory is `docs/spec/fixtures/shirube-v2.1/`, keeping the contract
+examples docs/spec-owned and reviewable by the same spec-audit path.
 
-```text
-fixtures/shirube-v2.1/policy/basic.json
-fixtures/shirube-v2.1/risk/r0-docs-only.json
-fixtures/shirube-v2.1/risk/r3-control-plane.json
-fixtures/shirube-v2.1/evidence/test-evidence-present.json
-fixtures/shirube-v2.1/evidence/security-evidence-missing.json
-fixtures/shirube-v2.1/trace/work-order-to-pr.json
-fixtures/shirube-v2.1/policy-result/block-missing-evidence.json
-```
+| Fixture schema id | Fixture path | Owner track | Future evaluator PR |
+|---|---|---|---|
+| `shirube-policy/v1` | [`policy.example.yml`](../spec/fixtures/shirube-v2.1/policy.example.yml) | #410 policy/evidence core. | PR3 read-only loader/evaluator. |
+| `shirube-risk-classification/v1` | [`risk-classification.example.yml`](../spec/fixtures/shirube-v2.1/risk-classification.example.yml) | #410 R0-R4 policy core. | PR3 read-only loader/evaluator. |
+| `shirube-evidence-record/v1` | [`evidence-record.example.json`](../spec/fixtures/shirube-v2.1/evidence-record.example.json) | #410/#411 evidence core. | PR3 read-only loader/evaluator. |
+| `shirube-trace-matrix/v1` | [`trace-matrix.example.json`](../spec/fixtures/shirube-v2.1/trace-matrix.example.json) | #411 traceability core. | PR3 read-only loader/evaluator. |
+| `shirube-security-evidence/v1` | [`security-evidence.example.json`](../spec/fixtures/shirube-v2.1/security-evidence.example.json) | #407/#410 security evidence. | PR3 read-only loader/evaluator; PR6 adapter evidence. |
+| `shirube-test-evidence/v1` | [`test-evidence.example.json`](../spec/fixtures/shirube-v2.1/test-evidence.example.json) | #410/#411 test evidence. | PR3 read-only loader/evaluator; PR6 adapter evidence. |
+| `shirube-db-evidence/v1` | [`db-evidence.example.json`](../spec/fixtures/shirube-v2.1/db-evidence.example.json) | #410 DB/storage evidence. | PR3 read-only loader/evaluator; PR6 adapter evidence. |
+| `shirube-contract-evidence/v1` | [`contract-evidence.example.json`](../spec/fixtures/shirube-v2.1/contract-evidence.example.json) | #410/#411 contract evidence. | PR3 read-only loader/evaluator; PR6 adapter evidence. |
+| `shirube-ai-change-record/v1` | [`ai-change-record.example.json`](../spec/fixtures/shirube-v2.1/ai-change-record.example.json) | #411 AI-assisted change trace. | PR3 read-only loader/evaluator. |
+| `shirube-architecture-map/v1` | [`architecture-map.example.json`](../spec/fixtures/shirube-v2.1/architecture-map.example.json) | #405/#411 boundary trace. | PR3 read-only loader/evaluator. |
 
-Fixture PR2 must not add runtime scanners, GitHub checks, label sync, queue
-dispatch, or branch protection.
+Fixture PR2 must not add runtime scanners, GitHub Checks, label sync, queue
+dispatch, branch protection, parsers, evaluators, adapters, CI gates, DB
+changes, LaunchAgent changes, Discord automation, or external repository
+mutation.
 
 ### 6.1 PR2 Non-Enforcing Behavioral Forward Contract
 
@@ -153,6 +160,9 @@ runtime enforcement:
 - Kusabi is the canonical memory/recovery/continuity product name; Wasurezu may
   appear only as legacy alias/tooling/runtime metadata, while
   `watchout/agent-memory` / `agent-memory` remains the repo/package identity.
+- PR3 can infer loader input shape from fixture `schema_version`, `source_refs`,
+  `exact_head_binding`, role separation, required evidence, and non-claim
+  fields without requiring live repository mutation.
 
 The PR2 fixture result is schema compatibility evidence only. It must not
 create parsers, evaluators, adapters, scanners, GitHub Checks, labels, branch

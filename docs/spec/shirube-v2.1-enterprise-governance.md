@@ -322,6 +322,43 @@ script for local interception when an unavoidable case is reviewed, but hooks
 must not own schema truth, policy decisions, evidence sufficiency, GitHub Check
 projection, merge authority, or phase completion.
 
+### 10.1 PR2 Fixture Inventory
+
+PR2 adds reviewable example contract fixtures under
+`docs/spec/fixtures/shirube-v2.1/`. These artifacts are docs/data fixtures only:
+they define the loader-facing `schema_version` strings and example input shapes
+for the future PR3 read-only evaluator, but they do not add schemas, parsers,
+runtime code, GitHub Checks, CI gates, adapters, scanners, branch protection,
+label sync, AUN dispatch, DB changes, LaunchAgent changes, Discord automation,
+or external repository mutation.
+
+PR1 names `shirube-policy/v2.1` and `shirube-trace-matrix/v2.1` as v2.1
+governance-kernel contract directions. PR2 fixes the first fixture schema ids
+for loader examples as `shirube-policy/v1` and `shirube-trace-matrix/v1`.
+No evaluator may treat either set as enforcement-ready until a later reviewed
+schema/evaluator PR defines normalization and deterministic behavior.
+
+Every fixture must make the following readable without external context:
+
+- source links to #405, #413, and #414;
+- exact-head binding expectations for PR-scoped decisions;
+- role separation between producer, review, audit, QA/check, and CTO flow owner;
+- required evidence or an explicit not-required reason;
+- optional reserved enterprise slots where evidence metadata is represented.
+
+| Fixture schema id | Fixture path | Owner track | Future evaluator PR |
+|---|---|---|---|
+| `shirube-policy/v1` | [`policy.example.yml`](fixtures/shirube-v2.1/policy.example.yml) | #410 policy/evidence core. | PR3 read-only loader/evaluator. |
+| `shirube-risk-classification/v1` | [`risk-classification.example.yml`](fixtures/shirube-v2.1/risk-classification.example.yml) | #410 R0-R4 policy core. | PR3 read-only loader/evaluator. |
+| `shirube-evidence-record/v1` | [`evidence-record.example.json`](fixtures/shirube-v2.1/evidence-record.example.json) | #410/#411 evidence core. | PR3 read-only loader/evaluator. |
+| `shirube-trace-matrix/v1` | [`trace-matrix.example.json`](fixtures/shirube-v2.1/trace-matrix.example.json) | #411 traceability core. | PR3 read-only loader/evaluator. |
+| `shirube-security-evidence/v1` | [`security-evidence.example.json`](fixtures/shirube-v2.1/security-evidence.example.json) | #407/#410 security evidence. | PR3 read-only loader/evaluator; PR6 adapter evidence. |
+| `shirube-test-evidence/v1` | [`test-evidence.example.json`](fixtures/shirube-v2.1/test-evidence.example.json) | #410/#411 test evidence. | PR3 read-only loader/evaluator; PR6 adapter evidence. |
+| `shirube-db-evidence/v1` | [`db-evidence.example.json`](fixtures/shirube-v2.1/db-evidence.example.json) | #410 DB/storage evidence. | PR3 read-only loader/evaluator; PR6 adapter evidence. |
+| `shirube-contract-evidence/v1` | [`contract-evidence.example.json`](fixtures/shirube-v2.1/contract-evidence.example.json) | #410/#411 contract evidence. | PR3 read-only loader/evaluator; PR6 adapter evidence. |
+| `shirube-ai-change-record/v1` | [`ai-change-record.example.json`](fixtures/shirube-v2.1/ai-change-record.example.json) | #411 AI-assisted change trace. | PR3 read-only loader/evaluator. |
+| `shirube-architecture-map/v1` | [`architecture-map.example.json`](fixtures/shirube-v2.1/architecture-map.example.json) | #405/#411 boundary trace. | PR3 read-only loader/evaluator. |
+
 ## 11. Core v2.1 Versus Advanced v2.1+
 
 Core v2.1 first-wave scope:
