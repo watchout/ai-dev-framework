@@ -807,6 +807,57 @@ describe("conveyor command", () => {
     ]);
   });
 
+  it("prints observe-only PR check JSON from a fixture", () => {
+    const fixturePath = path.join(tmpDir, "conveyor-pr-check.json");
+    fs.writeFileSync(
+      fixturePath,
+      JSON.stringify({
+        repo,
+        pr: 415,
+        pr_url: "https://github.com/watchout/ai-dev-framework/pull/415",
+        body: "<!-- shirube:implementation-handoff/v1 -->",
+        head_sha: "head-415",
+        base_branch: "main",
+        base_sha: "base-415",
+        state: "open",
+        draft: false,
+        merged: false,
+        mergeable: true,
+        changed_files: ["docs/spec/shirube-v2.1-enterprise-governance.md"],
+        labels: ["state:impl-l1"],
+        comments: [],
+        checks: [{ name: "Lint", status: "COMPLETED", conclusion: "SUCCESS" }],
+      }),
+      "utf-8",
+    );
+
+    const result = runConveyor(
+      `check https://github.com/watchout/ai-dev-framework/pull/415 --fixture ${fixturePath} --format json --observed-at 2026-06-18T00:00:00.000Z`,
+    );
+    const payload = JSON.parse(result.stdout) as {
+      schema_version: string;
+      gate_version: string;
+      repo: string;
+      pr: number;
+      observed_at: string;
+      diff_scope: { classification: string };
+      verdict: string;
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload).toEqual(
+      expect.objectContaining({
+        schema_version: "shirube-conveyor-check/v1",
+        gate_version: "gate-completion-barrier/v1",
+        repo,
+        pr: 415,
+        observed_at: "2026-06-18T00:00:00.000Z",
+        verdict: "PASS",
+      }),
+    );
+    expect(payload.diff_scope.classification).toBe("docs_only");
+  });
+
   it("prints a durable audit-report evidence block without posting it", () => {
     const result = runConveyor(
       [

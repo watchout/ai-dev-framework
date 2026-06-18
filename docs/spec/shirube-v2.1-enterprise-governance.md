@@ -359,6 +359,55 @@ Every fixture must make the following readable without external context:
 | `shirube-ai-change-record/v1` | [`ai-change-record.example.json`](fixtures/shirube-v2.1/ai-change-record.example.json) | #411 AI-assisted change trace. | PR3 read-only loader/evaluator. |
 | `shirube-architecture-map/v1` | [`architecture-map.example.json`](fixtures/shirube-v2.1/architecture-map.example.json) | #405/#411 boundary trace. | PR3 read-only loader/evaluator. |
 
+### 10.2 Gate Completion Barrier Conveyor Check
+
+Before PR3 evaluator work resumes, Shirube adds the Gate Completion Barrier
+command:
+
+```bash
+shirube conveyor check <pr-url-or-repo-pr> --format json
+```
+
+The command reads GitHub PR facts and local Git remote context where needed,
+then emits `shirube-conveyor-check/v1` JSON with
+`gate_version: gate-completion-barrier/v1`. It is a read-only machine barrier:
+it must not mutate GitHub labels, comments, branches, PR state, checks, branch
+protection, databases, queues, LaunchAgents, Discord, AUN runtime state, or
+external systems.
+
+Minimum output facts:
+
+- barrier version and legacy-flow detection metadata;
+- repository, PR number, PR URL, observed timestamp, current head SHA, base
+  branch, and base SHA where available;
+- PR state: open/closed, draft, merged, and mergeability where available;
+- changed files, diff scope classification, and protected path class hits;
+- labels and canonical `state:*` projection consistency;
+- available GitHub check/status summary;
+- detected evidence markers from PR body/comments/docs;
+- release owner, release executor, fallback executor, and evidence sink fields
+  when present;
+- deterministic `PASS`, `PASS_WITH_WARN`, or `BLOCKED` verdict with blockers
+  and warnings.
+
+Initial deterministic policy is conservative:
+
+- missing current PR head blocks;
+- missing changed-file facts blocks;
+- docs-only or fixture-only claims that include runtime, DB, queue, permission,
+  CI, deploy, agent-routing, or scheduler path classes block;
+- merge/release-readiness packets without both `release_executor` and
+  `evidence_sink` block;
+- `release_owner` values that name review queues such as `L1/L2 audit`,
+  `QA/check`, or `audit then QA` block;
+- PR body, comments, docs, or handoff text that makes old L1/L2 audit plus
+  QA/check review the primary next gate blocks with
+  `legacy_review_flow_detected`;
+- completion claims without exact-head `shirube-conveyor-check/v1` machine gate
+  evidence block with `missing_exact_head_machine_gate_evidence`;
+- unavailable optional GitHub check detail may warn instead of blocking in this
+  first barrier slice.
+
 ## 11. Core v2.1 Versus Advanced v2.1+
 
 Core v2.1 first-wave scope:
