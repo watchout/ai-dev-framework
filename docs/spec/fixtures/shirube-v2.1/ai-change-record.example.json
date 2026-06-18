@@ -1,0 +1,54 @@
+{
+  "schema_version": "shirube-ai-change-record/v1",
+  "record_id": "ai-change-shirube-v2.1-pr2-fixtures",
+  "fixture_scope": "docs_spec_fixture_only",
+  "source_refs": {
+    "parent_ssot": "https://github.com/watchout/ai-dev-framework/issues/405",
+    "pr1_source": "https://github.com/watchout/ai-dev-framework/pull/413",
+    "pr2_source": "https://github.com/watchout/ai-dev-framework/issues/414",
+    "local_spec": "docs/spec/shirube-v2.1-enterprise-governance.md"
+  },
+  "exact_head_binding": {
+    "required": true,
+    "example_head_sha": "8b0d9698ef0c6f807550ca0ea9104a21841f715d"
+  },
+  "actor": {
+    "runner": "Codex",
+    "runner_policy": "codex_goal_mode",
+    "role": "implementation_owner"
+  },
+  "change_summary": [
+    "Adds Shirube v2.1 PR2 schema fixture examples.",
+    "Links the fixture inventory from SPEC, IMPL, and VERIFY docs.",
+    "Keeps scope limited to docs/spec-owned fixtures and docs links."
+  ],
+  "risk": {
+    "local_change": "R1",
+    "remote_publication": "R2",
+    "protected_or_stop_scope": false
+  },
+  "evidence_refs": [
+    "docs/spec/fixtures/shirube-v2.1/evidence-record.example.json",
+    "docs/spec/fixtures/shirube-v2.1/test-evidence.example.json",
+    "docs/spec/fixtures/shirube-v2.1/contract-evidence.example.json"
+  ],
+  "role_separation": {
+    "implementation_owner_may_request_review": true,
+    "implementation_owner_may_final_audit": false,
+    "required_next_roles": ["L1 audit", "L2 audit", "QA/check"]
+  },
+  "non_claims": [
+    "No enforcement was added.",
+    "No runtime evaluator was added.",
+    "No CI gate, GitHub Check, branch protection, label sync, AUN dispatch, DB, LaunchAgent, Discord, or external automation was changed.",
+    "LLM output does not approve risk, satisfy missing evidence, authorize merge, or complete the phase."
+  ],
+  "enterprise_reserved": {
+    "ledger_seq": null,
+    "prev_evidence_hash": null,
+    "evidence_hash": null,
+    "policy_version": "shirube-policy/v1",
+    "model_version": "gpt-5-codex",
+    "token_cost": null
+  }
+}

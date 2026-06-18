@@ -113,6 +113,13 @@ npm run lint
 npm run type-check
 ```
 
+PR2 fixture validation must also run the repository spec validator when
+available:
+
+```bash
+npx tsx src/cli/index.ts gate validate spec --base-ref=origin/main --link-probe=fake
+```
+
 For docs-only changes, failures outside the changed documentation scope must be
 reported exactly in the Implementation Handoff rather than hidden.
 
@@ -155,7 +162,65 @@ DB schema, LaunchAgents, Discord automation, label sync, or branch protection
 When the PR is reviewed
 Then the PR must be blocked or split because PR1 is docs/spec-only.
 
-## 7. Review Requirements
+## 7. PR2 Fixture Verification Addendum
+
+PR2 verifies that #414 adds schema fixture examples and links only, without
+enabling enforcement or live behavior.
+
+Allowed PR2 paths:
+
+```text
+docs/spec/fixtures/shirube-v2.1/
+docs/spec/shirube-v2.1-enterprise-governance.md
+docs/impl/shirube-v2.1-enterprise-governance.md
+docs/verify/shirube-v2.1-enterprise-governance.md
+```
+
+PR2 fixture inventory:
+
+| Fixture schema id | Fixture path |
+|---|---|
+| `shirube-policy/v1` | [`policy.example.yml`](../spec/fixtures/shirube-v2.1/policy.example.yml) |
+| `shirube-risk-classification/v1` | [`risk-classification.example.yml`](../spec/fixtures/shirube-v2.1/risk-classification.example.yml) |
+| `shirube-evidence-record/v1` | [`evidence-record.example.json`](../spec/fixtures/shirube-v2.1/evidence-record.example.json) |
+| `shirube-trace-matrix/v1` | [`trace-matrix.example.json`](../spec/fixtures/shirube-v2.1/trace-matrix.example.json) |
+| `shirube-security-evidence/v1` | [`security-evidence.example.json`](../spec/fixtures/shirube-v2.1/security-evidence.example.json) |
+| `shirube-test-evidence/v1` | [`test-evidence.example.json`](../spec/fixtures/shirube-v2.1/test-evidence.example.json) |
+| `shirube-db-evidence/v1` | [`db-evidence.example.json`](../spec/fixtures/shirube-v2.1/db-evidence.example.json) |
+| `shirube-contract-evidence/v1` | [`contract-evidence.example.json`](../spec/fixtures/shirube-v2.1/contract-evidence.example.json) |
+| `shirube-ai-change-record/v1` | [`ai-change-record.example.json`](../spec/fixtures/shirube-v2.1/ai-change-record.example.json) |
+| `shirube-architecture-map/v1` | [`architecture-map.example.json`](../spec/fixtures/shirube-v2.1/architecture-map.example.json) |
+
+Fixture acceptance checks:
+
+- each fixture has a `schema_version` matching the inventory;
+- source links cite #405, PR #413, and #414;
+- PR-scoped examples show exact-head binding expectations;
+- evidence-family examples include required evidence status and optional
+  reserved enterprise slots;
+- role separation is explicit;
+- fixtures are examples only and do not create parsers, evaluators, adapters,
+  scanners, CI gates, GitHub Checks, labels, branch protection, AUN dispatch,
+  DB changes, LaunchAgent changes, Discord automation, or external mutation.
+
+### Scenario: PR3 can infer loader input
+
+Given a future PR3 implementer opens the PR2 fixture directory
+When they read only the ten fixture examples and the inventory table
+Then they can infer `schema_version`, source link, exact-head binding, role
+separation, required evidence, reserved enterprise metadata, and non-claim input
+shape for a read-only evaluator.
+
+### Scenario: Fixture evidence is not enforcement
+
+Given a fixture includes policy, evidence, trace, or architecture-map data
+When the PR2 change is reviewed
+Then the fixture is treated as docs/data contract evidence only
+And no runtime behavior, CI gate, GitHub Check, AUN dispatch, DB behavior, label
+sync, branch protection, Discord automation, or external system behavior is
+enabled.
+
+## 8. Review Requirements
 
 PR1 requires:
 
@@ -167,3 +232,6 @@ PR1 requires:
    beyond docs.
 
 Passing PR1 does not approve PR2+ enforcement.
+
+PR2 requires L1/L2 re-audit, then QA/check, before any PR3 read-only evaluator
+work begins. Passing PR2 does not approve enforcement.

@@ -1,0 +1,83 @@
+{
+  "schema_version": "shirube-evidence-record/v1",
+  "evidence_id": "evidence-shirube-v2.1-pr2-fixture-inventory",
+  "fixture_scope": "docs_spec_fixture_only",
+  "source_refs": {
+    "parent_ssot": "https://github.com/watchout/ai-dev-framework/issues/405",
+    "pr1_source": "https://github.com/watchout/ai-dev-framework/pull/413",
+    "pr2_source": "https://github.com/watchout/ai-dev-framework/issues/414",
+    "local_spec": "docs/spec/shirube-v2.1-enterprise-governance.md",
+    "fixture_path": "docs/spec/fixtures/shirube-v2.1/evidence-record.example.json"
+  },
+  "artifact": {
+    "kind": "fixture",
+    "repository": "watchout/ai-dev-framework",
+    "path": "docs/spec/fixtures/shirube-v2.1/evidence-record.example.json",
+    "observed_ref": "main",
+    "exact_head_sha": "8b0d9698ef0c6f807550ca0ea9104a21841f715d"
+  },
+  "producer": {
+    "actor": "adf implementation bot",
+    "runner_policy": "codex_goal_mode",
+    "role": "implementation_owner"
+  },
+  "role_separation": {
+    "producer_may_approve_own_transition": false,
+    "required_independent_roles": ["L1 audit", "L2 audit", "QA/check"],
+    "cto_required_only_if_scope_expands": true
+  },
+  "summary": "Example evidence envelope for Shirube v2.1 PR2 docs/spec fixture inventory.",
+  "freshness": {
+    "requires_current_head": true,
+    "stale_when_head_changes": true,
+    "observed_at": "2026-06-18T00:00:00Z"
+  },
+  "privacy": {
+    "scope": "public_repo_docs",
+    "redaction_status": "no_secrets_or_private_reasoning"
+  },
+  "linked_policy": {
+    "schema_version": "shirube-policy/v1",
+    "fixture_path": "docs/spec/fixtures/shirube-v2.1/policy.example.yml"
+  },
+  "linked_work_order": {
+    "issue": 414,
+    "parent_ssot": 405,
+    "previous_pr": 413
+  },
+  "required_evidence": {
+    "security": {
+      "schema_version": "shirube-security-evidence/v1",
+      "status": "not_required",
+      "reason": "No security, auth, permission, secret, supply chain, CI, or external exposure behavior is changed."
+    },
+    "test": {
+      "schema_version": "shirube-test-evidence/v1",
+      "status": "required_for_handoff",
+      "reason": "Validation command results must be cited because fixture contracts are added."
+    },
+    "db": {
+      "schema_version": "shirube-db-evidence/v1",
+      "status": "not_required",
+      "reason": "No schema, migration, storage lifecycle, queue, or persistence behavior is changed."
+    },
+    "contract": {
+      "schema_version": "shirube-contract-evidence/v1",
+      "status": "required",
+      "reason": "PR2 adds example schema contract fixtures."
+    }
+  },
+  "enterprise_reserved": {
+    "ledger_seq": null,
+    "prev_evidence_hash": null,
+    "evidence_hash": null,
+    "policy_version": "shirube-policy/v1",
+    "model_version": null,
+    "token_cost": null
+  },
+  "non_claims": [
+    "This record is not an enforcement result.",
+    "This record does not create a GitHub Check.",
+    "This record does not authorize merge, deployment, or phase completion."
+  ]
+}

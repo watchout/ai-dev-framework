@@ -1,0 +1,45 @@
+{
+  "schema_version": "shirube-security-evidence/v1",
+  "evidence_id": "security-shirube-v2.1-pr2-fixtures",
+  "fixture_scope": "docs_spec_fixture_only",
+  "source_refs": {
+    "parent_ssot": "https://github.com/watchout/ai-dev-framework/issues/405",
+    "pr1_source": "https://github.com/watchout/ai-dev-framework/pull/413",
+    "pr2_source": "https://github.com/watchout/ai-dev-framework/issues/414",
+    "fixture_path": "docs/spec/fixtures/shirube-v2.1/security-evidence.example.json"
+  },
+  "exact_head_binding": {
+    "required": true,
+    "example_head_sha": "8b0d9698ef0c6f807550ca0ea9104a21841f715d"
+  },
+  "scope": {
+    "repository": "watchout/ai-dev-framework",
+    "changed_path_classes": ["docs", "fixtures"],
+    "security_surface_changed": false,
+    "secret_or_permission_surface_changed": false,
+    "supply_chain_surface_changed": false,
+    "external_exposure_changed": false
+  },
+  "findings": [],
+  "required_evidence_status": {
+    "status": "not_required_for_this_fixture_pr",
+    "reason": "The PR2 fixture change does not alter security, auth, permission, secret, supply chain, CI, or external exposure behavior."
+  },
+  "role_separation": {
+    "producer_role": "implementation_owner",
+    "security_reviewer_role": "L2 audit",
+    "same_actor_allowed": false
+  },
+  "enterprise_reserved": {
+    "ledger_seq": null,
+    "prev_evidence_hash": null,
+    "evidence_hash": null,
+    "policy_version": "shirube-policy/v1",
+    "model_version": null,
+    "token_cost": null
+  },
+  "non_claims": [
+    "This fixture is not a security scan result.",
+    "This fixture does not waive security review for future protected PRs."
+  ]
+}

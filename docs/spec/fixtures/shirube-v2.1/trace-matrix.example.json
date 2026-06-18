@@ -1,0 +1,101 @@
+{
+  "schema_version": "shirube-trace-matrix/v1",
+  "matrix_id": "trace-shirube-v2.1-pr2-fixture-contracts",
+  "fixture_scope": "docs_spec_fixture_only",
+  "source_refs": {
+    "parent_ssot": "https://github.com/watchout/ai-dev-framework/issues/405",
+    "pr1_source": "https://github.com/watchout/ai-dev-framework/pull/413",
+    "pr2_source": "https://github.com/watchout/ai-dev-framework/issues/414",
+    "local_spec": "docs/spec/shirube-v2.1-enterprise-governance.md"
+  },
+  "exact_head_binding": {
+    "required_for_pr_nodes": true,
+    "example_head_sha": "8b0d9698ef0c6f807550ca0ea9104a21841f715d"
+  },
+  "nodes": [
+    {
+      "id": "goal-405",
+      "kind": "Goal",
+      "uri": "https://github.com/watchout/ai-dev-framework/issues/405",
+      "summary": "Shirube v2.1 parent SSOT."
+    },
+    {
+      "id": "phase-core-v2.1-pr2",
+      "kind": "Phase",
+      "summary": "Core v2.1 schema fixture and example contract phase."
+    },
+    {
+      "id": "work-order-414",
+      "kind": "WorkOrder",
+      "uri": "https://github.com/watchout/ai-dev-framework/issues/414",
+      "risk": "R1",
+      "remote_publication_risk": "R2",
+      "lane": "Routine"
+    },
+    {
+      "id": "pr2-change-slice",
+      "kind": "ChangeSlice",
+      "path_scope": [
+        "docs/spec/fixtures/shirube-v2.1/",
+        "docs/spec/shirube-v2.1-enterprise-governance.md",
+        "docs/impl/shirube-v2.1-enterprise-governance.md",
+        "docs/verify/shirube-v2.1-enterprise-governance.md"
+      ]
+    },
+    {
+      "id": "policy-fixture",
+      "kind": "Policy",
+      "schema_version": "shirube-policy/v1",
+      "path": "docs/spec/fixtures/shirube-v2.1/policy.example.yml"
+    },
+    {
+      "id": "evidence-record-fixture",
+      "kind": "EvidenceRecord",
+      "schema_version": "shirube-evidence-record/v1",
+      "path": "docs/spec/fixtures/shirube-v2.1/evidence-record.example.json"
+    },
+    {
+      "id": "required-evidence-family",
+      "kind": "RequiredEvidence",
+      "schemas": [
+        "shirube-security-evidence/v1",
+        "shirube-test-evidence/v1",
+        "shirube-db-evidence/v1",
+        "shirube-contract-evidence/v1"
+      ]
+    },
+    {
+      "id": "role-verdicts",
+      "kind": "RoleVerdictSet",
+      "required_roles": ["L1 audit", "L2 audit", "QA/check"],
+      "producer_independence_required": true
+    },
+    {
+      "id": "future-pr3-evaluator",
+      "kind": "FutureEvaluator",
+      "summary": "Read-only loader/evaluator that consumes PR2 fixtures and returns deterministic decisions."
+    }
+  ],
+  "edges": [
+    { "from": "goal-405", "to": "phase-core-v2.1-pr2", "relation": "owns_direction" },
+    { "from": "phase-core-v2.1-pr2", "to": "work-order-414", "relation": "contains_work_order" },
+    { "from": "work-order-414", "to": "pr2-change-slice", "relation": "requests_change_slice" },
+    { "from": "pr2-change-slice", "to": "policy-fixture", "relation": "adds_fixture" },
+    { "from": "pr2-change-slice", "to": "evidence-record-fixture", "relation": "adds_fixture" },
+    { "from": "policy-fixture", "to": "required-evidence-family", "relation": "declares_required_evidence" },
+    { "from": "evidence-record-fixture", "to": "role-verdicts", "relation": "requires_independent_review" },
+    { "from": "future-pr3-evaluator", "to": "policy-fixture", "relation": "loads_read_only" },
+    { "from": "future-pr3-evaluator", "to": "evidence-record-fixture", "relation": "loads_read_only" }
+  ],
+  "minimum_checks": [
+    "Every PR-scoped record cites an exact head SHA.",
+    "Every required evidence family has either an evidence record, a not_required reason, or a waiver.",
+    "Every role verdict cites actor, role, scope, and head/ref.",
+    "AUN transport evidence is projection only and cannot complete the Work Order."
+  ],
+  "non_scope": {
+    "mutates_runtime": false,
+    "creates_github_check": false,
+    "enforces_policy": false
+  }
+}
