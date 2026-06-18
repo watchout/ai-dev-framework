@@ -1,0 +1,235 @@
+schema_version: shirube-risk-to-gate-matrix/v1
+matrix_id: shirube-3.0-design-gate-risk-to-gate
+status: draft_for_cell
+phase: Shirube 3.0 Phase 2 - Machine Design Gate Policy Pack
+cell_id: shirube-3.0-design-gate-policy-cell-1
+parent_issue: https://github.com/watchout/ai-dev-framework/issues/422
+
+purpose:
+  summary: Bind risk classes to required Design Gate, Machine Gate, approval, rollback, and evidence requirements.
+  method_sources:
+    - ATAM risk records
+    - Architecture Fitness Functions
+    - Policy as Code
+
+classification_rules:
+  category: MACHINE_DECIDABLE
+  unknown_risk:
+    decision: BLOCK
+    reason: Unknown risk must not silently downgrade to R0 or R1.
+  risk_lowering:
+    decision: BLOCK
+    reason: A lower risk class than the protected surfaces imply requires explicit reviewer approval and evidence.
+  mixed_risk_surfaces:
+    decision: use_highest_risk_class
+    reason: A Cell touching multiple surfaces inherits the highest applicable risk class unless split.
+
+risk_classes:
+  R0:
+    label: docs_or_comment_only_no_governance_semantics
+    examples:
+      - typo_fix
+      - non-normative_comment
+    before_goal_mode:
+      - cell_intake_gate
+    before_merge_ready:
+      - machine_gate
+      - gate_review
+    after_merge:
+      - post_merge_evidence_when_cell_contributes_to_phase_or_cell_done
+
+  R1:
+    label: low_risk_docs_or_local_metadata
+    examples:
+      - explanatory_docs
+      - local_fixture_without_contract_change
+    before_goal_mode:
+      - design_consolidation_enterprise_fit_gate_when_required_by_phase
+      - cell_intake_gate
+    before_merge_ready:
+      - machine_gate
+      - gate_review
+    after_merge:
+      - post_merge_evidence_when_cell_contributes_to_phase_or_cell_done
+
+  R2:
+    label: shared_contract_or_tooling_shape_without_protected_authority
+    examples:
+      - schema_outline
+      - non-enforcing_validator_fixture
+      - shared_docs_contract
+    before_goal_mode:
+      - design_consolidation_enterprise_fit_gate
+      - cell_intake_gate
+    before_merge_ready:
+      - machine_gate
+      - gate_review
+      - exact_head_evidence
+    after_merge:
+      - post_merge_evidence
+
+  R3:
+    label: shared_control_plane_policy_or_governance_semantics
+    examples:
+      - governance_policy
+      - evidence_sufficiency_rule
+      - risk_to_gate_matrix
+      - adapter_authority_policy
+      - security_or_domain_policy
+    before_goal_mode:
+      - design_consolidation_enterprise_fit_gate
+      - cell_intake_gate
+      - security_or_domain_approval
+    before_merge_ready:
+      - machine_gate
+      - gate_review
+      - security_or_domain_approval
+      - release_owner_decision
+      - exact_head_evidence
+    after_merge:
+      - post_merge_evidence
+    valid_approval_aliases:
+      governance_domain_approval: security_or_domain_approval
+    this_cell_approval:
+      approver: watchout
+      basis: Cell Intake Gate Record pins watchout as governance/domain approver.
+
+  R4:
+    label: protected_enforcement_or_production_authority
+    examples:
+      - required_status_check
+      - branch_protection
+      - production_activation
+      - live_AUN_dispatch
+      - DB_or_queue_mutation
+      - LaunchAgent_mutation
+    before_goal_mode:
+      - design_consolidation_enterprise_fit_gate
+      - cell_intake_gate
+      - explicit_protected_GO
+      - security_or_domain_approval
+    before_merge_ready:
+      - machine_gate
+      - gate_review
+      - explicit_protected_GO
+      - release_owner_decision
+      - exact_head_evidence
+    after_merge:
+      - post_merge_evidence
+      - production_done_evidence_if_activation_occurs
+
+required_gate_semantics:
+  design_consolidation_enterprise_fit_gate:
+    category: SEMANTIC_RECORDED
+    required_shape:
+      - reviewer
+      - reviewed_target
+      - verdict
+      - allowed_next_action
+      - blocking_findings
+      - non_blocking_findings
+      - evidence_refs
+    block_if_missing_for_R2_or_higher: true
+
+  cell_intake_gate:
+    category: MACHINE_DECIDABLE
+    required_shape:
+      - cell_id
+      - risk_class
+      - release_owner
+      - merge_executor
+      - required_gates
+      - non_scope
+      - stop_conditions
+      - rollback_or_revert_plan
+      - verdict
+      - allowed_next_action
+    block_if_verdict_not_PASS: true
+
+  security_or_domain_approval:
+    category: SEMANTIC_RECORDED
+    required_for:
+      - R3
+      - R4
+    required_shape:
+      - approver
+      - approval_target
+      - risk_class
+      - protected_surfaces
+      - verdict
+      - evidence_refs
+    placeholder_actor_blocks: true
+
+  explicit_protected_GO:
+    category: SEMANTIC_RECORDED
+    required_for:
+      - R4
+    required_shape:
+      - actor
+      - authority_basis
+      - protected_surface
+      - exact_head_sha_or_release_ref
+      - rollback_or_recovery_plan
+      - verdict
+      - evidence_refs
+
+  machine_gate:
+    category: MACHINE_DECIDABLE
+    required_shape:
+      - exact_head_sha
+      - verdict
+      - satisfied_gates
+      - missing_gates
+      - evidence_refs
+    pass_with_warn_allowed: true
+
+  gate_review:
+    category: SEMANTIC_RECORDED
+    required_shape:
+      - reviewer
+      - exact_head_sha
+      - verdict
+      - blocking_findings
+      - non_blocking_findings
+      - evidence_refs
+    pass_with_warn_allowed: true
+
+  post_merge_evidence:
+    category: MACHINE_DECIDABLE
+    required_when:
+      - cell_done_claimed
+      - phase_done_claimed
+      - release_ready_claimed
+    allowed_sinks:
+      - github_pr_comment
+      - github_issue_comment
+      - workflow_artifact
+      - check_run_output
+      - release_artifact
+      - repository_file_when_required_by_cell
+    repo_file_followup_pr_required_by_default: false
+
+scope_size_policy:
+  acceptance_criteria_count:
+    category: MACHINE_DECIDABLE
+    warn_above: 10
+    block_above: 18
+  protected_surface_category_count:
+    category: MACHINE_DECIDABLE
+    warn_when_more_than: 2
+    block_when_unrelated_without_split_rationale: true
+  missing_non_scope:
+    category: MACHINE_DECIDABLE
+    default_decision: BLOCK
+  missing_rollback_or_revert_plan:
+    category: MACHINE_DECIDABLE
+    default_decision: BLOCK
+
+current_cell:
+  cell_id: shirube-3.0-design-gate-policy-cell-1
+  risk_class: R3
+  required_gate_closure:
+    design_consolidation_enterprise_fit_gate: PASS_OR_NON_BLOCKING_WARN
+    cell_intake_gate: PASS
+    security_or_domain_approval: watchout
+  implementation_scope_limited_to_policy_artifacts: true

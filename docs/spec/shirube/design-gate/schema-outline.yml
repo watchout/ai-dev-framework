@@ -1,0 +1,251 @@
+schema_version: shirube-design-gate-schema-outline/v1
+outline_id: shirube-3.0-design-gate-schema-outline
+status: draft_for_cell
+phase: Shirube 3.0 Phase 2 - Machine Design Gate Policy Pack
+cell_id: shirube-3.0-design-gate-policy-cell-1
+parent_issue: https://github.com/watchout/ai-dev-framework/issues/422
+
+purpose:
+  summary: Provide a non-executable schema outline for the next validator Cell without adding scripts, tests, workflows, or enforcement in this Cell.
+  intended_next_cell: shirube-3.0-design-gate-validator-cell-2
+  next_cell_expected_files:
+    - scripts/shirube-design-gate.ts
+    - test/shirube-design-gate.test.ts
+
+vocabulary:
+  rule_categories:
+    MACHINE_DECIDABLE:
+      description: Validator can compute PASS/WARN/BLOCK from structured inputs.
+      deprecated_aliases:
+        - MACHINE_CHECKABLE
+    SEMANTIC_RECORDED:
+      description: Reviewer judgment is recorded in structured fields; validator checks shape and unresolved BLOCK state.
+  verdict_values:
+    - PASS
+    - WARN
+    - BLOCK
+  allowed_next_actions:
+    - revise_cell_plan
+    - cell_intake
+    - goal_mode_implementation
+    - revise_records
+    - machine_gate
+    - gate_review
+    - release_owner_decision
+
+document_outlines:
+  design_gate_policy:
+    path: docs/policy/shirube-design-gate-policy.yml
+    required_fields:
+      - schema_version
+      - policy_id
+      - status
+      - vocabulary
+      - canonical_flow
+      - required_record_presence
+      - policy_rules
+      - semantic_recorded_checks
+      - evidence_storage_policy
+      - non_scope
+      - stop_conditions
+    machine_decidable_checks:
+      - vocabulary.canonical_terms.MACHINE_DECIDABLE exists
+      - vocabulary.canonical_terms.SEMANTIC_RECORDED exists
+      - policy_rules[].category is MACHINE_DECIDABLE or SEMANTIC_RECORDED
+      - policy_rules[].severity exists
+      - canonical_flow.minimum_cell_order contains design_consolidation_enterprise_fit_gate before cell_intake_gate
+
+  architecture_boundary_map:
+    path: docs/spec/shirube/design-gate/architecture-boundary-map.yml
+    required_fields:
+      - schema_version
+      - systems
+      - responsibility_edges
+      - protected_surfaces
+      - read_write_apply_boundaries
+      - forbidden_ownership_rules
+    machine_decidable_checks:
+      - systems.aun.forbidden_authority includes Shirube_canonical_gate_verdict
+      - systems.aun.forbidden_authority includes Cell_Done
+      - systems.aun.forbidden_authority includes merge_readiness
+      - systems.aun.forbidden_authority includes release_authority
+      - systems.aun.forbidden_authority includes production_authority
+      - read_write_apply_boundaries.apply_send_dispatch.forbidden_in_this_cell is true
+
+  risk_to_gate_matrix:
+    path: docs/spec/shirube/design-gate/risk-to-gate-matrix.yml
+    required_fields:
+      - schema_version
+      - classification_rules
+      - risk_classes
+      - required_gate_semantics
+      - scope_size_policy
+    machine_decidable_checks:
+      - classification_rules.unknown_risk.decision is BLOCK
+      - risk_classes.R3.before_merge_ready includes security_or_domain_approval
+      - risk_classes.R4.before_merge_ready includes explicit_protected_GO
+      - required_gate_semantics.cell_intake_gate.required_shape includes rollback_or_revert_plan
+
+  adr_requirement_policy:
+    path: docs/spec/shirube/design-gate/adr-requirement-policy.yml
+    required_fields:
+      - schema_version
+      - adr_policy_terms
+      - machine_decidable_rules
+      - adr_required_triggers
+      - adr_not_required_shape
+      - adr_record_shape
+    machine_decidable_checks:
+      - protected_surface_change_requires_adr_or_exception rule exists
+      - R3_R4_requires_decision_record rule exists
+      - current_cell_decision.adr_not_required.approver is concrete
+
+  schema_outline:
+    path: docs/spec/shirube/design-gate/schema-outline.yml
+    required_fields:
+      - schema_version
+      - vocabulary
+      - document_outlines
+      - gate_record_outlines
+      - validator_behavior_contract
+      - non_scope
+
+gate_record_outlines:
+  design_consolidation_gate_record:
+    category: SEMANTIC_RECORDED
+    required_fields:
+      - schema_version
+      - cell_id
+      - reviewer
+      - reviewed_target
+      - checks
+      - semantic_checks
+      - verdict
+      - allowed_next_action
+      - evidence_refs
+    checks_required:
+      - canonical_flow_complete
+      - architecture_ownership_defined
+      - responsibility_boundaries_defined
+      - vocabulary_consistent
+      - protected_surfaces_identified
+      - risk_not_underestimated
+      - authority_boundaries_defined
+      - machine_evidence_primary
+      - old_audit_conveyor_not_reintroduced
+      - merge_authority_separated
+      - stop_conditions_defined
+      - rollback_evidence_explainable
+    validator_must_block_when:
+      - verdict is BLOCK
+      - allowed_next_action missing
+      - semantic_checks missing reviewer or evidence_refs
+
+  cell_intake_gate_record:
+    category: MACHINE_DECIDABLE
+    required_fields:
+      - schema_version
+      - cell_id
+      - risk_class
+      - release_owner
+      - merge_executor
+      - governance_domain_approver
+      - required_gates
+      - non_scope
+      - stop_conditions
+      - rollback_or_revert_plan
+      - verdict
+      - allowed_next_action
+    validator_must_block_when:
+      - risk_class is unknown
+      - release_owner is placeholder
+      - merge_executor is placeholder
+      - R3 lacks security_or_domain_approval or governance_domain_approval
+      - R4 lacks explicit_protected_GO
+
+  machine_gate_record:
+    category: MACHINE_DECIDABLE
+    required_fields:
+      - schema_version
+      - cell_id
+      - pr_number
+      - exact_head_sha
+      - verdict
+      - satisfied_gates
+      - missing_gates
+      - evidence_refs
+    validator_must_block_when:
+      - exact_head_sha differs from current PR head without explicit non-blocking head-lag classification
+      - missing_gates has unresolved merge-ready requirements
+
+  semantic_check_record:
+    category: SEMANTIC_RECORDED
+    required_fields:
+      - verdict
+      - reviewer
+      - reviewed_target
+      - evidence_refs
+      - rationale
+    semantic_checks:
+      enterprise_fit:
+        required: true
+      architecture_ownership:
+        required: true
+      risk_not_underestimated:
+        required: true
+    validator_must_not:
+      - infer PASS from prose
+      - infer PASS from empty findings
+      - treat reviewer role placeholder as concrete actor
+
+validator_behavior_contract:
+  output_schema:
+    schema_version: shirube-design-gate-result/v1
+    verdict_values:
+      - PASS
+      - WARN
+      - BLOCK
+    required_fields:
+      - schema_version
+      - verdict
+      - allowed_next_action
+      - checked_files
+      - findings
+  finding_shape:
+    required_fields:
+      - severity
+      - code
+      - message
+    optional_fields:
+      - file
+      - rule_id
+      - evidence_ref
+  default_decisions:
+    missing_required_field: BLOCK
+    invalid_verdict: BLOCK
+    placeholder_actor: BLOCK
+    unknown_risk: BLOCK
+    unresolved_semantic_BLOCK: BLOCK
+    deprecated_MACHINE_CHECKABLE_alias: WARN
+
+non_scope:
+  - executable_validator
+  - tests
+  - GitHub_Actions_workflow
+  - required_status_check
+  - branch_protection
+  - OPA_or_Rego
+  - live_AUN_mutation
+  - production_activation
+
+implementation_notes_for_next_cell:
+  parser: YAML parser or structured field reader should be used instead of ad hoc prose scanning when available.
+  fixture_expectations:
+    - R3 approval missing must BLOCK.
+    - AUN owning Shirube gate verdict must BLOCK.
+    - Missing ADR or ADR-not-required for protected surface change must BLOCK.
+    - Comment-only durable evidence before merge must BLOCK.
+    - Missing rollback plan must BLOCK.
+    - Placeholder actor must BLOCK.
+    - Old head SHA must BLOCK unless explicitly classified and rechecked.
+    - Semantic checks hidden in prose only must BLOCK.
