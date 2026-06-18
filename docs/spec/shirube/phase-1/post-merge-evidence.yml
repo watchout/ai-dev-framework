@@ -75,8 +75,49 @@ post_merge_ci:
       audit_complete:
         conclusion: skipped
         url: https://github.com/watchout/ai-dev-framework/actions/runs/27746411300/job/82085693755
+  disclosed_failed_final_audit_workflows:
+    final_audit_27747368360:
+      run_id: 27747368360
+      conclusion: failure
+      event: workflow_run
+      head_sha: 8d67066ebb19ad45683e497bd974e478e0eab1d6
+      url: https://github.com/watchout/ai-dev-framework/actions/runs/27747368360
+      classification: benign_non_blocking_governance_audit_context_mismatch
+      root_cause_classification: unsupported_final_audit_ssot_mode_for_cli_project
+      root_cause_summary: Final Audit Phase 1 invoked `node dist/cli/index.js audit ssot --json`, but the CLI project enables audit modes `code` and `test`, not `ssot`; the run failed before producing a concrete SSOT compliance finding.
+      failed_jobs:
+        phase_1_ssot_compliance:
+          name: "Phase 1: SSOT準拠確認"
+          conclusion: failure
+          url: https://github.com/watchout/ai-dev-framework/actions/runs/27747368360/job/82088937613
+          failed_step:
+            name: "Phase 1 — SSOT Compliance + Ellipsis Check"
+            log_summary: "Audit mode \"ssot\" is not enabled for project type \"cli\". Enabled modes: code, test"
+        audit_complete:
+          name: Audit Complete
+          conclusion: failure
+          url: https://github.com/watchout/ai-dev-framework/actions/runs/27747368360/job/82089021084
+          failed_step:
+            name: Comment on PR
+            log_summary: "GraphQL: Resource not accessible by integration (addComment)"
+      successful_jobs:
+        guard_ci_passed_and_no_hold_label:
+          name: Guard — CI passed & no hold label
+          conclusion: success
+          url: https://github.com/watchout/ai-dev-framework/actions/runs/27747368360/job/82088898055
+      skipped_jobs:
+        phase_2_breaking_change_check:
+          name: "Phase 2: 破壊的変更チェック"
+          conclusion: skipped
+          url: https://github.com/watchout/ai-dev-framework/actions/runs/27747368360/job/82089021962
+      does_not_invalidate_post_merge_smoke: true
+      post_merge_smoke_not_invalidated_reason: PR #419 post-merge smoke is based on the merge-commit CI and spec-audit runs that completed successfully; this Final Audit failure is caused by governance audit mode/context wiring, not by a failed smoke, build, test, lint, type-check, security, or spec-audit check on the merge commit.
+      cell_done_allowed_after_this_record_merges: true
+      cell_done_allowed_reason: The failed run is fully disclosed and classified as a non-blocking governance-audit context mismatch; no actual SSOT finding was emitted against merge commit 8d67066ebb19ad45683e497bd974e478e0eab1d6, so the canonical post-merge evidence remains sufficient for Cell Done after this record PR merges.
+      separate_fix_path_if_required: A separate approved Cell should address Final Audit workflow/audit-mode compatibility if governance owners require that workflow to support CLI-project SSOT audit mode.
 post_merge_notes:
   - Governance gate jobs in the Final Audit workflow were skipped in merged context; this is expected and does not change the post-merge smoke PASS record.
+  - Final Audit run 27747368360 failed on the same merge commit and is disclosed above as a benign, non-blocking governance-audit context mismatch.
   - A merge-notify workflow run completed with failure and no jobs attached; it is not used as post-merge smoke evidence for Cell Done.
 observed_non_smoke_workflows:
   merge_notify:
