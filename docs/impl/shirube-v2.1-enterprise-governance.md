@@ -168,6 +168,40 @@ The PR2 fixture result is schema compatibility evidence only. It must not
 create parsers, evaluators, adapters, scanners, GitHub Checks, labels, branch
 protection, or live automation.
 
+### 6.2 Gate Completion Barrier Check
+
+The Gate Completion Barrier adds the first live-read machine barrier before PR3
+evaluator work may resume:
+
+```bash
+shirube conveyor check <pr-url-or-repo-pr> --format json
+```
+
+Implementation map:
+
+- `src/cli/lib/conveyor-check.ts` owns target parsing, GitHub PR snapshot
+  normalization, diff scope classification, evidence/executor extraction, and
+  deterministic `shirube-conveyor-check/v1` report construction.
+- The report includes `gate_version: gate-completion-barrier/v1` and
+  `legacy_flow` metadata so bots can stop on legacy review-route fallback
+  instead of guessing from prose.
+- The barrier blocks legacy L1/L2 audit plus QA/check routing as the primary
+  acceptance path, review queues used as `release_owner`, and completion claims
+  without exact-head machine gate evidence.
+- `src/cli/commands/conveyor.ts` wires the command while preserving the legacy
+  `shirube conveyor check --role ...` role-authority check when no PR target or
+  fixture is supplied.
+- `src/cli/lib/conveyor-check.test.ts` covers parsing, docs/fixture
+  classification, protected path classes, stable JSON, missing facts, and
+  merge-readiness executor/sink blocking.
+- `src/cli/commands/conveyor.test.ts` covers the CLI fixture path for
+  `--format json` without touching GitHub.
+
+The live adapter reads through `gh pr view` and local changed docs only. This
+slice does not add label sync, comments, branch/PR mutation, GitHub Check
+creation, branch protection, DB/queue writes, AUN dispatch, Discord automation,
+LaunchAgent changes, or production activation.
+
 ## 7. Read-Only Evaluator Direction
 
 PR3 may add pure functions that read fixture-like inputs and return:
@@ -255,5 +289,6 @@ The PR1 Implementation Handoff must include:
 - tests/checks run;
 - known risks or open questions;
 - confirmation that no enforcement/runtime/live automation changes were made;
-- next required review: L1/L2 audit, then QA/check, then CTO review for v2.1
-  direction.
+- machine gate evidence at the exact head SHA. Human/LLM review is advisory and
+  verifies command behavior, JSON stability, blocker rules, tests, and absence
+  of unauthorized mutation rather than becoming the primary acceptance gate.

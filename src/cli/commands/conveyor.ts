@@ -58,6 +58,12 @@ import {
   type ConveyorLiveStateReport,
 } from "../lib/conveyor-live-state.js";
 import {
+  buildConveyorCheckReport,
+  readConveyorCheckSnapshotWithGh,
+  type ConveyorCheckSnapshot,
+  type ShirubeConveyorCheckReport,
+} from "../lib/conveyor-check.js";
+import {
   evaluateUserOutcomeGate,
   type UserOutcomeGateInput,
   type UserOutcomeGateReport,
@@ -101,6 +107,9 @@ interface ConveyorCheckOptions {
   role?: string;
   addLabel?: string[];
   removeLabel?: string[];
+  fixture?: string;
+  format?: string;
+  observedAt?: string;
   json?: boolean;
 }
 
@@ -409,20 +418,40 @@ export function registerConveyorCommand(program: Command): void {
 
   conveyor
     .command("check")
-    .description("Validate Conveyor role authority for proposed label changes; does not mutate GitHub")
-    .requiredOption("--role <role>", "Conveyor actor role")
+    .description("Run the read-only PR Gate Completion Barrier check, or validate role authority for proposed label changes")
+    .argument("[pr-url-or-repo-pr]", "GitHub PR URL, owner/repo#123, owner/repo/pull/123, or local PR number")
+    .option("--format <format>", "Output format: text or json", "text")
+    .option("--fixture <path>", "Read a conveyor check snapshot fixture instead of GitHub")
+    .option("--observed-at <timestamp>", "Override observed_at for deterministic fixture tests")
+    .option("--role <role>", "Conveyor actor role for legacy label-authority checks")
     .option("--add-label <label>", "Proposed label to add", collectOption, [])
     .option("--remove-label <label>", "Proposed label to remove", collectOption, [])
     .option("--json", "Output machine-readable JSON")
-    .action((options: ConveyorCheckOptions) => {
-      runConveyorAction(options, () => {
+    .action((target: string | undefined, options: ConveyorCheckOptions) => {
+      const json = wantsConveyorCheckJson(options);
+      runConveyorAction({ json }, () => {
+        validateConveyorCheckFormat(options.format);
+        if (target || options.fixture) {
+          const snapshot = options.fixture
+            ? readConveyorCheckFixture(options.fixture)
+            : readConveyorCheckSnapshotWithGh(requireConveyorCheckTarget(target), process.cwd());
+          const report = buildConveyorCheckReport(snapshot, { observedAt: options.observedAt });
+          if (json) {
+            process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          } else {
+            process.stdout.write(formatConveyorCheckReport(report));
+          }
+          if (report.verdict === "BLOCKED") process.exitCode = 1;
+          return;
+        }
+
         const role = parseRole(options.role);
         const report = validateConveyorRoleLabelChange({
           role,
           add: options.addLabel,
           remove: options.removeLabel,
         });
-        if (options.json) {
+        if (json) {
           process.stdout.write(JSON.stringify(report, null, 2) + "\n");
           return;
         }
@@ -604,6 +633,24 @@ function readPrCellRuntimeFixture(runtimePath: string): PrCellRuntimeState[] {
     throw new Error("Invalid --runtime. Expected a JSON array of PR Cell runtime states.");
   }
   return runtime as PrCellRuntimeState[];
+}
+
+function readConveyorCheckFixture(fixturePath: string): ConveyorCheckSnapshot {
+  return JSON.parse(readFileSync(fixturePath, "utf8")) as ConveyorCheckSnapshot;
+}
+
+function wantsConveyorCheckJson(options: ConveyorCheckOptions): boolean {
+  return options.json === true || options.format === "json";
+}
+
+function validateConveyorCheckFormat(format: string | undefined): void {
+  if (!format || format === "text" || format === "json") return;
+  throw new Error("Invalid --format. Expected text or json.");
+}
+
+function requireConveyorCheckTarget(target: string | undefined): string {
+  if (!target) throw new Error("Missing PR target. Expected a GitHub PR URL or owner/repo#123.");
+  return target;
 }
 
 function parsePrNumber(value: string): number {
@@ -1109,6 +1156,35 @@ function formatNextTarget(payload: {
   const lines = [`Next ${payload.role}: ${payload.target.repo}#${payload.target.number} ${payload.target.kind}${head}`];
   if (payload.claim) {
     lines.push("", "Claim evidence (not posted):", payload.claim.comment_body.trimEnd());
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function formatConveyorCheckReport(report: ShirubeConveyorCheckReport): string {
+  const lines = [
+    "Shirube Conveyor Check",
+    `Gate: ${report.gate_version}`,
+    `Target: ${report.repo}#${report.pr}`,
+    `Verdict: ${report.verdict}`,
+    `Head: ${report.head_sha ?? "-"}`,
+    `Base: ${report.base_branch ?? "-"} (${report.base_sha ?? "-"})`,
+    `State: ${report.pr_state.state ?? "-"} draft=${report.pr_state.draft ?? "-"} merged=${report.pr_state.merged ?? "-"} mergeable=${report.pr_state.mergeable ?? "-"}`,
+    `Scope: ${report.diff_scope.classification}`,
+    `Files: ${report.diff_scope.changed_files.length}`,
+    `Forbidden hits: ${report.diff_scope.forbidden_hits.length}`,
+    `Checks: ${report.github_checks.available ? report.github_checks.summary.length : "unavailable"}`,
+    `Evidence blocks: ${report.evidence_blocks.required_present ? "present" : "missing"}`,
+    `Executor bound: ${report.executor.executor_bound ? "yes" : "no"}`,
+    `Legacy flow detected: ${report.legacy_flow.detected ? "yes" : "no"}`,
+    `Machine evidence exact-head: ${report.legacy_flow.machine_gate_evidence_exact_head ? "yes" : "no"}`,
+  ];
+  if (report.blockers.length > 0) {
+    lines.push("", "Blockers:");
+    for (const blocker of report.blockers) lines.push(`- ${blocker}`);
+  }
+  if (report.warnings.length > 0) {
+    lines.push("", "Warnings:");
+    for (const warning of report.warnings) lines.push(`- ${warning}`);
   }
   return `${lines.join("\n")}\n`;
 }

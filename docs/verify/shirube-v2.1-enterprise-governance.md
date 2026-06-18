@@ -220,7 +220,49 @@ And no runtime behavior, CI gate, GitHub Check, AUN dispatch, DB behavior, label
 sync, branch protection, Discord automation, or external system behavior is
 enabled.
 
-## 8. Review Requirements
+## 8. Gate Completion Barrier Verification Addendum
+
+The Gate Completion Barrier verifies the read-only machine command:
+
+```bash
+shirube conveyor check <pr-url-or-repo-pr> --format json
+```
+
+Focused verification:
+
+- target parsing accepts GitHub PR URLs, `owner/repo#123`, and local PR numbers
+  with a detected Git remote;
+- docs/fixture-only paths classify without protected path hits;
+- runtime, DB, queue, permission, CI, deploy, agent-routing, and scheduler paths
+  are reported as protected path class hits;
+- output uses stable `shirube-conveyor-check/v1` JSON shape with
+  `gate_version: gate-completion-barrier/v1`;
+- missing PR head or changed-file facts return `BLOCKED`;
+- merge/release-readiness packets without both `release_executor` and
+  `evidence_sink` return `BLOCKED`;
+- legacy L1/L2 audit plus QA/check routing as the primary next gate returns
+  `BLOCKED` with `legacy_review_flow_detected`;
+- review queues used as `release_owner` return `BLOCKED` with
+  `invalid_release_owner_review_queue`;
+- completion claims without exact-head machine gate evidence return `BLOCKED`
+  with `missing_exact_head_machine_gate_evidence`;
+- the command remains read-only and does not mutate GitHub labels, comments,
+  branches, PR state, checks, branch protection, DB, queue, AUN, Discord, or
+  external systems.
+
+Minimum commands for this barrier slice:
+
+```bash
+npm test -- src/cli/lib/conveyor-check.test.ts src/cli/commands/conveyor.test.ts
+npm run type-check
+npm run lint
+npx tsx src/cli/index.ts gate validate spec --base-ref=origin/main --link-probe=fake
+```
+
+Running `shirube conveyor check` against a live PR is allowed for evidence
+collection because it reads through GitHub/Git only and performs no mutation.
+
+## 9. Review Requirements
 
 PR1 requires:
 
@@ -233,5 +275,14 @@ PR1 requires:
 
 Passing PR1 does not approve PR2+ enforcement.
 
-PR2 requires L1/L2 re-audit, then QA/check, before any PR3 read-only evaluator
-work begins. Passing PR2 does not approve enforcement.
+PR2 remains governed by its accepted review record and does not approve
+enforcement.
+
+For the Gate Completion Barrier, the next primary evidence is the machine gate
+result at the exact head SHA. Human/LLM review after this point is advisory and
+limited to verifying command behavior, JSON stability, blocker rules, tests,
+and absence of unauthorized mutation. It must not restart the old broad review
+conveyor as the primary acceptance path.
+
+Passing this barrier slice does not approve branch protection, label mutation,
+PR mutation, DB/queue integration, AUN dispatch, or enforcement adoption.
