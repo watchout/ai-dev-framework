@@ -1,9 +1,9 @@
 ## Shirube Metadata
 
-- CELL-ID: CELL-ADF-GOV-001
-- SPEC-ID: SPEC-ADF-GOV-001
-- IMPL-ID: IMPL-ADF-GOV-001
-- Risk Tier: R2
+- CELL-ID: <CELL-ID>
+- SPEC-ID: <SPEC-ID>
+- IMPL-ID: <IMPL-ID>
+- Risk Tier: <R0|R1|R2|R3>
 
 ## Summary
 
