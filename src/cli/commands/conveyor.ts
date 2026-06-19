@@ -58,6 +58,11 @@ import {
   type ConveyorLiveStateReport,
 } from "../lib/conveyor-live-state.js";
 import {
+  buildConveyorPrerequisiteCheck,
+  type ConveyorPrerequisiteCheckInput,
+  type ConveyorPrerequisiteCheckReport,
+} from "../lib/conveyor-prerequisite-check.js";
+import {
   evaluateUserOutcomeGate,
   type UserOutcomeGateInput,
   type UserOutcomeGateReport,
@@ -78,6 +83,7 @@ import { logger } from "../lib/logger.js";
 interface ConveyorReconcileOptions {
   fixture?: string;
   json?: boolean;
+  format?: string;
   apply?: boolean;
 }
 
@@ -101,6 +107,8 @@ interface ConveyorCheckOptions {
   role?: string;
   addLabel?: string[];
   removeLabel?: string[];
+  fixture?: string;
+  format?: string;
   json?: boolean;
 }
 
@@ -155,6 +163,28 @@ interface ConveyorCellPlanCheck {
   };
   validation: PrCellPlanValidationReport;
   lane_plan: PrCellLanePlan;
+}
+
+interface ParsedPullRequestTarget {
+  repo?: string;
+  pr: number;
+}
+
+interface GhPullRequestFile {
+  path: string;
+}
+
+interface GhPullRequestLabel {
+  name: string;
+}
+
+interface GhPullRequestView {
+  number: number;
+  headRefOid?: string;
+  body?: string;
+  title?: string;
+  files?: GhPullRequestFile[];
+  labels?: GhPullRequestLabel[];
 }
 
 export function registerConveyorCommand(program: Command): void {
@@ -409,20 +439,39 @@ export function registerConveyorCommand(program: Command): void {
 
   conveyor
     .command("check")
-    .description("Validate Conveyor role authority for proposed label changes; does not mutate GitHub")
-    .requiredOption("--role <role>", "Conveyor actor role")
+    .description("Validate Conveyor PR prerequisites, or role authority for proposed label changes; does not mutate GitHub")
+    .argument("[target]", "PR URL, owner/repo#number, owner/repo/pull/number, or local-repo PR number")
+    .option("--role <role>", "Conveyor actor role for authority checks")
     .option("--add-label <label>", "Proposed label to add", collectOption, [])
     .option("--remove-label <label>", "Proposed label to remove", collectOption, [])
+    .option("--fixture <path>", "JSON fixture for deterministic prerequisite checks")
+    .option("--format <format>", "Output format for prerequisite checks: json")
     .option("--json", "Output machine-readable JSON")
-    .action((options: ConveyorCheckOptions) => {
+    .action((target: string | undefined, options: ConveyorCheckOptions) => {
       runConveyorAction(options, () => {
+        if (options.format && options.format !== "json") {
+          throw new Error("Invalid --format. Expected json.");
+        }
+        if (target || options.fixture) {
+          const input = options.fixture
+            ? readConveyorPrerequisiteFixture(options.fixture)
+            : readGithubPullRequestForConveyorCheck(target);
+          const report = buildConveyorPrerequisiteCheck(input);
+          if (wantsJsonOutput(options)) {
+            process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          } else {
+            process.stdout.write(formatPrerequisiteCheck(report));
+          }
+          if (report.verdict === "BLOCKED") process.exitCode = 1;
+          return;
+        }
         const role = parseRole(options.role);
         const report = validateConveyorRoleLabelChange({
           role,
           add: options.addLabel,
           remove: options.removeLabel,
         });
-        if (options.json) {
+        if (wantsJsonOutput(options)) {
           process.stdout.write(JSON.stringify(report, null, 2) + "\n");
           return;
         }
@@ -566,7 +615,7 @@ function runConveyorAction(options: ConveyorReconcileOptions, action: () => void
     action();
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (options.json) {
+    if (wantsJsonOutput(options)) {
       process.stdout.write(JSON.stringify({ error: { message } }, null, 2) + "\n");
     } else {
       logger.error(message);
@@ -575,11 +624,86 @@ function runConveyorAction(options: ConveyorReconcileOptions, action: () => void
   }
 }
 
+function wantsJsonOutput(options: { json?: boolean; format?: string }): boolean {
+  return options.json === true || options.format === "json";
+}
+
 function readManifestFixture(fixture: string | undefined): ConveyorManifestInput {
   if (!fixture) {
     throw new Error("Missing --fixture. Live GitHub discovery is reserved for a later conveyor tick PR.");
   }
   return JSON.parse(readFileSync(fixture, "utf8")) as ConveyorManifestInput;
+}
+
+function readConveyorPrerequisiteFixture(fixturePath: string): ConveyorPrerequisiteCheckInput {
+  return JSON.parse(readFileSync(fixturePath, "utf8")) as ConveyorPrerequisiteCheckInput;
+}
+
+function readGithubPullRequestForConveyorCheck(target: string | undefined): ConveyorPrerequisiteCheckInput {
+  if (!target) {
+    throw new Error("Missing PR target. Expected a PR URL, owner/repo#number, owner/repo/pull/number, or PR number.");
+  }
+  const parsed = parsePullRequestTarget(target);
+  const repo = parsed.repo ?? readCurrentGithubRepo();
+  const view = JSON.parse(execFileSync("gh", [
+    "pr",
+    "view",
+    String(parsed.pr),
+    "--repo",
+    repo,
+    "--json",
+    "number,headRefOid,body,title,files,labels",
+  ], { encoding: "utf8" })) as GhPullRequestView;
+  const headSha = view.headRefOid;
+  if (!headSha) {
+    throw new Error("GitHub PR view did not include headRefOid.");
+  }
+  return {
+    schema: "shirube-conveyor-check-fixture/v1",
+    repo,
+    pr: view.number,
+    head_sha: headSha,
+    title: view.title,
+    body: view.body,
+    labels: (view.labels ?? []).map((label) => label.name),
+    changed_files: (view.files ?? []).map((file) => file.path),
+    repo_files: readGithubTreePaths(repo, headSha),
+  };
+}
+
+function parsePullRequestTarget(target: string): ParsedPullRequestTarget {
+  const trimmed = target.trim();
+  const urlMatch = trimmed.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:[/?#].*)?$/);
+  if (urlMatch) {
+    return { repo: `${urlMatch[1]}/${urlMatch[2]}`, pr: Number(urlMatch[3]) };
+  }
+  const hashMatch = trimmed.match(/^([^/\s#]+\/[^/\s#]+)#(\d+)$/);
+  if (hashMatch) {
+    return { repo: hashMatch[1], pr: Number(hashMatch[2]) };
+  }
+  const pathMatch = trimmed.match(/^([^/\s#]+\/[^/\s#]+)\/pull\/(\d+)$/);
+  if (pathMatch) {
+    return { repo: pathMatch[1], pr: Number(pathMatch[2]) };
+  }
+  const numberMatch = trimmed.match(/^#?(\d+)$/);
+  if (numberMatch) return { pr: Number(numberMatch[1]) };
+  throw new Error("Invalid PR target. Expected a PR URL, owner/repo#number, owner/repo/pull/number, or PR number.");
+}
+
+function readCurrentGithubRepo(): string {
+  return execFileSync("gh", ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"], {
+    encoding: "utf8",
+  }).trim();
+}
+
+function readGithubTreePaths(repo: string, headSha: string): string[] {
+  const output = execFileSync("gh", [
+    "api",
+    `repos/${repo}/git/trees/${headSha}?recursive=1`,
+    "--jq",
+    ".tree[] | select(.type == \"blob\") | .path",
+  ], { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 });
+  return output.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
 }
 
 function readConveyorProfile(profilePath: string): ConveyorProjectProfile {
@@ -1122,6 +1246,37 @@ function formatAuthorityCheck(report: ConveyorRoleAuthorityCheck): string {
     lines.push(`- ${violation.operation} ${violation.label}: ${violation.reason}`);
   }
   return `${lines.join("\n")}\n`;
+}
+
+function formatPrerequisiteCheck(report: ConveyorPrerequisiteCheckReport): string {
+  const lines = [
+    "Shirube Conveyor Check",
+    `Verdict: ${report.verdict}`,
+    `Repo: ${report.repo}`,
+    `PR: ${report.pr}`,
+    `Head: ${report.head_sha}`,
+    `Risk Tier: ${report.risk_tier}`,
+    `Spec IDs: ${report.spec_ids.join(", ") || "-"}`,
+    `Cell IDs: ${report.cell_ids.join(", ") || "-"}`,
+    `Impl IDs: ${report.impl_ids.join(", ") || "-"}`,
+    "",
+    "Blockers:",
+  ];
+  appendPrerequisiteFindings(lines, report.blockers);
+  lines.push("", "Warnings:");
+  appendPrerequisiteFindings(lines, report.warnings);
+  return `${lines.join("\n")}\n`;
+}
+
+function appendPrerequisiteFindings(lines: string[], findings: ConveyorPrerequisiteCheckReport["blockers"]): void {
+  if (findings.length === 0) {
+    lines.push("  -");
+    return;
+  }
+  for (const finding of findings) {
+    const path = finding.path ? ` ${finding.path}` : "";
+    lines.push(`  ${finding.code}${path}: ${finding.message}`);
+  }
 }
 
 function collectOption(value: string, previous: string[]): string[] {
