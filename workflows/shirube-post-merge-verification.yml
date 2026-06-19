@@ -1,0 +1,29 @@
+# Reusable Shirube post-merge verification scaffold.
+# This file is intentionally stored under workflows/ and is not active GitHub Actions enforcement.
+# Copy into .github/workflows/ in a later approved Cell to activate.
+name: Shirube Post-merge Verification Scaffold
+
+"on":
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  shirube-post-merge-verification:
+    name: Shirube Post-merge Verification (warn-only scaffold)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Warn-only scaffold notice
+        run: |
+          echo "Shirube post-merge verification scaffold only."
+          echo "Map CELL-ID -> REQ-ID -> TEST-ID -> result -> evidence."
+          echo "No required check, release block, or branch protection is enabled by this template."
+      - name: Suggested evidence collection
+        run: |
+          echo "- Browser/API/DB/log/permission smoke as applicable."
+          echo "- Evidence ledger entry with PR, commit, CI runs, artifacts, and release/rollback decision."

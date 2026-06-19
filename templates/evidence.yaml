@@ -1,0 +1,25 @@
+schema_version: shirube-evidence/v1
+EVIDENCE-ID: EVIDENCE-EXAMPLE-001
+SPEC-ID: SPEC-EXAMPLE-001
+CELL-ID: CELL-EXAMPLE-001
+IMPL-ID: IMPL-EXAMPLE-001
+PR-ID: <pr url or number>
+commit_sha: <sha>
+audit_results:
+  - <audit result ref>
+ci_runs:
+  - name: lint
+    result: PASS
+    url: <run url>
+artifact_locations:
+  - <artifact url or path>
+post_merge_verification:
+  result: N/A
+  evidence:
+    - <evidence or N/A rationale>
+waiver_refs: []
+release_or_rollback_decision:
+  result: N/A
+  evidence:
+    - <release, rollback, or N/A rationale>
+  decision_owner: <owner>

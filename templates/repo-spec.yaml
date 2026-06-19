@@ -1,0 +1,57 @@
+schema_version: shirube-repo-spec/v1
+repo_id: watchout/example-repo
+owner: <github-team-or-user>
+purpose: <what this repository is responsible for>
+scope:
+  - <in-scope area>
+non_goals:
+  - <explicitly out-of-scope behavior>
+design_principles:
+  - "Development unit is Cell, not PR."
+  - "Canonical chain is Spec -> Cell -> Impl -> Code -> Test -> Evidence."
+development_flow:
+  - Spec
+  - Cell
+  - Impl
+  - Code
+  - Test
+  - Evidence
+roles:
+  repo_owner: <owner>
+  release_owner: <owner>
+  security_owner: <owner>
+  evidence_owner: <owner>
+boundaries:
+  allowed_paths:
+    - ".shirube/**"
+    - "docs/**"
+  forbidden_paths:
+    - ".env"
+    - "secrets/**"
+  data_boundaries:
+    - <data boundary>
+  dependency_boundaries:
+    - <dependency boundary>
+  forbidden_actions:
+    - "Do not weaken auth, permission, privacy, audit, or evidence controls."
+required_gates:
+  - spec_audit
+  - spec_to_cell_trace_audit
+  - impl_audit
+  - current_ci
+  - impl_to_code_audit
+  - post_merge_mechanical_verification
+risk_tier_defaults: R2
+standards:
+  soc2:
+    - Security
+    - Confidentiality
+    - Processing Integrity
+  iso_iec_42001: "Apply when AI behavior, tools, memory, prompts, or model routing are in scope."
+  engineering_references:
+    - NIST_SSDF
+    - OWASP_LLM_TOP_10
+    - SLSA
+ai_usage_classification: <none|assistive|agentic|decision-support>
+agent_policy_ref: ".shirube/agent-policy.yaml"
+evidence_ledger_ref: ".shirube/evidence/"

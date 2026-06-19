@@ -1,0 +1,26 @@
+schema_version: shirube-audit-rubric/v1
+rubric_id: RUBRIC-SPEC-TO-CELL-TRACE-AUDIT-V1
+audit_type: spec-to-cell-trace-audit
+result_values: [PASS, FAIL, N/A]
+evidence_rule: "Every FAIL must include SPEC-ID, CELL-ID, missing REQ-ID, or trace evidence."
+checks:
+  - id: TRACE-REQ-COVERAGE
+    question: "Every required REQ-ID is covered by at least one CELL-ID."
+    result: N/A
+    evidence: []
+  - id: TRACE-CELL-VALIDITY
+    question: "Every CELL-ID maps to at least one valid REQ-ID."
+    result: N/A
+    evidence: []
+  - id: TRACE-CELL-BOUNDARY
+    question: "Each Cell has a clear goal, allowed paths, forbidden paths, dependencies, and risk tier."
+    result: N/A
+    evidence: []
+  - id: TRACE-TEST-MAP
+    question: "Acceptance tests are mapped to Cells."
+    result: N/A
+    evidence: []
+  - id: TRACE-RISK-GATES
+    question: "High-risk Cells trigger stricter gates and owner/security review."
+    result: N/A
+    evidence: []

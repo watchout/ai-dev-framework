@@ -1,0 +1,30 @@
+schema_version: shirube-audit-rubric/v1
+rubric_id: RUBRIC-IMPL-TO-CODE-AUDIT-V1
+audit_type: impl-to-code-audit
+result_values: [PASS, FAIL, N/A]
+evidence_rule: "Every FAIL must include file path, diff, test, command, log, or artifact evidence."
+checks:
+  - id: CODE-IMPLEMENTS-IMPL
+    question: "Code implements the audited Impl and mapped REQ-IDs."
+    result: N/A
+    evidence: []
+  - id: CODE-PATH-SCOPE
+    question: "Changed files remain within allowed paths and avoid forbidden paths."
+    result: N/A
+    evidence: []
+  - id: CODE-TESTS
+    question: "Tests correspond to acceptance criteria and were not deleted or skipped improperly."
+    result: N/A
+    evidence: []
+  - id: CODE-AUTH-PERMISSIONS
+    question: "Auth and permission behavior matches the Impl."
+    result: N/A
+    evidence: []
+  - id: CODE-LOGGING-ERRORS
+    question: "Error handling, logging, and audit logging match the Impl."
+    result: N/A
+    evidence: []
+  - id: CODE-NO-SPEC-EXTERNAL-REFACTOR
+    question: "No Spec-external refactor is included."
+    result: N/A
+    evidence: []

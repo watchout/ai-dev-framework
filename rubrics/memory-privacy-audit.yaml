@@ -1,0 +1,26 @@
+schema_version: shirube-audit-rubric/v1
+rubric_id: RUBRIC-MEMORY-PRIVACY-AUDIT-V1
+audit_type: memory-privacy-audit
+result_values: [PASS, FAIL, N/A]
+evidence_rule: "Every FAIL must include data class, memory scope, tenant/user boundary, retention, or deletion evidence."
+checks:
+  - id: MEMORY-DATA-CLASSIFICATION
+    question: "Memory data classes are declared."
+    result: N/A
+    evidence: []
+  - id: MEMORY-USER-TENANT-BOUNDARY
+    question: "User, session, tenant, and repo boundaries are explicit."
+    result: N/A
+    evidence: []
+  - id: MEMORY-RETENTION-DELETION
+    question: "Retention, TTL, deletion, and export expectations are declared."
+    result: N/A
+    evidence: []
+  - id: MEMORY-SENSITIVE-INFO
+    question: "Sensitive information handling and redaction policy are defined."
+    result: N/A
+    evidence: []
+  - id: MEMORY-PROMPT-INJECTION
+    question: "Stored prompt injection is treated as untrusted data."
+    result: N/A
+    evidence: []

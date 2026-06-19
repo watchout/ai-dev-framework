@@ -1,0 +1,32 @@
+# Reusable Shirube PR gate scaffold.
+# This file is intentionally stored under workflows/ and is not active GitHub Actions enforcement.
+# Copy into .github/workflows/ in a later approved Cell to activate.
+name: Shirube PR Gate Scaffold
+
+"on":
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  shirube-pr-gate:
+    name: Shirube PR Gate (warn-only scaffold)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Warn-only scaffold notice
+        run: |
+          echo "Shirube PR Gate scaffold only."
+          echo "Expected metadata: CELL-ID, SPEC-ID, IMPL-ID, Risk Tier."
+          echo "No required check or branch protection is enabled by this template."
+      - name: Suggested checks
+        run: |
+          echo "- Validate repo spec, feature spec, Cell, Impl, audit result, evidence, waiver, agent policy, and contract records."
+          echo "- Confirm Spec -> Cell -> Impl -> Code -> Test -> Evidence trace."
+          echo "- Confirm FAIL findings have evidence."
+          echo "- Confirm enforcement remains warn-only until a later approved Cell activates it."

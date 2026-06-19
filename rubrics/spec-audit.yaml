@@ -1,0 +1,34 @@
+schema_version: shirube-audit-rubric/v1
+rubric_id: RUBRIC-SPEC-AUDIT-V1
+audit_type: spec-audit
+result_values: [PASS, FAIL, N/A]
+evidence_rule: "Every FAIL must include SPEC-ID, section, line, issue, PR comment, or artifact evidence."
+checks:
+  - id: SPEC-PURPOSE
+    question: "Purpose and background are clear."
+    result: N/A
+    evidence: []
+  - id: SPEC-NON-GOALS
+    question: "Non-goals are explicit and prevent scope expansion."
+    result: N/A
+    evidence: []
+  - id: SPEC-REQ-IDS
+    question: "Requirements are individually addressable as REQ/SEC/NFR/AI/DATA IDs."
+    result: N/A
+    evidence: []
+  - id: SPEC-AC-TESTABLE
+    question: "Acceptance criteria are testable and map to requirement IDs."
+    result: N/A
+    evidence: []
+  - id: SPEC-SEC-PRIVACY-AI
+    question: "Security, privacy, data, and AI usage impacts are declared or explicitly N/A."
+    result: N/A
+    evidence: []
+  - id: SPEC-ROLLBACK
+    question: "Migration and rollback/recovery are declared when applicable."
+    result: N/A
+    evidence: []
+  - id: SPEC-STANDARDS
+    question: "SOC 2, ISO/IEC 42001, NIST SSDF, OWASP LLM, and SLSA applicability are represented where relevant."
+    result: N/A
+    evidence: []

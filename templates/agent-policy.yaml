@@ -1,0 +1,78 @@
+schema_version: shirube-agent-policy/v1
+policy_id: AGENT-POLICY-EXAMPLE-001
+permission_boundary:
+  allowed_commands:
+    - npm test
+    - npm run lint
+  forbidden_commands:
+    - git push --force
+    - rm -rf /
+  allowed_paths:
+    - .shirube/**
+    - docs/**
+    - schemas/**
+    - templates/**
+  forbidden_paths:
+    - .env
+    - secrets/**
+  allowed_mcp_tools: []
+  approval_required_mcp_tools:
+    - github_write
+    - external_send
+  forbidden_mcp_tools:
+    - production_deploy
+  secret_access_policy: "No secret read unless explicitly approved in the Cell and required by Impl."
+  memory_read_policy: "Read only memory explicitly authorized by the Cell."
+  memory_write_policy: "No memory write unless explicitly authorized by the Cell."
+  external_send_policy: "No external send or dispatch unless explicitly authorized by the Cell."
+agent_execution_profiles:
+  - agent_id: codex
+    agent_name: Codex
+    agent_type: codex
+    supported_execution_modes:
+      - goal-mode
+    supports_goal_directed_execution: true
+    supports_filesystem_scope_constraints: true
+    supports_command_constraints: true
+    supports_structured_output: true
+    supports_test_execution: true
+    supports_pr_creation: true
+    supports_issue_comment_updates: true
+    supports_artifact_reporting: true
+    instruction_adapter: codex_adapter
+    completion_evidence_requirements:
+      - changed files
+      - implemented REQ-IDs
+      - commands run
+      - test results
+      - known failures
+      - PR / commit / artifact links
+    risk_tier_limit_without_human_approval: R2
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  CELL-ID: CELL-EXAMPLE-001
+  SPEC-ID: SPEC-EXAMPLE-001
+  IMPL-ID: IMPL-EXAMPLE-001
+  risk_tier: R2
+  allowed_paths:
+    - <path-or-glob>
+  forbidden_paths:
+    - .env
+    - secrets/**
+  allowed_commands:
+    - <command>
+  forbidden_commands:
+    - <command>
+  required_tests:
+    - TEST-001
+  required_evidence:
+    - changed files
+    - commands run
+    - test results
+  non_goals:
+    - <non-goal>
+  stop_conditions:
+    - <stop condition>
+  handoff_conditions:
+    - Spec Audit PASS
+    - Impl Audit PASS

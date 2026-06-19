@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/evidence.schema.json",
+  "title": "Shirube Evidence Ledger Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "EVIDENCE-ID",
+    "SPEC-ID",
+    "CELL-ID",
+    "IMPL-ID",
+    "PR-ID",
+    "commit_sha",
+    "audit_results",
+    "ci_runs",
+    "artifact_locations",
+    "post_merge_verification",
+    "release_or_rollback_decision"
+  ],
+  "properties": {
+    "schema_version": { "const": "shirube-evidence/v1" },
+    "EVIDENCE-ID": { "type": "string", "pattern": "^EVIDENCE-[A-Z0-9-]+$" },
+    "SPEC-ID": { "type": "string" },
+    "CELL-ID": { "type": "string" },
+    "IMPL-ID": { "type": "string" },
+    "PR-ID": { "type": "string" },
+    "commit_sha": { "type": "string", "minLength": 7 },
+    "audit_results": { "type": "array", "items": { "type": "string" } },
+    "ci_runs": { "type": "array", "items": { "$ref": "#/$defs/ciRun" } },
+    "artifact_locations": { "type": "array", "items": { "type": "string" } },
+    "post_merge_verification": { "$ref": "#/$defs/result" },
+    "waiver_refs": { "type": "array", "items": { "type": "string" } },
+    "release_or_rollback_decision": { "$ref": "#/$defs/result" }
+  },
+  "$defs": {
+    "ciRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "result", "url"],
+      "properties": {
+        "name": { "type": "string" },
+        "result": { "enum": ["PASS", "FAIL", "N/A"] },
+        "url": { "type": "string" }
+      }
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["result", "evidence"],
+      "properties": {
+        "result": { "enum": ["PASS", "FAIL", "N/A"] },
+        "evidence": { "type": "array", "items": { "type": "string" } },
+        "decision_owner": { "type": "string" }
+      }
+    }
+  }
+}

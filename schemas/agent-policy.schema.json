@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/agent-policy.schema.json",
+  "title": "Shirube Agent Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "permission_boundary",
+    "agent_execution_profiles",
+    "execution_contract"
+  ],
+  "properties": {
+    "schema_version": { "const": "shirube-agent-policy/v1" },
+    "policy_id": { "type": "string", "minLength": 1 },
+    "permission_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allowed_commands",
+        "forbidden_commands",
+        "allowed_paths",
+        "forbidden_paths",
+        "allowed_mcp_tools",
+        "approval_required_mcp_tools",
+        "forbidden_mcp_tools",
+        "secret_access_policy",
+        "memory_read_policy",
+        "memory_write_policy",
+        "external_send_policy"
+      ],
+      "properties": {
+        "allowed_commands": { "type": "array", "items": { "type": "string" } },
+        "forbidden_commands": { "type": "array", "items": { "type": "string" } },
+        "allowed_paths": { "type": "array", "items": { "type": "string" } },
+        "forbidden_paths": { "type": "array", "items": { "type": "string" } },
+        "allowed_mcp_tools": { "type": "array", "items": { "type": "string" } },
+        "approval_required_mcp_tools": { "type": "array", "items": { "type": "string" } },
+        "forbidden_mcp_tools": { "type": "array", "items": { "type": "string" } },
+        "secret_access_policy": { "type": "string" },
+        "memory_read_policy": { "type": "string" },
+        "memory_write_policy": { "type": "string" },
+        "external_send_policy": { "type": "string" }
+      }
+    },
+    "agent_execution_profiles": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/agentExecutionProfile" }
+    },
+    "execution_contract": { "$ref": "#/$defs/executionContract" }
+  },
+  "$defs": {
+    "agentExecutionProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent_id",
+        "agent_name",
+        "agent_type",
+        "supported_execution_modes",
+        "supports_goal_directed_execution",
+        "supports_filesystem_scope_constraints",
+        "supports_command_constraints",
+        "supports_structured_output",
+        "supports_test_execution",
+        "supports_pr_creation",
+        "supports_issue_comment_updates",
+        "supports_artifact_reporting",
+        "instruction_adapter",
+        "completion_evidence_requirements",
+        "risk_tier_limit_without_human_approval"
+      ],
+      "properties": {
+        "agent_id": { "type": "string" },
+        "agent_name": { "type": "string" },
+        "agent_type": { "enum": ["codex", "claude", "generic_coding_agent", "human_executor", "other"] },
+        "supported_execution_modes": { "type": "array", "items": { "type": "string" } },
+        "supports_goal_directed_execution": { "type": "boolean" },
+        "supports_filesystem_scope_constraints": { "type": "boolean" },
+        "supports_command_constraints": { "type": "boolean" },
+        "supports_structured_output": { "type": "boolean" },
+        "supports_test_execution": { "type": "boolean" },
+        "supports_pr_creation": { "type": "boolean" },
+        "supports_issue_comment_updates": { "type": "boolean" },
+        "supports_artifact_reporting": { "type": "boolean" },
+        "instruction_adapter": { "type": "string" },
+        "completion_evidence_requirements": { "type": "array", "items": { "type": "string" } },
+        "risk_tier_limit_without_human_approval": { "enum": ["R0", "R1", "R2", "R3"] }
+      }
+    },
+    "executionContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "canonical_term",
+        "CELL-ID",
+        "SPEC-ID",
+        "IMPL-ID",
+        "risk_tier",
+        "allowed_paths",
+        "forbidden_paths",
+        "allowed_commands",
+        "forbidden_commands",
+        "required_tests",
+        "required_evidence",
+        "non_goals",
+        "stop_conditions",
+        "handoff_conditions"
+      ],
+      "properties": {
+        "canonical_term": { "const": "Goal-directed bounded execution" },
+        "CELL-ID": { "type": "string" },
+        "SPEC-ID": { "type": "string" },
+        "IMPL-ID": { "type": "string" },
+        "risk_tier": { "enum": ["R0", "R1", "R2", "R3"] },
+        "allowed_paths": { "type": "array", "items": { "type": "string" } },
+        "forbidden_paths": { "type": "array", "items": { "type": "string" } },
+        "allowed_commands": { "type": "array", "items": { "type": "string" } },
+        "forbidden_commands": { "type": "array", "items": { "type": "string" } },
+        "required_tests": { "type": "array", "items": { "type": "string" } },
+        "required_evidence": { "type": "array", "items": { "type": "string" } },
+        "non_goals": { "type": "array", "items": { "type": "string" } },
+        "stop_conditions": { "type": "array", "items": { "type": "string" } },
+        "handoff_conditions": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

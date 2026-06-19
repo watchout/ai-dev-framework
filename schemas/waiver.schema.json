@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/waiver.schema.json",
+  "title": "Shirube Waiver",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "WAIVER-ID",
+    "target_cell",
+    "target_check",
+    "reason",
+    "risk_accepted",
+    "compensating_controls",
+    "approver",
+    "expiry_date",
+    "follow_up_issue"
+  ],
+  "properties": {
+    "schema_version": { "const": "shirube-waiver/v1" },
+    "WAIVER-ID": { "type": "string", "pattern": "^WAIVER-[A-Z0-9-]+$" },
+    "target_cell": { "type": "string" },
+    "target_check": { "type": "string" },
+    "reason": { "type": "string", "minLength": 1 },
+    "risk_accepted": { "type": "string", "minLength": 1 },
+    "compensating_controls": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "approver": { "type": "string", "minLength": 1 },
+    "expiry_date": { "type": "string", "format": "date" },
+    "follow_up_issue": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["active", "expired", "closed"] }
+  }
+}

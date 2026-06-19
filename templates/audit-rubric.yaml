@@ -1,0 +1,14 @@
+schema_version: shirube-audit-rubric/v1
+rubric_id: RUBRIC-EXAMPLE-001
+audit_type: <spec-audit|spec-to-cell-trace-audit|impl-audit|impl-to-code-audit>
+result_values:
+  - PASS
+  - FAIL
+  - N/A
+evidence_rule: "Every FAIL must include concrete evidence. Unsupported claims are UNVERIFIED, not FAIL."
+checks:
+  - id: CHECK-001
+    question: <audit question>
+    result: N/A
+    evidence: []
+    notes: <optional>

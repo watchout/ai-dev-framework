@@ -1,0 +1,26 @@
+schema_version: shirube-audit-rubric/v1
+rubric_id: RUBRIC-POST-MERGE-VERIFICATION-AUDIT-V1
+audit_type: post-merge-verification-audit
+result_values: [PASS, FAIL, N/A]
+evidence_rule: "Every FAIL must include CELL-ID, REQ-ID, TEST-ID, result, and artifact evidence."
+checks:
+  - id: PMV-CELL-REQ-TEST-MAP
+    question: "Every post-merge verification maps CELL-ID -> REQ-ID -> TEST-ID -> result -> evidence."
+    result: N/A
+    evidence: []
+  - id: PMV-MECHANICAL
+    question: "Verification mechanically reproduces important user, API, data, logging, or permission behavior."
+    result: N/A
+    evidence: []
+  - id: PMV-ARTIFACTS
+    question: "Screenshots, traces, videos, logs, reports, or workflow artifacts are linked when applicable."
+    result: N/A
+    evidence: []
+  - id: PMV-DECISION
+    question: "Release, rollback, revert, or hotfix decision is recorded after verification."
+    result: N/A
+    evidence: []
+  - id: PMV-EVIDENCE-LEDGER
+    question: "Evidence ledger is updated or N/A is justified."
+    result: N/A
+    evidence: []
