@@ -40,23 +40,33 @@ describe("Shirube script gates", () => {
     expect(result.json.verdict).toBe("PASS");
   });
 
-  it("repo-spec blocks canonical_core without @ pin", () => {
+  it("repo-spec warns on canonical_core without @ pin during pilot migration", () => {
     const result = run("scripts/shirube/check-repo-spec.mjs", ["--fixture", fixture("repo-spec.bad-canonical.json")]);
-    expect(result.exitCode).toBe(1);
-    expect(result.json.verdict).toBe("BLOCK");
+    expect(result.exitCode).toBe(0);
+    expect(result.json.verdict).toBe("WARN");
     expect(result.json.reasons.map((reason: any) => reason.code)).toContain("invalid_canonical_core");
   });
 
-  it("repo-spec blocks missing role assignments", () => {
+  it("repo-spec warns on missing role assignments during pilot migration", () => {
     const result = run("scripts/shirube/check-repo-spec.mjs", ["--fixture", fixture("repo-spec.missing-role.json")]);
-    expect(result.json.verdict).toBe("BLOCK");
+    expect(result.exitCode).toBe(0);
+    expect(result.json.verdict).toBe("WARN");
     expect(result.json.reasons.map((reason: any) => reason.code)).toContain("missing_role_assignment");
   });
 
-  it("repo-spec blocks missing required SOC2 categories", () => {
+  it("repo-spec warns on missing recommended SOC2 categories during pilot migration", () => {
     const result = run("scripts/shirube/check-repo-spec.mjs", ["--fixture", fixture("repo-spec.missing-soc2.json")]);
-    expect(result.json.verdict).toBe("BLOCK");
+    expect(result.exitCode).toBe(0);
+    expect(result.json.verdict).toBe("WARN");
     expect(result.json.reasons.map((reason: any) => reason.code)).toContain("missing_soc2_category");
+  });
+
+  it("repo-spec accepts lightweight repo_id scaffolds with warnings instead of hard-failing", () => {
+    const result = run("scripts/shirube/check-repo-spec.mjs", ["--fixture", fixture("repo-spec.lightweight-aun.json")]);
+    expect(result.exitCode).toBe(0);
+    expect(result.json.verdict).toBe("WARN");
+    expect(result.json.reasons.map((reason: any) => reason.code)).toContain("missing_recommended_key");
+    expect(result.json.reasons.map((reason: any) => reason.code)).not.toContain("invalid_repo_id");
   });
 
   it("repo-spec warns when shared_terminology is empty", () => {

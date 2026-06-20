@@ -5,9 +5,16 @@
   "type": "object",
   "required": [
     "schema_version",
-    "repo",
+    "purpose"
+  ],
+  "anyOf": [
+    { "required": ["repo_id"] },
+    { "required": ["repo"] }
+  ],
+  "x-shirube-pilot-policy": "schema_version, purpose, and repo_id/repo are hard requirements. Enterprise fields are recommended warnings during report-only migration.",
+  "x-shirube-recommended": [
+    "repo_id",
     "canonical_core",
-    "purpose",
     "non_goals",
     "design_principles",
     "development_flow",
@@ -29,6 +36,7 @@
   ],
   "properties": {
     "schema_version": { "const": "shirube-repo-spec/v1" },
+    "repo_id": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" },
     "repo": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" },
     "canonical_core": { "type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$" },
     "purpose": { "type": "string", "minLength": 1 },

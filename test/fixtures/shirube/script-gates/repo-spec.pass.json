@@ -1,5 +1,6 @@
 {
   "schema_version": "shirube-repo-spec/v1",
+  "repo_id": "watchout/ai-dev-framework",
   "repo": "watchout/ai-dev-framework",
   "canonical_core": "watchout/ai-dev-framework@abc123",
   "purpose": "Fixture repo spec.",

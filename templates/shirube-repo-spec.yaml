@@ -1,5 +1,7 @@
 schema_version: shirube-repo-spec/v1
-repo: <owner/repo>
+repo_id: <owner/repo>
+# repo is accepted as a compatibility alias during v1 migration.
+# repo: <owner/repo>
 canonical_core: <owner/repo>@<commit-or-tag>
 purpose: <text>
 non_goals: []

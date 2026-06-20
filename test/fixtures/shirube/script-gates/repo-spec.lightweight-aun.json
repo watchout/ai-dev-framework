@@ -1,0 +1,14 @@
+{
+  "schema_version": "shirube-repo-spec/v1",
+  "repo_id": "watchout/agent-comms-mcp",
+  "purpose": "Lightweight existing scaffold fixture for cross-repo migration.",
+  "scope": ["MCP runtime governance scaffold"],
+  "boundaries": {
+    "allowed_paths": [".shirube/**"],
+    "forbidden_paths": [".github/workflows/**"]
+  },
+  "risk_tier_defaults": "R2",
+  "standards": {
+    "primary": "Shirube AI Development Governance Standard v1"
+  }
+}
