@@ -1,0 +1,119 @@
+name: Shirube Conveyor Prerequisite Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+env:
+  NODE_VERSION: '20'
+  RESULT_DIR: .shirube-conveyor
+  RESULT_PATH: .shirube-conveyor/conveyor-result.json
+
+jobs:
+  shirube-conveyor-prerequisite-check:
+    name: Shirube Conveyor Prerequisite Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate .shirube YAML/schema artifacts
+        run: |
+          ruby <<'RUBY'
+          require "json"
+          require "yaml"
+
+          yaml_files = Dir[".shirube/**/*.yml", ".shirube/**/*.yaml"].sort
+          abort("No .shirube YAML artifacts found") if yaml_files.empty?
+
+          required_by_schema = {
+            "shirube-repo-spec/v1" => %w[
+              schema_version repo_id purpose non_goals design_principles
+              development_flow roles boundaries required_gates standards
+              agent_policy_ref
+            ],
+            "shirube-agent-policy/v1" => %w[
+              schema_version policy_id permission_boundary
+              agent_execution_profiles execution_contract
+            ],
+            "shirube-cell/v1" => %w[
+              schema_version CELL-ID SPEC-ID risk_tier goal covered_req_ids
+              allowed_paths forbidden_paths acceptance_criteria required_tests
+              required_evidence non_goals stop_conditions execution_contract
+            ],
+            "shirube-audit-result/v1" => %w[
+              schema_version AUDIT-ID audit_type target_refs verdict findings
+              auditor created_at
+            ],
+            "shirube-evidence/v1" => %w[
+              schema_version EVIDENCE-ID SPEC-ID CELL-ID IMPL-ID PR-ID
+              commit_sha audit_results ci_runs artifact_locations
+              post_merge_verification release_or_rollback_decision
+            ]
+          }
+
+          yaml_files.each do |path|
+            body = YAML.load_file(path)
+            abort("#{path}: YAML root must be a mapping") unless body.is_a?(Hash)
+            schema = body["schema_version"]
+            abort("#{path}: missing schema_version") unless schema
+
+            required = required_by_schema[schema]
+            if required
+              missing = required.reject { |field| body.key?(field) }
+              abort("#{path}: missing required field(s): #{missing.join(", ")}") unless missing.empty?
+            else
+              warn "#{path}: schema_version #{schema.inspect} has no local required-field profile"
+            end
+          end
+
+          Dir["schemas/*.schema.json"].sort.each do |path|
+            JSON.parse(File.read(path))
+          end
+
+          puts "Validated #{yaml_files.length} .shirube YAML artifacts"
+          RUBY
+
+      - name: Run conveyor prerequisite check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          mkdir -p "$RESULT_DIR"
+          npm run shirube -- conveyor check "$PR_URL" --format json | tee "$RESULT_PATH"
+
+      - name: Evaluate conveyor verdict
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const report = JSON.parse(fs.readFileSync(process.env.RESULT_PATH, "utf8"));
+          console.log(`Shirube conveyor verdict: ${report.verdict}`);
+          if (report.verdict === "BLOCKED") {
+            console.error("Conveyor verdict is BLOCKED.");
+            process.exit(1);
+          }
+          NODE
+
+      - name: Upload conveyor JSON result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shirube-conveyor-result-${{ github.event.pull_request.number }}
+          path: ${{ env.RESULT_PATH }}
+          if-no-files-found: warn
+          retention-days: 14

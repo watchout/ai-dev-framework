@@ -1,0 +1,31 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-CHECK-WORKFLOW-SPEC-001
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-ADF-CHECK-WORKFLOW-001.md
+  - docs/activation/shirube-conveyor-active-workflow.md
+verdict: PASS
+findings:
+  - check_id: SPEC-PURPOSE
+    result: PASS
+    evidence:
+      - SPEC-ADF-CHECK-WORKFLOW-001 defines active non-required workflow integration purpose.
+  - check_id: SPEC-REQ-IDS
+    result: PASS
+    evidence:
+      - SPEC-ADF-CHECK-WORKFLOW-001 includes REQ-ADF-WORKFLOW-001 through REQ-ADF-WORKFLOW-005 and SEC-ADF-WORKFLOW-001.
+  - check_id: SPEC-WORKFLOW-BEHAVIOR
+    result: PASS
+    evidence:
+      - The spec requires stable job name, .shirube validation, conveyor JSON artifact upload, and BLOCKED-only failure behavior.
+  - check_id: SPEC-NON-SCOPE
+    result: PASS
+    evidence:
+      - The spec forbids required-check activation, branch protection changes, ruleset changes, runtime/CLI/package changes, target repo mutation, and AUN/multi-agent activation.
+  - check_id: SPEC-DRAFT-AUTOMERGE
+    result: PASS
+    evidence:
+      - docs/activation/shirube-conveyor-active-workflow.md documents draft PR and auto-merge behavior.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1

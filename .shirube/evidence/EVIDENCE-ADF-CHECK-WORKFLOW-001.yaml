@@ -1,0 +1,51 @@
+schema_version: shirube-evidence/v1
+EVIDENCE-ID: EVIDENCE-ADF-CHECK-WORKFLOW-001
+SPEC-ID: SPEC-ADF-CHECK-WORKFLOW-001
+CELL-ID: CELL-ADF-SELF-006
+IMPL-ID: IMPL-ADF-CHECK-WORKFLOW-001
+PR-ID: pending-pr-creation
+commit_sha: pending-pr-creation
+audit_results:
+  - AUDIT-ADF-CHECK-WORKFLOW-SPEC-001
+  - AUDIT-ADF-CHECK-WORKFLOW-IMPL-001
+ci_runs:
+  - name: YAML parse for .shirube/**/*.yaml
+    result: N/A
+    url: pending-local-validation
+  - name: git diff --check origin/main...HEAD
+    result: N/A
+    url: pending-local-validation
+  - name: npm run lint
+    result: N/A
+    url: pending-local-validation
+  - name: npm run type-check
+    result: N/A
+    url: pending-local-validation
+  - name: npm run build:cli
+    result: N/A
+    url: pending-local-validation
+  - name: conveyor check
+    result: N/A
+    url: pending-pr-url
+artifact_locations:
+  - .github/workflows/shirube-conveyor-prerequisite-check.yml
+  - .shirube/specs/SPEC-ADF-CHECK-WORKFLOW-001.md
+  - .shirube/cells/CELL-ADF-SELF-006.yaml
+  - .shirube/impls/IMPL-ADF-CHECK-WORKFLOW-001.md
+  - .shirube/audits/AUDIT-ADF-CHECK-WORKFLOW-SPEC-001.yaml
+  - .shirube/audits/AUDIT-ADF-CHECK-WORKFLOW-IMPL-001.yaml
+  - .shirube/evidence/EVIDENCE-ADF-CHECK-WORKFLOW-001.yaml
+  - docs/activation/shirube-conveyor-active-workflow.md
+  - TRACE-ADF-CHECK-WORKFLOW-001 in .shirube/specs/SPEC-ADF-CHECK-WORKFLOW-001.md Trace Matrix
+  - TEST-MAP-ADF-CHECK-WORKFLOW-001 in .shirube/specs/SPEC-ADF-CHECK-WORKFLOW-001.md Test Plan
+  - CONTRACT-ADF-CHECK-WORKFLOW-001 in .shirube/cells/CELL-ADF-SELF-006.yaml execution_contract
+post_merge_verification:
+  result: N/A
+  evidence:
+    - This slice stops after PR creation for Shirube command review and does not enable required checks.
+waiver_refs: []
+release_or_rollback_decision:
+  result: N/A
+  evidence:
+    - Release decision is outside this Cell and remains with release owner after command review.
+  decision_owner: watchout

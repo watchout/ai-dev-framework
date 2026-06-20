@@ -1,0 +1,32 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-CHECK-WORKFLOW-IMPL-001
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-ADF-CHECK-WORKFLOW-001.md
+  - .shirube/cells/CELL-ADF-SELF-006.yaml
+  - .github/workflows/shirube-conveyor-prerequisite-check.yml
+verdict: PASS
+findings:
+  - check_id: IMPL-SCOPE
+    result: PASS
+    evidence:
+      - IMPL-ADF-CHECK-WORKFLOW-001 limits planned changes to the active workflow, .shirube governance artifacts, and docs/activation documentation.
+  - check_id: IMPL-REQ-MAP
+    result: PASS
+    evidence:
+      - Planned file changes map to REQ-ADF-WORKFLOW-001 through REQ-ADF-WORKFLOW-005 and SEC-ADF-WORKFLOW-001.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - Required checks, branch protection, rulesets, runtime code, CLI code, package files, target repositories, and AUN/multi-agent automation are non-goals.
+  - check_id: IMPL-WORKFLOW-PERMISSIONS
+    result: PASS
+    evidence:
+      - "Workflow permissions are limited to contents: read and pull-requests: read."
+  - check_id: IMPL-RUNTIME
+    result: N/A
+    evidence:
+      - No runtime, CLI, DB, package, or target repository behavior changes are made.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1
