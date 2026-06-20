@@ -1,0 +1,31 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-CHECK-ACTIVATION-IMPL-001
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-ADF-CHECK-ACTIVATION-001.md
+  - .shirube/cells/CELL-ADF-SELF-002.yaml
+verdict: PASS
+findings:
+  - check_id: IMPL-SCOPE
+    result: PASS
+    evidence:
+      - IMPL-ADF-CHECK-ACTIVATION-001 limits planned changes to .shirube/** and docs/activation/** planning artifacts.
+  - check_id: IMPL-REQ-MAP
+    result: PASS
+    evidence:
+      - Planned file changes map to REQ-ADF-CHECK-001 through REQ-ADF-CHECK-004 and SEC-ADF-CHECK-001.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - Runtime, CLI, workflow, required-check, protection, ruleset, target repo, and automation activation work are non-goals.
+  - check_id: IMPL-TEST-PLAN
+    result: PASS
+    evidence:
+      - TEST-MAP-ADF-CHECK-ACTIVATION-001 requires YAML parse, diff check, lint, type-check, build:cli, and conveyor check.
+  - check_id: IMPL-RUNTIME
+    result: N/A
+    evidence:
+      - Planning-only slice; no runtime, auth, error handling, logging, or dependency behavior changes.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1

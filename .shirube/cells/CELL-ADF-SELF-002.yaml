@@ -1,10 +1,14 @@
 schema_version: shirube-cell/v1
 CELL-ID: CELL-ADF-SELF-002
-SPEC-ID: SPEC-ADF-SELF-001
+SPEC-ID: SPEC-ADF-CHECK-ACTIVATION-001
 risk_tier: R2
-goal: Draft candidate only; plan conveyor required-check activation without enabling checks.
+goal: Create the planning-only activation plan for making the Shirube conveyor prerequisite check a GitHub required check in a later approved slice, without enabling enforcement.
 covered_req_ids:
-  - REQ-ADF-SELF-003
+  - REQ-ADF-CHECK-001
+  - REQ-ADF-CHECK-002
+  - REQ-ADF-CHECK-003
+  - REQ-ADF-CHECK-004
+  - SEC-ADF-CHECK-001
 allowed_paths:
   - .shirube/**
   - docs/**
@@ -21,34 +25,69 @@ forbidden_paths:
   - .env
   - private-config/**
 acceptance_criteria:
-  - id: AC-ADF-SELF-002-001
-    statement: Activation plan defines prerequisites, owner approval path, and rollback plan before any required check is enabled.
-    linked_req_ids: [REQ-ADF-SELF-003]
+  - id: AC-ADF-CHECK-001
+    statement: Activation plan names the future required check and command.
+    linked_req_ids: [REQ-ADF-CHECK-001]
+  - id: AC-ADF-CHECK-002
+    statement: Activation plan defines warn-only pilot, pass/fail criteria, rollback, false-positive handling, and emergency intervention.
+    linked_req_ids: [REQ-ADF-CHECK-002]
+  - id: AC-ADF-CHECK-003
+    statement: Activation plan defines eligible and excluded repositories, owner approval, repo-spec owner confirmation, and waiver representation.
+    linked_req_ids: [REQ-ADF-CHECK-003]
+  - id: AC-ADF-CHECK-004
+    statement: Activation plan defines draft PR and auto-merge handling.
+    linked_req_ids: [REQ-ADF-CHECK-004]
+  - id: AC-ADF-CHECK-005
+    statement: This Cell does not authorize required-check activation or protected settings mutation.
+    linked_req_ids: [SEC-ADF-CHECK-001]
 required_tests:
-  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-002"
+  - "TEST-MAP-ID: TEST-MAP-ADF-CHECK-ACTIVATION-001"
 required_evidence:
-  - design_gate_record
-  - approval_path
+  - activation_plan
+  - owner_approval_path
   - rollback_plan
+  - pilot_criteria
+  - conveyor_check_result
 non_goals:
-  - implementation authorization from this PR
+  - required-check activation from this PR
   - enabling required checks
   - changing branch protection or rulesets
   - changing active workflows
+  - changing runtime code or CLI code
+  - mutating target repositories
+  - activating AUN or multi-agent automation
 stop_conditions:
-  - implementation handoff attempts to activate required checks
+  - implementation requires active workflow changes
+  - implementation handoff attempts to enable required checks
   - protected settings mutation is required
+  - runtime or CLI code changes are required
+  - target repository mutation is required
 execution_contract:
   canonical_term: Goal-directed bounded execution
   allowed_commands:
-    - documentation and planning commands only
+    - git diff --check origin/main...HEAD
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npx tsx src/cli/index.ts conveyor check <PR_URL> --format json
+    - YAML parse for .shirube/**/*.yaml
   forbidden_commands:
     - gh pr merge
     - branch protection or ruleset mutation
-    - workflow mutation
+    - active workflow mutation
+    - required check activation
+    - target repository mutation
+    - AUN, Discord, DB, queue, LaunchAgent, production, or multi-agent activation
   handoff_conditions:
+    - Spec Audit PASS
+    - Impl Audit PASS
+    - PR opened for Shirube command review
     - separate approved Cell required before activation
   completion_evidence:
-    - plan artifact
-    - approval path
+    - implemented REQ-IDs
+    - changed files
+    - commands run
+    - test results
+    - conveyor check result
+    - PR URL and exact head SHA
     - non-activation confirmation

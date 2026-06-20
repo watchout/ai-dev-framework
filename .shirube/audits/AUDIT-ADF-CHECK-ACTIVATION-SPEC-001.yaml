@@ -1,0 +1,31 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-CHECK-ACTIVATION-SPEC-001
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-ADF-CHECK-ACTIVATION-001.md
+  - docs/activation/shirube-conveyor-required-check-plan.md
+verdict: PASS
+findings:
+  - check_id: SPEC-PURPOSE
+    result: PASS
+    evidence:
+      - SPEC-ADF-CHECK-ACTIVATION-001 defines planning-only required-check activation purpose.
+  - check_id: SPEC-REQ-IDS
+    result: PASS
+    evidence:
+      - SPEC-ADF-CHECK-ACTIVATION-001 includes REQ-ADF-CHECK-001 through REQ-ADF-CHECK-004 and SEC-ADF-CHECK-001.
+  - check_id: SPEC-PLAN-COVERAGE
+    result: PASS
+    evidence:
+      - docs/activation/shirube-conveyor-required-check-plan.md covers check name, command, eligibility, exclusions, pilot, pass/fail, rollback, owner approval, exact-head verification, draft PRs, auto-merge, repo-spec owner confirmation, waivers, false positives, and emergency intervention.
+  - check_id: SPEC-NON-ACTIVATION
+    result: PASS
+    evidence:
+      - The spec states that this slice does not enable required checks, mutate protected settings, modify active workflows, or change runtime/CLI code.
+  - check_id: SPEC-TESTABLE
+    result: PASS
+    evidence:
+      - Acceptance criteria and TEST-MAP-ADF-CHECK-ACTIVATION-001 define deterministic validation.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1
