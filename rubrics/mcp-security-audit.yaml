@@ -1,0 +1,26 @@
+schema_version: shirube-audit-rubric/v1
+rubric_id: RUBRIC-MCP-SECURITY-AUDIT-V1
+audit_type: mcp-security-audit
+result_values: [PASS, FAIL, N/A]
+evidence_rule: "Every FAIL must include tool name, descriptor, permission, path, command, or invocation evidence."
+checks:
+  - id: MCP-ALLOWLIST
+    question: "MCP tools are allowlisted, denylisted, or approval-required."
+    result: N/A
+    evidence: []
+  - id: MCP-PERMISSION-SCOPE
+    question: "Tool permissions are scoped to the Cell and risk tier."
+    result: N/A
+    evidence: []
+  - id: MCP-DESCRIPTOR-INJECTION
+    question: "Tool descriptors and outputs are treated as data, not instructions."
+    result: N/A
+    evidence: []
+  - id: MCP-OUTPUT-SCHEMA
+    question: "Tool outputs have schema or validation expectations where used by gates."
+    result: N/A
+    evidence: []
+  - id: MCP-AUDIT-LOG
+    question: "Tool calls that affect evidence or state have audit evidence."
+    result: N/A
+    evidence: []

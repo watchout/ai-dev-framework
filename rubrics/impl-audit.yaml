@@ -1,0 +1,30 @@
+schema_version: shirube-audit-rubric/v1
+rubric_id: RUBRIC-IMPL-AUDIT-V1
+audit_type: impl-audit
+result_values: [PASS, FAIL, N/A]
+evidence_rule: "Every FAIL must include IMPL-ID, CELL-ID, file path, requirement, or missing plan evidence."
+checks:
+  - id: IMPL-SCOPE
+    question: "Impl stays inside Cell scope and allowed paths."
+    result: N/A
+    evidence: []
+  - id: IMPL-REQ-MAP
+    question: "Impl covers mapped requirements and acceptance criteria."
+    result: N/A
+    evidence: []
+  - id: IMPL-NON-GOALS
+    question: "Impl does not violate non-goals or touch forbidden paths."
+    result: N/A
+    evidence: []
+  - id: IMPL-TEST-PLAN
+    question: "Test plan maps to acceptance criteria and risk tier."
+    result: N/A
+    evidence: []
+  - id: IMPL-AUTH-ERROR-LOGGING
+    question: "Auth, permission, error handling, logging, and audit logging are addressed or N/A."
+    result: N/A
+    evidence: []
+  - id: IMPL-DEPENDENCIES
+    question: "New dependencies are justified and covered by risk review."
+    result: N/A
+    evidence: []

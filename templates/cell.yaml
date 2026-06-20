@@ -1,0 +1,54 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-EXAMPLE-001
+SPEC-ID: SPEC-EXAMPLE-001
+risk_tier: R2
+goal: <single bounded implementation goal>
+covered_req_ids:
+  - REQ-001
+dependencies: []
+allowed_paths:
+  - <path-or-glob>
+forbidden_paths:
+  - .env
+  - secrets/**
+acceptance_criteria:
+  - id: AC-001
+    statement: <criterion>
+    linked_req_ids:
+      - REQ-001
+required_tests:
+  - TEST-001
+required_evidence:
+  - changed_files
+  - commands_run
+  - test_results
+  - audit_results
+  - post_merge_verification_result
+non_goals:
+  - <non-goal>
+stop_conditions:
+  - implementation would touch forbidden_paths
+  - required approval is missing
+  - scope expands beyond this Cell
+waiver_refs: []
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  shorthand: Goal-mode Implementation
+  allowed_commands:
+    - <command or command class>
+  forbidden_commands:
+    - git push --force
+    - destructive production commands
+  handoff_conditions:
+    - Spec Audit PASS
+    - Spec-to-Cell Trace Audit PASS
+    - Impl Audit PASS
+  completion_evidence:
+    - implemented REQ-IDs
+    - unimplemented REQ-IDs
+    - changed files
+    - commands run
+    - test results
+    - known failures
+    - scope deviations
+    - PR / commit / artifact links

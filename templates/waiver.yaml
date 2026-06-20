@@ -1,0 +1,12 @@
+schema_version: shirube-waiver/v1
+WAIVER-ID: WAIVER-EXAMPLE-001
+target_cell: CELL-EXAMPLE-001
+target_check: <check id>
+reason: <why the waiver is needed>
+risk_accepted: <risk being accepted>
+compensating_controls:
+  - <control>
+approver: <human approver>
+expiry_date: "2026-12-31"
+follow_up_issue: <url>
+status: active
