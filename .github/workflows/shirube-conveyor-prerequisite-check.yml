@@ -35,6 +35,7 @@ jobs:
       - name: Validate .shirube YAML/schema artifacts
         run: |
           ruby <<'RUBY'
+          require "date"
           require "json"
           require "yaml"
 
@@ -68,7 +69,7 @@ jobs:
           }
 
           yaml_files.each do |path|
-            body = YAML.load_file(path)
+            body = YAML.safe_load(File.read(path), permitted_classes: [Date, Time], aliases: true)
             abort("#{path}: YAML root must be a mapping") unless body.is_a?(Hash)
             schema = body["schema_version"]
             abort("#{path}: missing schema_version") unless schema
