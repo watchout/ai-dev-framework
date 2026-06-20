@@ -104,7 +104,7 @@ Required-check activation needs explicit approval from:
 
 - repo owner
 - release owner
-- security owner when protected or R3/R4 surfaces are affected
+- security owner when R3 surfaces or protected settings are affected
 - evidence owner
 - Shirube command reviewer
 
