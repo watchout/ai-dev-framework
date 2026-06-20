@@ -23,6 +23,11 @@ findings:
     result: PASS
     evidence:
       - "Workflow permissions are limited to contents: read and pull-requests: read."
+  - check_id: IMPL-REPORT-ONLY-PILOT
+    result: PASS
+    evidence:
+      - BLOCKED conveyor verdicts are recorded in logs, GitHub step summary, and uploaded JSON artifact without failing this non-required pilot workflow.
+      - Future enforcement and required-check activation remain separate approved Cells.
   - check_id: IMPL-RUNTIME
     result: N/A
     evidence:

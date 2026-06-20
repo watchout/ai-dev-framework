@@ -96,17 +96,85 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
           mkdir -p "$RESULT_DIR"
-          npm run --silent shirube -- conveyor check "$PR_URL" --format json | tee "$RESULT_PATH"
+          set +e
+          npm run --silent shirube -- conveyor check "$PR_URL" --format json > "$RESULT_PATH"
+          conveyor_status=$?
+          set -e
+          cat "$RESULT_PATH"
+          echo "$conveyor_status" > "$RESULT_DIR/conveyor-exit-code.txt"
 
-      - name: Evaluate conveyor verdict
+      - name: Report conveyor verdict
         run: |
           node <<'NODE'
           const fs = require("fs");
-          const report = JSON.parse(fs.readFileSync(process.env.RESULT_PATH, "utf8"));
+          const reportPath = process.env.RESULT_PATH;
+          const exitCodePath = ".shirube-conveyor/conveyor-exit-code.txt";
+          const exitCode = Number.parseInt(fs.readFileSync(exitCodePath, "utf8").trim(), 10);
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+          } catch (error) {
+            console.error("Malformed conveyor JSON.");
+            console.error(error);
+            process.exit(1);
+          }
+
+          const allowedVerdicts = new Set(["PASS", "PASS_WITH_WARN", "BLOCKED"]);
+          if (!allowedVerdicts.has(report.verdict)) {
+            console.error(`Unknown Shirube conveyor verdict: ${report.verdict}`);
+            process.exit(1);
+          }
+
           console.log(`Shirube conveyor verdict: ${report.verdict}`);
           if (report.verdict === "BLOCKED") {
-            console.error("Conveyor verdict is BLOCKED.");
+            console.warn("Report-only pilot: BLOCKED is recorded as evidence and does not fail this non-required workflow.");
+          }
+
+          const blockers = Array.isArray(report.blockers) ? report.blockers : [];
+          const warnings = Array.isArray(report.warnings) ? report.warnings : [];
+          const blockerRows = blockers.length > 0
+            ? blockers.map((blocker) => `| ${blocker.code ?? ""} | ${blocker.path ?? ""} | ${blocker.message ?? ""} |`).join("\n")
+            : "| none |  |  |";
+          const warningRows = warnings.length > 0
+            ? warnings.map((warning) => `| ${warning.code ?? ""} | ${warning.path ?? ""} | ${warning.message ?? ""} |`).join("\n")
+            : "| none |  |  |";
+          const summary = [
+            "## Shirube Conveyor Prerequisite Check",
+            "",
+            `- Schema: \`${report.schema ?? "unknown"}\``,
+            `- Verdict: \`${report.verdict}\``,
+            `- Repo: \`${report.repo ?? "unknown"}\``,
+            `- PR: \`${report.pr ?? "unknown"}\``,
+            `- Head SHA: \`${report.head_sha ?? "unknown"}\``,
+            `- Conveyor command exit code: \`${Number.isNaN(exitCode) ? "unknown" : exitCode}\``,
+            "",
+            "This non-required pilot is report-only. A `BLOCKED` conveyor verdict is recorded as artifact evidence and does not fail this workflow. Future enforcement requires a separate approved Cell.",
+            "",
+            "### Blockers",
+            "",
+            "| Code | Path | Message |",
+            "| --- | --- | --- |",
+            blockerRows,
+            "",
+            "### Warnings",
+            "",
+            "| Code | Path | Message |",
+            "| --- | --- | --- |",
+            warningRows,
+            "",
+          ].join("\n");
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summary);
+
+          if (Number.isNaN(exitCode)) {
+            console.error("Missing conveyor command exit code.");
             process.exit(1);
+          }
+          if (exitCode !== 0 && report.verdict !== "BLOCKED") {
+            console.error(`Conveyor command failed with exit code ${exitCode}.`);
+            process.exit(1);
+          }
+          if (report.verdict === "BLOCKED") {
+            console.log("Report-only pilot: completed successfully with BLOCKED evidence.");
           }
           NODE
 

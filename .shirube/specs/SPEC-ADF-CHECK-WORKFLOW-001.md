@@ -13,8 +13,8 @@ GitHub Actions workflow that runs on pull requests while remaining non-required.
 
 Create a stable, non-required PR workflow named `Shirube Conveyor Prerequisite
 Check` that validates `.shirube` YAML/schema artifacts, runs the deterministic
-conveyor prerequisite check, uploads the JSON result, and fails only when the
-conveyor verdict is `BLOCKED`.
+conveyor prerequisite check, uploads the JSON result, and reports the verdict
+without enforcing `BLOCKED` during the non-required pilot.
 
 ## Non-goals
 
@@ -59,8 +59,9 @@ conveyor verdict is `BLOCKED`.
 | REQ-ADF-WORKFLOW-001 | Add an active non-required PR workflow with stable job name `Shirube Conveyor Prerequisite Check`. |
 | REQ-ADF-WORKFLOW-002 | Validate `.shirube` YAML/schema artifacts in the workflow. |
 | REQ-ADF-WORKFLOW-003 | Run `shirube conveyor check <PR_URL> --format json` and upload the JSON result as an artifact. |
-| REQ-ADF-WORKFLOW-004 | Fail the workflow only when the conveyor verdict is `BLOCKED`; allow `PASS` and `PASS_WITH_WARN`. |
+| REQ-ADF-WORKFLOW-004 | Report `PASS`, `PASS_WITH_WARN`, and `BLOCKED` conveyor verdicts during the non-required pilot; fail only on validation/setup failures, conveyor command failure without a valid report, malformed conveyor JSON, or unknown verdict. |
 | REQ-ADF-WORKFLOW-005 | Document draft PR and auto-merge behavior for the non-required pilot. |
+| REQ-ADF-WORKFLOW-006 | Record `BLOCKED` conveyor verdicts in logs, GitHub step summary, and uploaded JSON artifact without treating them as ignored. |
 | SEC-ADF-WORKFLOW-001 | Do not enable required checks, modify branch protection, modify rulesets, activate AUN/multi-agent automation, mutate target repos, or change runtime/CLI/package files. |
 | NFR-ADF-WORKFLOW-001 | Keep the check name stable and unique for future required-check planning. |
 
@@ -71,9 +72,10 @@ conveyor verdict is `BLOCKED`.
 | AC-ADF-WORKFLOW-001 | REQ-ADF-WORKFLOW-001, NFR-ADF-WORKFLOW-001 | The workflow job name is exactly `Shirube Conveyor Prerequisite Check`. |
 | AC-ADF-WORKFLOW-002 | REQ-ADF-WORKFLOW-002 | The workflow parses `.shirube/**/*.yaml` and `.shirube/**/*.yml` and checks required fields for known Shirube v1 schema versions. |
 | AC-ADF-WORKFLOW-003 | REQ-ADF-WORKFLOW-003 | The workflow runs the conveyor check against the PR URL and uploads the JSON result artifact. |
-| AC-ADF-WORKFLOW-004 | REQ-ADF-WORKFLOW-004 | The workflow exits nonzero only when the conveyor JSON verdict is `BLOCKED` or when validation/setup fails. |
+| AC-ADF-WORKFLOW-004 | REQ-ADF-WORKFLOW-004 | The workflow exits successfully for `PASS`, `PASS_WITH_WARN`, and `BLOCKED` reports and exits nonzero for validation/setup failure, malformed conveyor JSON, unknown verdict, or conveyor command failure without a valid `BLOCKED` report. |
 | AC-ADF-WORKFLOW-005 | REQ-ADF-WORKFLOW-005 | Draft PR and auto-merge behavior are documented. |
-| AC-ADF-WORKFLOW-006 | SEC-ADF-WORKFLOW-001 | The PR does not modify branch protection, rulesets, runtime code, CLI code, package files, target repositories, or AUN/multi-agent automation. |
+| AC-ADF-WORKFLOW-006 | REQ-ADF-WORKFLOW-006 | `BLOCKED` is shown in logs, the GitHub step summary, and the uploaded JSON artifact during the signal-only pilot. |
+| AC-ADF-WORKFLOW-007 | SEC-ADF-WORKFLOW-001 | The PR does not modify branch protection, rulesets, runtime code, CLI code, package files, target repositories, or AUN/multi-agent automation. |
 
 ## Negative Cases
 
@@ -91,12 +93,13 @@ conveyor verdict is `BLOCKED`.
 - Data impact: N/A; target repositories are not mutated.
 - API changes: N/A.
 - DB changes: N/A.
-- Audit log requirements: GitHub Actions run logs and uploaded JSON artifacts provide evidence.
+- Audit log requirements: GitHub Actions run logs, GitHub step summaries, and uploaded JSON artifacts provide evidence, including report-only `BLOCKED` verdicts.
 
 ## Migration Plan
 
-No migration. The workflow becomes active when merged, but it is not configured
-as a required check and no branch protection or ruleset is changed.
+No migration. The workflow becomes active when merged, but it is report-only for
+`BLOCKED` during the non-required pilot. It is not configured as a required
+check and no branch protection or ruleset is changed.
 
 ## Rollback Plan
 
@@ -110,7 +113,7 @@ checks.
 
 | TEST-ID | Linked Requirements | Description |
 | --- | --- | --- |
-| TEST-MAP-ADF-CHECK-WORKFLOW-001 | REQ-ADF-WORKFLOW-001, REQ-ADF-WORKFLOW-002, REQ-ADF-WORKFLOW-003, REQ-ADF-WORKFLOW-004, SEC-ADF-WORKFLOW-001 | Run YAML parse, `git diff --check origin/main...HEAD`, `npm run lint`, `npm run type-check`, `npm run build:cli`, and conveyor check against the created PR. |
+| TEST-MAP-ADF-CHECK-WORKFLOW-001 | REQ-ADF-WORKFLOW-001, REQ-ADF-WORKFLOW-002, REQ-ADF-WORKFLOW-003, REQ-ADF-WORKFLOW-004, REQ-ADF-WORKFLOW-006, SEC-ADF-WORKFLOW-001 | Run YAML parse, `git diff --check origin/main...HEAD`, `npm run lint`, `npm run type-check`, `npm run build:cli`, conveyor check against the created PR, and remote workflow verification that `BLOCKED` is recorded but the non-required workflow succeeds. |
 
 ## Trace Matrix
 
@@ -123,8 +126,10 @@ TRACE-ADF-CHECK-WORKFLOW-001
 | REQ-ADF-WORKFLOW-003 | CELL-ADF-SELF-006 | IMPL-ADF-CHECK-WORKFLOW-001 | EVIDENCE-ADF-CHECK-WORKFLOW-001 |
 | REQ-ADF-WORKFLOW-004 | CELL-ADF-SELF-006 | IMPL-ADF-CHECK-WORKFLOW-001 | EVIDENCE-ADF-CHECK-WORKFLOW-001 |
 | REQ-ADF-WORKFLOW-005 | CELL-ADF-SELF-006 | IMPL-ADF-CHECK-WORKFLOW-001 | EVIDENCE-ADF-CHECK-WORKFLOW-001 |
+| REQ-ADF-WORKFLOW-006 | CELL-ADF-SELF-006 | IMPL-ADF-CHECK-WORKFLOW-001 | EVIDENCE-ADF-CHECK-WORKFLOW-001 |
 | SEC-ADF-WORKFLOW-001 | CELL-ADF-SELF-006 | IMPL-ADF-CHECK-WORKFLOW-001 | EVIDENCE-ADF-CHECK-WORKFLOW-001 |
 
 ## Unresolved Questions
 
-- Whether this non-required check should later become required remains outside this Cell and requires a separate approved work order.
+- Making `BLOCKED` fail the workflow requires a later approved enforcement Cell.
+- Making this check required requires a later protected-settings Cell.

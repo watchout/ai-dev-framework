@@ -17,7 +17,8 @@ findings:
   - check_id: SPEC-WORKFLOW-BEHAVIOR
     result: PASS
     evidence:
-      - The spec requires stable job name, .shirube validation, conveyor JSON artifact upload, and BLOCKED-only failure behavior.
+      - The spec requires stable job name, .shirube validation, conveyor JSON artifact upload, GitHub step summary reporting, and report-only BLOCKED behavior during the non-required pilot.
+      - Making BLOCKED fail the workflow requires a later approved enforcement Cell, and making the check required requires a later protected-settings Cell.
   - check_id: SPEC-NON-SCOPE
     result: PASS
     evidence:

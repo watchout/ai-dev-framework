@@ -36,7 +36,7 @@ Permissions:
 
 ## Behavior
 
-The workflow performs three checks:
+The workflow is a signal-only pilot and performs three checks:
 
 1. Parse `.shirube/**/*.yaml` and `.shirube/**/*.yml`.
 2. Validate known Shirube v1 YAML artifacts for required top-level fields.
@@ -46,22 +46,30 @@ The workflow uploads the conveyor JSON result as:
 
 - `shirube-conveyor-result-<PR_NUMBER>`
 
+The workflow also writes the conveyor verdict, blockers, and warnings to the
+GitHub step summary.
+
 ## Verdict Handling
 
 The workflow exits successfully for:
 
 - `PASS`
 - `PASS_WITH_WARN`
+- `BLOCKED`
 
 The workflow exits nonzero for:
 
 - `.shirube` YAML/schema validation failure
-- conveyor command failure
+- conveyor command failure without a valid Shirube report
 - malformed conveyor JSON
-- conveyor verdict `BLOCKED`
+- unknown conveyor verdict
 
-The check is intentionally not added to required checks, branch protection, or
-rulesets by this Cell.
+A `BLOCKED` conveyor verdict is not ignored. During this non-required pilot it
+is recorded in logs, the GitHub step summary, and the uploaded JSON artifact.
+Making `BLOCKED` fail the workflow requires a later approved enforcement Cell.
+Making the check required requires a later protected-settings Cell. This check
+is intentionally not added to required checks, branch protection, or rulesets by
+this Cell.
 
 ## Draft PR Behavior
 
@@ -84,9 +92,11 @@ This workflow is a pilot signal:
 
 - It is active on PRs.
 - It uploads machine-readable evidence.
-- It may fail when the conveyor verdict is `BLOCKED`.
+- It reports `BLOCKED` conveyor verdicts without failing the workflow.
 - It is not required by branch protection or rulesets.
 - It does not mutate PR labels, comments, statuses, checks, target repos, or protected settings.
+- It requires a later approved enforcement Cell before `BLOCKED` becomes a failing workflow result.
+- It requires a later protected-settings Cell before the check becomes required.
 
 ## Rollback
 

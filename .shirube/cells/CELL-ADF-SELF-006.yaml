@@ -9,6 +9,7 @@ covered_req_ids:
   - REQ-ADF-WORKFLOW-003
   - REQ-ADF-WORKFLOW-004
   - REQ-ADF-WORKFLOW-005
+  - REQ-ADF-WORKFLOW-006
   - SEC-ADF-WORKFLOW-001
 allowed_paths:
   - .github/workflows/shirube-conveyor-prerequisite-check.yml
@@ -36,12 +37,15 @@ acceptance_criteria:
     statement: Workflow runs conveyor check against the PR URL and uploads JSON result artifact.
     linked_req_ids: [REQ-ADF-WORKFLOW-003]
   - id: AC-ADF-WORKFLOW-004
-    statement: Workflow fails only when conveyor verdict is BLOCKED or when validation/setup fails.
+    statement: Workflow reports BLOCKED during the non-required pilot and fails only for validation/setup failure, malformed conveyor JSON, unknown verdict, or conveyor command failure without a valid BLOCKED report.
     linked_req_ids: [REQ-ADF-WORKFLOW-004]
   - id: AC-ADF-WORKFLOW-005
     statement: Draft PR and auto-merge behavior are documented.
     linked_req_ids: [REQ-ADF-WORKFLOW-005]
   - id: AC-ADF-WORKFLOW-006
+    statement: BLOCKED verdicts are recorded in logs, GitHub step summary, and uploaded JSON artifact as signal-only evidence.
+    linked_req_ids: [REQ-ADF-WORKFLOW-006]
+  - id: AC-ADF-WORKFLOW-007
     statement: Required checks, branch protection, rulesets, runtime, CLI, package files, target repos, and AUN/multi-agent automation are unchanged.
     linked_req_ids: [SEC-ADF-WORKFLOW-001]
 required_tests:
@@ -79,6 +83,7 @@ execution_contract:
     - npm run type-check
     - npm run build:cli
     - npm run shirube -- conveyor check <PR_URL> --format json
+    - npm run --silent shirube -- conveyor check <PR_URL> --format json
     - npx tsx src/cli/index.ts conveyor check <PR_URL> --format json
     - YAML parse for .shirube/**/*.yaml
   forbidden_commands:
@@ -92,7 +97,9 @@ execution_contract:
     - Spec Audit PASS
     - Impl Audit PASS
     - PR opened for Shirube command review
+    - BLOCKED verdict recorded as report-only pilot evidence
     - separate approved Cell required before making this check required
+    - separate approved enforcement Cell required before making BLOCKED fail this workflow
   completion_evidence:
     - implemented REQ-IDs
     - changed files
@@ -100,5 +107,6 @@ execution_contract:
     - test results
     - known failures
     - conveyor check result
+    - remote workflow result
     - PR / commit / artifact links
     - non-required confirmation
