@@ -611,19 +611,29 @@ function detectNarrativeConfirmationClaims(
     if (/:\s*(https?:\/\/|\.?[\w.-]+\/|(?:audit|evidence|trace|contract|spec|cell|impl|record|gate|check)-id\s*:|(?:audit|evidence|trace|contract|spec|cell|impl|record|gate|check)-)/i.test(line)) {
       continue;
     }
-    if (!confirmations.ownerConfirmationPresent && /(owner|domain designer).{0,40}(confirmed|approved|confirmation)/.test(normalized)) {
+    if (!confirmations.ownerConfirmationPresent && hasNarrativeConfirmationClaim(normalized, "owner")) {
       claims.push(line);
       continue;
     }
-    if (!confirmations.premiseConfirmed && /premise.{0,40}(confirmed|approved|confirmation)/.test(normalized)) {
+    if (!confirmations.ownerConfirmationPresent && hasNarrativeConfirmationClaim(normalized, "domain designer")) {
       claims.push(line);
       continue;
     }
-    if (!confirmations.inventoryConfirmed && /inventory.{0,40}(confirmed|approved|confirmation)/.test(normalized)) {
+    if (!confirmations.premiseConfirmed && hasNarrativeConfirmationClaim(normalized, "premise")) {
+      claims.push(line);
+      continue;
+    }
+    if (!confirmations.inventoryConfirmed && hasNarrativeConfirmationClaim(normalized, "inventory")) {
       claims.push(line);
     }
   }
   return uniqueSorted(claims);
+}
+
+function hasNarrativeConfirmationClaim(line: string, subject: string): boolean {
+  const escapedSubject = escapeRegExp(subject);
+  return new RegExp(`\\b${escapedSubject}\\s+(?:is\\s+|was\\s+|has been\\s+)?(?:confirmed|approved)\\b`).test(line) ||
+    new RegExp(`\\b${escapedSubject}\\s+confirmation\\s*[:=-]\\s*(?:pass|passed|confirmed|approved)\\b`).test(line);
 }
 
 function addObserved(
