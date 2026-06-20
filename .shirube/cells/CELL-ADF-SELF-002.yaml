@@ -2,8 +2,7 @@ schema_version: shirube-cell/v1
 CELL-ID: CELL-ADF-SELF-002
 SPEC-ID: SPEC-ADF-SELF-001
 risk_tier: R2
-status: draft_candidate_only
-goal: Plan conveyor required-check activation without enabling checks.
+goal: Draft candidate only; plan conveyor required-check activation without enabling checks.
 covered_req_ids:
   - REQ-ADF-SELF-003
 allowed_paths:
@@ -26,12 +25,13 @@ acceptance_criteria:
     statement: Activation plan defines prerequisites, owner approval path, and rollback plan before any required check is enabled.
     linked_req_ids: [REQ-ADF-SELF-003]
 required_tests:
-  - TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-002
+  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-002"
 required_evidence:
   - design_gate_record
   - approval_path
   - rollback_plan
 non_goals:
+  - implementation authorization from this PR
   - enabling required checks
   - changing branch protection or rulesets
   - changing active workflows

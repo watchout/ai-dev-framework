@@ -2,8 +2,7 @@ schema_version: shirube-cell/v1
 CELL-ID: CELL-ADF-SELF-004
 SPEC-ID: SPEC-ADF-SELF-001
 risk_tier: R3
-status: draft_candidate_only
-goal: Plan multi-agent conveyor state-machine boundaries without activating dispatch.
+goal: Draft candidate only; plan multi-agent conveyor state-machine boundaries without activating dispatch.
 covered_req_ids:
   - REQ-ADF-SELF-003
 allowed_paths:
@@ -26,12 +25,13 @@ acceptance_criteria:
     statement: State-machine plan defines read, write, apply, send, and dispatch boundaries separately.
     linked_req_ids: [REQ-ADF-SELF-003]
 required_tests:
-  - TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-004
+  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-004"
 required_evidence:
   - design_consolidation_gate_record
   - authority_boundary_map
   - stop_conditions
 non_goals:
+  - implementation authorization from this PR
   - AUN activation
   - Discord, DB, queue, LaunchAgent, or production integration
   - agent dispatch

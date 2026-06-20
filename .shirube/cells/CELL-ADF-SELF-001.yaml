@@ -2,8 +2,7 @@ schema_version: shirube-cell/v1
 CELL-ID: CELL-ADF-SELF-001
 SPEC-ID: SPEC-ADF-SELF-001
 risk_tier: R2
-status: implemented_in_this_pr
-goal: Add ai-dev-framework repository premise spec, agent policy, and self-application scaffold records.
+goal: Implement this PR's ai-dev-framework repository premise spec, agent policy, and self-application scaffold records.
 covered_req_ids:
   - REQ-ADF-SELF-001
   - REQ-ADF-SELF-002
@@ -45,7 +44,7 @@ acceptance_criteria:
     statement: changed files remain limited to .shirube/**.
     linked_req_ids: [SEC-ADF-SELF-001]
 required_tests:
-  - TEST-MAP-ID: TEST-MAP-ADF-SELF-001
+  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-001"
 required_evidence:
   - changed_files
   - commands_run

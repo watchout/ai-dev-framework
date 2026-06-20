@@ -96,7 +96,7 @@ agent_execution_profiles:
     risk_tier_limit_without_human_approval: R2
   - agent_id: generic_coding_agent
     agent_name: Generic coding agent
-    agent_type: generic
+    agent_type: generic_coding_agent
     supported_execution_modes: [bounded-context]
     supports_goal_directed_execution: false
     supports_filesystem_scope_constraints: true
@@ -116,7 +116,7 @@ agent_execution_profiles:
     risk_tier_limit_without_human_approval: R1
   - agent_id: human_executor
     agent_name: Human executor
-    agent_type: human
+    agent_type: human_executor
     supported_execution_modes: [manual]
     supports_goal_directed_execution: true
     supports_filesystem_scope_constraints: true
@@ -172,7 +172,7 @@ execution_contract:
     - external repo mutation
     - protected automation activation
   required_tests:
-    - TEST-MAP-ID: TEST-MAP-ADF-SELF-001
+    - "TEST-MAP-ID: TEST-MAP-ADF-SELF-001"
   required_evidence:
     - changed files
     - commands run

@@ -3,7 +3,8 @@ repo_id: watchout/ai-dev-framework
 owner: watchout
 purpose: >
   Own the Shirube control-plane assets used to define, scaffold, validate, and
-  dogfood AI development governance across repositories.
+  dogfood AI development governance across repositories under Shirube AI
+  Development Governance Standard v1.
 scope:
   - Shirube standards
   - schemas
@@ -26,16 +27,12 @@ design_principles:
   - "Goal-directed bounded execution is allowed only inside explicit Cell boundaries."
   - "Merge authority remains separate from goal-mode implementation."
 development_flow:
-  - Hearing / Discovery
-  - Repository Premise Spec
-  - Feature Spec
+  - Spec
   - Cell
   - Impl
-  - Code or scaffold change
+  - Code
   - Test
   - Evidence
-  - Shirube command review
-  - Release owner merge
 roles:
   repo_owner: watchout
   release_owner: watchout
@@ -82,8 +79,6 @@ required_gates:
   - command_review
 risk_tier_defaults: R2
 standards:
-  primary:
-    - Shirube AI Development Governance Standard v1
   soc2:
     - Security
     - Confidentiality

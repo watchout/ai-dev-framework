@@ -2,8 +2,7 @@ schema_version: shirube-cell/v1
 CELL-ID: CELL-ADF-SELF-005
 SPEC-ID: SPEC-ADF-SELF-001
 risk_tier: R2
-status: draft_candidate_only
-goal: Plan target repo rollout monitoring and evidence ledger requirements without target repo mutation.
+goal: Draft candidate only; plan target repo rollout monitoring and evidence ledger requirements without target repo mutation.
 covered_req_ids:
   - REQ-ADF-SELF-003
 allowed_paths:
@@ -26,12 +25,13 @@ acceptance_criteria:
     statement: Monitoring plan defines evidence ledger fields and target repo read-only observation boundaries.
     linked_req_ids: [REQ-ADF-SELF-003]
 required_tests:
-  - TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-005
+  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-005"
 required_evidence:
   - monitoring_plan
   - evidence_ledger_schema_or_mapping
   - external_mutation_non_goal
 non_goals:
+  - implementation authorization from this PR
   - target repository scaffold work
   - external repository mutation
   - required check activation
