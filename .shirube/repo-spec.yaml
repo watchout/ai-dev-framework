@@ -1,6 +1,8 @@
 schema_version: shirube-repo-spec/v1
+repo: watchout/ai-dev-framework
 repo_id: watchout/ai-dev-framework
 owner: watchout
+canonical_core: watchout/ai-dev-framework@f9345bd
 purpose: >
   Own the Shirube control-plane assets used to define, scaffold, validate, and
   dogfood AI development governance across repositories under Shirube AI
@@ -11,7 +13,8 @@ scope:
   - templates
   - rubrics
   - CLI gate/conveyor logic
-  - workflow scaffolds
+  - script-gate report-only controls
+  - workflow scaffolds and report-only pilot workflows
   - golden cases
   - control-plane rollout instructions
 non_goals:
@@ -21,73 +24,187 @@ non_goals:
   - Branch protection, rulesets, deploy settings, and production state are not managed by this scaffold.
   - External repository mutation is not authorized from this repo-spec alone.
 design_principles:
-  - "Development unit is Cell, not PR."
-  - "Canonical chain is Spec -> Cell -> Impl -> Code -> Test -> Evidence."
-  - "Machine-readable evidence is primary; narrative can explain but not override missing facts."
-  - "Goal-directed bounded execution is allowed only inside explicit Cell boundaries."
-  - "Merge authority remains separate from goal-mode implementation."
-development_flow:
-  - Spec
-  - Cell
-  - Impl
-  - Code
-  - Test
-  - Evidence
+  - Development unit is Cell, not PR.
+  - Canonical chain is Spec -> Cell -> Impl -> Code -> Test -> Evidence.
+  - Machine-readable evidence is primary; narrative can explain but not override missing facts.
+  - Goal-directed bounded execution is allowed only inside explicit Cell boundaries.
+  - Merge authority remains separate from goal-mode implementation.
+  - Shirube owns phase authority; LLM and agent runners execute within declared phase bounds.
+development_flow: docs/standards/shirube-ai-development-governance-standard-v1.md
+required_gates:
+  - repo_spec
+  - planning
+  - spec_to_cell_trace
+  - phase
+  - design_conformance
+  - readiness_controller
+  - dev_loop_controller
+  - change_flow_controller
 roles:
-  repo_owner: watchout
+  spec: shirube-spec
+  arc: shirube-arc
+  design_reviewer: shirube-design-reviewer
+  impl_runner: codex-adf
+  impl_reviewer: shirube-command
   release_owner: watchout
+  repo_owner: watchout
   security_owner: watchout
   evidence_owner: watchout
   implementation_owner: codex-adf
   command_review_owner: shirube-command
+codeowners_ref: CODEOWNERS
+audit_responsibilities: >
+  Script gates provide deterministic prerequisite, trace, phase, and mapping
+  evidence. Meaning audits, implementation audits, code audits, and release
+  decisions remain independent reviewer responsibilities.
+shared_terminology:
+  Goal: User-approved outcome boundary.
+  Phase: Script-controlled progression state.
+  Cell: Bounded implementation unit.
+  Impl: Cell implementation contract and execution plan.
+  Evidence: Machine-readable artifact or durable run output.
+  Report-only: A non-required signal that records would-block findings without enforcement.
+security_assumptions: >
+  Report-only script gates may read repository artifacts and PR metadata but
+  must not read secrets, mutate protected settings, or dispatch external agents.
+privacy_assumptions: >
+  Shirube governance artifacts do not require customer or personal data. Any
+  future workflow handling such data requires a separate approved Cell.
+data_boundaries:
+  - No customer data processing is authorized by this scaffold.
+  - No secrets may be read, copied, generated, or written.
+  - No target repository data may be mutated by script-gate pilot workflows.
+dependency_boundaries:
+  - No new runtime or development dependencies are authorized by this scaffold.
+  - Script gates should use repository-local Node scripts and platform tools already available in CI.
+  - Workflow changes are report-only until a later protected-settings Cell authorizes enforcement.
+forbidden_actions:
+  - Do not enable required checks.
+  - Do not modify branch protection or rulesets.
+  - Do not activate AUN, Discord, DB, queue, LaunchAgent, or production automation.
+  - Do not dispatch agents or mutate external repositories.
+  - Do not claim full Shirube rollout completion from report-only evidence alone.
+ai_usage_classification: agentic
+soc2_categories:
+  - Security
+  - Confidentiality
+  - Processing Integrity
+iso42001_applicability: true
+agent_permission_boundary:
+  allowed_paths:
+    - .shirube/**
+    - docs/**
+    - schemas/**
+    - templates/**
+    - scripts/shirube/**
+    - test/shirube/**
+    - test/fixtures/shirube/**
+    - .github/workflows/shirube-gates-report.yml
+  forbidden_paths:
+    - src/**
+    - lib/**
+    - bin/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - deploy/**
+    - .env
+    - .env.*
+    - private-config/**
+    - secrets/**
+  allowed_commands:
+    - node scripts/shirube/check-repo-spec.mjs
+    - node scripts/shirube/check-planning.mjs
+    - node scripts/shirube/check-trace.mjs
+    - node scripts/shirube/check-phase.mjs
+    - node scripts/shirube/check-conformance.mjs
+    - node scripts/shirube/controller.mjs readiness
+    - node scripts/shirube/controller.mjs dev-loop
+    - node scripts/shirube/controller.mjs change-flow
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npm test
+  forbidden_commands:
+    - gh pr merge
+    - branch protection mutation
+    - ruleset mutation
+    - required check activation
+    - target repository mutation
+    - AUN, Discord, DB, queue, LaunchAgent, production, or multi-agent activation
+  allowed_mcp_tools: []
+  approval_required_mcp_tools: []
+  forbidden_mcp_tools:
+    - live AUN dispatch/apply/send
+    - external repository mutation
+    - branch protection or ruleset mutation
+remediation:
+  repo-spec:
+    on_fail: Update .shirube/repo-spec.yaml to satisfy schemas/shirube-repo-spec.schema.json.
+    doc_ref: templates/shirube-repo-spec.yaml
+  planning:
+    on_fail: Add premise, inventory, or owner confirmation references before Cell/Impl progression.
+    doc_ref: docs/standards/shirube-ai-development-governance-standard-v1.md
+  spec-to-cell-trace:
+    on_fail: Ensure every REQ-ID maps to a Cell and every Cell has allowed_paths and risk_tier.
+    doc_ref: .shirube/cells/
+  phase:
+    on_fail: Declare a valid current phase and use only allowed phase transitions.
+    doc_ref: scripts/shirube/phases.config.json
+  design-conformance:
+    on_fail: Add control mapping entries with mapped_impl and mapped_test only.
+    doc_ref: .shirube/design-conformance-matrix.json
+  readiness_controller:
+    on_fail: Resolve repo-spec or planning gate findings.
+    doc_ref: scripts/shirube/controller.mjs
+  dev_loop_controller:
+    on_fail: Resolve trace, phase, or conformance gate findings.
+    doc_ref: scripts/shirube/controller.mjs
+  change_flow_controller:
+    on_fail: Add current PR spec and Cell artifacts for governed changes.
+    doc_ref: scripts/shirube/controller.mjs
 boundaries:
   allowed_paths:
-    - ".shirube/**"
-    - "docs/**"
-    - "README.md"
+    - .shirube/**
+    - docs/**
+    - schemas/**
+    - templates/**
+    - scripts/shirube/**
+    - test/shirube/**
+    - test/fixtures/shirube/**
+    - .github/workflows/shirube-gates-report.yml
   forbidden_paths:
-    - "src/**"
-    - "lib/**"
-    - "bin/**"
-    - "scripts/**"
-    - ".github/workflows/**"
-    - "package.json"
-    - "package-lock.json"
-    - "pnpm-lock.yaml"
-    - "deploy/**"
-    - ".env"
-    - "private-config/**"
+    - src/**
+    - lib/**
+    - bin/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - deploy/**
+    - .env
+    - private-config/**
   data_boundaries:
     - No customer data processing is authorized by this scaffold.
     - No secrets may be read, copied, generated, or written.
     - No target repository data may be mutated.
   dependency_boundaries:
     - No new runtime or development dependencies are authorized by this scaffold.
-    - Workflow scaffolds may be documented but active workflows must not be modified.
+    - Active workflows remain report-only unless separately approved.
   forbidden_actions:
     - Do not enable required checks.
     - Do not modify branch protection or rulesets.
     - Do not activate AUN, Discord, DB, queue, LaunchAgent, or production automation.
     - Do not dispatch agents or mutate external repositories.
-    - Do not claim full Shirube rollout completion from this scaffold.
-required_gates:
-  - spec_audit
-  - spec_to_cell_trace_audit
-  - impl_audit
-  - current_ci
-  - conveyor_check
-  - command_review
 risk_tier_defaults: R2
 standards:
   soc2:
     - Security
     - Confidentiality
     - Processing Integrity
-  iso_iec_42001: "Apply when AI behavior, tools, memory, prompts, or model routing are in scope."
+  iso_iec_42001: Apply when AI behavior, tools, memory, prompts, or model routing are in scope.
   engineering_references:
     - NIST_SSDF
     - OWASP_LLM_TOP_10
     - SLSA
-ai_usage_classification: agentic-control-plane-scaffold
-agent_policy_ref: ".shirube/agent-policy.yaml"
-evidence_ledger_ref: ".shirube/evidence/"
+agent_policy_ref: .shirube/agent-policy.yaml
+evidence_ledger_ref: .shirube/evidence/

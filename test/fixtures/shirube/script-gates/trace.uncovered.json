@@ -1,0 +1,11 @@
+{
+  "requirements": ["REQ-ADF-001"],
+  "cells": [
+    {
+      "id": "CELL-ADF-001",
+      "risk_tier": "R1",
+      "allowed_paths": ["scripts/shirube/**"],
+      "covered_req_ids": []
+    }
+  ]
+}

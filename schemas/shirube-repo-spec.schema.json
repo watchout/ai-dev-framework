@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/watchout/ai-dev-framework/schemas/shirube-repo-spec.schema.json",
+  "title": "Shirube Repo Spec v1",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "repo",
+    "canonical_core",
+    "purpose",
+    "non_goals",
+    "design_principles",
+    "development_flow",
+    "required_gates",
+    "roles",
+    "codeowners_ref",
+    "audit_responsibilities",
+    "shared_terminology",
+    "security_assumptions",
+    "privacy_assumptions",
+    "data_boundaries",
+    "dependency_boundaries",
+    "forbidden_actions",
+    "ai_usage_classification",
+    "soc2_categories",
+    "iso42001_applicability",
+    "agent_permission_boundary",
+    "remediation"
+  ],
+  "properties": {
+    "schema_version": { "const": "shirube-repo-spec/v1" },
+    "repo": { "type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$" },
+    "canonical_core": { "type": "string", "pattern": "^[^@\\s]+@[^@\\s]+$" },
+    "purpose": { "type": "string", "minLength": 1 },
+    "non_goals": { "type": "array", "items": { "type": "string" } },
+    "design_principles": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "development_flow": { "type": "string", "minLength": 1 },
+    "required_gates": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "roles": {
+      "type": "object",
+      "required": ["spec", "arc", "design_reviewer", "impl_runner", "impl_reviewer", "release_owner"],
+      "properties": {
+        "spec": { "type": "string", "minLength": 1 },
+        "arc": { "type": "string", "minLength": 1 },
+        "design_reviewer": { "type": "string", "minLength": 1 },
+        "impl_runner": { "type": "string", "minLength": 1 },
+        "impl_reviewer": { "type": "string", "minLength": 1 },
+        "release_owner": { "type": "string", "minLength": 1 }
+      }
+    },
+    "codeowners_ref": { "type": "string", "minLength": 1 },
+    "audit_responsibilities": { "type": "string", "minLength": 1 },
+    "shared_terminology": { "type": "object" },
+    "security_assumptions": { "type": "string", "minLength": 1 },
+    "privacy_assumptions": { "type": "string", "minLength": 1 },
+    "data_boundaries": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "dependency_boundaries": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "forbidden_actions": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+    "ai_usage_classification": { "enum": ["none", "assisted", "agentic"] },
+    "soc2_categories": {
+      "type": "array",
+      "contains": { "const": "Security" },
+      "items": { "type": "string" }
+    },
+    "iso42001_applicability": { "type": "boolean" },
+    "agent_permission_boundary": {
+      "type": "object",
+      "required": [
+        "allowed_paths",
+        "forbidden_paths",
+        "allowed_commands",
+        "forbidden_commands",
+        "allowed_mcp_tools",
+        "approval_required_mcp_tools",
+        "forbidden_mcp_tools"
+      ],
+      "properties": {
+        "allowed_paths": { "type": "array", "items": { "type": "string" } },
+        "forbidden_paths": { "type": "array", "items": { "type": "string" } },
+        "allowed_commands": { "type": "array", "items": { "type": "string" } },
+        "forbidden_commands": { "type": "array", "items": { "type": "string" } },
+        "allowed_mcp_tools": { "type": "array", "items": { "type": "string" } },
+        "approval_required_mcp_tools": { "type": "array", "items": { "type": "string" } },
+        "forbidden_mcp_tools": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["on_fail", "doc_ref"],
+        "properties": {
+          "on_fail": { "type": "string", "minLength": 1 },
+          "doc_ref": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

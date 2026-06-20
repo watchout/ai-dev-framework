@@ -1,0 +1,54 @@
+schema_version: shirube-evidence/v1
+EVIDENCE-ID: EVIDENCE-ADF-SCRIPT-GATES-001
+SPEC-ID: SPEC-ADF-SCRIPT-GATES-001
+CELL-ID: CELL-ADF-SCRIPT-GATES-001
+IMPL-ID: IMPL-ADF-SCRIPT-GATES-001
+PR-ID: pending-pr-creation
+commit_sha: pending-pr-creation
+audit_results:
+  - AUDIT-ADF-SCRIPT-GATES-SPEC-001
+  - AUDIT-ADF-SCRIPT-GATES-IMPL-001
+ci_runs:
+  - name: npx vitest run test/shirube/script-gates.test.ts
+    result: N/A
+    url: pending-local-validation
+  - name: local script gates
+    result: N/A
+    url: pending-local-validation
+  - name: git diff --check origin/main...HEAD
+    result: N/A
+    url: pending-local-validation
+  - name: npm run lint
+    result: N/A
+    url: pending-local-validation
+  - name: npm run type-check
+    result: N/A
+    url: pending-local-validation
+  - name: npm run build:cli
+    result: N/A
+    url: pending-local-validation
+artifact_locations:
+  - .shirube/specs/SPEC-ADF-SCRIPT-GATES-001.md
+  - .shirube/cells/CELL-ADF-SCRIPT-GATES-001.yaml
+  - .shirube/impls/IMPL-ADF-SCRIPT-GATES-001.md
+  - .shirube/audits/AUDIT-ADF-SCRIPT-GATES-SPEC-001.yaml
+  - .shirube/audits/AUDIT-ADF-SCRIPT-GATES-IMPL-001.yaml
+  - .shirube/evidence/EVIDENCE-ADF-SCRIPT-GATES-001.yaml
+  - schemas/shirube-repo-spec.schema.json
+  - templates/shirube-repo-spec.yaml
+  - scripts/shirube/
+  - test/shirube/script-gates.test.ts
+  - test/fixtures/shirube/script-gates/
+  - .github/workflows/shirube-gates-report.yml
+  - TRACE-ADF-SCRIPT-GATES-001 in .shirube/specs/SPEC-ADF-SCRIPT-GATES-001.md Trace Matrix
+  - TEST-MAP-ADF-SCRIPT-GATES-001 in .shirube/specs/SPEC-ADF-SCRIPT-GATES-001.md Test Plan
+post_merge_verification:
+  result: N/A
+  evidence:
+    - This slice stops after draft PR creation for Shirube command review.
+waiver_refs: []
+release_or_rollback_decision:
+  result: N/A
+  evidence:
+    - Release decision is outside this Cell and remains with release owner after command review.
+  decision_owner: watchout

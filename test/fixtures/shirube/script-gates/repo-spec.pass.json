@@ -1,0 +1,44 @@
+{
+  "schema_version": "shirube-repo-spec/v1",
+  "repo": "watchout/ai-dev-framework",
+  "canonical_core": "watchout/ai-dev-framework@abc123",
+  "purpose": "Fixture repo spec.",
+  "non_goals": [],
+  "design_principles": ["Machine evidence is primary."],
+  "development_flow": "docs/standards/shirube-ai-development-governance-standard-v1.md",
+  "required_gates": ["repo_spec", "planning"],
+  "roles": {
+    "spec": "spec",
+    "arc": "arc",
+    "design_reviewer": "design",
+    "impl_runner": "runner",
+    "impl_reviewer": "reviewer",
+    "release_owner": "owner"
+  },
+  "codeowners_ref": "CODEOWNERS",
+  "audit_responsibilities": "Audit responsibilities.",
+  "shared_terminology": { "Cell": "Bounded implementation unit." },
+  "security_assumptions": "Security assumptions.",
+  "privacy_assumptions": "Privacy assumptions.",
+  "data_boundaries": ["No customer data."],
+  "dependency_boundaries": ["No new dependencies."],
+  "forbidden_actions": ["No protected settings mutation."],
+  "ai_usage_classification": "agentic",
+  "soc2_categories": ["Security", "Confidentiality", "Processing Integrity"],
+  "iso42001_applicability": true,
+  "agent_permission_boundary": {
+    "allowed_paths": [".shirube/**"],
+    "forbidden_paths": [".env"],
+    "allowed_commands": ["node scripts/shirube/check-repo-spec.mjs"],
+    "forbidden_commands": ["gh pr merge"],
+    "allowed_mcp_tools": [],
+    "approval_required_mcp_tools": [],
+    "forbidden_mcp_tools": []
+  },
+  "remediation": {
+    "repo-spec": {
+      "on_fail": "Fix repo spec.",
+      "doc_ref": "templates/shirube-repo-spec.yaml"
+    }
+  }
+}

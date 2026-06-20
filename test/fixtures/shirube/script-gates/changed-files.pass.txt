@@ -1,0 +1,3 @@
+scripts/shirube/check-repo-spec.mjs
+.shirube/specs/SPEC-ADF-SCRIPT-GATES-001.md
+.shirube/cells/CELL-ADF-SCRIPT-GATES-001.yaml

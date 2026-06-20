@@ -1,0 +1,9 @@
+{
+  "requirements": ["REQ-ADF-001"],
+  "cells": [
+    {
+      "id": "CELL-ADF-001",
+      "covered_req_ids": ["REQ-ADF-001"]
+    }
+  ]
+}

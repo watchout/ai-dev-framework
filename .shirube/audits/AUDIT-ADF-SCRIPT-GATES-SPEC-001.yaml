@@ -1,0 +1,22 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-SCRIPT-GATES-SPEC-001
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-ADF-SCRIPT-GATES-001.md
+verdict: PASS
+findings:
+  - check_id: SPEC-SCOPE
+    result: PASS
+    evidence:
+      - SPEC-ADF-SCRIPT-GATES-001 defines report-only script gate scope for issue 451.
+  - check_id: SPEC-REQ-MAP
+    result: PASS
+    evidence:
+      - Requirements cover repo-spec, planning, trace, phase, conformance, controllers, workflow, and non-scope controls.
+  - check_id: SPEC-NON-GOALS
+    result: PASS
+    evidence:
+      - Required checks, branch protection, rulesets, AUN, target repositories, production, deploy, package changes, and runtime behavior are excluded.
+auditor: codex-adf
+created_at: 2026-06-21T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1
