@@ -296,12 +296,93 @@ function writePrerequisiteCheckFixture(body: string, changedFiles: string[] = ["
   return fixturePath;
 }
 
+function writeArtifactValidationFixture(extraCellLine = ""): string {
+  fs.cpSync(path.join(REPO_ROOT, "schemas"), path.join(tmpDir, "schemas"), { recursive: true });
+  const cellPath = path.join(tmpDir, ".shirube", "cells", "CELL-ADF-TEST-001.yaml");
+  fs.mkdirSync(path.dirname(cellPath), { recursive: true });
+  fs.writeFileSync(
+    cellPath,
+    [
+      "schema_version: shirube-cell/v1",
+      "CELL-ID: CELL-ADF-TEST-001",
+      "SPEC-ID: SPEC-ADF-TEST-001",
+      "risk_tier: R2",
+      "goal: Validate CLI artifact fixture.",
+      "covered_req_ids:",
+      "  - REQ-ADF-TEST-001",
+      "allowed_paths:",
+      "  - src/cli/**",
+      "forbidden_paths:",
+      "  - .github/workflows/**",
+      "acceptance_criteria:",
+      "  - id: AC-ADF-TEST-001",
+      "    statement: CLI validation succeeds.",
+      "    linked_req_ids: [REQ-ADF-TEST-001]",
+      "required_tests:",
+      "  - \"TEST-MAP-ID: TEST-MAP-ADF-TEST-001\"",
+      "required_evidence:",
+      "  - validation_report",
+      "non_goals:",
+      "  - protected settings mutation",
+      "stop_conditions:",
+      "  - validation requires external mutation",
+      "execution_contract:",
+      "  canonical_term: Goal-directed bounded execution",
+      "  shorthand: Goal-mode Implementation",
+      "  allowed_commands:",
+      "    - npm run build:cli",
+      "  forbidden_commands:",
+      "    - gh pr merge",
+      "  handoff_conditions:",
+      "    - validation PASS",
+      "  completion_evidence:",
+      "    - test results",
+      extraCellLine,
+      "",
+    ].join("\n"),
+    "utf-8",
+  );
+  return tmpDir;
+}
+
 describe("conveyor command", () => {
   it("prints reconcile help", () => {
     const result = runConveyor("--help");
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("conveyor");
     expect(result.stdout).toContain("reconcile");
+  });
+
+  it("validates local Shirube artifacts as JSON", () => {
+    const root = writeArtifactValidationFixture();
+    const result = runConveyor(`artifacts validate --root ${root} --format json`);
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      verdict: string;
+      summary: { scanned: number; validated: number; failed: number };
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.schema).toBe("shirube-artifact-validation/v1");
+    expect(payload.verdict).toBe("PASS");
+    expect(payload.summary).toEqual({ scanned: 1, validated: 1, failed: 0 });
+  });
+
+  it("returns nonzero JSON when local Shirube artifacts fail schema validation", () => {
+    const root = writeArtifactValidationFixture("status: candidate");
+    const result = runConveyor(`artifacts validate --root ${root} --format json`);
+    const payload = JSON.parse(result.stdout) as {
+      verdict: string;
+      blockers: Array<{ code: string; field?: string }>;
+    };
+
+    expect(result.exitCode).not.toBe(0);
+    expect(payload.verdict).toBe("BLOCKED");
+    expect(payload.blockers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "schema_additional_property", field: "$.status" }),
+      ]),
+    );
   });
 
   it("reconciles a fixture as JSON without live GitHub mutation", () => {

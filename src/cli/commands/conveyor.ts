@@ -63,6 +63,10 @@ import {
   type ConveyorPrerequisiteCheckReport,
 } from "../lib/conveyor-prerequisite-check.js";
 import {
+  buildShirubeArtifactValidationReport,
+  formatShirubeArtifactValidationReport,
+} from "../lib/shirube-artifact-validator.js";
+import {
   evaluateUserOutcomeGate,
   type UserOutcomeGateInput,
   type UserOutcomeGateReport,
@@ -134,6 +138,12 @@ interface ConveyorAuditReportOptions {
 
 interface ConveyorOutcomeGateOptions {
   fixture?: string;
+  json?: boolean;
+}
+
+interface ConveyorArtifactsValidateOptions {
+  root?: string;
+  format?: string;
   json?: boolean;
 }
 
@@ -476,6 +486,31 @@ export function registerConveyorCommand(program: Command): void {
           return;
         }
         process.stdout.write(formatAuthorityCheck(report));
+      });
+    });
+
+  const artifacts = conveyor
+    .command("artifacts")
+    .description("Validate local Shirube artifacts and current-PR artifact evidence behavior");
+
+  artifacts
+    .command("validate")
+    .description("Validate local .shirube v1 artifacts against checked-in schemas; does not mutate GitHub")
+    .option("--root <path>", "Repository root to validate", process.cwd())
+    .option("--format <format>", "Output format: json")
+    .option("--json", "Output machine-readable JSON")
+    .action((options: ConveyorArtifactsValidateOptions) => {
+      runConveyorAction(options, () => {
+        if (options.format && options.format !== "json") {
+          throw new Error("Invalid --format. Expected json.");
+        }
+        const report = buildShirubeArtifactValidationReport({ rootDir: options.root ?? process.cwd() });
+        if (wantsJsonOutput(options)) {
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+        } else {
+          process.stdout.write(formatShirubeArtifactValidationReport(report));
+        }
+        if (report.verdict === "BLOCKED") process.exitCode = 1;
       });
     });
 

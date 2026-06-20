@@ -1,10 +1,14 @@
 schema_version: shirube-cell/v1
 CELL-ID: CELL-ADF-SELF-003
-SPEC-ID: SPEC-ADF-SELF-001
+SPEC-ID: SPEC-ADF-SELF-003
 risk_tier: R2
-goal: Draft candidate only; plan local preflight artifact resolver behavior for current-PR artifact evidence.
+goal: Implement local preflight, artifact resolver, and schema validation hardening for Shirube artifacts without activating enforcement.
 covered_req_ids:
-  - REQ-ADF-SELF-003
+  - REQ-ADF-SELF-003-001
+  - REQ-ADF-SELF-003-002
+  - REQ-ADF-SELF-003-003
+  - REQ-ADF-SELF-003-004
+  - SEC-ADF-SELF-003-001
 allowed_paths:
   - .shirube/**
   - docs/**
@@ -12,36 +16,82 @@ allowed_paths:
   - test/**
 forbidden_paths:
   - .github/workflows/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
   - deploy/**
   - .env
   - private-config/**
 acceptance_criteria:
   - id: AC-ADF-SELF-003-001
-    statement: Resolver design distinguishes changed files, explicit refs, repo baseline refs, and historical unrelated artifacts.
-    linked_req_ids: [REQ-ADF-SELF-003]
+    statement: CLI exposes deterministic local validation for .shirube repo-spec, agent-policy, Cell, audit-result, and evidence artifacts against v1 schemas.
+    linked_req_ids: [REQ-ADF-SELF-003-001]
+  - id: AC-ADF-SELF-003-002
+    statement: Current PR artifact evidence remains resolved only from changed files, explicit IDs, explicit artifact paths or URLs, or approved repo-spec baseline.
+    linked_req_ids: [REQ-ADF-SELF-003-002]
+  - id: AC-ADF-SELF-003-003
+    statement: Deterministic tests cover schema pass and fail cases plus .shirube current-PR artifact resolution.
+    linked_req_ids: [REQ-ADF-SELF-003-003]
+  - id: AC-ADF-SELF-003-004
+    statement: Conveyor integration remains bounded to local command and resolver tests; required-check and protected-settings activation remain future Cells.
+    linked_req_ids: [REQ-ADF-SELF-003-004, SEC-ADF-SELF-003-001]
+  - id: AC-ADF-SELF-003-005
+    statement: Runtime, deploy, branch protection, rulesets, AUN, multi-agent automation, and target repository mutation remain unchanged.
+    linked_req_ids: [SEC-ADF-SELF-003-001]
 required_tests:
-  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-003"
+  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-003"
 required_evidence:
-  - design_gate_record
-  - deterministic_fixture_tests
+  - changed_files
+  - commands_run
+  - test_results
+  - local_artifact_validation_report
   - conveyor_check_result
+  - PR_URL
+  - exact_head_sha
 non_goals:
-  - implementation authorization from this PR
-  - active required check integration
-  - external repository mutation
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - active workflow mutation
+  - package file changes
+  - deploy or production behavior changes
+  - target repository mutation
+  - AUN or multi-agent automation activation
 stop_conditions:
-  - resolver requires live GitHub mutation
-  - resolver weakens current PR artifact evidence rules
+  - implementation requires package dependency changes
+  - implementation requires required-check or protected-settings mutation
+  - implementation requires target repository mutation
+  - implementation requires AUN or multi-agent automation activation
 execution_contract:
   canonical_term: Goal-directed bounded execution
+  shorthand: Goal-mode Implementation
   allowed_commands:
-    - local validation and targeted tests
+    - git diff --check origin/main...HEAD
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npx vitest run src/cli/lib/shirube-artifact-validator.test.ts src/cli/lib/conveyor-prerequisite-check.test.ts src/cli/commands/conveyor.test.ts
+    - npx tsx src/cli/index.ts conveyor artifacts validate --root . --format json
+    - npx tsx src/cli/index.ts conveyor check <PR_URL> --format json
   forbidden_commands:
+    - gh pr merge
+    - branch protection or ruleset mutation
+    - required check activation
     - active workflow mutation
-    - branch protection mutation
+    - package mutation
+    - target repository mutation
+    - AUN, Discord, DB, queue, LaunchAgent, production, or multi-agent activation
   handoff_conditions:
-    - separate approved implementation Cell required
+    - Spec Audit PASS
+    - Impl Audit PASS
+    - PR opened for Shirube command review
+    - separate approved Cell required before required-check activation
   completion_evidence:
-    - design artifact
-    - tests planned
-    - scope boundary confirmation
+    - implemented REQ-IDs
+    - changed files
+    - commands run
+    - test results
+    - local artifact validation result
+    - conveyor check result
+    - PR / commit / artifact links
+    - non-activation confirmation

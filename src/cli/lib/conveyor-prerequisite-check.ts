@@ -543,15 +543,19 @@ function isRepoSpecPath(path: string): boolean {
 }
 
 function isFeatureSpecPath(path: string): boolean {
-  return /^docs\/spec\//.test(path) || /(^|\/)feature-spec(\.|\/|-)/i.test(path);
+  return path.startsWith(".shirube/specs/") ||
+    /^docs\/spec\//.test(path) ||
+    /(^|\/)feature-spec(\.|\/|-)/i.test(path);
 }
 
 function isSpecAuditPath(path: string): boolean {
-  return /(^|\/)spec-audit(\.|\/|-)/i.test(path);
+  return /(^|\/)spec-audit(\.|\/|-)/i.test(path) ||
+    /^\.shirube\/audits\/AUDIT-[^/]*SPEC[^/]*\.ya?ml$/i.test(path);
 }
 
 function isCellPath(path: string): boolean {
-  return /(^|\/)(cell|cell-plan|cell-intake|membership-manifest)(\.|\/|-)/i.test(path);
+  return path.startsWith(".shirube/cells/") ||
+    /(^|\/)(cell|cell-plan|cell-intake|membership-manifest)(\.|\/|-)/i.test(path);
 }
 
 function isSpecToCellTracePath(path: string): boolean {
@@ -559,11 +563,14 @@ function isSpecToCellTracePath(path: string): boolean {
 }
 
 function isImplPath(path: string): boolean {
-  return /^docs\/impl\//.test(path) || /(^|\/)impl(\.|\/|-)/i.test(path);
+  return path.startsWith(".shirube/impls/") ||
+    /^docs\/impl\//.test(path) ||
+    /(^|\/)impl(\.|\/|-)/i.test(path);
 }
 
 function isImplAuditPath(path: string): boolean {
-  return /(^|\/)(impl-audit|implementation-audit)(\.|\/|-)/i.test(path);
+  return /(^|\/)(impl-audit|implementation-audit)(\.|\/|-)/i.test(path) ||
+    /^\.shirube\/audits\/AUDIT-[^/]*IMPL[^/]*\.ya?ml$/i.test(path);
 }
 
 function isRequiredTestMappingPath(path: string): boolean {
