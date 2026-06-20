@@ -1,0 +1,47 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-SELF-003
+SPEC-ID: SPEC-ADF-SELF-001
+risk_tier: R2
+goal: Draft candidate only; plan local preflight artifact resolver behavior for current-PR artifact evidence.
+covered_req_ids:
+  - REQ-ADF-SELF-003
+allowed_paths:
+  - .shirube/**
+  - docs/**
+  - src/cli/**
+  - test/**
+forbidden_paths:
+  - .github/workflows/**
+  - deploy/**
+  - .env
+  - private-config/**
+acceptance_criteria:
+  - id: AC-ADF-SELF-003-001
+    statement: Resolver design distinguishes changed files, explicit refs, repo baseline refs, and historical unrelated artifacts.
+    linked_req_ids: [REQ-ADF-SELF-003]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-003"
+required_evidence:
+  - design_gate_record
+  - deterministic_fixture_tests
+  - conveyor_check_result
+non_goals:
+  - implementation authorization from this PR
+  - active required check integration
+  - external repository mutation
+stop_conditions:
+  - resolver requires live GitHub mutation
+  - resolver weakens current PR artifact evidence rules
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  allowed_commands:
+    - local validation and targeted tests
+  forbidden_commands:
+    - active workflow mutation
+    - branch protection mutation
+  handoff_conditions:
+    - separate approved implementation Cell required
+  completion_evidence:
+    - design artifact
+    - tests planned
+    - scope boundary confirmation

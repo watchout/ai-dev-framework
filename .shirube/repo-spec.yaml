@@ -1,0 +1,93 @@
+schema_version: shirube-repo-spec/v1
+repo_id: watchout/ai-dev-framework
+owner: watchout
+purpose: >
+  Own the Shirube control-plane assets used to define, scaffold, validate, and
+  dogfood AI development governance across repositories under Shirube AI
+  Development Governance Standard v1.
+scope:
+  - Shirube standards
+  - schemas
+  - templates
+  - rubrics
+  - CLI gate/conveyor logic
+  - workflow scaffolds
+  - golden cases
+  - control-plane rollout instructions
+non_goals:
+  - Target repository runtime behavior is not owned by this repo.
+  - Protected automation changes are not authorized without a later explicit Cell.
+  - Required GitHub checks are not activated by this scaffold.
+  - Branch protection, rulesets, deploy settings, and production state are not managed by this scaffold.
+  - External repository mutation is not authorized from this repo-spec alone.
+design_principles:
+  - "Development unit is Cell, not PR."
+  - "Canonical chain is Spec -> Cell -> Impl -> Code -> Test -> Evidence."
+  - "Machine-readable evidence is primary; narrative can explain but not override missing facts."
+  - "Goal-directed bounded execution is allowed only inside explicit Cell boundaries."
+  - "Merge authority remains separate from goal-mode implementation."
+development_flow:
+  - Spec
+  - Cell
+  - Impl
+  - Code
+  - Test
+  - Evidence
+roles:
+  repo_owner: watchout
+  release_owner: watchout
+  security_owner: watchout
+  evidence_owner: watchout
+  implementation_owner: codex-adf
+  command_review_owner: shirube-command
+boundaries:
+  allowed_paths:
+    - ".shirube/**"
+    - "docs/**"
+    - "README.md"
+  forbidden_paths:
+    - "src/**"
+    - "lib/**"
+    - "bin/**"
+    - "scripts/**"
+    - ".github/workflows/**"
+    - "package.json"
+    - "package-lock.json"
+    - "pnpm-lock.yaml"
+    - "deploy/**"
+    - ".env"
+    - "private-config/**"
+  data_boundaries:
+    - No customer data processing is authorized by this scaffold.
+    - No secrets may be read, copied, generated, or written.
+    - No target repository data may be mutated.
+  dependency_boundaries:
+    - No new runtime or development dependencies are authorized by this scaffold.
+    - Workflow scaffolds may be documented but active workflows must not be modified.
+  forbidden_actions:
+    - Do not enable required checks.
+    - Do not modify branch protection or rulesets.
+    - Do not activate AUN, Discord, DB, queue, LaunchAgent, or production automation.
+    - Do not dispatch agents or mutate external repositories.
+    - Do not claim full Shirube rollout completion from this scaffold.
+required_gates:
+  - spec_audit
+  - spec_to_cell_trace_audit
+  - impl_audit
+  - current_ci
+  - conveyor_check
+  - command_review
+risk_tier_defaults: R2
+standards:
+  soc2:
+    - Security
+    - Confidentiality
+    - Processing Integrity
+  iso_iec_42001: "Apply when AI behavior, tools, memory, prompts, or model routing are in scope."
+  engineering_references:
+    - NIST_SSDF
+    - OWASP_LLM_TOP_10
+    - SLSA
+ai_usage_classification: agentic-control-plane-scaffold
+agent_policy_ref: ".shirube/agent-policy.yaml"
+evidence_ledger_ref: ".shirube/evidence/"

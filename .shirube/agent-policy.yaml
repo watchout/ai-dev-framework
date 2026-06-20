@@ -1,0 +1,196 @@
+schema_version: shirube-agent-policy/v1
+policy_id: AGENT-POLICY-ADF-SELF-001
+permission_boundary:
+  allowed_commands:
+    - git diff --check
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npm test
+    - npx vitest run <targeted-tests>
+    - npx tsx src/cli/index.ts conveyor check <pr-url> --format json
+    - git push origin <branch>
+    - gh pr view <pr>
+    - gh pr checks <pr>
+    - gh pr create --draft
+  forbidden_commands:
+    - git push --force
+    - git push --force-with-lease without updating the active PR branch intentionally
+    - gh pr merge
+    - gh api repos/:owner/:repo/rulesets
+    - gh api repos/:owner/:repo/branches/:branch/protection
+    - rm -rf /
+    - deploy or production activation commands
+    - AUN, Discord, DB, queue, LaunchAgent, or external dispatch commands
+  allowed_paths:
+    - .shirube/**
+    - docs/**
+    - README.md
+  forbidden_paths:
+    - src/**
+    - lib/**
+    - bin/**
+    - scripts/**
+    - .github/workflows/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - deploy/**
+    - .env
+    - private-config/**
+  allowed_mcp_tools: []
+  approval_required_mcp_tools:
+    - github_write
+    - external_send
+  forbidden_mcp_tools:
+    - production_deploy
+    - branch_protection_write
+    - ruleset_write
+    - external_repo_mutation
+  secret_access_policy: "No secret read unless explicitly approved in the Cell and required by Impl."
+  memory_read_policy: "Read only memory explicitly authorized by the Cell."
+  memory_write_policy: "No memory write unless explicitly authorized by the Cell."
+  external_send_policy: "No external send or dispatch unless explicitly authorized by the Cell."
+agent_execution_profiles:
+  - agent_id: codex
+    agent_name: Codex
+    agent_type: codex
+    supported_execution_modes: [goal-mode]
+    supports_goal_directed_execution: true
+    supports_filesystem_scope_constraints: true
+    supports_command_constraints: true
+    supports_structured_output: true
+    supports_test_execution: true
+    supports_pr_creation: true
+    supports_issue_comment_updates: false
+    supports_artifact_reporting: true
+    instruction_adapter: codex_adapter
+    completion_evidence_requirements:
+      - changed files
+      - implemented REQ-IDs
+      - commands run
+      - test results
+      - known failures
+      - PR / commit / artifact links
+    risk_tier_limit_without_human_approval: R2
+  - agent_id: claude
+    agent_name: Claude
+    agent_type: claude
+    supported_execution_modes: [goal-mode, bounded-context]
+    supports_goal_directed_execution: true
+    supports_filesystem_scope_constraints: true
+    supports_command_constraints: true
+    supports_structured_output: true
+    supports_test_execution: true
+    supports_pr_creation: true
+    supports_issue_comment_updates: true
+    supports_artifact_reporting: true
+    instruction_adapter: claude_adapter
+    completion_evidence_requirements:
+      - changed files
+      - implemented REQ-IDs
+      - commands run
+      - test results
+      - known failures
+      - PR / commit / artifact links
+    risk_tier_limit_without_human_approval: R2
+  - agent_id: generic_coding_agent
+    agent_name: Generic coding agent
+    agent_type: generic_coding_agent
+    supported_execution_modes: [bounded-context]
+    supports_goal_directed_execution: false
+    supports_filesystem_scope_constraints: true
+    supports_command_constraints: true
+    supports_structured_output: true
+    supports_test_execution: true
+    supports_pr_creation: false
+    supports_issue_comment_updates: false
+    supports_artifact_reporting: true
+    instruction_adapter: generic_adapter
+    completion_evidence_requirements:
+      - changed files
+      - implemented REQ-IDs
+      - commands run
+      - test results
+      - known failures
+    risk_tier_limit_without_human_approval: R1
+  - agent_id: human_executor
+    agent_name: Human executor
+    agent_type: human_executor
+    supported_execution_modes: [manual]
+    supports_goal_directed_execution: true
+    supports_filesystem_scope_constraints: true
+    supports_command_constraints: true
+    supports_structured_output: true
+    supports_test_execution: true
+    supports_pr_creation: true
+    supports_issue_comment_updates: true
+    supports_artifact_reporting: true
+    instruction_adapter: human_adapter
+    completion_evidence_requirements:
+      - changed files
+      - implemented REQ-IDs
+      - commands run
+      - test results
+      - known failures
+      - PR / commit / artifact links
+      - approval or merge evidence when acting as release owner
+    risk_tier_limit_without_human_approval: R3
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  CELL-ID: CELL-ADF-SELF-001
+  SPEC-ID: SPEC-ADF-SELF-001
+  IMPL-ID: IMPL-ADF-SELF-001
+  risk_tier: R2
+  allowed_paths:
+    - .shirube/**
+  forbidden_paths:
+    - src/**
+    - lib/**
+    - bin/**
+    - scripts/**
+    - .github/workflows/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - deploy/**
+    - .env
+    - private-config/**
+  allowed_commands:
+    - git diff --check
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npm test
+    - npx tsx src/cli/index.ts conveyor check <pr-url> --format json
+    - git push origin <branch>
+    - gh pr create --draft
+  forbidden_commands:
+    - gh pr merge
+    - active workflow mutation
+    - branch protection or ruleset mutation
+    - external repo mutation
+    - protected automation activation
+  required_tests:
+    - "TEST-MAP-ID: TEST-MAP-ADF-SELF-001"
+  required_evidence:
+    - changed files
+    - commands run
+    - test results
+    - conveyor check result
+    - known failures
+    - PR URL and exact head SHA
+  non_goals:
+    - runtime code changes
+    - active workflow changes
+    - required check activation
+    - target repository scaffold work
+  stop_conditions:
+    - scope expands outside .shirube/**
+    - implementation requires runtime, workflow, or protection mutation
+    - conveyor check returns BLOCKED
+    - external repo mutation is required
+  handoff_conditions:
+    - Spec Audit PASS
+    - Impl Audit PASS
+    - PR opened for Shirube command review

@@ -1,0 +1,53 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-SELF-005
+SPEC-ID: SPEC-ADF-SELF-001
+risk_tier: R2
+goal: Draft candidate only; plan target repo rollout monitoring and evidence ledger requirements without target repo mutation.
+covered_req_ids:
+  - REQ-ADF-SELF-003
+allowed_paths:
+  - .shirube/**
+  - docs/**
+forbidden_paths:
+  - src/**
+  - lib/**
+  - bin/**
+  - scripts/**
+  - .github/workflows/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - private-config/**
+acceptance_criteria:
+  - id: AC-ADF-SELF-005-001
+    statement: Monitoring plan defines evidence ledger fields and target repo read-only observation boundaries.
+    linked_req_ids: [REQ-ADF-SELF-003]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-005"
+required_evidence:
+  - monitoring_plan
+  - evidence_ledger_schema_or_mapping
+  - external_mutation_non_goal
+non_goals:
+  - implementation authorization from this PR
+  - target repository scaffold work
+  - external repository mutation
+  - required check activation
+stop_conditions:
+  - target repo writes are required
+  - production or protected settings mutation is required
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  allowed_commands:
+    - documentation and planning commands only
+  forbidden_commands:
+    - external repository mutation
+    - production mutation
+  handoff_conditions:
+    - separate target repo Cell required before rollout
+  completion_evidence:
+    - monitoring plan
+    - evidence ledger mapping
+    - non-target-work confirmation

@@ -1,0 +1,94 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-SELF-001
+SPEC-ID: SPEC-ADF-SELF-001
+risk_tier: R2
+goal: Implement this PR's ai-dev-framework repository premise spec, agent policy, and self-application scaffold records.
+covered_req_ids:
+  - REQ-ADF-SELF-001
+  - REQ-ADF-SELF-002
+  - REQ-ADF-SELF-003
+  - REQ-ADF-SELF-004
+  - SEC-ADF-SELF-001
+dependencies:
+  - PR-430
+  - PR-434
+  - PR-437
+allowed_paths:
+  - .shirube/**
+forbidden_paths:
+  - src/**
+  - lib/**
+  - bin/**
+  - scripts/**
+  - .github/workflows/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - private-config/**
+acceptance_criteria:
+  - id: AC-ADF-SELF-001
+    statement: repo-spec defines ai-dev-framework ownership and non-ownership boundaries.
+    linked_req_ids: [REQ-ADF-SELF-001]
+  - id: AC-ADF-SELF-002
+    statement: agent-policy defines bounded execution profiles and permission boundaries.
+    linked_req_ids: [REQ-ADF-SELF-002]
+  - id: AC-ADF-SELF-003
+    statement: initial future Cell candidates exist but are not implementation authorization.
+    linked_req_ids: [REQ-ADF-SELF-003]
+  - id: AC-ADF-SELF-004
+    statement: audit and evidence records exist for this scaffold slice.
+    linked_req_ids: [REQ-ADF-SELF-004]
+  - id: AC-ADF-SELF-005
+    statement: changed files remain limited to .shirube/**.
+    linked_req_ids: [SEC-ADF-SELF-001]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-SELF-001"
+required_evidence:
+  - changed_files
+  - commands_run
+  - test_results
+  - conveyor_check_result
+  - PR_URL
+  - exact_head_sha
+non_goals:
+  - runtime code changes
+  - CLI implementation changes
+  - active GitHub workflow changes
+  - required check activation
+  - repository protection or ruleset changes
+  - target repository scaffold work
+stop_conditions:
+  - scope expands outside .shirube/**
+  - runtime, workflow, package, script, deploy, or protection file changes are required
+  - conveyor check returns BLOCKED
+  - external repo mutation or automation dispatch is required
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  shorthand: Goal-mode Implementation
+  allowed_commands:
+    - git diff --check
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npm test
+    - npx tsx src/cli/index.ts conveyor check <PR_URL> --format json
+  forbidden_commands:
+    - gh pr merge
+    - branch protection or ruleset mutation
+    - active workflow mutation
+    - protected automation activation
+    - external repository mutation
+  handoff_conditions:
+    - Spec Audit PASS
+    - Impl Audit PASS
+    - PR opened for Shirube command review
+  completion_evidence:
+    - implemented REQ-IDs
+    - unimplemented REQ-IDs
+    - changed files
+    - commands run
+    - test results
+    - known failures
+    - PR / commit / artifact links

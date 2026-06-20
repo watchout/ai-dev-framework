@@ -1,0 +1,40 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-SELF-SPEC-001
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-ADF-SELF-001.md
+  - .shirube/repo-spec.yaml
+  - .shirube/agent-policy.yaml
+verdict: PASS
+findings:
+  - check_id: SPEC-PURPOSE
+    result: PASS
+    evidence:
+      - SPEC-ADF-SELF-001 defines purpose and background for self-applying Shirube governance.
+  - check_id: SPEC-NON-GOALS
+    result: PASS
+    evidence:
+      - SPEC-ADF-SELF-001 lists runtime, workflow, required-check, protection, automation, external repo, and target repo non-goals.
+  - check_id: SPEC-REQ-IDS
+    result: PASS
+    evidence:
+      - SPEC-ADF-SELF-001 includes REQ, SEC, NFR, AI, and DATA IDs.
+  - check_id: SPEC-AC-TESTABLE
+    result: PASS
+    evidence:
+      - Acceptance criteria map to requirements and include conveyor check evidence.
+  - check_id: SPEC-SEC-PRIVACY-AI
+    result: PASS
+    evidence:
+      - Security, privacy, AI, and data impacts are declared.
+  - check_id: SPEC-ROLLBACK
+    result: PASS
+    evidence:
+      - Rollback plan is single PR revert.
+  - check_id: SPEC-STANDARDS
+    result: PASS
+    evidence:
+      - repo-spec references Shirube governance standard, SOC 2, ISO/IEC 42001, NIST SSDF, OWASP LLM Top 10, and SLSA.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1
