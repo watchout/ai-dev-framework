@@ -1,0 +1,31 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-PHASE-SPEC-001
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-ADF-PHASE-001.md
+verdict: PASS
+findings:
+  - check_id: SPEC-PURPOSE
+    result: PASS
+    evidence:
+      - SPEC-ADF-PHASE-001 defines deterministic phase conveyor purpose and output schema.
+  - check_id: SPEC-REQ-IDS
+    result: PASS
+    evidence:
+      - SPEC-ADF-PHASE-001 includes REQ-ADF-PHASE-001 through REQ-ADF-PHASE-009 and SEC-ADF-PHASE-001.
+  - check_id: SPEC-PHASE-MODEL
+    result: PASS
+    evidence:
+      - The spec lists the initial phase model from INTAKE through RELEASED plus blocked/human/waiver states.
+  - check_id: SPEC-EVIDENCE-RULES
+    result: PASS
+    evidence:
+      - The spec requires structured evidence for repo-spec confirmation, premise, inventory, Cell, Impl, and audit readiness.
+      - Narrative confirmation claims are explicitly insufficient without structured refs.
+  - check_id: SPEC-NON-SCOPE
+    result: PASS
+    evidence:
+      - The spec forbids required-check activation, branch protection changes, ruleset changes, target repo mutation, AUN/multi-agent activation, and production/deploy behavior changes.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1

@@ -1,0 +1,33 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-PHASE-IMPL-001
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-ADF-PHASE-001.md
+  - .shirube/cells/CELL-ADF-PHASE-001.yaml
+  - src/cli/lib/phase-conveyor.ts
+  - src/cli/commands/phase.ts
+verdict: PASS
+findings:
+  - check_id: IMPL-SCOPE
+    result: PASS
+    evidence:
+      - IMPL-ADF-PHASE-001 limits changes to CLI command/library, focused tests, and .shirube governance records.
+  - check_id: IMPL-REQ-MAP
+    result: PASS
+    evidence:
+      - Planned changes map to REQ-ADF-PHASE-001 through REQ-ADF-PHASE-009 and SEC-ADF-PHASE-001.
+  - check_id: IMPL-STRUCTURED-EVIDENCE
+    result: PASS
+    evidence:
+      - Repo tree history is used only for approved repo-spec baseline paths; current phase evidence uses PR metadata, changed artifacts, or explicit structured refs.
+  - check_id: IMPL-NARRATIVE-GUARD
+    result: PASS
+    evidence:
+      - Narrative confirmation claims without structured refs produce blocking evidence findings and do not satisfy confirmations.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - Required checks, workflows, branch protection, rulesets, package files, target repositories, AUN/multi-agent automation, and production/deploy behavior are non-goals.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1

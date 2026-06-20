@@ -44,6 +44,7 @@ import { registerTraceCommand } from "./commands/trace.js";
 import { registerMergeAuthorityCommand } from "./commands/merge-authority.js";
 import { registerWorkflowCommand } from "./commands/workflow.js";
 import { registerConveyorCommand } from "./commands/conveyor.js";
+import { registerPhaseCommand } from "./commands/phase.js";
 import { setWriteThrough, type RunState } from "./lib/run-model.js";
 import { syncTaskStatusToGitHub, resolveIssueNumber } from "./lib/state-writer.js";
 
@@ -82,6 +83,7 @@ registerPruneCommand(program);
 registerStatusCommand(program);
 registerWorkflowCommand(program);
 registerConveyorCommand(program);
+registerPhaseCommand(program);
 
 // Design ingest
 registerIngestCommand(program);
