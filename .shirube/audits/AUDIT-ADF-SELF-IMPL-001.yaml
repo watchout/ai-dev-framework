@@ -1,0 +1,35 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-SELF-IMPL-001
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-ADF-SELF-001.md
+  - .shirube/cells/CELL-ADF-SELF-001.yaml
+verdict: PASS
+findings:
+  - check_id: IMPL-SCOPE
+    result: PASS
+    evidence:
+      - IMPL-ADF-SELF-001 limits planned changes to .shirube/**.
+  - check_id: IMPL-REQ-MAP
+    result: PASS
+    evidence:
+      - Planned file changes map to REQ-ADF-SELF-001 through REQ-ADF-SELF-004 and SEC-ADF-SELF-001.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - Runtime, workflow, package, protection, automation, and external repo work are non-goals.
+  - check_id: IMPL-TEST-PLAN
+    result: PASS
+    evidence:
+      - TEST-MAP-ADF-SELF-001 requires diff check, lint, type-check, build:cli, and conveyor check.
+  - check_id: IMPL-AUTH-ERROR-LOGGING
+    result: N/A
+    evidence:
+      - Scaffold-only; no auth, permission, error handling, logging, or audit logging runtime path changes.
+  - check_id: IMPL-DEPENDENCIES
+    result: N/A
+    evidence:
+      - No dependency changes are planned.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1

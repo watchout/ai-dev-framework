@@ -1,0 +1,54 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-SELF-004
+SPEC-ID: SPEC-ADF-SELF-001
+risk_tier: R3
+status: draft_candidate_only
+goal: Plan multi-agent conveyor state-machine boundaries without activating dispatch.
+covered_req_ids:
+  - REQ-ADF-SELF-003
+allowed_paths:
+  - .shirube/**
+  - docs/**
+forbidden_paths:
+  - src/**
+  - lib/**
+  - bin/**
+  - scripts/**
+  - .github/workflows/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - private-config/**
+acceptance_criteria:
+  - id: AC-ADF-SELF-004-001
+    statement: State-machine plan defines read, write, apply, send, and dispatch boundaries separately.
+    linked_req_ids: [REQ-ADF-SELF-003]
+required_tests:
+  - TEST-MAP-ID: TEST-MAP-ADF-SELF-FUTURE-004
+required_evidence:
+  - design_consolidation_gate_record
+  - authority_boundary_map
+  - stop_conditions
+non_goals:
+  - AUN activation
+  - Discord, DB, queue, LaunchAgent, or production integration
+  - agent dispatch
+stop_conditions:
+  - any external send or dispatch becomes required
+  - approval path for R3/R4 surfaces is missing
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  allowed_commands:
+    - documentation and design validation only
+  forbidden_commands:
+    - AUN dispatch
+    - external send
+    - production mutation
+  handoff_conditions:
+    - protected governance approval required before implementation
+  completion_evidence:
+    - design artifact
+    - authority map
+    - non-activation confirmation
