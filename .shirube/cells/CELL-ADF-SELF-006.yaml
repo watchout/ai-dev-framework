@@ -1,0 +1,112 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-SELF-006
+SPEC-ID: SPEC-ADF-CHECK-WORKFLOW-001
+risk_tier: R3
+goal: Add an active, non-required GitHub Actions workflow that runs Shirube schema validation and conveyor prerequisite check on PRs without enabling required checks.
+covered_req_ids:
+  - REQ-ADF-WORKFLOW-001
+  - REQ-ADF-WORKFLOW-002
+  - REQ-ADF-WORKFLOW-003
+  - REQ-ADF-WORKFLOW-004
+  - REQ-ADF-WORKFLOW-005
+  - REQ-ADF-WORKFLOW-006
+  - SEC-ADF-WORKFLOW-001
+allowed_paths:
+  - .github/workflows/shirube-conveyor-prerequisite-check.yml
+  - .shirube/**
+  - docs/activation/**
+forbidden_paths:
+  - src/**
+  - lib/**
+  - bin/**
+  - scripts/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - private-config/**
+acceptance_criteria:
+  - id: AC-ADF-WORKFLOW-001
+    statement: Workflow job name is exactly Shirube Conveyor Prerequisite Check.
+    linked_req_ids: [REQ-ADF-WORKFLOW-001]
+  - id: AC-ADF-WORKFLOW-002
+    statement: Workflow validates .shirube YAML artifacts and known v1 required fields.
+    linked_req_ids: [REQ-ADF-WORKFLOW-002]
+  - id: AC-ADF-WORKFLOW-003
+    statement: Workflow runs conveyor check against the PR URL and uploads JSON result artifact.
+    linked_req_ids: [REQ-ADF-WORKFLOW-003]
+  - id: AC-ADF-WORKFLOW-004
+    statement: Workflow reports BLOCKED during the non-required pilot and fails only for validation/setup failure, malformed conveyor JSON, unknown verdict, or conveyor command failure without a valid BLOCKED report.
+    linked_req_ids: [REQ-ADF-WORKFLOW-004]
+  - id: AC-ADF-WORKFLOW-005
+    statement: Draft PR and auto-merge behavior are documented.
+    linked_req_ids: [REQ-ADF-WORKFLOW-005]
+  - id: AC-ADF-WORKFLOW-006
+    statement: BLOCKED verdicts are recorded in logs, GitHub step summary, and uploaded JSON artifact as signal-only evidence.
+    linked_req_ids: [REQ-ADF-WORKFLOW-006]
+  - id: AC-ADF-WORKFLOW-007
+    statement: Required checks, branch protection, rulesets, runtime, CLI, package files, target repos, and AUN/multi-agent automation are unchanged.
+    linked_req_ids: [SEC-ADF-WORKFLOW-001]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-CHECK-WORKFLOW-001"
+required_evidence:
+  - changed_files
+  - commands_run
+  - test_results
+  - workflow_path
+  - conveyor_check_result
+  - PR_URL
+  - exact_head_sha
+non_goals:
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - runtime code changes
+  - CLI code changes
+  - package file changes
+  - target repository mutation
+  - AUN or multi-agent automation activation
+stop_conditions:
+  - implementation requires branch protection or ruleset mutation
+  - implementation requires required-check activation
+  - implementation requires runtime or CLI code changes
+  - implementation requires package changes
+  - implementation requires target repository mutation
+  - implementation requires AUN or multi-agent automation activation
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  shorthand: Goal-mode Implementation
+  allowed_commands:
+    - git diff --check origin/main...HEAD
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npm run shirube -- conveyor check <PR_URL> --format json
+    - npm run --silent shirube -- conveyor check <PR_URL> --format json
+    - npx tsx src/cli/index.ts conveyor check <PR_URL> --format json
+    - YAML parse for .shirube/**/*.yaml
+  forbidden_commands:
+    - gh pr merge
+    - branch protection or ruleset mutation
+    - required check activation
+    - package mutation
+    - target repository mutation
+    - AUN, Discord, DB, queue, LaunchAgent, production, or multi-agent activation
+  handoff_conditions:
+    - Spec Audit PASS
+    - Impl Audit PASS
+    - PR opened for Shirube command review
+    - BLOCKED verdict recorded as report-only pilot evidence
+    - separate approved Cell required before making this check required
+    - separate approved enforcement Cell required before making BLOCKED fail this workflow
+  completion_evidence:
+    - implemented REQ-IDs
+    - changed files
+    - commands run
+    - test results
+    - known failures
+    - conveyor check result
+    - remote workflow result
+    - PR / commit / artifact links
+    - non-required confirmation
