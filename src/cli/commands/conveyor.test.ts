@@ -277,6 +277,25 @@ function writeCellPlanFixture(): { planPath: string; runtimePath: string } {
   return { planPath, runtimePath };
 }
 
+function writePrerequisiteCheckFixture(body: string, changedFiles: string[] = ["src/cli/lib/conveyor-prerequisite-check.ts"]): string {
+  const fixturePath = path.join(tmpDir, "conveyor-prerequisite-check.json");
+  fs.writeFileSync(
+    fixturePath,
+    JSON.stringify({
+      schema: "shirube-conveyor-check-fixture/v1",
+      repo,
+      pr: 435,
+      head_sha: "head-435",
+      body,
+      changed_files: changedFiles,
+      repo_files: [".shirube/repo-spec.yaml"],
+      checked_at_utc: "2026-06-20T00:00:00.000Z",
+    }),
+    "utf-8",
+  );
+  return fixturePath;
+}
+
 describe("conveyor command", () => {
   it("prints reconcile help", () => {
     const result = runConveyor("--help");
@@ -805,6 +824,73 @@ describe("conveyor command", () => {
         reason: "role_forbidden_final_or_foreign_authority_label",
       }),
     ]);
+  });
+
+  it("runs the deterministic PR prerequisite check as JSON", () => {
+    const fixturePath = writePrerequisiteCheckFixture([
+      "CELL-ID: CELL-ADF-GATE-001",
+      "SPEC-ID: SPEC-ADF-GATE-001",
+      "IMPL-ID: IMPL-ADF-GATE-001",
+      "Risk Tier: R2",
+      "Repo Spec: .shirube/repo-spec.yaml",
+      "Spec Audit: AUDIT-ID: AUDIT-ADF-GATE-SPEC-001",
+      "Spec-to-Cell Trace: EVIDENCE-ID: TRACE-ADF-GATE-001",
+      "Impl Audit: AUDIT-ID: AUDIT-ADF-GATE-IMPL-001",
+      "Required Test Mapping: TEST-MAP-ID: TEST-MAP-ADF-GATE-001",
+      "Execution Contract: CONTRACT-ID: CONTRACT-ADF-GATE-001",
+    ].join("\n"));
+    const result = runConveyor(`check ${repo}#435 --fixture ${fixturePath} --format json`);
+    const payload = JSON.parse(result.stdout) as {
+      schema: string;
+      verdict: string;
+      repo: string;
+      pr: number;
+      head_sha: string;
+      risk_tier: string;
+      spec_ids: string[];
+      cell_ids: string[];
+      impl_ids: string[];
+      blockers: unknown[];
+    };
+
+    expect(result.exitCode).toBe(0);
+    expect(payload.schema).toBe("shirube-conveyor-check/v1");
+    expect(payload.verdict).toBe("PASS");
+    expect(payload.repo).toBe(repo);
+    expect(payload.pr).toBe(435);
+    expect(payload.head_sha).toBe("head-435");
+    expect(payload.risk_tier).toBe("R2");
+    expect(payload.spec_ids).toEqual(["SPEC-ADF-GATE-001"]);
+    expect(payload.cell_ids).toEqual(["CELL-ADF-GATE-001"]);
+    expect(payload.impl_ids).toEqual(["IMPL-ADF-GATE-001"]);
+    expect(payload.blockers).toEqual([]);
+  });
+
+  it("returns blocked prerequisite JSON with nonzero exit code", () => {
+    const fixturePath = writePrerequisiteCheckFixture([
+      "CELL-ID: CELL-ADF-GATE-001",
+      "IMPL-ID: IMPL-ADF-GATE-001",
+      "Risk Tier: R2",
+      "Repo Spec: .shirube/repo-spec.yaml",
+      "Spec Audit: AUDIT-ID: AUDIT-ADF-GATE-SPEC-001",
+      "Spec-to-Cell Trace: EVIDENCE-ID: TRACE-ADF-GATE-001",
+      "Impl Audit: AUDIT-ID: AUDIT-ADF-GATE-IMPL-001",
+      "Required Test Mapping: TEST-MAP-ID: TEST-MAP-ADF-GATE-001",
+      "Execution Contract: CONTRACT-ID: CONTRACT-ADF-GATE-001",
+    ].join("\n"));
+    const result = runConveyor(`check ${repo}#435 --fixture ${fixturePath} --format json`);
+    const payload = JSON.parse(result.stdout) as {
+      verdict: string;
+      blockers: Array<{ code: string }>;
+    };
+
+    expect(result.exitCode).not.toBe(0);
+    expect(payload.verdict).toBe("BLOCKED");
+    expect(payload.blockers).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "missing_feature_spec" }),
+      ]),
+    );
   });
 
   it("prints a durable audit-report evidence block without posting it", () => {
