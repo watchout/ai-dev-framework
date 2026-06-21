@@ -1,0 +1,56 @@
+schema_version: shirube-evidence/v1
+EVIDENCE-ID: EVIDENCE-ADF-DELIVERY-FLOW-454-A
+SPEC-ID: SPEC-ADF-DELIVERY-FLOW-454-A
+CELL-ID: CELL-ADF-DELIVERY-FLOW-454-A
+IMPL-ID: IMPL-ADF-DELIVERY-FLOW-454-A
+PR-ID: https://github.com/watchout/ai-dev-framework/pull/455
+commit_sha: see-pr-455-body-exact-head-sha
+audit_results:
+  - AUDIT-ADF-DELIVERY-FLOW-454-A-SPEC
+  - AUDIT-ADF-DELIVERY-FLOW-454-A-IMPL
+ci_runs:
+  - name: git diff --check origin/main...HEAD
+    result: PASS
+    url: local:git-diff-check
+  - name: YAML parse for .shirube/**/*.yaml
+    result: PASS
+    url: local:yaml-parse
+  - name: npx vitest run test/shirube/script-gates.test.ts
+    result: PASS
+    url: local:vitest-script-gates
+  - name: local Shirube report-only gates
+    result: PASS
+    url: local:shirube-report-only-gates
+  - name: npm run lint
+    result: PASS
+    url: local:npm-run-lint
+  - name: npm run type-check
+    result: PASS
+    url: local:npm-run-type-check
+  - name: npm run build:cli
+    result: PASS
+    url: local:npm-run-build-cli
+artifact_locations:
+  - docs/standards/shirube-ai-development-governance-standard-v1.md
+  - docs/governance-flow.md
+  - .shirube/specs/SPEC-ADF-DELIVERY-FLOW-454-A.md
+  - .shirube/cells/CELL-ADF-DELIVERY-FLOW-454-A.yaml
+  - .shirube/impls/IMPL-ADF-DELIVERY-FLOW-454-A.md
+  - .shirube/audits/AUDIT-ADF-DELIVERY-FLOW-454-A-SPEC.yaml
+  - .shirube/audits/AUDIT-ADF-DELIVERY-FLOW-454-A-IMPL.yaml
+  - .shirube/evidence/EVIDENCE-ADF-DELIVERY-FLOW-454-A.yaml
+  - PR #455 at https://github.com/watchout/ai-dev-framework/pull/455
+  - TRACE-ADF-DELIVERY-FLOW-454-A-001 in .shirube/specs/SPEC-ADF-DELIVERY-FLOW-454-A.md Trace Matrix
+  - TEST-MAP-ADF-DELIVERY-FLOW-454-A-001 in .shirube/specs/SPEC-ADF-DELIVERY-FLOW-454-A.md Test Plan
+post_merge_verification:
+  result: N/A
+  evidence:
+    - "pre-merge: PR #455 is rebased onto main after PR #453 merge."
+    - "post-merge: not-yet; post-merge evidence is required after 454-A is merged."
+waiver_refs: []
+release_or_rollback_decision:
+  result: N/A
+  evidence:
+    - "pre-merge: route:ceo-approval remains pending; no enforcement or activation is authorized."
+    - "post-merge: release or activation requires a later approved enforcement Cell."
+  decision_owner: watchout
