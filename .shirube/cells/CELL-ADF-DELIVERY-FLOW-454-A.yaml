@@ -99,7 +99,7 @@ execution_contract:
   canonical_term: Goal-directed bounded execution
   shorthand: Goal-mode Implementation
   allowed_commands:
-    - git diff --check origin/codex/script-gate-report-only...HEAD
+    - git diff --check origin/main...HEAD
     - npx vitest run test/shirube/script-gates.test.ts
     - node scripts/shirube/check-repo-spec.mjs
     - node scripts/shirube/check-planning.mjs

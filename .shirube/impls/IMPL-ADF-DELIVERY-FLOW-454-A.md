@@ -48,7 +48,7 @@
 
 ## Test Plan
 
-- `git diff --check origin/codex/script-gate-report-only...HEAD`
+- `git diff --check origin/main...HEAD`
 - YAML parse for `.shirube/**/*.yaml`
 - `npx vitest run test/shirube/script-gates.test.ts`
 - local Shirube report-only gates
