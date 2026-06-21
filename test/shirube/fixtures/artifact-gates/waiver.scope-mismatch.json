@@ -1,0 +1,13 @@
+{
+  "schema_version": "shirube-waiver/v1",
+  "WAIVER-ID": "WAIVER-ADF-452-D-SCOPE",
+  "target_cell": "CELL-OTHER",
+  "target_check": "script-gate",
+  "reason": "Fixture waiver for a different cell.",
+  "risk_accepted": "Temporary fixture risk.",
+  "compensating_controls": ["Manual owner review before merge."],
+  "approver": "release_owner",
+  "expiry_date": "2099-01-01",
+  "follow_up_issue": "https://github.com/watchout/ai-dev-framework/issues/452",
+  "status": "active"
+}
