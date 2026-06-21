@@ -52,6 +52,6 @@ waiver_refs: []
 release_or_rollback_decision:
   result: N/A
   evidence:
-    - "pre-merge: route:ceo-approval RATIFIED (ref 4760545289); no enforcement or activation is authorized."
+    - "pre-merge: route:ceo-approval RATIFIED for head 43072dcdae3aaa6407c7b7a4c961c84cff832cdd (ref comment 4760545289), standard content frozen; no enforcement or activation is authorized."
     - "post-merge: release or activation requires a later approved enforcement Cell."
   decision_owner: watchout
