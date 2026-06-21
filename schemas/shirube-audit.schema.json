@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://shirube.dev/schemas/shirube-audit.schema.json",
   "title": "Shirube Audit v1",
-  "description": "Canonical Shirube audit output and audit item set schema for list-driven semantic audit records.",
+  "description": "Canonical Shirube audit output and audit item set schema for unified list-backed reconciliation and list-driven semantic audit records.",
   "oneOf": [
     { "$ref": "#/$defs/audit_record" },
     { "$ref": "#/$defs/audit_item_set" }
@@ -10,10 +10,25 @@
   "$defs": {
     "stage": {
       "enum": [
-        "stage_3_spec_audit",
-        "stage_6_impl_audit",
-        "stage_9_impl_to_code_audit"
+        "stage-3",
+        "stage-6",
+        "stage-9",
+        "bridge"
       ]
+    },
+    "audit_type": {
+      "enum": [
+        "spec-audit",
+        "impl-audit",
+        "impl-to-code-audit",
+        "trace-audit",
+        "spec-to-cell-trace-audit",
+        "conformance-audit",
+        "bridge-admissibility"
+      ]
+    },
+    "aggregate_verdict": {
+      "enum": ["PASS", "PASS_WITH_WARN", "BLOCKED", "FAIL"]
     },
     "audit_record": {
       "type": "object",
@@ -22,26 +37,69 @@
         "schema_version",
         "document_type",
         "audit_id",
+        "audit_type",
         "stage",
         "reviewer_actor",
         "reviewer_model",
         "target_head",
+        "target_refs",
         "item_set_ref",
-        "items"
+        "matched_items",
+        "missing_items",
+        "extra_items",
+        "conflicting_items",
+        "items",
+        "aggregate_verdict"
       ],
       "properties": {
         "schema_version": { "const": "shirube-audit/v1" },
         "document_type": { "const": "audit_record" },
         "audit_id": { "type": "string", "pattern": "^AUDIT-[A-Z0-9-]+$" },
+        "audit_type": { "$ref": "#/$defs/audit_type" },
         "stage": { "$ref": "#/$defs/stage" },
         "reviewer_actor": { "type": "string", "minLength": 1 },
         "reviewer_model": { "type": "string", "minLength": 1 },
         "target_head": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+        "target_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
         "item_set_ref": { "type": "string", "minLength": 1 },
+        "matched_items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reconciliation_item" }
+        },
+        "missing_items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reconciliation_item" }
+        },
+        "extra_items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reconciliation_item" }
+        },
+        "conflicting_items": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reconciliation_item" }
+        },
         "items": {
           "type": "array",
           "minItems": 1,
           "items": { "$ref": "#/$defs/audit_item_result" }
+        },
+        "aggregate_verdict": { "$ref": "#/$defs/aggregate_verdict" }
+      }
+    },
+    "reconciliation_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["item_id"],
+      "properties": {
+        "item_id": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "evidence_ref": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
         }
       }
     },

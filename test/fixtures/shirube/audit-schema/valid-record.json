@@ -2,11 +2,22 @@
   "schema_version": "shirube-audit/v1",
   "document_type": "audit_record",
   "audit_id": "AUDIT-ADF-EXAMPLE-001",
-  "stage": "stage_3_spec_audit",
+  "audit_type": "spec-audit",
+  "stage": "stage-3",
   "reviewer_actor": "auditor",
   "reviewer_model": "gpt-5",
   "target_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "target_refs": ["SPEC-ADF-EXAMPLE-001"],
   "item_set_ref": "AUDIT-ITEM-SET-ADF-STAGE-3-001",
+  "matched_items": [
+    {
+      "item_id": "STAGE3-001",
+      "evidence_ref": ["docs/standards/shirube-ai-development-governance-standard-v1.md"]
+    }
+  ],
+  "missing_items": [],
+  "extra_items": [],
+  "conflicting_items": [],
   "items": [
     {
       "item_id": "STAGE3-001",
@@ -20,5 +31,6 @@
       "reason": "The referenced evidence is not available in this fixture.",
       "evidence_ref": []
     }
-  ]
+  ],
+  "aggregate_verdict": "PASS_WITH_WARN"
 }

@@ -2,9 +2,15 @@
   "schema_version": "shirube-audit/v1",
   "document_type": "audit_record",
   "audit_id": "AUDIT-ADF-EXAMPLE-001",
-  "stage": "stage_3_spec_audit",
+  "audit_type": "spec-audit",
+  "stage": "stage-3",
   "target_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "target_refs": ["SPEC-ADF-EXAMPLE-001"],
   "item_set_ref": "AUDIT-ITEM-SET-ADF-STAGE-3-001",
+  "matched_items": [],
+  "missing_items": [],
+  "extra_items": [],
+  "conflicting_items": [],
   "items": [
     {
       "item_id": "STAGE3-001",
@@ -12,5 +18,6 @@
       "reason": "Reviewer actor and model are required for maker/checker validation.",
       "evidence_ref": ["docs/standards/shirube-ai-development-governance-standard-v1.md"]
     }
-  ]
+  ],
+  "aggregate_verdict": "PASS"
 }

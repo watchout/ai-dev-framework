@@ -57,6 +57,35 @@ function validateRequired(definition: JsonObject, document: JsonObject, scope: s
 
 function validateAuditRecord(document: JsonObject): string[] {
   const errors = validateRequired(readDef("audit_record"), document, "audit_record");
+  const allowedAuditTypes = readDef("audit_type").enum as string[];
+  const allowedStages = readDef("stage").enum as string[];
+  const allowedAggregateVerdicts = readDef("aggregate_verdict").enum as string[];
+
+  if (typeof document.audit_type !== "string" || !allowedAuditTypes.includes(document.audit_type)) {
+    errors.push("audit_record.audit_type");
+  }
+
+  if (typeof document.stage !== "string" || !allowedStages.includes(document.stage)) {
+    errors.push("audit_record.stage");
+  }
+
+  if (!Array.isArray(document.target_refs) || document.target_refs.length === 0) {
+    errors.push("audit_record.target_refs");
+  }
+
+  for (const field of ["matched_items", "missing_items", "extra_items", "conflicting_items"]) {
+    if (!Array.isArray(document[field])) {
+      errors.push(`audit_record.${field}`);
+    }
+  }
+
+  if (
+    typeof document.aggregate_verdict !== "string" ||
+    !allowedAggregateVerdicts.includes(document.aggregate_verdict)
+  ) {
+    errors.push("audit_record.aggregate_verdict");
+  }
+
   const items = document.items;
   if (!Array.isArray(items) || items.length === 0) {
     errors.push("audit_record.items");
@@ -127,6 +156,20 @@ describe("shirube-audit/v1 schema", () => {
 
   it("accepts a valid structured audit record", () => {
     expect(validateDocument(fixture("valid-record.json"))).toEqual([]);
+  });
+
+  it("requires the unified audit envelope fields from the kernel SSOT", () => {
+    expect(validateDocument(fixture("missing-unified-envelope.json"))).toEqual(
+      expect.arrayContaining([
+        "audit_record.audit_type",
+        "audit_record.target_refs",
+        "audit_record.matched_items",
+        "audit_record.missing_items",
+        "audit_record.extra_items",
+        "audit_record.conflicting_items",
+        "audit_record.aggregate_verdict",
+      ]),
+    );
   });
 
   it("rejects an audit record with a missing item id", () => {
