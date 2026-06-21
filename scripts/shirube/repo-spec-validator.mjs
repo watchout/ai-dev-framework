@@ -210,6 +210,15 @@ export function validateRepoSpec(spec, file = ".shirube/repo-spec.yaml") {
   if (present(spec.remediation) && !isObject(spec.remediation)) {
     findings.push({ severity: "WARN", code: "invalid_remediation", field: "remediation", message: "remediation should be a mapping." });
   }
+  recommendMapping(findings, spec.operating_model, "operating_model");
+  recommendMapping(findings, spec.gate_catalog, "gate_catalog");
+  recommendMapping(findings, spec.required_evidence, "required_evidence");
+  recommendMapping(findings, spec.risk_tier_policy, "risk_tier_policy");
+  recommendMapping(findings, spec.waiver_policy, "waiver_policy");
+  recommendMapping(findings, spec.post_merge_policy, "post_merge_policy");
+  recommendMapping(findings, spec.remediation_contract, "remediation_contract");
+  validateAuditAssignment(findings, spec.audit_assignment);
+  validateConfirmationEvidence(findings, spec.confirmation_evidence);
 
   return result(file, findings);
 }
@@ -217,6 +226,104 @@ export function validateRepoSpec(spec, file = ".shirube/repo-spec.yaml") {
 function recommendNonEmptyArray(findings, value, field) {
   if (present(value) && (!Array.isArray(value) || value.length === 0)) {
     findings.push({ severity: "WARN", code: "invalid_recommended_array", field, message: `${field} should be a non-empty array before strict enforcement.` });
+  }
+}
+
+function recommendMapping(findings, value, field) {
+  if (present(value) && !isObject(value)) {
+    findings.push({ severity: "WARN", code: "invalid_recommended_mapping", field, message: `${field} should be a mapping before strict enforcement.` });
+  }
+}
+
+function validateAuditAssignment(findings, assignment) {
+  if (!present(assignment)) {
+    findings.push({
+      severity: "WARN",
+      code: "missing_audit_assignment",
+      field: "audit_assignment",
+      message: "audit_assignment should encode formal audit routing before premise confirmation.",
+    });
+    return;
+  }
+  if (!isObject(assignment)) {
+    findings.push({
+      severity: "WARN",
+      code: "invalid_audit_assignment",
+      field: "audit_assignment",
+      message: "audit_assignment should be a mapping.",
+    });
+    return;
+  }
+
+  warnUnless(findings, assignment.schema_version === "shirube-audit-assignment/v1", "invalid_audit_assignment_schema_version", "audit_assignment.schema_version", "audit_assignment.schema_version should be shirube-audit-assignment/v1.");
+  warnUnless(findings, assignment.author_must_not_audit_own_artifact === true, "invalid_author_audit_boundary", "audit_assignment.author_must_not_audit_own_artifact", "author_must_not_audit_own_artifact must be true.");
+
+  const roles = isObject(assignment.roles) ? assignment.roles : {};
+  warnUnless(findings, roles.spec?.may_audit === false, "invalid_spec_audit_role", "audit_assignment.roles.spec.may_audit", "spec is dispatch author only and must not audit.");
+  warnUnless(findings, roles.arc?.may_audit === false, "invalid_arc_audit_role", "audit_assignment.roles.arc.may_audit", "arc is design input / encode only and must not be the formal audit gate.");
+  warnUnless(findings, roles.codex_audit?.may_audit === true, "invalid_codex_audit_role", "audit_assignment.roles.codex_audit.may_audit", "codex-audit must be the formal audit gate.");
+
+  const artifacts = isObject(assignment.artifacts) ? assignment.artifacts : {};
+  for (const artifact of ["premise_rps", "feature_spec", "cell", "impl_to_code"]) {
+    warnUnless(findings, artifacts[artifact]?.audit_role === "codex-audit", "invalid_artifact_audit_role", `audit_assignment.artifacts.${artifact}.audit_role`, `${artifact} must route formal audit to codex-audit.`);
+  }
+  warnUnless(findings, artifacts.premise_rps?.author_role === "spec", "invalid_premise_author_role", "audit_assignment.artifacts.premise_rps.author_role", "premise_rps author_role should remain spec.");
+  warnUnless(findings, artifacts.premise_rps?.design_input_role === "arc", "invalid_premise_design_input_role", "audit_assignment.artifacts.premise_rps.design_input_role", "premise_rps design_input_role should be arc.");
+  warnUnless(findings, artifacts.bridge_admissibility?.audit_role === "codex-audit", "invalid_bridge_audit_role", "audit_assignment.artifacts.bridge_admissibility.audit_role", "Bridge admissibility audit must route to codex-audit.");
+  warnUnless(findings, artifacts.bridge_admissibility?.machine_gate === "bridge", "invalid_bridge_machine_gate", "audit_assignment.artifacts.bridge_admissibility.machine_gate", "Bridge admissibility must name bridge as the machine gate.");
+  warnUnless(findings, asArray(artifacts.route_ceo_approval?.authority_roles).includes("CEO"), "missing_ceo_approval_authority", "audit_assignment.artifacts.route_ceo_approval.authority_roles", "route:ceo-approval must include CEO authority.");
+  warnUnless(findings, asArray(artifacts.enforce?.authority_roles).includes("CEO"), "missing_enforce_authority", "audit_assignment.artifacts.enforce.authority_roles", "enforce must include CEO authority.");
+}
+
+function validateConfirmationEvidence(findings, confirmationEvidence) {
+  if (!present(confirmationEvidence)) {
+    findings.push({
+      severity: "WARN",
+      code: "missing_confirmation_evidence",
+      field: "confirmation_evidence",
+      message: "confirmation_evidence.rps_readiness should define the owner/CEO confirmation record contract.",
+    });
+    return;
+  }
+  if (!isObject(confirmationEvidence)) {
+    findings.push({
+      severity: "WARN",
+      code: "invalid_confirmation_evidence",
+      field: "confirmation_evidence",
+      message: "confirmation_evidence should be a mapping.",
+    });
+    return;
+  }
+
+  const readiness = confirmationEvidence.rps_readiness;
+  if (!isObject(readiness)) {
+    findings.push({
+      severity: "WARN",
+      code: "missing_rps_readiness_confirmation",
+      field: "confirmation_evidence.rps_readiness",
+      message: "confirmation_evidence.rps_readiness should define the RPS readiness confirmation contract.",
+    });
+    return;
+  }
+
+  warnUnless(findings, readiness.required === true, "invalid_rps_readiness_required", "confirmation_evidence.rps_readiness.required", "rps_readiness confirmation must be required.");
+  warnUnless(findings, readiness.authority_role === "CEO", "invalid_rps_readiness_authority_role", "confirmation_evidence.rps_readiness.authority_role", "rps_readiness authority_role must be CEO.");
+  warnUnless(findings, readiness.authority_actor === "watchout", "invalid_rps_readiness_authority_actor", "confirmation_evidence.rps_readiness.authority_actor", "rps_readiness authority_actor must be watchout.");
+  warnUnless(findings, readiness.canonical_artifact_path === ".shirube/evidence/rps-confirmation.yaml", "invalid_rps_readiness_path", "confirmation_evidence.rps_readiness.canonical_artifact_path", "rps_readiness must name .shirube/evidence/rps-confirmation.yaml as the canonical artifact path.");
+  warnUnless(findings, asArray(readiness.accepted_sinks).includes("repository_file") || asArray(readiness.accepted_sinks).includes("github_issue_comment") || asArray(readiness.accepted_sinks).includes("github_pr_comment"), "missing_rps_readiness_sink", "confirmation_evidence.rps_readiness.accepted_sinks", "rps_readiness must name at least one accepted sink.");
+  warnUnless(findings, readiness.github_marker === "shirube:rps-confirmation/v1", "invalid_rps_readiness_marker", "confirmation_evidence.rps_readiness.github_marker", "rps_readiness must name the shirube:rps-confirmation/v1 GitHub marker.");
+
+  for (const field of ["schema_version", "record_id", "repo", "rps_id", "source_pr", "exact_head_sha", "authority_role", "authority_actor", "verdict", "created_at", "evidence_refs"]) {
+    warnUnless(findings, asArray(readiness.required_fields).includes(field), "missing_rps_readiness_required_field", `confirmation_evidence.rps_readiness.required_fields.${field}`, `rps_readiness required_fields must include ${field}.`);
+  }
+  for (const verdict of ["CONFIRMED", "CHANGES_REQUIRED", "BLOCKED"]) {
+    warnUnless(findings, asArray(readiness.valid_verdicts).includes(verdict), "missing_rps_readiness_verdict", `confirmation_evidence.rps_readiness.valid_verdicts.${verdict}`, `rps_readiness valid_verdicts must include ${verdict}.`);
+  }
+}
+
+function warnUnless(findings, condition, code, field, message) {
+  if (!condition) {
+    findings.push({ severity: "WARN", code, field, message });
   }
 }
 

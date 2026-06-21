@@ -64,15 +64,40 @@ export function exitForVerdict(verdict) {
 }
 
 export function buildResult({ gate, verdict, reasons = [], remediation, ...rest }) {
+  const resolvedRemediation = remediation ?? {
+    what: verdict === "PASS" ? "No remediation required." : `Resolve ${gate} finding(s).`,
+    doc_ref: "docs/standards/shirube-ai-development-governance-standard-v1.md",
+  };
+  const remediationContract = verdict === "PASS"
+    ? {}
+    : { remediation_contract: buildRemediationContract({ gate, verdict, reasons, remediation: resolvedRemediation, rest }) };
   return {
     gate,
     verdict,
     reasons,
-    remediation: remediation ?? {
-      what: verdict === "PASS" ? "No remediation required." : `Resolve ${gate} finding(s).`,
-      doc_ref: "docs/standards/shirube-ai-development-governance-standard-v1.md",
-    },
+    remediation: resolvedRemediation,
+    ...remediationContract,
     ...rest,
+  };
+}
+
+export function buildRemediationContract({ gate, verdict, reasons = [], remediation = {}, rest = {} }) {
+  const actionableReasons = reasons.flatMap(flattenReasons);
+  const missingPrerequisites = actionableReasons
+    .map((reason) => reason.code ?? reason.gate ?? reason.field ?? reason.message)
+    .filter(Boolean);
+  return {
+    verdict,
+    current_phase: currentPhase(rest),
+    blocked_reason: blockedReason(actionableReasons, verdict),
+    missing_prerequisites: [...new Set(missingPrerequisites)],
+    required_next_actions: requiredNextActions(remediation, actionableReasons),
+    responsible_role: responsibleRole(gate),
+    allowed_next_phases: allowedNextPhases(gate, rest),
+    forbidden_next_phases: forbiddenNextPhases(verdict),
+    required_evidence: requiredEvidence(gate, actionableReasons),
+    observed_evidence: observedEvidence(rest),
+    reference_docs: referenceDocs(gate, remediation),
   };
 }
 
@@ -86,6 +111,109 @@ export function combineVerdicts(verdicts) {
   if (verdicts.includes("BLOCK")) return "BLOCK";
   if (verdicts.includes("WARN")) return "WARN";
   return "PASS";
+}
+
+function flattenReasons(reason) {
+  if (!reason) return [];
+  const nested = Array.isArray(reason.reasons) ? reason.reasons.flatMap(flattenReasons) : [];
+  if (isObject(reason)) return [reason, ...nested];
+  return nested;
+}
+
+function currentPhase(rest) {
+  return rest.current_phase ?? rest.observed?.current_phase ?? process.env.SHIRUBE_CURRENT_PHASE ?? "UNKNOWN";
+}
+
+function blockedReason(reasons, verdict) {
+  const blocking = reasons.find((reason) => reason.severity === "BLOCK") ?? reasons[0];
+  return blocking?.message ?? blocking?.code ?? (verdict === "WARN" ? "Warnings require review." : "Blocking prerequisites are missing.");
+}
+
+function requiredNextActions(remediation, reasons) {
+  const actions = [];
+  if (remediation.what) actions.push(remediation.what);
+  for (const reason of reasons) {
+    if (reason.message && !actions.includes(reason.message)) actions.push(reason.message);
+  }
+  return actions.length > 0 ? actions : ["Resolve the reported Shirube gate findings."];
+}
+
+function responsibleRole(gate) {
+  const key = String(gate).replace(/^controller:/, "");
+  const roles = {
+    "repo-spec": "repo_owner",
+    planning: "domain_designer",
+    "spec-to-cell-trace": "shirube_command_owner",
+    phase: "shirube_command_owner",
+    "design-conformance": "domain_designer",
+    readiness: "release_owner",
+    "dev-loop": "release_owner",
+    "change-flow": "implementation_owner",
+    "script-error": "implementation_owner",
+    controller: "release_owner",
+  };
+  return roles[key] ?? roles[String(gate)] ?? "release_owner";
+}
+
+function allowedNextPhases(gate, rest) {
+  if (Array.isArray(rest.allowed_next_phases)) return rest.allowed_next_phases;
+  const key = String(gate).replace(/^controller:/, "");
+  const phases = {
+    "repo-spec": ["REPO_SPEC_DRAFTED", "REPO_SPEC_CONFIRMED"],
+    planning: ["PREMISE_SPEC_CONFIRMED", "INVENTORY_CONFIRMED", "CELL_DRAFTED"],
+    "spec-to-cell-trace": ["CELL_TRACE_PASSED"],
+    phase: ["REPO_SPEC_CONFIRMED", "PREMISE_SPEC_CONFIRMED", "INVENTORY_CONFIRMED", "CELL_DRAFTED"],
+    "design-conformance": ["IMPL_AUDITED", "EXECUTION_READY"],
+    readiness: ["REPO_SPEC_CONFIRMED", "CELL_DRAFTED"],
+    "dev-loop": ["IMPL_AUDITED", "EXECUTION_READY"],
+    "change-flow": ["CELL_DRAFTED"],
+  };
+  return phases[key] ?? [];
+}
+
+function forbiddenNextPhases(verdict) {
+  if (verdict === "PASS") return [];
+  return ["EXECUTION_READY", "IMPLEMENTED", "MERGED", "RELEASED"];
+}
+
+function requiredEvidence(gate, reasons) {
+  const key = String(gate).replace(/^controller:/, "");
+  const defaults = {
+    "repo-spec": [".shirube/repo-spec.yaml"],
+    planning: ["premise_confirmation_ref", "inventory_confirmation_ref", "owner_confirmation_ref"],
+    "spec-to-cell-trace": [".shirube/specs/", ".shirube/cells/"],
+    phase: [".shirube/phase-state.json", "scripts/shirube/phases.config.json"],
+    "design-conformance": [".shirube/design-conformance-matrix.json"],
+    readiness: [".shirube/repo-spec.yaml", "planning evidence"],
+    "dev-loop": ["trace evidence", "phase evidence", "design conformance evidence"],
+    "change-flow": [".shirube/specs/", ".shirube/cells/"],
+  };
+  const fromReasons = reasons
+    .map((reason) => reason.field ?? reason.requirement ?? reason.control_id ?? reason.cell)
+    .filter(Boolean);
+  return [...new Set([...(defaults[key] ?? []), ...fromReasons])];
+}
+
+function observedEvidence(rest) {
+  const observed = [];
+  if (rest.checked_file) observed.push({ kind: "checked_file", value: rest.checked_file });
+  if (rest.current_phase !== undefined) observed.push({ kind: "current_phase", value: rest.current_phase });
+  if (rest.target_phase !== undefined) observed.push({ kind: "target_phase", value: rest.target_phase });
+  if (rest.observed !== undefined) observed.push({ kind: "observed", value: rest.observed });
+  if (rest.changed_files !== undefined) observed.push({ kind: "changed_files", value: rest.changed_files });
+  if (rest.matrix !== undefined) observed.push({ kind: "matrix", value: rest.matrix });
+  if (rest.child_results !== undefined) observed.push({ kind: "child_results", value: rest.child_results.map((result) => ({ gate: result.gate, verdict: result.verdict })) });
+  return observed;
+}
+
+function referenceDocs(gate, remediation) {
+  const refs = [
+    remediation.doc_ref,
+    ".shirube/repo-spec.yaml",
+    "docs/standards/shirube-ai-development-governance-standard-v1.md",
+  ].filter(Boolean);
+  if (String(gate).includes("phase")) refs.push("scripts/shirube/phases.config.json");
+  return [...new Set(refs)];
 }
 
 export function isObject(value) {

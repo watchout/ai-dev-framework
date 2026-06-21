@@ -32,6 +32,15 @@
     "soc2_categories",
     "iso42001_applicability",
     "agent_permission_boundary",
+    "operating_model",
+    "gate_catalog",
+    "required_evidence",
+    "risk_tier_policy",
+    "waiver_policy",
+    "post_merge_policy",
+    "remediation_contract",
+    "audit_assignment",
+    "confirmation_evidence",
     "remediation"
   ],
   "properties": {
@@ -92,6 +101,60 @@
         "forbidden_mcp_tools": { "type": "array", "items": { "type": "string" } }
       }
     },
+    "operating_model": {
+      "type": "object",
+      "properties": {
+        "readiness": { "type": "object" },
+        "dev_loop": { "type": "object" },
+        "change_flow": { "type": "object" },
+        "phase_control": { "type": "object" }
+      }
+    },
+    "gate_catalog": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/gateCatalogEntry" }
+    },
+    "required_evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "risk_tier_policy": { "type": "object" },
+    "waiver_policy": { "type": "object" },
+    "post_merge_policy": { "type": "object" },
+    "remediation_contract": {
+      "type": "object",
+      "required": ["applies_to", "fields"],
+      "properties": {
+        "applies_to": {
+          "type": "array",
+          "items": { "enum": ["WARN", "BLOCK"] }
+        },
+        "fields": {
+          "type": "array",
+          "contains": { "const": "required_next_actions" },
+          "items": {
+            "enum": [
+              "verdict",
+              "current_phase",
+              "blocked_reason",
+              "missing_prerequisites",
+              "required_next_actions",
+              "responsible_role",
+              "allowed_next_phases",
+              "forbidden_next_phases",
+              "required_evidence",
+              "observed_evidence",
+              "reference_docs"
+            ]
+          }
+        }
+      }
+    },
+    "audit_assignment": { "$ref": "#/$defs/auditAssignment" },
+    "confirmation_evidence": { "$ref": "#/$defs/confirmationEvidence" },
     "remediation": {
       "type": "object",
       "additionalProperties": {
@@ -100,6 +163,166 @@
         "properties": {
           "on_fail": { "type": "string", "minLength": 1 },
           "doc_ref": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "auditAssignment": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "source_ref",
+        "author_must_not_audit_own_artifact",
+        "roles",
+        "artifacts"
+      ],
+      "properties": {
+        "schema_version": { "const": "shirube-audit-assignment/v1" },
+        "source_ref": { "type": "string", "minLength": 1 },
+        "author_must_not_audit_own_artifact": { "const": true },
+        "roles": {
+          "type": "object",
+          "required": ["spec", "arc", "codex_audit"],
+          "properties": {
+            "spec": { "$ref": "#/$defs/auditAssignmentRole" },
+            "arc": { "$ref": "#/$defs/auditAssignmentRole" },
+            "codex_audit": { "$ref": "#/$defs/auditAssignmentRole" },
+            "bridge": { "$ref": "#/$defs/auditAssignmentRole" },
+            "cto": { "$ref": "#/$defs/auditAssignmentRole" },
+            "ceo": { "$ref": "#/$defs/auditAssignmentRole" }
+          }
+        },
+        "artifacts": {
+          "type": "object",
+          "required": [
+            "premise_rps",
+            "feature_spec",
+            "cell",
+            "impl_to_code",
+            "bridge_admissibility",
+            "route_ceo_approval",
+            "enforce"
+          ],
+          "properties": {
+            "premise_rps": { "$ref": "#/$defs/auditAssignmentArtifact" },
+            "feature_spec": { "$ref": "#/$defs/auditAssignmentArtifact" },
+            "cell": { "$ref": "#/$defs/auditAssignmentArtifact" },
+            "impl_to_code": { "$ref": "#/$defs/auditAssignmentArtifact" },
+            "bridge_admissibility": {
+              "type": "object",
+              "required": ["audit_role", "machine_gate"],
+              "properties": {
+                "audit_role": { "const": "codex-audit" },
+                "machine_gate": { "const": "bridge" }
+              }
+            },
+            "route_ceo_approval": { "$ref": "#/$defs/authorityRoute" },
+            "enforce": { "$ref": "#/$defs/authorityRoute" }
+          }
+        }
+      }
+    },
+    "auditAssignmentRole": {
+      "type": "object",
+      "required": ["responsibility"],
+      "properties": {
+        "responsibility": { "type": "string", "minLength": 1 },
+        "may_audit": { "type": "boolean" }
+      }
+    },
+    "auditAssignmentArtifact": {
+      "type": "object",
+      "required": ["audit_role"],
+      "properties": {
+        "audit_role": { "const": "codex-audit" },
+        "design_input_role": { "type": "string", "minLength": 1 },
+        "author_role": { "type": "string", "minLength": 1 },
+        "gate": { "type": "string", "minLength": 1 }
+      }
+    },
+    "authorityRoute": {
+      "type": "object",
+      "required": ["authority_roles"],
+      "properties": {
+        "authority_roles": {
+          "type": "array",
+          "minItems": 1,
+          "contains": { "const": "CEO" },
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "confirmationEvidence": {
+      "type": "object",
+      "required": ["rps_readiness"],
+      "properties": {
+        "rps_readiness": { "$ref": "#/$defs/rpsReadinessConfirmationEvidence" }
+      }
+    },
+    "rpsReadinessConfirmationEvidence": {
+      "type": "object",
+      "required": [
+        "required",
+        "authority_role",
+        "authority_actor",
+        "canonical_artifact_path",
+        "accepted_sinks",
+        "github_marker",
+        "required_fields",
+        "valid_verdicts"
+      ],
+      "properties": {
+        "required": { "const": true },
+        "authority_role": { "const": "CEO" },
+        "authority_actor": { "const": "watchout" },
+        "canonical_artifact_path": { "const": ".shirube/evidence/rps-confirmation.yaml" },
+        "accepted_sinks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": ["repository_file", "github_issue_comment", "github_pr_comment"]
+          }
+        },
+        "github_marker": { "const": "shirube:rps-confirmation/v1" },
+        "required_fields": {
+          "type": "array",
+          "contains": { "const": "exact_head_sha" },
+          "items": {
+            "enum": [
+              "schema_version",
+              "record_id",
+              "repo",
+              "rps_id",
+              "source_pr",
+              "exact_head_sha",
+              "authority_role",
+              "authority_actor",
+              "verdict",
+              "created_at",
+              "evidence_refs"
+            ]
+          }
+        },
+        "valid_verdicts": {
+          "type": "array",
+          "contains": { "const": "CONFIRMED" },
+          "items": {
+            "enum": ["CONFIRMED", "CHANGES_REQUIRED", "BLOCKED"]
+          }
+        }
+      }
+    },
+    "gateCatalogEntry": {
+      "type": "object",
+      "required": ["purpose", "script", "responsible_role"],
+      "properties": {
+        "purpose": { "type": "string", "minLength": 1 },
+        "script": { "type": "string", "minLength": 1 },
+        "responsible_role": { "type": "string", "minLength": 1 },
+        "required_evidence": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       }
     }
