@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
-import { buildResult, combineVerdicts, isMain, parseArgs, safeRun, verdictFromFindings } from "./lib.mjs";
+import { FAILURE_VERDICT, buildResult, combineVerdicts, isMain, parseArgs, safeRun, verdictFromFindings } from "./lib.mjs";
 
 const SCRIPT_BY_GATE = {
   "repo-spec": "scripts/shirube/check-repo-spec.mjs",
@@ -61,20 +61,32 @@ function runGate(gate, options) {
   if (options[fixtureKey]) args.push("--fixture", options[fixtureKey]);
   if (gate === "phase" && options["phase-state"]) args.push("--state", options["phase-state"]);
   try {
-    return JSON.parse(execFileSync("node", args, { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 }));
+    return annotateChildResult(gate, JSON.parse(execFileSync("node", args, { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 })));
   } catch (error) {
     const stdout = error.stdout?.toString();
-    if (stdout) return JSON.parse(stdout);
+    if (stdout) return annotateChildResult(gate, JSON.parse(stdout));
     return buildResult({
       gate,
-      verdict: "BLOCK",
+      verdict: FAILURE_VERDICT,
       reasons: [{ code: "child_gate_failed", message: error.message }],
       remediation: {
         what: `Fix ${gate} script execution.`,
         doc_ref: SCRIPT_BY_GATE[gate],
       },
+      script: SCRIPT_BY_GATE[gate],
     });
   }
+}
+
+function annotateChildResult(gate, result) {
+  if (result.verdict !== FAILURE_VERDICT) return result;
+  return {
+    ...result,
+    gate,
+    failed_child_gate: gate,
+    failure_source_gate: result.gate,
+    script: SCRIPT_BY_GATE[gate],
+  };
 }
 
 export function evaluateChangeFlow(options = {}) {

@@ -4,6 +4,9 @@ import { extname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
 export const VERDICTS = ["PASS", "WARN", "BLOCK"];
+export const REPORT_ONLY_VERDICTS = ["PASS_WITH_WARN", "BLOCKED"];
+export const FAILURE_VERDICT = "FAILURE";
+export const ALL_VERDICTS = [...VERDICTS, ...REPORT_ONLY_VERDICTS, FAILURE_VERDICT];
 
 export function parseArgs(argv) {
   const options = {};
@@ -59,8 +62,32 @@ export function writeResult(result) {
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
+export function isValidVerdict(verdict) {
+  return ALL_VERDICTS.includes(verdict);
+}
+
+export function isWouldBlockVerdict(verdict) {
+  return verdict === "BLOCK" || verdict === "BLOCKED";
+}
+
+export function isWarningVerdict(verdict) {
+  return verdict === "WARN" || verdict === "PASS_WITH_WARN";
+}
+
 export function exitForVerdict(verdict) {
-  if (verdict === "BLOCK") process.exitCode = 1;
+  const options = arguments[1] ?? {};
+  const reportOnly = options.reportOnly ?? true;
+  if (!isValidVerdict(verdict)) {
+    process.exitCode = 1;
+    return;
+  }
+  if (verdict === FAILURE_VERDICT) {
+    process.exitCode = 1;
+    return;
+  }
+  if (isWouldBlockVerdict(verdict) && !reportOnly) {
+    process.exitCode = 1;
+  }
 }
 
 export function buildResult({ gate, verdict, reasons = [], remediation, ...rest }) {
@@ -74,6 +101,7 @@ export function buildResult({ gate, verdict, reasons = [], remediation, ...rest 
   return {
     gate,
     verdict,
+    would_block: isWouldBlockVerdict(verdict),
     reasons,
     remediation: resolvedRemediation,
     ...remediationContract,
@@ -108,8 +136,9 @@ export function verdictFromFindings(findings) {
 }
 
 export function combineVerdicts(verdicts) {
-  if (verdicts.includes("BLOCK")) return "BLOCK";
-  if (verdicts.includes("WARN")) return "WARN";
+  if (verdicts.includes(FAILURE_VERDICT)) return FAILURE_VERDICT;
+  if (verdicts.some(isWouldBlockVerdict)) return "BLOCK";
+  if (verdicts.some(isWarningVerdict)) return "WARN";
   return "PASS";
 }
 
@@ -277,23 +306,39 @@ export function loadFixtureOrFiles(options, loader) {
   return loader();
 }
 
+export function buildFailureResult({ code = "script_failure", message }) {
+  return {
+    gate: "script-error",
+    verdict: FAILURE_VERDICT,
+    would_block: false,
+    reasons: [{ code, message }],
+    remediation: {
+      what: "Fix the script invocation, malformed input, missing artifact, or invalid verdict and rerun the gate.",
+      doc_ref: "docs/standards/shirube-ai-development-governance-standard-v1.md",
+    },
+  };
+}
+
 export function safeRun(fn) {
+  const options = arguments[1] ?? {};
   try {
     const result = fn();
-    writeResult(result);
-    exitForVerdict(result.verdict);
+    if (!isObject(result)) {
+      throw new Error("Gate script returned a non-object result.");
+    }
+    if (!isValidVerdict(result.verdict)) {
+      writeResult(buildFailureResult({
+        code: "unknown_verdict",
+        message: `Unknown verdict: ${String(result.verdict)}`,
+      }));
+      process.exitCode = 1;
+      return;
+    }
+    writeResult({ ...result, would_block: result.would_block ?? isWouldBlockVerdict(result.verdict) });
+    exitForVerdict(result.verdict, options);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    const result = buildResult({
-      gate: "script-error",
-      verdict: "BLOCK",
-      reasons: [{ code: "script_error", message }],
-      remediation: {
-        what: "Fix the script invocation or malformed input and rerun the gate.",
-        doc_ref: "docs/standards/shirube-ai-development-governance-standard-v1.md",
-      },
-    });
-    writeResult(result);
+    writeResult(buildFailureResult({ code: "script_error", message }));
     process.exitCode = 1;
   }
 }
