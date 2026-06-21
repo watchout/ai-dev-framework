@@ -1,0 +1,13 @@
+{
+  "schema_version": "shirube-audit/v1",
+  "document_type": "audit_item_set",
+  "item_set_id": "AUDIT-ITEM-SET-ADF-STAGE-3-001",
+  "stage": "stage-3",
+  "items": [
+    {
+      "item_id": "STAGE3-001",
+      "criterion": "Purpose, scope, and non-goals are explicit enough to audit.",
+      "required_evidence": ["feature spec path or SPEC-ID"]
+    }
+  ]
+}

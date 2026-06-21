@@ -1,0 +1,9 @@
+schema_version: shirube-audit/v1
+document_type: audit_item_set
+item_set_id: AUDIT-ITEM-SET-EXAMPLE-001
+stage: stage-3
+items:
+  - item_id: <stage item id>
+    criterion: <fixed review criterion>
+    required_evidence:
+      - <required evidence type or durable artifact reference>

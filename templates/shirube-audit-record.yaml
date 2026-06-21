@@ -1,0 +1,21 @@
+schema_version: shirube-audit/v1
+document_type: audit_record
+audit_id: AUDIT-EXAMPLE-001
+audit_type: spec-audit
+stage: stage-3
+reviewer_actor: <reviewer actor id>
+reviewer_model: <reviewer model id>
+target_head: <40-character commit sha>
+target_refs:
+  - <SPEC-ID|CELL-ID|IMPL-ID|path|PR URL|commit>
+item_set_ref: <audit item set id or path>
+matched_items: []
+missing_items: []
+extra_items: []
+conflicting_items: []
+items:
+  - item_id: <item id from item_set_ref>
+    verdict: UNVERIFIED
+    reason: <structured reason>
+    evidence_ref: []
+aggregate_verdict: PASS_WITH_WARN
