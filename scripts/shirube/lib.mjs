@@ -3,7 +3,9 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
 import { pathToFileURL } from "node:url";
 
-export const VERDICTS = ["PASS", "WARN", "BLOCK", "PASS_WITH_WARN", "BLOCKED"];
+export const VERDICTS = ["PASS", "WARN", "BLOCK"];
+export const REPORT_ONLY_VERDICTS = ["PASS_WITH_WARN", "BLOCKED"];
+export const ALL_VERDICTS = [...VERDICTS, ...REPORT_ONLY_VERDICTS];
 export const FAILURE_VERDICT = "FAILURE";
 
 export function parseArgs(argv) {
@@ -61,7 +63,7 @@ export function writeResult(result) {
 }
 
 export function isValidVerdict(verdict) {
-  return VERDICTS.includes(verdict);
+  return ALL_VERDICTS.includes(verdict);
 }
 
 export function isWouldBlockVerdict(verdict) {
@@ -72,7 +74,8 @@ export function isWarningVerdict(verdict) {
   return verdict === "WARN" || verdict === "PASS_WITH_WARN";
 }
 
-export function exitForVerdict(verdict, options = {}) {
+export function exitForVerdict(verdict) {
+  const options = arguments[1] ?? {};
   const reportOnly = options.reportOnly ?? true;
   if (!isValidVerdict(verdict)) {
     process.exitCode = 1;
@@ -184,7 +187,8 @@ export function buildFailureResult({ code = "script_failure", message }) {
   };
 }
 
-export function safeRun(fn, options = {}) {
+export function safeRun(fn) {
+  const options = arguments[1] ?? {};
   try {
     const result = fn();
     if (!isObject(result)) {
