@@ -27,9 +27,23 @@ Spec
   risks, acceptance criteria, tests, rollback, and applicable controls.
 
 Cell
-  The smallest goal-mode implementation range. A Cell has one clear goal,
-  one primary responsibility, one implementation boundary, and one verification
-  boundary.
+  The goal-mode development unit. A Cell carries one clear goal into
+  implementation and may contain multiple pull requests. A pull request is a
+  transport unit inside a Cell, not the Cell itself. A Cell is done only when
+  its executable fixtures pass and CI is green. If an executable fixture cannot
+  be written, the Cell is incorrectly sliced and must be re-cut.
+
+Contract Cell
+  A Cell that freezes a schema, interface, repo-spec, or other cross-Cell
+  contract. Contract Cells are kept small and hard-gated. Dependent
+  implementation Cells must not proceed until the relevant Contract Cell is
+  frozen.
+
+Goal-mode
+  The implementation mode where Codex, Claude, or another coding agent receives
+  the Cell goal and executable fixtures, then may autonomously produce the pull
+  request set inside that Cell boundary. Done remains fixture- and CI-based, not
+  narrative-based.
 
 Impl
   The construction drawing for a Cell. It describes how the Cell will be
@@ -42,6 +56,18 @@ Audit
 Evidence
   Durable proof that the Cell passed its required checks, tests, audits,
   post-merge verification, and release/rollback decision.
+
+Fixture
+  Executable acceptance evidence for a Cell. A fixture defines input and
+  expected output or expected gate behavior. It is the primary done criterion
+  for goal-mode execution.
+
+Version Axes
+  Standard or delivery-flow version, schema version, and product-line version
+  are separate axes and must not be mixed. A flow may be identified as V2 while
+  schema contracts remain immutable `/v1` contracts such as
+  `shirube-repo-spec/v1` or `shirube-audit/v1`. A product line such as Shirube
+  3.0 does not by itself change schema versions.
 ```
 
 ## 3. Reference Standards
