@@ -40,23 +40,310 @@ required_gates:
   - readiness_controller
   - dev_loop_controller
   - change_flow_controller
+premise_rps:
+  status: draft
+  route: route:ceo-approval
+  source_comments:
+    - https://github.com/watchout/ai-dev-framework/issues/450#issuecomment-4761115194
+    - https://github.com/watchout/ai-dev-framework/issues/450#issuecomment-4761262203
+    - https://github.com/watchout/ai-dev-framework/issues/450#issuecomment-4761272721
+  purpose: >
+    Establish the operating premise for building Shirube with Shirube itself,
+    so premise, readiness, audit routing, and enforcement boundaries catch
+    drift before new development Cells proceed.
+  confirmation_required_by: watchout
+  confirmation_evidence_required: true
+  confirmation_evidence_ref: .shirube/evidence/
+  owner_confirmation_rule: >
+    CEO confirmation is the readiness gate for this premise. Narrative approval
+    alone is not sufficient after this draft is merged; durable evidence must
+    be recorded before claiming premise confirmed.
+  inventory_status:
+    required: false
+    basis: >
+      Existing assets from #430, #434, #453, and #455 are treated as known
+      through the merged reality map work in #458. Additional inventory is not
+      required for this premise unless a later change request expands scope.
+canonical_term_sources:
+  cell: docs/standards/shirube-ai-development-governance-standard-v1.md#2-terms
+  contract_cell: docs/standards/shirube-ai-development-governance-standard-v1.md#2-terms
+  goal_mode: docs/standards/shirube-ai-development-governance-standard-v1.md#2-terms
+  version_axes: docs/standards/shirube-ai-development-governance-standard-v1.md#2-terms
+  premise_rps: .shirube/repo-spec.yaml
+  fixture: docs/standards/shirube-ai-development-governance-standard-v1.md#2-terms
+  evidence: docs/standards/shirube-ai-development-governance-standard-v1.md#2-terms
+readiness_flow:
+  sequence:
+    - introduction
+    - repository_premise_spec
+    - ceo_confirmation
+    - premise_or_foundation_spec_when_required
+    - inventory_when_required
+    - ready_for_development
+  rules:
+    - confirmed premise is required before new development Cells proceed
+    - owner confirmation requires durable evidence under .shirube/
+    - narrative cannot satisfy premise confirmation
+    - ADF readiness is retroactively established only when this RPS is confirmed
+development_loop:
+  sequence:
+    - feature_spec
+    - spec_audit
+    - cell_goal_and_fixture
+    - spec_to_cell_trace
+    - impl_plan
+    - impl_audit
+    - goal_mode_execution
+    - tests
+    - evidence
+    - one_semantic_audit
+    - owner_merge
+    - post_merge_verification
+  rules:
+    - contract or schema changes require a contract Cell before dependent implementation Cells
+    - fixture that cannot be written means the Cell is incorrectly sliced and must be re-cut
+    - PRs are transport units within a Cell, not the development unit
+change_addition_flow:
+  sequence:
+    - structured_change_request
+    - impact_analysis
+    - affected_rps_spec_cell_impl_refs
+    - risk_reclassification
+    - reapproval_or_waiver
+    - implementation_or_hold
+  classifications:
+    - same_impl_amendment
+    - cell_amendment
+    - new_cell_required
+    - feature_spec_update_required
+    - premise_update_required
+    - inventory_update_required
+    - waiver_required
+    - protected_approval_required
+    - blocked_unclassified
+  retro_rule: >
+    Unclassified changes from this premise-establishment session, including
+    version-axis drift, schema reconciliation, and role changes, must be
+    recorded as change records before they are treated as ready.
+phase_model:
+  source: scripts/shirube/phases.config.json
+  integration_rule: >
+    The #458 phase model and #452 post-EXECUTION_READY lifecycle are one model.
+    Do not define a second phase machine in prose.
+  terminal_or_hold_states:
+    - BLOCKED
+    - HUMAN_DECISION_REQUIRED
+    - WAIVER_REQUIRED
+gate_catalog:
+  repo_spec:
+    purpose: Validate Repository Premise Spec structure and premise readiness.
+    evidence_required:
+      - .shirube/repo-spec.yaml
+      - CEO confirmation evidence when claiming confirmed premise
+  planning:
+    purpose: Validate premise, inventory, and owner confirmation references.
+    evidence_required:
+      - premise_confirmation_ref when premise_required is true
+      - inventory_confirmation_ref when inventory_required is true
+      - owner_confirmation_ref when owner_confirmation_required is true
+  spec_to_cell_trace:
+    purpose: Validate every requirement maps to a bounded Cell with risk tier and paths.
+    evidence_required:
+      - current Spec artifact
+      - current Cell artifact
+      - covered requirement IDs
+  phase:
+    purpose: Validate current phase and allowed next phases from deterministic config.
+    evidence_required:
+      - .shirube/phase-state.json
+      - scripts/shirube/phases.config.json
+  design_conformance:
+    purpose: Validate design-conformance matrix mapping without meaning judgments.
+    evidence_required:
+      - .shirube/design-conformance-matrix.json
+  lifecycle_impl_loop_change_authority:
+    purpose: >
+      Validate post-EXECUTION_READY lifecycle, implementation-loop checks,
+      change classification, and authority/waiver evidence from #452 Cells.
+    evidence_required:
+      - exact head evidence
+      - waiver or authority record when applicable
+  audit_bridge:
+    purpose: Validate structured audit output before merge gates consume it.
+    evidence_required:
+      - shirube-audit/v1 record
+      - Bridge admissibility PASS
+audit_model:
+  part_a_machine_reconciliation:
+    purpose: Deterministic artifact, trace, scope, head, waiver, authority, and evidence checks.
+  part_b_semantic_audit:
+    purpose: List-driven LLM semantic audit with structured item output.
+    prose_is_evidence: false
+  bridge_admissibility:
+    purpose: Machine check that decides whether Part B output is valid gate input.
+    merge_gate_consumes: Bridge output
+    merge_gate_does_not_consume: freeform LLM prose
+  audit_schema: shirube-audit/v1
+  audit_schema_source: https://github.com/watchout/ai-dev-framework/pull/459
+  evidence_consistency:
+    exact_head_required: true
+    base_ref_required_when_available: true
+    placeholder_or_pending_values_allowed: false
+risk_tier_policy:
+  default: R2
+  chains:
+    R0:
+      gates:
+        - mechanical
+      semantic_audit: none_by_default
+      merge: auto_merge_candidate_only_until_enforcement_cell
+    R1_R2:
+      gates:
+        - mechanical
+        - one_standardized_semantic_audit
+      audit_scope: cell_unit_not_per_pr
+      merge: owner_merge_owner_not_implementation_actor
+      cto_required: false
+    R3_R4:
+      gates:
+        - mechanical
+        - semantic_audit
+        - human_authority
+        - staged_rollout
+      cto_required: true
+    route_ceo_approval:
+      gates:
+        - ceo_ratification
+      activation_allowed_without_ceo_evidence: false
+waiver_policy:
+  expiry_required: true
+  hard_block_permanent_bypass_allowed: false
+  required_fields:
+    - target_cell
+    - target_check
+    - reason
+    - risk_accepted
+    - compensating_controls
+    - approver
+    - expiry_date
+    - follow_up_issue
+post_merge_verification:
+  required: true
+  evidence:
+    - merge commit is on main
+    - branch protection and ruleset mutation is zero unless separately approved
+    - report-only workflows remain report-only
+    - evidence ledger is updated
+    - fleet PID drift is checked when applicable
+enforcement_ladder:
+  levels:
+    - id: Lv0
+      name: doc
+    - id: Lv1
+      name: machine_readable
+    - id: Lv2
+      name: cli_check
+    - id: Lv3
+      name: report_only_workflow
+      current: true
+    - id: Lv4
+      name: blocked_verdict_fails_workflow
+    - id: Lv5
+      name: required_check_or_ruleset
+      requires_ceo_approval: true
+  enforce_step_rule: >
+    Lv5 requires F1 role-vocab to hard-core promotion plus protected settings
+    changes and CEO approval. It may only proceed after report-only pilot false
+    positives are zero.
+  cross_repo_distribution:
+    mechanism: reusable_workflow_or_reference
+    copy_paste_distribution_allowed: false
+    status: deferred_tracked
+dogfood_discipline:
+  retroactive_readiness: >
+    This RPS confirmation retroactively establishes ADF readiness. After that,
+    every remaining Shirube construction Cell is checked against this premise.
+  progressive_self_application: >
+    New gates are applied immediately in report-only mode to remaining Shirube
+    construction work once they land.
+  drift_to_ssot: >
+    Each detected drift is returned to crisp premise or standard definitions
+    rather than accepted as narrative exception.
+remediation_contract:
+  applies_to:
+    - WARN
+    - BLOCK
+  fields:
+    - verdict
+    - current_phase
+    - blocked_reason
+    - missing_prerequisites
+    - required_next_actions
+    - responsible_role
+    - allowed_next_phases
+    - forbidden_next_phases
+    - required_evidence
+    - observed_evidence
+    - reference_docs
+audit_assignment_routing:
+  effective_on_rps_confirmation: true
+  author_self_audit_allowed: false
+  routing:
+    premise_rps:
+      audit_role: codex-audit
+      design_input: arc when online
+    feature_spec:
+      audit_role: codex-audit
+    cell:
+      audit_role: codex-audit
+    impl_to_code_l2:
+      audit_role: codex-audit
+    bridge_admissibility:
+      audit_role: codex-audit
+      machine_gate: Bridge
+    route_ceo_approval_or_enforce:
+      audit_role: CEO plus CTO for R3/R4 governance
+  rules:
+    - spec is dispatch author only and does not audit
+    - arc provides design encode and design input but is not the audit gate
+    - codex-audit must be online before premise confirmation audit proceeds
+    - role vocabulary unification is deferred to F1 before enforcement
+  bootstrap:
+    - spec drafted this RPS
+    - codex-audit audits this RPS after it is online
+    - CEO confirms the premise readiness gate
+    - future premise changes follow this same routing
+acceptance_criteria:
+  - canonical Cell, contract Cell, goal-mode, and version-axis definitions live in the standard
+  - actor roster and separation-of-duties transition are explicit
+  - readiness flow and owner confirmation evidence are explicit
+  - contract-freeze and fixture-based Cell sizing are explicit
+  - enforcement ladder and CEO-gated enforce step are explicit
+  - dogfood discipline is explicit
+  - CEO confirmation is still pending after this draft PR
 roles:
   spec: shirube-spec
   arc: shirube-arc
   design_reviewer: shirube-design-reviewer
   impl_runner: codex-adf
-  impl_reviewer: shirube-command
+  impl_reviewer: codex-audit
+  semantic_auditor: codex-audit
+  premise_auditor: codex-audit
+  bridge_auditor: codex-audit
   release_owner: watchout
   repo_owner: watchout
   security_owner: watchout
   evidence_owner: watchout
   implementation_owner: codex-adf
   command_review_owner: shirube-command
+  ceo: watchout
+  cto: codex-cto
 codeowners_ref: CODEOWNERS
 audit_responsibilities: >
   Script gates provide deterministic prerequisite, trace, phase, and mapping
-  evidence. Meaning audits, implementation audits, code audits, and release
-  decisions remain independent reviewer responsibilities.
+  evidence. codex-audit is the audit gate for premise, Feature Spec, Cell,
+  Impl-to-Code, and Bridge admissibility audit paths once online. Release and
+  CEO-routed decisions remain separate owner responsibilities.
 shared_terminology:
   Goal: User-approved outcome boundary.
   Phase: Script-controlled progression state.
