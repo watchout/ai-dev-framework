@@ -1,0 +1,9 @@
+{
+  "gate": "fixture",
+  "verdict": "MAYBE",
+  "reasons": [],
+  "remediation": {
+    "what": "Invalid verdict fixture.",
+    "doc_ref": "test/fixtures/shirube/failure-semantics/unknown-verdict.json"
+  }
+}

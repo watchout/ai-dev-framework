@@ -1,0 +1,9 @@
+{
+  "gate": "fixture",
+  "verdict": "PASS",
+  "reasons": [],
+  "remediation": {
+    "what": "No remediation required.",
+    "doc_ref": "test/fixtures/shirube/failure-semantics/pass.json"
+  }
+}

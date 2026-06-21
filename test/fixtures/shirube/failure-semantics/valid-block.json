@@ -1,0 +1,14 @@
+{
+  "gate": "fixture",
+  "verdict": "BLOCK",
+  "reasons": [
+    {
+      "code": "fixture_block",
+      "message": "This is a valid report-only would-block finding."
+    }
+  ],
+  "remediation": {
+    "what": "Record would-block without failing the report-only workflow.",
+    "doc_ref": "test/fixtures/shirube/failure-semantics/valid-block.json"
+  }
+}
