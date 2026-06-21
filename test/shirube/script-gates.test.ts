@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
@@ -24,6 +25,10 @@ function run(script: string, args: string[] = []): { exitCode: number; json: any
   }
 }
 
+function readFixture(name: string): any {
+  return JSON.parse(readFileSync(fixture(name), "utf8"));
+}
+
 function expectGateShape(result: { json: any }): void {
   expect(result.json).toHaveProperty("gate");
   expect(["PASS", "WARN", "BLOCK"]).toContain(result.json.verdict);
@@ -38,6 +43,42 @@ describe("Shirube script gates", () => {
     expectGateShape(result);
     expect(result.exitCode).toBe(0);
     expect(result.json.verdict).toBe("PASS");
+  });
+
+  it("repo-spec encodes audit assignment and RPS confirmation evidence contracts", () => {
+    const spec = readFixture("repo-spec.pass.json");
+    expect(spec.audit_assignment.author_must_not_audit_own_artifact).toBe(true);
+    expect(spec.audit_assignment.roles.spec.may_audit).toBe(false);
+    expect(spec.audit_assignment.roles.arc.may_audit).toBe(false);
+    expect(spec.audit_assignment.roles.codex_audit.may_audit).toBe(true);
+    expect(spec.audit_assignment.artifacts.premise_rps.audit_role).toBe("codex-audit");
+    expect(spec.audit_assignment.artifacts.premise_rps.audit_role).not.toBe("arc");
+    expect(spec.audit_assignment.artifacts.premise_rps.audit_role).not.toBe("spec");
+    expect(spec.audit_assignment.artifacts.bridge_admissibility.machine_gate).toBe("bridge");
+    expect(spec.confirmation_evidence.rps_readiness.canonical_artifact_path).toBe(
+      ".shirube/evidence/rps-confirmation.yaml",
+    );
+    expect(spec.confirmation_evidence.rps_readiness.github_marker).toBe("shirube:rps-confirmation/v1");
+    expect(spec.confirmation_evidence.rps_readiness.required_fields).toContain("exact_head_sha");
+    expect(spec.confirmation_evidence.rps_readiness.valid_verdicts).toEqual([
+      "CONFIRMED",
+      "CHANGES_REQUIRED",
+      "BLOCKED",
+    ]);
+  });
+
+  it("repo-spec warns when audit assignment is missing during report-only migration", () => {
+    const result = run("scripts/shirube/check-repo-spec.mjs", ["--fixture", fixture("repo-spec.lightweight-aun.json")]);
+    expect(result.exitCode).toBe(0);
+    expect(result.json.verdict).toBe("WARN");
+    expect(result.json.reasons.map((reason: any) => reason.code)).toContain("missing_audit_assignment");
+  });
+
+  it("repo-spec warns when RPS readiness confirmation evidence is missing during report-only migration", () => {
+    const result = run("scripts/shirube/check-repo-spec.mjs", ["--fixture", fixture("repo-spec.lightweight-aun.json")]);
+    expect(result.exitCode).toBe(0);
+    expect(result.json.verdict).toBe("WARN");
+    expect(result.json.reasons.map((reason: any) => reason.code)).toContain("missing_confirmation_evidence");
   });
 
   it("repo-spec warns on canonical_core without @ pin during pilot migration", () => {
