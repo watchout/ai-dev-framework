@@ -1,0 +1,24 @@
+{
+  "schema_version": "shirube-audit/v1",
+  "document_type": "audit_record",
+  "audit_id": "AUDIT-ADF-EXAMPLE-001",
+  "stage": "stage_3_spec_audit",
+  "reviewer_actor": "auditor",
+  "reviewer_model": "gpt-5",
+  "target_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "item_set_ref": "AUDIT-ITEM-SET-ADF-STAGE-3-001",
+  "items": [
+    {
+      "item_id": "STAGE3-001",
+      "verdict": "PASS",
+      "reason": "The spec purpose and scope are explicit.",
+      "evidence_ref": ["docs/standards/shirube-ai-development-governance-standard-v1.md"]
+    },
+    {
+      "item_id": "STAGE3-002",
+      "verdict": "UNVERIFIED",
+      "reason": "The referenced evidence is not available in this fixture.",
+      "evidence_ref": []
+    }
+  ]
+}
