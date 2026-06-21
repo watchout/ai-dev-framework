@@ -186,6 +186,18 @@ describe("shirube-audit/v1 schema", () => {
     );
   });
 
+  it("requires audit_type in the audit envelope", () => {
+    expect(validateDocument(fixture("missing-audit-type.json"))).toContain("audit_record.audit_type");
+  });
+
+  it("requires target_refs in the audit envelope", () => {
+    expect(validateDocument(fixture("missing-target-refs.json"))).toContain("audit_record.target_refs");
+  });
+
+  it("requires target_head in the audit envelope", () => {
+    expect(validateDocument(fixture("missing-target-head.json"))).toContain("audit_record.target_head");
+  });
+
   it("rejects unknown aggregate verdict values", () => {
     expect(validateDocument(fixture("unknown-aggregate-verdict.json"))).toContain(
       "audit_record.aggregate_verdict",
