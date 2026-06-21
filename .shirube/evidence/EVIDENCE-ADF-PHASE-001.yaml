@@ -1,0 +1,58 @@
+schema_version: shirube-evidence/v1
+EVIDENCE-ID: EVIDENCE-ADF-PHASE-001
+SPEC-ID: SPEC-ADF-PHASE-001
+CELL-ID: CELL-ADF-PHASE-001
+IMPL-ID: IMPL-ADF-PHASE-001
+PR-ID: pending-pr-creation
+commit_sha: pending-pr-creation
+audit_results:
+  - AUDIT-ADF-PHASE-SPEC-001
+  - AUDIT-ADF-PHASE-IMPL-001
+ci_runs:
+  - name: git diff --check origin/main...HEAD
+    result: N/A
+    url: pending-local-validation
+  - name: npm run lint
+    result: N/A
+    url: pending-local-validation
+  - name: npm run type-check
+    result: N/A
+    url: pending-local-validation
+  - name: npm run build:cli
+    result: N/A
+    url: pending-local-validation
+  - name: focused phase tests
+    result: N/A
+    url: pending-local-validation
+  - name: phase check
+    result: N/A
+    url: pending-pr-url
+  - name: conveyor check
+    result: N/A
+    url: pending-pr-url
+artifact_locations:
+  - .shirube/specs/SPEC-ADF-PHASE-001.md
+  - .shirube/cells/CELL-ADF-PHASE-001.yaml
+  - .shirube/impls/IMPL-ADF-PHASE-001.md
+  - .shirube/audits/AUDIT-ADF-PHASE-SPEC-001.yaml
+  - .shirube/audits/AUDIT-ADF-PHASE-IMPL-001.yaml
+  - .shirube/evidence/EVIDENCE-ADF-PHASE-001.yaml
+  - src/cli/lib/phase-conveyor.ts
+  - src/cli/commands/phase.ts
+  - src/cli/index.ts
+  - src/cli/lib/phase-conveyor.test.ts
+  - src/cli/commands/phase.test.ts
+  - TRACE-ADF-PHASE-001 in .shirube/specs/SPEC-ADF-PHASE-001.md Trace Matrix
+  - TEST-MAP-ADF-PHASE-001 in .shirube/specs/SPEC-ADF-PHASE-001.md Test Plan
+  - CONTRACT-ID: CONTRACT-ADF-PHASE-001 in .shirube/cells/CELL-ADF-PHASE-001.yaml execution_contract
+post_merge_verification:
+  result: N/A
+  evidence:
+    - This slice stops after PR creation for Shirube command review.
+    - Required-check activation, workflow enforcement, target repo rollout, AUN, and multi-agent automation require later approved Cells.
+waiver_refs: []
+release_or_rollback_decision:
+  result: N/A
+  evidence:
+    - Release decision is outside this Cell and remains with release owner after command review.
+  decision_owner: watchout

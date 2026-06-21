@@ -1,0 +1,114 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-PHASE-001
+SPEC-ID: SPEC-ADF-PHASE-001
+risk_tier: R2
+goal: Implement the deterministic Shirube phase conveyor check command for PR phase readiness evidence.
+covered_req_ids:
+  - REQ-ADF-PHASE-001
+  - REQ-ADF-PHASE-002
+  - REQ-ADF-PHASE-003
+  - REQ-ADF-PHASE-004
+  - REQ-ADF-PHASE-005
+  - REQ-ADF-PHASE-006
+  - REQ-ADF-PHASE-007
+  - REQ-ADF-PHASE-008
+  - REQ-ADF-PHASE-009
+  - SEC-ADF-PHASE-001
+allowed_paths:
+  - src/cli/**
+  - .shirube/**
+  - test/**
+  - tests/**
+forbidden_paths:
+  - .github/workflows/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - .env.*
+  - private-config/**
+  - secrets/**
+acceptance_criteria:
+  - id: AC-ADF-PHASE-001
+    statement: shirube phase check accepts a PR target and emits deterministic schema shirube-phase-check/v1 JSON.
+    linked_req_ids: [REQ-ADF-PHASE-001, REQ-ADF-PHASE-002]
+  - id: AC-ADF-PHASE-002
+    statement: Phase output distinguishes repo-spec drafted versus confirmed when owner/domain-designer confirmation is required.
+    linked_req_ids: [REQ-ADF-PHASE-003, REQ-ADF-PHASE-008]
+  - id: AC-ADF-PHASE-003
+    statement: Phase output distinguishes premise required, premise drafted, and premise confirmed states.
+    linked_req_ids: [REQ-ADF-PHASE-004]
+  - id: AC-ADF-PHASE-004
+    statement: Phase output distinguishes inventory required, inventory drafted, and inventory confirmed states.
+    linked_req_ids: [REQ-ADF-PHASE-005]
+  - id: AC-ADF-PHASE-005
+    statement: Phase output distinguishes Cell drafted, Impl drafted, Impl audited, and execution ready states.
+    linked_req_ids: [REQ-ADF-PHASE-006]
+  - id: AC-ADF-PHASE-006
+    statement: Cell/Impl artifacts before required parent premise or inventory confirmation produce blocking findings.
+    linked_req_ids: [REQ-ADF-PHASE-007]
+  - id: AC-ADF-PHASE-007
+    statement: Narrative confirmation claims without structured evidence do not satisfy confirmation gates.
+    linked_req_ids: [REQ-ADF-PHASE-009]
+  - id: AC-ADF-PHASE-008
+    statement: Required checks, workflows, branch protection, rulesets, target repos, AUN/multi-agent automation, package files, and production/deploy behavior remain unchanged.
+    linked_req_ids: [SEC-ADF-PHASE-001]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-PHASE-001"
+required_evidence:
+  - changed_files
+  - commands_run
+  - focused_phase_tests
+  - phase_check_result
+  - conveyor_check_result
+  - PR_URL
+  - exact_head_sha
+non_goals:
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - active workflow mutation
+  - package file changes
+  - target repository mutation
+  - AUN or multi-agent automation activation
+  - production or deploy behavior changes
+stop_conditions:
+  - implementation requires required-check activation
+  - implementation requires workflow, branch protection, or ruleset mutation
+  - implementation requires target repository mutation
+  - implementation requires AUN or multi-agent automation activation
+  - implementation requires production or deploy behavior changes
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  shorthand: Goal-mode Implementation
+  allowed_commands:
+    - git diff --check origin/main...HEAD
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npx vitest run src/cli/lib/phase-conveyor.test.ts src/cli/commands/phase.test.ts
+    - npm run --silent shirube -- phase check <PR_URL> --format json
+    - npm run --silent shirube -- conveyor check <PR_URL> --format json
+  forbidden_commands:
+    - gh pr merge
+    - branch protection or ruleset mutation
+    - required check activation
+    - active workflow mutation
+    - package mutation
+    - target repository mutation
+    - AUN, Discord, DB, queue, LaunchAgent, production, deploy, or multi-agent activation
+  handoff_conditions:
+    - Spec Audit PASS
+    - Impl Audit PASS
+    - PR opened for Shirube command review
+    - deterministic phase check evidence attached to handoff
+  completion_evidence:
+    - implemented REQ-IDs
+    - changed files
+    - exact head SHA
+    - commands run
+    - test results
+    - phase check result
+    - conveyor check result
+    - non-scope confirmation
