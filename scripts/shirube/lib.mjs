@@ -5,8 +5,8 @@ import { pathToFileURL } from "node:url";
 
 export const VERDICTS = ["PASS", "WARN", "BLOCK"];
 export const REPORT_ONLY_VERDICTS = ["PASS_WITH_WARN", "BLOCKED"];
-export const ALL_VERDICTS = [...VERDICTS, ...REPORT_ONLY_VERDICTS];
 export const FAILURE_VERDICT = "FAILURE";
+export const ALL_VERDICTS = [...VERDICTS, ...REPORT_ONLY_VERDICTS, FAILURE_VERDICT];
 
 export function parseArgs(argv) {
   const options = {};
@@ -81,6 +81,10 @@ export function exitForVerdict(verdict) {
     process.exitCode = 1;
     return;
   }
+  if (verdict === FAILURE_VERDICT) {
+    process.exitCode = 1;
+    return;
+  }
   if (isWouldBlockVerdict(verdict) && !reportOnly) {
     process.exitCode = 1;
   }
@@ -107,7 +111,7 @@ export function verdictFromFindings(findings) {
 }
 
 export function combineVerdicts(verdicts) {
-  if (verdicts.includes(FAILURE_VERDICT)) return "BLOCK";
+  if (verdicts.includes(FAILURE_VERDICT)) return FAILURE_VERDICT;
   if (verdicts.some(isWouldBlockVerdict)) return "BLOCK";
   if (verdicts.some(isWarningVerdict)) return "WARN";
   return "PASS";

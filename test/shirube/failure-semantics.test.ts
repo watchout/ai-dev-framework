@@ -4,6 +4,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const fixtures = path.join(root, "test/fixtures/shirube/failure-semantics");
+const scriptGateFixtures = path.join(root, "test/fixtures/shirube/script-gates");
 
 function fixture(name: string): string {
   return path.join(fixtures, name);
@@ -16,6 +17,21 @@ function runSafeFixture(filePath: string): { exitCode: number; json: any } {
   ].join(" ");
   try {
     const stdout = execFileSync("node", ["--input-type=module", "-e", script, filePath], {
+      cwd: root,
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return { exitCode: 0, json: JSON.parse(stdout) };
+  } catch (error) {
+    const err = error as { status?: number; stdout?: Buffer | string };
+    const stdout = Buffer.isBuffer(err.stdout) ? err.stdout.toString("utf8") : err.stdout ?? "";
+    return { exitCode: err.status ?? 1, json: JSON.parse(stdout) };
+  }
+}
+
+function runController(args: string[]): { exitCode: number; json: any } {
+  try {
+    const stdout = execFileSync("node", ["scripts/shirube/controller.mjs", ...args], {
       cwd: root,
       encoding: "utf8",
       stdio: ["pipe", "pipe", "pipe"],
@@ -61,5 +77,44 @@ describe("Shirube report-only failure semantics", () => {
     expect(result.exitCode).not.toBe(0);
     expect(result.json.verdict).toBe("FAILURE");
     expect(result.json.reasons.map((reason: any) => reason.code)).toContain("unknown_verdict");
+  });
+
+  it("propagates child gate failures through the readiness controller", () => {
+    const result = runController([
+      "readiness",
+      "--repo-spec-fixture",
+      "/tmp/does-not-exist.json",
+      "--planning-fixture",
+      path.join(scriptGateFixtures, "planning.pass.json"),
+    ]);
+
+    expect(result.exitCode).not.toBe(0);
+    expect(result.json.verdict).toBe("FAILURE");
+    expect(result.json.would_block).toBe(false);
+    expect(result.json.child_results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          gate: "repo-spec",
+          verdict: "FAILURE",
+          failed_child_gate: "repo-spec",
+          failure_source_gate: "script-error",
+          script: "scripts/shirube/check-repo-spec.mjs",
+          reasons: expect.arrayContaining([
+            expect.objectContaining({
+              code: "script_error",
+              message: expect.stringContaining("File not found"),
+            }),
+          ]),
+        }),
+      ]),
+    );
+    expect(result.json.reasons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          gate: "repo-spec",
+          verdict: "FAILURE",
+        }),
+      ]),
+    );
   });
 });
