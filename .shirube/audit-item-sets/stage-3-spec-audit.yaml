@@ -1,0 +1,66 @@
+schema_version: shirube-audit/v1
+document_type: audit_item_set
+item_set_id: AUDIT-ITEM-SET-STAGE-3-SPEC-V1
+stage: stage-3
+items:
+  - item_id: STAGE3-SPEC-PURPOSE-CLEAR
+    criterion: Spec purpose, target scope, and intended behavior change are clear enough to drive Cell decomposition.
+    required_evidence:
+      - SPEC-ID
+      - spec purpose section
+      - spec target scope or changed areas section
+  - item_id: STAGE3-SPEC-NONGOALS-EXPLICIT
+    criterion: Non-goals and out-of-scope surfaces are explicit enough to prevent implementation expansion.
+    required_evidence:
+      - spec non-goals section
+      - forbidden areas or excluded responsibilities section
+  - item_id: STAGE3-SPEC-ACCEPTANCE-TESTABLE
+    criterion: Acceptance criteria are testable and can be mapped to TEST-ID or fixture expectations.
+    required_evidence:
+      - acceptance criteria section
+      - TEST-ID list or fixture/test plan
+  - item_id: STAGE3-SPEC-TERMS-DEFINED
+    criterion: Ambiguous terms, overloaded vocabulary, version axes, and role names are defined or removed.
+    required_evidence:
+      - glossary or canonical terms section
+      - repo-spec terminology reference when applicable
+  - item_id: STAGE3-SPEC-REQ-ID-ADDRESSABLE
+    criterion: Requirements are individually addressable with stable IDs such as REQ, SEC, NFR, AI, DATA, or TEST.
+    required_evidence:
+      - requirements table or list with stable IDs
+  - item_id: STAGE3-SPEC-FAILURE-MODES-LISTED
+    criterion: Negative cases, failure modes, rollback, or recovery expectations are listed when relevant.
+    required_evidence:
+      - negative cases section
+      - failure modes section
+      - rollback or recovery section
+  - item_id: STAGE3-SPEC-SECURITY-PRIVACY-AI-DECLARED
+    criterion: Security, privacy, data, and AI usage impact are declared, including N/A when not applicable.
+    required_evidence:
+      - security impact section
+      - privacy impact section
+      - data impact section
+      - AI usage impact section
+  - item_id: STAGE3-SPEC-CONTRACT-IMPACT-DECLARED
+    criterion: API, DB, prompt, event, MCP, memory, migration, data, or cross-repo contract impact is declared, including N/A when not applicable.
+    required_evidence:
+      - API or contract impact section
+      - DB or migration impact section
+      - data or cross-repo impact section
+      - N/A declaration when no impact exists
+  - item_id: STAGE3-SPEC-CELL-DECOMPOSABLE
+    criterion: The spec can be decomposed into Cells with clear boundaries, fixtures, risk tier, and evidence expectations.
+    required_evidence:
+      - proposed Cell list or decomposition notes
+      - risk tier declaration
+      - fixture or test candidates
+  - item_id: STAGE3-SPEC-STANDARDS-APPLICABILITY
+    criterion: SOC 2, ISO 42001, LLM, and security applicability are declared and do not conflict with repo policy.
+    required_evidence:
+      - standards applicability section
+      - repo-spec required_gates reference when applicable
+  - item_id: STAGE3-SPEC-OPEN-DECISIONS-EXPLICIT
+    criterion: Open decisions are explicitly listed and do not hide a required owner, security, CTO, or CEO decision.
+    required_evidence:
+      - unresolved questions or open decisions section
+      - owner/security/CTO/CEO decision refs when needed

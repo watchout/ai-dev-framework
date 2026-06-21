@@ -1,0 +1,66 @@
+schema_version: shirube-audit/v1
+document_type: audit_item_set
+item_set_id: AUDIT-ITEM-SET-STAGE-6-IMPL-V1
+stage: stage-6
+items:
+  - item_id: STAGE6-IMPL-CELL-SCOPE
+    criterion: Impl stays inside the target Cell and maps to the declared CELL-ID and covered REQ-IDs.
+    required_evidence:
+      - IMPL-ID
+      - CELL-ID
+      - covered REQ-ID list
+      - Cell record
+  - item_id: STAGE6-IMPL-REQUIREMENT-COVERAGE
+    criterion: Impl covers the mapped requirements and does not omit required behavior without explicit deferral.
+    required_evidence:
+      - Impl requirement mapping
+      - deferral or waiver refs when applicable
+  - item_id: STAGE6-IMPL-NONGOAL-COMPLIANCE
+    criterion: Impl does not violate spec non-goals, forbidden behaviors, or excluded responsibilities.
+    required_evidence:
+      - spec non-goals section
+      - Impl non-scope confirmation
+  - item_id: STAGE6-IMPL-PATH-BOUNDARY
+    criterion: Planned file changes are within allowed_paths and do not touch forbidden_paths unless explicitly authorized.
+    required_evidence:
+      - planned file list
+      - Cell allowed_paths
+      - Cell forbidden_paths
+      - authorization refs when applicable
+  - item_id: STAGE6-IMPL-CONTRACT-FROZEN
+    criterion: Interfaces, schemas, CLI contracts, public APIs, prompts, events, or data contracts are frozen or explicitly identified as contract-cell work.
+    required_evidence:
+      - interface contract section
+      - schema or contract refs
+      - contract-cell refs when applicable
+  - item_id: STAGE6-IMPL-TESTABLE-BEHAVIOR
+    criterion: Required behavior is testable through declared tests, fixtures, smoke checks, or evidence records.
+    required_evidence:
+      - test plan
+      - TEST-ID mapping
+      - fixture definitions
+  - item_id: STAGE6-IMPL-ERROR-SECURITY-AUDIT-HANDLING
+    criterion: Error handling, logging/audit logging, auth, permission, security, privacy, and AI risks are addressed or marked N/A with reason.
+    required_evidence:
+      - Impl error handling section
+      - Impl security/privacy section
+      - Impl logging/audit logging section
+      - Impl auth/permission section
+      - Impl AI risk section or N/A declaration
+  - item_id: STAGE6-IMPL-DEPENDENCY-JUSTIFICATION
+    criterion: New dependencies, migrations, external writes, workflows, or protected surfaces are justified and routed to the correct authority.
+    required_evidence:
+      - dependency section
+      - migration section
+      - protected-surface section
+      - authority refs when applicable
+  - item_id: STAGE6-IMPL-FORBIDDEN-ANTIPATTERN-ABSENT
+    criterion: Impl does not rely on forbidden anti-patterns such as deleting tests, weakening auth, bypassing gates, or prose-only approval.
+    required_evidence:
+      - Impl constraints section
+      - forbidden action checklist
+  - item_id: STAGE6-IMPL-IMPLEMENTATION-ORDER-ROLLBACK
+    criterion: Implementation order and rollback/revert method are clear enough for fast goal-mode execution and recovery.
+    required_evidence:
+      - implementation order
+      - rollback or revert plan

@@ -1,0 +1,69 @@
+schema_version: shirube-audit/v1
+document_type: audit_item_set
+item_set_id: AUDIT-ITEM-SET-STAGE-9-IMPL-TO-CODE-V1
+stage: stage-9
+items:
+  - item_id: STAGE9-CODE-IMPLEMENTS-AUDITED-IMPL
+    criterion: Code implements the audited Impl and does not replace it with a different design.
+    required_evidence:
+      - PR diff
+      - audited Impl ref
+      - runner result
+      - changed file refs
+  - item_id: STAGE9-CODE-CELL-SCOPE-CONTAINED
+    criterion: Code remains within Cell scope and changed files are allowed by the Cell and Impl.
+    required_evidence:
+      - PR changed files
+      - Cell allowed_paths
+      - Cell forbidden_paths
+      - scope report
+  - item_id: STAGE9-CODE-NO-FORBIDDEN-PATHS
+    criterion: Forbidden paths, protected settings, production/deploy surfaces, or external automation were not touched without explicit authorization.
+    required_evidence:
+      - PR file list
+      - authorization refs when applicable
+      - waiver refs when applicable
+  - item_id: STAGE9-CODE-REQ-TEST-EVIDENCE-COVERAGE
+    criterion: Implemented REQ-IDs map to tests or evidence, and unimplemented REQ-IDs are explicitly deferred or blocking.
+    required_evidence:
+      - runner self-check
+      - TEST-ID mapping
+      - evidence records
+      - deferral refs when applicable
+  - item_id: STAGE9-CODE-TESTS-NOT_WEAKENED
+    criterion: Tests were not deleted, skipped, weakened, or narrowed to make CI pass improperly.
+    required_evidence:
+      - test diff
+      - CI run
+      - test plan comparison
+  - item_id: STAGE9-CODE-AUTH-PERMISSION-LOGGING-MATCH
+    criterion: Auth, permission, logging, audit logging, privacy, data, and AI handling match the Impl and Spec.
+    required_evidence:
+      - relevant code diff
+      - Impl auth/permission/logging/privacy/data/AI sections
+      - tests or log evidence
+  - item_id: STAGE9-CODE-ERROR-HANDLING-MATCH
+    criterion: Error paths and failure behavior match the Impl, including negative cases where applicable.
+    required_evidence:
+      - error handling diff
+      - negative tests
+      - logs when applicable
+  - item_id: STAGE9-CODE-NO-SPEC-EXTERNAL-REFACTOR
+    criterion: PR does not include unrelated refactors, behavior changes, or hidden impact outside the Cell.
+    required_evidence:
+      - PR diff
+      - changed module list
+      - scope deviation report
+  - item_id: STAGE9-CODE-SSOT-CONSISTENT
+    criterion: Code, docs, schemas, templates, and PR metadata do not create a competing SSOT or duplicate canonical path/schema.
+    required_evidence:
+      - changed docs/schema paths
+      - "#458 reality map reference"
+      - standard refs
+  - item_id: STAGE9-CODE-HONESTY-OF-REPORTING
+    criterion: PR body and runner result accurately report checks run, failed commands, deviations, non-scope, exact head, and known risks.
+    required_evidence:
+      - PR body
+      - command logs
+      - CI results
+      - runner result
