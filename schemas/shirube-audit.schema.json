@@ -20,9 +20,7 @@
       "enum": [
         "spec-audit",
         "impl-audit",
-        "impl-to-code-audit",
         "trace-audit",
-        "spec-to-cell-trace-audit",
         "conformance-audit",
         "bridge-admissibility"
       ]

@@ -86,6 +86,10 @@ function validateAuditRecord(document: JsonObject): string[] {
     errors.push("audit_record.aggregate_verdict");
   }
 
+  if (document.criteria_results !== undefined) {
+    errors.push("audit_record.criteria_results");
+  }
+
   const items = document.items;
   if (!Array.isArray(items) || items.length === 0) {
     errors.push("audit_record.items");
@@ -154,6 +158,16 @@ describe("shirube-audit/v1 schema", () => {
     ]);
   });
 
+  it("uses the dispatch-approved canonical audit_type values", () => {
+    expect(readDef("audit_type").enum).toEqual([
+      "spec-audit",
+      "impl-audit",
+      "trace-audit",
+      "conformance-audit",
+      "bridge-admissibility",
+    ]);
+  });
+
   it("accepts a valid structured audit record", () => {
     expect(validateDocument(fixture("valid-record.json"))).toEqual([]);
   });
@@ -170,6 +184,16 @@ describe("shirube-audit/v1 schema", () => {
         "audit_record.aggregate_verdict",
       ]),
     );
+  });
+
+  it("rejects unknown aggregate verdict values", () => {
+    expect(validateDocument(fixture("unknown-aggregate-verdict.json"))).toContain(
+      "audit_record.aggregate_verdict",
+    );
+  });
+
+  it("rejects criteria_results as a competing audit item structure", () => {
+    expect(validateDocument(fixture("criteria-results.json"))).toContain("audit_record.criteria_results");
   });
 
   it("rejects an audit record with a missing item id", () => {
