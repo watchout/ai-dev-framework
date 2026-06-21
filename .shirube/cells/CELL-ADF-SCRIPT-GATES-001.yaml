@@ -1,0 +1,116 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-SCRIPT-GATES-001
+SPEC-ID: SPEC-ADF-SCRIPT-GATES-001
+risk_tier: R3
+goal: Add the report-only Shirube script gate environment from issue 451.
+covered_req_ids:
+  - REQ-ADF-SCRIPT-GATES-001
+  - REQ-ADF-SCRIPT-GATES-002
+  - REQ-ADF-SCRIPT-GATES-003
+  - REQ-ADF-SCRIPT-GATES-004
+  - REQ-ADF-SCRIPT-GATES-005
+  - REQ-ADF-SCRIPT-GATES-006
+  - REQ-ADF-SCRIPT-GATES-007
+  - SEC-ADF-SCRIPT-GATES-001
+allowed_paths:
+  - .github/workflows/shirube-gates-report.yml
+  - .shirube/**
+  - schemas/**
+  - templates/**
+  - scripts/shirube/**
+  - test/shirube/**
+  - test/fixtures/shirube/**
+forbidden_paths:
+  - src/**
+  - lib/**
+  - bin/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - .env.*
+  - private-config/**
+  - secrets/**
+acceptance_criteria:
+  - id: AC-ADF-SCRIPT-GATES-001
+    statement: Repo-spec schema, template, and executable check exist with fixture coverage.
+    linked_req_ids: [REQ-ADF-SCRIPT-GATES-001]
+  - id: AC-ADF-SCRIPT-GATES-002
+    statement: Planning hierarchy gate validates premise, inventory, and owner confirmation evidence.
+    linked_req_ids: [REQ-ADF-SCRIPT-GATES-002]
+  - id: AC-ADF-SCRIPT-GATES-003
+    statement: Trace gate validates REQ-ID coverage and Cell required fields.
+    linked_req_ids: [REQ-ADF-SCRIPT-GATES-003]
+  - id: AC-ADF-SCRIPT-GATES-004
+    statement: Phase gate validates declared phase transitions and remediation.
+    linked_req_ids: [REQ-ADF-SCRIPT-GATES-004]
+  - id: AC-ADF-SCRIPT-GATES-005
+    statement: Design conformance matrix records control mapping existence only.
+    linked_req_ids: [REQ-ADF-SCRIPT-GATES-005]
+  - id: AC-ADF-SCRIPT-GATES-006
+    statement: Readiness, dev-loop, and change-flow controllers aggregate child gate verdicts.
+    linked_req_ids: [REQ-ADF-SCRIPT-GATES-006]
+  - id: AC-ADF-SCRIPT-GATES-007
+    statement: Report-only workflow comments and uploads artifacts while exiting 0 during pilot.
+    linked_req_ids: [REQ-ADF-SCRIPT-GATES-007]
+  - id: AC-ADF-SCRIPT-GATES-008
+    statement: Required checks, branch protection, rulesets, AUN, target repos, package files, production, deploy, and runtime behavior are unchanged.
+    linked_req_ids: [SEC-ADF-SCRIPT-GATES-001]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-SCRIPT-GATES-001"
+required_evidence:
+  - changed_files
+  - commands_run
+  - fixture_test_results
+  - local_gate_results
+  - PR_URL
+  - exact_head_sha
+non_goals:
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - AUN or multi-agent activation
+  - target repository mutation
+  - production or deploy behavior change
+  - runtime or package file change
+stop_conditions:
+  - implementation requires enforcement or required-check activation
+  - implementation requires branch protection or ruleset mutation
+  - implementation requires target repository mutation
+  - implementation requires production runtime behavior change
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  shorthand: Goal-mode Implementation
+  allowed_commands:
+    - node scripts/shirube/check-repo-spec.mjs
+    - node scripts/shirube/check-planning.mjs
+    - node scripts/shirube/check-trace.mjs
+    - node scripts/shirube/check-phase.mjs
+    - node scripts/shirube/check-conformance.mjs
+    - node scripts/shirube/controller.mjs readiness
+    - node scripts/shirube/controller.mjs dev-loop
+    - node scripts/shirube/controller.mjs change-flow
+    - npx vitest run test/shirube/script-gates.test.ts
+    - git diff --check origin/main...HEAD
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+  forbidden_commands:
+    - gh pr merge
+    - branch protection or ruleset mutation
+    - required check activation
+    - target repository mutation
+    - AUN, Discord, DB, queue, LaunchAgent, production, deploy, or multi-agent activation
+  handoff_conditions:
+    - Spec Audit PASS
+    - Impl Audit PASS
+    - draft PR opened for Shirube command review
+  completion_evidence:
+    - implemented REQ-IDs
+    - changed files
+    - exact head SHA
+    - commands run
+    - test results
+    - local gate results
+    - non-scope confirmation

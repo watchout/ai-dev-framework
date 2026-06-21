@@ -1,0 +1,49 @@
+schema_version: shirube-repo-spec/v1
+repo_id: <owner/repo>
+# repo is accepted as a compatibility alias during v1 migration.
+# repo: <owner/repo>
+canonical_core: <owner/repo>@<commit-or-tag>
+purpose: <text>
+non_goals: []
+design_principles:
+  - Machine-readable evidence is primary.
+development_flow: docs/standards/shirube-ai-development-governance-standard-v1.md
+required_gates:
+  - repo_spec
+roles:
+  spec: <role-or-owner>
+  arc: <role-or-owner>
+  design_reviewer: <role-or-owner>
+  impl_runner: <role-or-owner>
+  impl_reviewer: <role-or-owner>
+  release_owner: <role-or-owner>
+codeowners_ref: CODEOWNERS
+audit_responsibilities: <text>
+shared_terminology:
+  Cell: Bounded implementation unit.
+security_assumptions: <text>
+privacy_assumptions: <text>
+data_boundaries:
+  - <boundary>
+dependency_boundaries:
+  - <boundary>
+forbidden_actions:
+  - <forbidden action>
+ai_usage_classification: assisted
+soc2_categories:
+  - Security
+  - Confidentiality
+  - Processing Integrity
+iso42001_applicability: false
+agent_permission_boundary:
+  allowed_paths: []
+  forbidden_paths: []
+  allowed_commands: []
+  forbidden_commands: []
+  allowed_mcp_tools: []
+  approval_required_mcp_tools: []
+  forbidden_mcp_tools: []
+remediation:
+  repo-spec:
+    on_fail: Update this file to satisfy the repo-spec schema.
+    doc_ref: templates/shirube-repo-spec.yaml

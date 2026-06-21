@@ -1,0 +1,17 @@
+{
+  "schema_version": "shirube-design-conformance-matrix/v1",
+  "controls": [
+    { "control_id": "gate:change_flow_controller", "mapped_impl": "scripts/shirube/controller.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "gate:design_conformance", "mapped_impl": "scripts/shirube/check-conformance.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "gate:dev_loop_controller", "mapped_impl": "scripts/shirube/controller.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "gate:phase", "mapped_impl": "scripts/shirube/check-phase.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "gate:planning", "mapped_impl": "scripts/shirube/check-planning.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "gate:readiness_controller", "mapped_impl": "scripts/shirube/controller.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "gate:repo_spec", "mapped_impl": "scripts/shirube/check-repo-spec.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "gate:spec_to_cell_trace", "mapped_impl": "scripts/shirube/check-trace.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "iso42001:applicability", "mapped_impl": "scripts/shirube/check-conformance.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "soc2:Confidentiality", "mapped_impl": "scripts/shirube/check-conformance.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "soc2:Processing Integrity", "mapped_impl": "scripts/shirube/check-conformance.mjs", "mapped_test": "test/shirube/script-gates.test.ts" },
+    { "control_id": "soc2:Security", "mapped_impl": "scripts/shirube/check-conformance.mjs", "mapped_test": "test/shirube/script-gates.test.ts" }
+  ]
+}

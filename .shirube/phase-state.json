@@ -1,0 +1,10 @@
+{
+  "schema_version": "shirube-phase-state/v1",
+  "current_phase": "REPO_SPEC_CONFIRMED",
+  "target_phase": "PREMISE_SPEC_REQUIRED",
+  "status": "report-only-pilot",
+  "notes": [
+    "This state declares the current script-control phase for report-only gates.",
+    "It does not claim execution readiness or required-check enforcement."
+  ]
+}

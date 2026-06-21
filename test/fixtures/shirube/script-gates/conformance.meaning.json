@@ -1,0 +1,15 @@
+{
+  "repo_spec": {
+    "required_gates": ["repo_spec"],
+    "soc2_categories": [],
+    "iso42001_applicability": false
+  },
+  "matrix": [
+    {
+      "control_id": "gate:repo_spec",
+      "mapped_impl": "scripts/shirube/check-repo-spec.mjs",
+      "mapped_test": "test/shirube/script-gates.test.ts",
+      "implemented": true
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "repo_spec": {
+    "required_gates": ["repo_spec"],
+    "soc2_categories": ["Security"],
+    "iso42001_applicability": false
+  },
+  "matrix": []
+}

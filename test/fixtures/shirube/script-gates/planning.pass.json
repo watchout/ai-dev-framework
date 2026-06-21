@@ -1,0 +1,12 @@
+{
+  "planning_hierarchy": {
+    "premise_required": true,
+    "premise_ref": "SPEC-ADF-PREMISE-001",
+    "premise_confirmed": true,
+    "inventory_required": true,
+    "inventory_ref": "INVENTORY-ADF-001",
+    "inventory_confirmed": true,
+    "owner_confirmation_required": true,
+    "owner_confirmation_ref": "EVIDENCE-OWNER-001"
+  }
+}

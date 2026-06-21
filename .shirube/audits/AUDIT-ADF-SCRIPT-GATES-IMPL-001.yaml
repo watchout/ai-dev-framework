@@ -1,0 +1,25 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-SCRIPT-GATES-IMPL-001
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-ADF-SCRIPT-GATES-001.md
+  - .shirube/cells/CELL-ADF-SCRIPT-GATES-001.yaml
+  - scripts/shirube/
+  - .github/workflows/shirube-gates-report.yml
+verdict: PASS
+findings:
+  - check_id: IMPL-SCOPE
+    result: PASS
+    evidence:
+      - Implementation is limited to report-only scripts, fixtures, workflow, schema/template, and .shirube records.
+  - check_id: IMPL-REPORT-ONLY
+    result: PASS
+    evidence:
+      - Workflow records would-block findings but exits 0 during pilot.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - Required checks, branch protection, rulesets, AUN, target repositories, production, deploy, package changes, and runtime behavior are unchanged.
+auditor: codex-adf
+created_at: 2026-06-21T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1

@@ -1,0 +1,111 @@
+name: Shirube Script Gates Report
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+env:
+  NODE_VERSION: "20"
+  RESULT_DIR: .shirube-gates
+
+jobs:
+  shirube-script-gates-report:
+    name: Shirube Script Gates Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Collect changed files
+        run: |
+          mkdir -p "$RESULT_DIR"
+          git diff --name-only "origin/${{ github.base_ref }}...HEAD" > "$RESULT_DIR/changed-files.txt"
+
+      - name: Run Shirube script gates
+        continue-on-error: true
+        run: |
+          mkdir -p "$RESULT_DIR"
+          set +e
+          node scripts/shirube/check-repo-spec.mjs > "$RESULT_DIR/repo-spec.json"; echo $? > "$RESULT_DIR/repo-spec.exit"
+          node scripts/shirube/check-planning.mjs > "$RESULT_DIR/planning.json"; echo $? > "$RESULT_DIR/planning.exit"
+          node scripts/shirube/check-trace.mjs > "$RESULT_DIR/trace.json"; echo $? > "$RESULT_DIR/trace.exit"
+          node scripts/shirube/check-phase.mjs > "$RESULT_DIR/phase.json"; echo $? > "$RESULT_DIR/phase.exit"
+          node scripts/shirube/check-conformance.mjs > "$RESULT_DIR/conformance.json"; echo $? > "$RESULT_DIR/conformance.exit"
+          node scripts/shirube/controller.mjs readiness > "$RESULT_DIR/readiness.json"; echo $? > "$RESULT_DIR/readiness.exit"
+          node scripts/shirube/controller.mjs dev-loop > "$RESULT_DIR/dev-loop.json"; echo $? > "$RESULT_DIR/dev-loop.exit"
+          node scripts/shirube/controller.mjs change-flow --changed-files "$RESULT_DIR/changed-files.txt" > "$RESULT_DIR/change-flow.json"; echo $? > "$RESULT_DIR/change-flow.exit"
+          set -e
+
+      - name: Render report
+        if: always()
+        continue-on-error: true
+        run: |
+          node scripts/shirube/render-report.mjs \
+            "$RESULT_DIR/repo-spec.json" \
+            "$RESULT_DIR/planning.json" \
+            "$RESULT_DIR/trace.json" \
+            "$RESULT_DIR/phase.json" \
+            "$RESULT_DIR/conformance.json" \
+            "$RESULT_DIR/readiness.json" \
+            "$RESULT_DIR/dev-loop.json" \
+            "$RESULT_DIR/change-flow.json" \
+            --out "$RESULT_DIR/summary.md" > "$RESULT_DIR/aggregate.json"
+          cat "$RESULT_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upsert PR comment
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- shirube-gates-report/v1 -->";
+            const body = fs.readFileSync(".shirube-gates/summary.md", "utf8");
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const previous = comments.find((comment) =>
+              comment.user?.type === "Bot" && comment.body?.includes(marker)
+            );
+            if (previous) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Upload Shirube script gate results
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: shirube-script-gates-${{ github.event.pull_request.number }}
+          path: ${{ env.RESULT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Report-only completion
+        if: always()
+        run: |
+          echo "Shirube script gates are report-only in this pilot. Workflow exits 0 even when would-block findings exist."
+          exit 0
