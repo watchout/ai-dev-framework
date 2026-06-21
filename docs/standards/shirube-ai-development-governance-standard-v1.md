@@ -434,23 +434,25 @@ R3
   authentication, authorization, payment, personal data, agent-memory,
   MCP tool execution, AI autonomous behavior, production deployment,
   governance control, branch protection, or release authority
+
+R4
+  irreversible production, enterprise, legal, financial, safety, protected
+  governance, or cross-repository authority changes that require staged rollout
+  and explicit human ratification
 ```
 
-Gate expectations:
+### 5.1 Risk-tier Delivery Chain SSOT
 
-```text
-R0:
-  lightweight Spec/Cell optional unless governance docs are touched
+This table is the canonical SSOT for Shirube risk-tier gate, review, authority, and rollout chains. Derived docs may summarize it, but must not redefine it.
 
-R1:
-  Spec and Cell required; simplified Impl allowed
+| Tier or Route | Mechanical Gates | Semantic Audit | Authority | Merge and Rollout Policy |
+| --- | --- | --- | --- | --- |
+| R0 | Required mechanical gates for the repository and changed artifact class. | None by default. | Owner policy may allow merge after green mechanical evidence. | Auto-merge candidate only. Active auto-merge requires a later approved enforcement Cell. |
+| R1/R2 | Required mechanical gates, trace, scope, CI, and evidence checks. | One standardized semantic audit. | Owner merge. Owner must be separate from implementation where maker/checker is required. | Owner-controlled merge after Bridge admissibility PASS and green mechanical evidence. |
+| R3/R4 | Required mechanical gates, trace, scope, CI, evidence, protected-surface checks, and rollout evidence. | Standardized semantic audit with protected-surface item coverage. | Human authority for the affected protected surface; CTO participates for R3/R4 governance, enforce, or release-authority changes. | Staged rollout is required, such as dry-run, canary, allowlist, then fleet, as applicable. |
+| route:ceo-approval | Same as the applicable risk tier plus route-specific evidence. | Same as applicable risk tier. | CEO ratification is required before merge or activation. | No activation until CEO ratification is recorded. |
 
-R2:
-  Spec, Cell, Impl, LLM audit, owner review, CI, and post-merge verification required
-
-R3:
-  full gates required; CODEOWNER and owner/security review required; waiver requires expiry and compensating controls
-```
+Mechanical gates decide whether artifacts are admissible. Semantic audit may identify design or implementation risk, but merge gates consume only the Bridge output described in Section 10, not freeform LLM prose.
 
 ## 6. Waiver / Exception Policy
 
@@ -550,19 +552,70 @@ Breaking changes require:
 - consumer repo verification
 ```
 
-## 10. LLM Audit Policy
+## 10. Audit Model and Merge Admissibility
 
-LLMs are allowed to assist audits, but they must not perform free-form subjective review as the authoritative gate.
+LLMs are allowed to assist audits, but freeform audit prose is not valid gate evidence. Shirube audits are split into three parts.
 
-Rules:
+### 10.1 Part A: Machine Reconciliation
+
+Part A is deterministic. It validates machine-readable facts such as:
 
 ```text
-- use rubric-based PASS / FAIL / N/A
-- each FAIL requires evidence
-- evidence must reference SPEC-ID, CELL-ID, IMPL-ID, file path, diff, test, log, or artifact
-- unsupported claims are marked UNVERIFIED, not FAIL
-- audit is Cell-based, not PR-vibe-based
+- required artifact presence
+- Spec / Cell / Impl trace
+- changed paths against allowed_paths and forbidden_paths
+- REQ-ID / TEST-ID / evidence coverage
+- exact-head CI and command evidence
+- waiver, authority, and protected-surface records
 ```
+
+Part A may pass, warn, or block without LLM judgment.
+
+### 10.2 Part B: List-driven LLM Semantic Audit
+
+Part B is a semantic review driven by a fixed item list for the stage being audited. The LLM receives the item list and must return structured item output:
+
+```text
+item_id
+verdict: PASS / FAIL / N/A
+reason
+evidence_ref
+```
+
+Part B must not be open-ended prose. Every item in the required item set must be answered. Each FAIL requires evidence. Evidence must reference a durable artifact such as SPEC-ID, CELL-ID, IMPL-ID, file path, diff, test, log, PR, commit, CI run, or evidence record. Unsupported claims are marked UNVERIFIED or FAIL according to the item contract, not silently accepted.
+
+### 10.3 Bridge: Machine Admissibility Check
+
+The Bridge is the machine check that decides whether a Part B semantic audit record is admissible as gate input. It must validate at least:
+
+```text
+- output schema is valid
+- every required item is answered
+- FAIL count is represented and blocks when greater than zero
+- evidence_ref is present where required
+- reviewer actor/model differs from implementation actor/model where required
+- audit record is durably recorded
+```
+
+Merge gates consume the Bridge output, not LLM prose. A freeform audit paragraph, approval comment, or summary without valid item output and Bridge PASS is not valid gate evidence.
+
+### 10.4 Maker / Checker Rule
+
+Where maker/checker separation is required, the reviewer actor and reviewer model must differ from the implementation actor and implementation model. The implementation owner cannot self-approve audit, merge, release, protected authority, or CEO-routed governance changes.
+
+### 10.5 CTO Role
+
+CTO is not a routine per-PR bottleneck for R0-R2 work. CTO authority is reserved for:
+
+```text
+- R3/R4 governance, protected-surface, release-authority, or production changes
+- route:ceo-approval work
+- required-check, branch-protection, ruleset, or enforcement changes
+- post-merge rollup sampling
+- drift or sampling escalation
+```
+
+Routine R1/R2 merge authority remains with the owner path defined in Section 5.1.
 
 LLM audit quality must be calibrated using golden cases.
 
@@ -782,3 +835,9 @@ The approved operating model is:
 - Implementation executor: Codex through GitHub issues and PRs
 - Coordination role: architectural command and review through GitHub
 ```
+
+## 16. Derived Governance Flow Documents
+
+`docs/standards/shirube-ai-development-governance-standard-v1.md` is canonical for the delivery flow, risk-tier chain, audit model, maker/checker rule, authority model, and CTO role.
+
+`docs/governance-flow.md`, if present, is a derived snapshot and reference document only. It must identify this standard as its source and must not define competing gate, review, audit, authority, or rollout rules.

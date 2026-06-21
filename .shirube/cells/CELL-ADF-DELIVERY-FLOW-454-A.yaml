@@ -1,0 +1,131 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-DELIVERY-FLOW-454-A
+SPEC-ID: SPEC-ADF-DELIVERY-FLOW-454-A
+risk_tier: R3
+goal: Implement PR 454-A as a standard-only SSOT update for Shirube delivery-flow v2.
+covered_req_ids:
+  - REQ-ADF-DELIVERY-FLOW-454-A-001
+  - REQ-ADF-DELIVERY-FLOW-454-A-002
+  - REQ-ADF-DELIVERY-FLOW-454-A-003
+  - REQ-ADF-DELIVERY-FLOW-454-A-004
+  - REQ-ADF-DELIVERY-FLOW-454-A-005
+  - REQ-ADF-DELIVERY-FLOW-454-A-006
+  - REQ-ADF-DELIVERY-FLOW-454-A-007
+  - REQ-ADF-DELIVERY-FLOW-454-A-008
+  - REQ-ADF-DELIVERY-FLOW-454-A-009
+  - REQ-ADF-DELIVERY-FLOW-454-A-010
+  - SEC-ADF-DELIVERY-FLOW-454-A-001
+allowed_paths:
+  - docs/standards/shirube-ai-development-governance-standard-v1.md
+  - docs/governance-flow.md
+  - .shirube/specs/SPEC-ADF-DELIVERY-FLOW-454-A.md
+  - .shirube/cells/CELL-ADF-DELIVERY-FLOW-454-A.yaml
+  - .shirube/impls/IMPL-ADF-DELIVERY-FLOW-454-A.md
+  - .shirube/audits/AUDIT-ADF-DELIVERY-FLOW-454-A-SPEC.yaml
+  - .shirube/audits/AUDIT-ADF-DELIVERY-FLOW-454-A-IMPL.yaml
+  - .shirube/evidence/EVIDENCE-ADF-DELIVERY-FLOW-454-A.yaml
+forbidden_paths:
+  - src/**
+  - lib/**
+  - bin/**
+  - scripts/**
+  - schemas/**
+  - templates/**
+  - .github/workflows/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - .env.*
+  - private-config/**
+  - secrets/**
+acceptance_criteria:
+  - id: AC-ADF-DELIVERY-FLOW-454-A-001
+    statement: Standard contains one canonical risk-tier delivery chain SSOT table.
+    linked_req_ids:
+      - REQ-ADF-DELIVERY-FLOW-454-A-001
+      - REQ-ADF-DELIVERY-FLOW-454-A-002
+      - REQ-ADF-DELIVERY-FLOW-454-A-003
+      - REQ-ADF-DELIVERY-FLOW-454-A-004
+      - REQ-ADF-DELIVERY-FLOW-454-A-005
+  - id: AC-ADF-DELIVERY-FLOW-454-A-002
+    statement: Standard defines Part A, Part B, Bridge, and Bridge-only merge gate consumption.
+    linked_req_ids:
+      - REQ-ADF-DELIVERY-FLOW-454-A-006
+      - REQ-ADF-DELIVERY-FLOW-454-A-007
+  - id: AC-ADF-DELIVERY-FLOW-454-A-003
+    statement: Standard defines maker/checker separation and self-approval prohibition.
+    linked_req_ids:
+      - REQ-ADF-DELIVERY-FLOW-454-A-008
+  - id: AC-ADF-DELIVERY-FLOW-454-A-004
+    statement: Standard defines CTO role without routine R0-R2 per-PR bottleneck.
+    linked_req_ids:
+      - REQ-ADF-DELIVERY-FLOW-454-A-009
+  - id: AC-ADF-DELIVERY-FLOW-454-A-005
+    statement: Governance flow document is a derived snapshot from the standard.
+    linked_req_ids:
+      - REQ-ADF-DELIVERY-FLOW-454-A-010
+  - id: AC-ADF-DELIVERY-FLOW-454-A-006
+    statement: No schema, script, workflow enforcement, protected settings, automation, target repo, production, deploy, or runtime changes are included.
+    linked_req_ids:
+      - SEC-ADF-DELIVERY-FLOW-454-A-001
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-DELIVERY-FLOW-454-A-001"
+required_evidence:
+  - changed_files
+  - exact_head_sha
+  - commands_run
+  - local_gate_results
+  - stacked_pr_dependency
+  - non_scope_confirmation
+non_goals:
+  - repo-spec schema change
+  - audit bridge script
+  - required check activation
+  - R0 auto-merge activation
+  - branch protection mutation
+  - ruleset mutation
+  - AUN or multi-agent activation
+  - target repository mutation
+  - production or deploy behavior change
+  - runtime or package file change
+stop_conditions:
+  - implementation requires schema, script, workflow, or CLI behavior changes
+  - implementation requires required checks, branch protection, or ruleset mutation
+  - implementation requires AUN, target repo, production, deploy, or runtime activation
+  - implementation attempts to merge before #453 lands
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  shorthand: Goal-mode Implementation
+  allowed_commands:
+    - git diff --check origin/main...HEAD
+    - npx vitest run test/shirube/script-gates.test.ts
+    - node scripts/shirube/check-repo-spec.mjs
+    - node scripts/shirube/check-planning.mjs
+    - node scripts/shirube/check-trace.mjs
+    - node scripts/shirube/check-phase.mjs
+    - node scripts/shirube/check-conformance.mjs
+    - node scripts/shirube/controller.mjs readiness
+    - node scripts/shirube/controller.mjs dev-loop
+    - node scripts/shirube/controller.mjs change-flow
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+  forbidden_commands:
+    - gh pr merge
+    - branch protection or ruleset mutation
+    - required check activation
+    - target repository mutation
+    - AUN, Discord, DB, queue, LaunchAgent, production, deploy, or multi-agent activation
+  handoff_conditions:
+    - PR #453 dependency remains open or merged
+    - draft stacked PR opened against codex/script-gate-report-only if #453 is not merged
+    - ARC / CEO / Shirube command review remains pending
+  completion_evidence:
+    - changed files
+    - exact head SHA
+    - commands run
+    - test results
+    - local gate results
+    - non-scope confirmation
