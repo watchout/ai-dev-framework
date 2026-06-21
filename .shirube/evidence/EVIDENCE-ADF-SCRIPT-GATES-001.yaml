@@ -3,30 +3,33 @@ EVIDENCE-ID: EVIDENCE-ADF-SCRIPT-GATES-001
 SPEC-ID: SPEC-ADF-SCRIPT-GATES-001
 CELL-ID: CELL-ADF-SCRIPT-GATES-001
 IMPL-ID: IMPL-ADF-SCRIPT-GATES-001
-PR-ID: pending-pr-creation
-commit_sha: pending-pr-creation
+PR-ID: https://github.com/watchout/ai-dev-framework/pull/453
+commit_sha: d71d7ddb5a12b33f8d696825bf98b4039e830fc7
 audit_results:
   - AUDIT-ADF-SCRIPT-GATES-SPEC-001
   - AUDIT-ADF-SCRIPT-GATES-IMPL-001
 ci_runs:
   - name: npx vitest run test/shirube/script-gates.test.ts
-    result: N/A
-    url: pending-local-validation
+    result: PASS
+    url: https://github.com/watchout/ai-dev-framework/pull/453
   - name: local script gates
-    result: N/A
-    url: pending-local-validation
+    result: PASS
+    url: https://github.com/watchout/ai-dev-framework/actions/runs/27885687383/job/82520589702
+  - name: local aggregate report
+    result: PASS
+    url: https://github.com/watchout/ai-dev-framework/actions/runs/27885687383/job/82520589702
   - name: git diff --check origin/main...HEAD
-    result: N/A
-    url: pending-local-validation
+    result: PASS
+    url: https://github.com/watchout/ai-dev-framework/pull/453
   - name: npm run lint
-    result: N/A
-    url: pending-local-validation
+    result: PASS
+    url: https://github.com/watchout/ai-dev-framework/actions/runs/27885687392/job/82520589840
   - name: npm run type-check
-    result: N/A
-    url: pending-local-validation
+    result: PASS
+    url: https://github.com/watchout/ai-dev-framework/actions/runs/27885687392/job/82520589742
   - name: npm run build:cli
-    result: N/A
-    url: pending-local-validation
+    result: PASS
+    url: https://github.com/watchout/ai-dev-framework/actions/runs/27885687392/job/82520634653
 artifact_locations:
   - .shirube/specs/SPEC-ADF-SCRIPT-GATES-001.md
   - .shirube/cells/CELL-ADF-SCRIPT-GATES-001.yaml
@@ -40,15 +43,20 @@ artifact_locations:
   - test/shirube/script-gates.test.ts
   - test/fixtures/shirube/script-gates/
   - .github/workflows/shirube-gates-report.yml
+  - PR #453 remote checks at https://github.com/watchout/ai-dev-framework/pull/453
+  - Report-only script gate run at https://github.com/watchout/ai-dev-framework/actions/runs/27885687383/job/82520589702
+  - CI run at https://github.com/watchout/ai-dev-framework/actions/runs/27885687392
   - TRACE-ADF-SCRIPT-GATES-001 in .shirube/specs/SPEC-ADF-SCRIPT-GATES-001.md Trace Matrix
   - TEST-MAP-ADF-SCRIPT-GATES-001 in .shirube/specs/SPEC-ADF-SCRIPT-GATES-001.md Test Plan
 post_merge_verification:
   result: N/A
   evidence:
-    - This slice stops after draft PR creation for Shirube command review.
+    - "pre-merge: PR #453 is at merge handoff stage awaiting CTO L3 sanity and merge."
+    - "post-merge: not-yet; post-merge drift check runs after CTO merge."
 waiver_refs: []
 release_or_rollback_decision:
   result: N/A
   evidence:
-    - Release decision is outside this Cell and remains with release owner after command review.
+    - "pre-merge: report-only pilot remains active; no release or rollback decision applies before CTO L3 merge."
+    - "post-merge: release owner evidence is required after merge before claiming completion."
   decision_owner: watchout
