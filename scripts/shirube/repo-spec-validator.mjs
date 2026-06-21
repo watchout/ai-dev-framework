@@ -210,6 +210,13 @@ export function validateRepoSpec(spec, file = ".shirube/repo-spec.yaml") {
   if (present(spec.remediation) && !isObject(spec.remediation)) {
     findings.push({ severity: "WARN", code: "invalid_remediation", field: "remediation", message: "remediation should be a mapping." });
   }
+  recommendMapping(findings, spec.operating_model, "operating_model");
+  recommendMapping(findings, spec.gate_catalog, "gate_catalog");
+  recommendMapping(findings, spec.required_evidence, "required_evidence");
+  recommendMapping(findings, spec.risk_tier_policy, "risk_tier_policy");
+  recommendMapping(findings, spec.waiver_policy, "waiver_policy");
+  recommendMapping(findings, spec.post_merge_policy, "post_merge_policy");
+  recommendMapping(findings, spec.remediation_contract, "remediation_contract");
 
   return result(file, findings);
 }
@@ -217,6 +224,12 @@ export function validateRepoSpec(spec, file = ".shirube/repo-spec.yaml") {
 function recommendNonEmptyArray(findings, value, field) {
   if (present(value) && (!Array.isArray(value) || value.length === 0)) {
     findings.push({ severity: "WARN", code: "invalid_recommended_array", field, message: `${field} should be a non-empty array before strict enforcement.` });
+  }
+}
+
+function recommendMapping(findings, value, field) {
+  if (present(value) && !isObject(value)) {
+    findings.push({ severity: "WARN", code: "invalid_recommended_mapping", field, message: `${field} should be a mapping before strict enforcement.` });
   }
 }
 

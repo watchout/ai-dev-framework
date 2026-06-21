@@ -40,6 +40,181 @@ required_gates:
   - readiness_controller
   - dev_loop_controller
   - change_flow_controller
+operating_model:
+  readiness:
+    purpose: Confirm repository premise, planning prerequisites, and owner evidence before implementation handoff.
+    gates:
+      - repo_spec
+      - planning
+    report_only: true
+    stop_condition: Missing premise, inventory, owner confirmation, or repo-spec structure blocks progression evidence.
+  dev_loop:
+    purpose: Keep Cell execution bounded by trace, phase, and design conformance signals.
+    gates:
+      - spec_to_cell_trace
+      - phase
+      - design_conformance
+    report_only: true
+    stop_condition: Trace gaps, invalid phase transitions, or unmapped controls block execution readiness evidence.
+  change_flow:
+    purpose: Prevent governed code, script, schema, template, or workflow changes from bypassing Spec and Cell artifacts.
+    gates:
+      - repo_spec
+      - change_flow_controller
+    report_only: true
+    stop_condition: Governed changed files require current Spec and Cell artifacts.
+  phase_control:
+    purpose: Preserve deterministic progression from repo-spec confirmation through release evidence.
+    state_ref: .shirube/phase-state.json
+    transition_ref: scripts/shirube/phases.config.json
+    report_only: true
+gate_catalog:
+  repo_spec:
+    purpose: Validate Repository Premise Spec minimum structure and migration warnings.
+    script: scripts/shirube/check-repo-spec.mjs
+    responsible_role: repo_owner
+    required_evidence:
+      - .shirube/repo-spec.yaml
+      - schemas/shirube-repo-spec.schema.json
+  planning:
+    purpose: Validate premise, inventory, and owner confirmation references before Cell/Impl progression.
+    script: scripts/shirube/check-planning.mjs
+    responsible_role: domain_designer
+    required_evidence:
+      - premise_confirmation_ref
+      - inventory_confirmation_ref
+      - owner_confirmation_ref
+  spec_to_cell_trace:
+    purpose: Validate every requirement maps to a bounded Cell with risk tier and allowed paths.
+    script: scripts/shirube/check-trace.mjs
+    responsible_role: shirube_command_owner
+    required_evidence:
+      - .shirube/specs/
+      - .shirube/cells/
+  phase:
+    purpose: Validate current phase and allowed next phases from deterministic phase config.
+    script: scripts/shirube/check-phase.mjs
+    responsible_role: shirube_command_owner
+    required_evidence:
+      - .shirube/phase-state.json
+      - scripts/shirube/phases.config.json
+  design_conformance:
+    purpose: Validate design-conformance matrix mapping existence without meaning judgments.
+    script: scripts/shirube/check-conformance.mjs
+    responsible_role: domain_designer
+    required_evidence:
+      - .shirube/design-conformance-matrix.json
+  readiness_controller:
+    purpose: Aggregate repo-spec and planning gates as the readiness signal.
+    script: scripts/shirube/controller.mjs readiness
+    responsible_role: release_owner
+    required_evidence:
+      - repo_spec gate output
+      - planning gate output
+  dev_loop_controller:
+    purpose: Aggregate trace, phase, and design-conformance gates as the dev-loop signal.
+    script: scripts/shirube/controller.mjs dev-loop
+    responsible_role: release_owner
+    required_evidence:
+      - spec_to_cell_trace gate output
+      - phase gate output
+      - design_conformance gate output
+  change_flow_controller:
+    purpose: Validate governed changed files have current Spec and Cell artifacts.
+    script: scripts/shirube/controller.mjs change-flow
+    responsible_role: implementation_owner
+    required_evidence:
+      - changed file list
+      - current Spec artifact
+      - current Cell artifact
+required_evidence:
+  repo_spec:
+    - .shirube/repo-spec.yaml
+  planning:
+    - premise_confirmation_ref when premise_required is true
+    - inventory_confirmation_ref when inventory_required is true
+    - owner_confirmation_ref when owner_confirmation_required is true
+  cell_execution:
+    - current Spec artifact
+    - current Cell artifact
+    - current Impl artifact when risk tier requires it
+    - required test mapping when risk tier requires it
+    - execution contract when risk tier requires it
+  merge:
+    - machine gate output
+    - semantic audit output when risk tier requires it
+    - exact head evidence
+  post_merge:
+    - merge commit evidence
+    - post-merge smoke or explicit N/A evidence
+    - release or rollback decision owner
+risk_tier_policy:
+  R0:
+    gates:
+      - mechanical gates
+    merge_authority: owner merge only; auto-merge candidate does not mean active auto-merge.
+  R1:
+    gates:
+      - mechanical gates
+      - one standardized semantic audit
+    merge_authority: owner merge.
+  R2:
+    gates:
+      - mechanical gates
+      - one standardized semantic audit
+      - implementation audit where required
+    merge_authority: owner merge.
+  R3:
+    gates:
+      - mechanical gates
+      - semantic audit
+      - human authority
+      - staged rollout
+    merge_authority: protected human authority.
+  route:ceo-approval:
+    gates:
+      - CEO ratification
+      - protected governance review
+    merge_authority: CEO-ratified route only.
+waiver_policy:
+  allowed: true
+  requirements:
+    - waiver must target a specific Cell and check
+    - waiver must include reason, compensating controls, approver, expiry, and follow-up issue
+    - expired waiver blocks skipped required gates
+  non_goals:
+    - waiver does not permanently bypass hard blocks
+    - waiver does not enable required checks, branch protection, or production behavior
+post_merge_policy:
+  required: true
+  evidence:
+    - approved head SHA
+    - merge commit SHA
+    - merged_by
+    - merged_at_utc
+    - post_merge_smoke or explicit N/A
+    - release_or_rollback_decision
+  no_done_without_post_merge_evidence: true
+remediation_contract:
+  applies_to:
+    - WARN
+    - BLOCK
+  fields:
+    - verdict
+    - current_phase
+    - blocked_reason
+    - missing_prerequisites
+    - required_next_actions
+    - responsible_role
+    - allowed_next_phases
+    - forbidden_next_phases
+    - required_evidence
+    - observed_evidence
+    - reference_docs
+  purpose: >
+    Every warned or blocked report-only script gate must tell the caller what
+    is missing, who owns the next action, what evidence is required, and which
+    phases remain forbidden until the missing machine facts are supplied.
 roles:
   spec: shirube-spec
   arc: shirube-arc

@@ -32,6 +32,13 @@
     "soc2_categories",
     "iso42001_applicability",
     "agent_permission_boundary",
+    "operating_model",
+    "gate_catalog",
+    "required_evidence",
+    "risk_tier_policy",
+    "waiver_policy",
+    "post_merge_policy",
+    "remediation_contract",
     "remediation"
   ],
   "properties": {
@@ -92,6 +99,58 @@
         "forbidden_mcp_tools": { "type": "array", "items": { "type": "string" } }
       }
     },
+    "operating_model": {
+      "type": "object",
+      "properties": {
+        "readiness": { "type": "object" },
+        "dev_loop": { "type": "object" },
+        "change_flow": { "type": "object" },
+        "phase_control": { "type": "object" }
+      }
+    },
+    "gate_catalog": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/gateCatalogEntry" }
+    },
+    "required_evidence": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": { "type": "string" }
+      }
+    },
+    "risk_tier_policy": { "type": "object" },
+    "waiver_policy": { "type": "object" },
+    "post_merge_policy": { "type": "object" },
+    "remediation_contract": {
+      "type": "object",
+      "required": ["applies_to", "fields"],
+      "properties": {
+        "applies_to": {
+          "type": "array",
+          "items": { "enum": ["WARN", "BLOCK"] }
+        },
+        "fields": {
+          "type": "array",
+          "contains": { "const": "required_next_actions" },
+          "items": {
+            "enum": [
+              "verdict",
+              "current_phase",
+              "blocked_reason",
+              "missing_prerequisites",
+              "required_next_actions",
+              "responsible_role",
+              "allowed_next_phases",
+              "forbidden_next_phases",
+              "required_evidence",
+              "observed_evidence",
+              "reference_docs"
+            ]
+          }
+        }
+      }
+    },
     "remediation": {
       "type": "object",
       "additionalProperties": {
@@ -100,6 +159,21 @@
         "properties": {
           "on_fail": { "type": "string", "minLength": 1 },
           "doc_ref": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "gateCatalogEntry": {
+      "type": "object",
+      "required": ["purpose", "script", "responsible_role"],
+      "properties": {
+        "purpose": { "type": "string", "minLength": 1 },
+        "script": { "type": "string", "minLength": 1 },
+        "responsible_role": { "type": "string", "minLength": 1 },
+        "required_evidence": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       }
     }

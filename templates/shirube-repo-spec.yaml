@@ -10,6 +10,82 @@ design_principles:
 development_flow: docs/standards/shirube-ai-development-governance-standard-v1.md
 required_gates:
   - repo_spec
+operating_model:
+  readiness:
+    purpose: <text>
+    gates: [repo_spec, planning]
+    report_only: true
+    stop_condition: <text>
+  dev_loop:
+    purpose: <text>
+    gates: [spec_to_cell_trace, phase, design_conformance]
+    report_only: true
+    stop_condition: <text>
+  change_flow:
+    purpose: <text>
+    gates: [repo_spec, change_flow_controller]
+    report_only: true
+    stop_condition: <text>
+  phase_control:
+    purpose: <text>
+    state_ref: .shirube/phase-state.json
+    transition_ref: scripts/shirube/phases.config.json
+    report_only: true
+gate_catalog:
+  repo_spec:
+    purpose: Validate Repository Premise Spec minimum structure.
+    script: scripts/shirube/check-repo-spec.mjs
+    responsible_role: repo_owner
+    required_evidence:
+      - .shirube/repo-spec.yaml
+required_evidence:
+  repo_spec:
+    - .shirube/repo-spec.yaml
+  planning:
+    - premise_confirmation_ref
+    - inventory_confirmation_ref
+    - owner_confirmation_ref
+  merge:
+    - exact head evidence
+    - machine gate output
+risk_tier_policy:
+  R0:
+    gates: [mechanical gates]
+    merge_authority: owner merge only; auto-merge candidate does not mean active auto-merge.
+  R1:
+    gates: [mechanical gates, semantic audit]
+    merge_authority: owner merge.
+  R2:
+    gates: [mechanical gates, semantic audit, implementation audit when required]
+    merge_authority: owner merge.
+  R3:
+    gates: [mechanical gates, semantic audit, human authority, staged rollout]
+    merge_authority: protected human authority.
+  route:ceo-approval:
+    gates: [CEO ratification, protected governance review]
+    merge_authority: CEO-ratified route only.
+waiver_policy:
+  allowed: true
+  requirements:
+    - waiver must target a specific Cell and check
+    - waiver must include reason, compensating controls, approver, expiry, and follow-up issue
+post_merge_policy:
+  required: true
+  no_done_without_post_merge_evidence: true
+remediation_contract:
+  applies_to: [WARN, BLOCK]
+  fields:
+    - verdict
+    - current_phase
+    - blocked_reason
+    - missing_prerequisites
+    - required_next_actions
+    - responsible_role
+    - allowed_next_phases
+    - forbidden_next_phases
+    - required_evidence
+    - observed_evidence
+    - reference_docs
 roles:
   spec: <role-or-owner>
   arc: <role-or-owner>

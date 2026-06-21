@@ -82,6 +82,28 @@ describe("Shirube script gates", () => {
     expect(result.json.reasons.map((reason: any) => reason.code)).toContain("missing_premise_ref");
   });
 
+  it("blocked checks emit the canonical remediation contract", () => {
+    const result = run("scripts/shirube/check-planning.mjs", ["--fixture", fixture("planning.missing-premise.json")]);
+    expect(result.json.verdict).toBe("BLOCK");
+    expect(result.json.remediation_contract).toEqual(
+      expect.objectContaining({
+        verdict: "BLOCK",
+        current_phase: expect.any(String),
+        blocked_reason: expect.any(String),
+        missing_prerequisites: expect.any(Array),
+        required_next_actions: expect.any(Array),
+        responsible_role: expect.any(String),
+        allowed_next_phases: expect.any(Array),
+        forbidden_next_phases: expect.any(Array),
+        required_evidence: expect.any(Array),
+        observed_evidence: expect.any(Array),
+        reference_docs: expect.any(Array),
+      }),
+    );
+    expect(result.json.remediation_contract.missing_prerequisites).toContain("missing_premise_ref");
+    expect(result.json.remediation_contract.forbidden_next_phases).toContain("MERGED");
+  });
+
   it("planning blocks unconfirmed premise_ref", () => {
     const result = run("scripts/shirube/check-planning.mjs", ["--fixture", fixture("planning.unconfirmed-premise.json")]);
     expect(result.json.verdict).toBe("BLOCK");
