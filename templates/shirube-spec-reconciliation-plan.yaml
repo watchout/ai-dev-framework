@@ -1,0 +1,17 @@
+schema_version: shirube-spec-reconciliation-plan/v1
+reconciliation_id: SPEC-RECON-EXAMPLE-001
+repo: owner/repo
+inputs:
+  - .shirube/existing-state-scan.yaml
+  - .shirube/repo-spec.yaml
+rules:
+  legacy_is_input_not_truth: true
+  code_is_current_behavior_not_desired_behavior: true
+  current_behavior_must_be_captured_before_rewrite: true
+outputs_required:
+  - updated RPS or explicit no-change decision
+  - first control handoff
+  - blocked legacy claims list
+  - next safe Cell
+next_safe_cell: <CELL-ID>
+control_handoff_ref: .shirube/control-handoffs/<id>.yaml

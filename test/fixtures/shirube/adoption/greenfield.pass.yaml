@@ -1,0 +1,21 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-GREENFIELD-PASS-001
+lane: adoption_intake
+repo: owner/repo
+framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
+profile: hotel-lite
+owner:
+  role: repo_owner
+  actor: watchout
+existing_state_scan:
+  specs: []
+  implementation: []
+  tests: []
+  legacy_sources: []
+  known_drift: []
+  unsafe_changes: []
+  llm_truth_claims: []
+  unknowns: []
+owner_confirmation_ref: https://github.com/owner/repo/issues/1#rps-confirmed
+repo_spec_ref: .shirube/repo-spec.yaml
+control_handoff_ref: .shirube/control-handoffs/CH-greenfield.yaml

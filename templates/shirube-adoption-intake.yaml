@@ -1,0 +1,24 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-EXAMPLE-001
+lane: adoption_intake
+repo: owner/repo
+framework_ref: shirube-v3-rapid-lite@<commit-or-tag>
+profile: hotel-lite
+owner:
+  role: repo_owner
+  actor: <owner>
+existing_state_scan:
+  specs: []
+  implementation: []
+  tests: []
+  legacy_sources: []
+  known_drift: []
+  unsafe_changes: []
+  llm_truth_claims: []
+  unknowns: []
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: <durable RPS owner confirmation ref>
+gap_fill_plan_ref: null
+spec_reconciliation_ref: null
+next_safe_cell_ref: null
+control_handoff_ref: .shirube/control-handoffs/<id>.yaml

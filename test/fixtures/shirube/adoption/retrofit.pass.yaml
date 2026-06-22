@@ -1,0 +1,13 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-RETROFIT-PASS-001
+lane: adoption_intake
+repo: owner/repo
+framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
+profile: hotel-lite
+owner:
+  role: repo_owner
+  actor: watchout
+owner_confirmation_ref: https://github.com/owner/repo/issues/2#rps-confirmed
+repo_spec_ref: .shirube/repo-spec.yaml
+spec_reconciliation_ref: .shirube/spec-reconciliation-plan.yaml
+control_handoff_ref: .shirube/control-handoffs/CH-retrofit.yaml

@@ -1,0 +1,16 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-STATE-PARTIAL-TESTS-001
+repo: owner/repo
+observed_at: 2026-06-22T00:00:00Z
+specs:
+  - path: docs/current.md
+    status: current
+    authority: input_only
+implementation:
+  - path: src/**
+    status: active
+tests:
+  - path: test/**
+    status: partial
+known_drift: []
+unknowns: []
