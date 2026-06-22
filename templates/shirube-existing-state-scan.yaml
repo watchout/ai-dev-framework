@@ -1,0 +1,24 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-STATE-EXAMPLE-001
+repo: owner/repo
+observed_at: <iso8601>
+specs:
+  - path: docs/spec.md
+    status: stale
+    authority: input_only
+implementation:
+  - path: src/**
+    status: active
+tests:
+  - path: test/**
+    status: partial
+legacy_sources:
+  - path: docs/legacy.md
+    status: stale
+    authority: input_only
+known_drift:
+  - docs and code disagree about a behavior
+unsafe_changes: []
+llm_truth_claims: []
+unknowns:
+  - DB soft-delete policy not confirmed

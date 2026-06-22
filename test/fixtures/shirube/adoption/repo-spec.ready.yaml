@@ -1,0 +1,8 @@
+schema_version: shirube-repo-spec/v1
+repo: owner/repo
+purpose: Fixture RPS for adoption intake tests.
+confirmation_evidence:
+  rps_readiness:
+    verdict: CONFIRMED
+    authority_actor: watchout
+    evidence_ref: https://github.com/owner/repo/issues/1#rps-confirmed
