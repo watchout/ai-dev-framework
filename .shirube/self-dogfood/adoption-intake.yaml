@@ -1,0 +1,17 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-ADF-SELF-DOGFOOD-001
+lane: adoption_intake
+disposition: retrofit_accelerate
+current_phase: ADOPTION_READY
+repo: watchout/ai-dev-framework
+framework_ref: shirube-v3-rapid-lite@3fdff5bbf0bbfacb6decc5601e3cc6de63acbaf4
+profile: hotel-lite
+owner:
+  role: repo_owner
+  actor: watchout
+owner_confirmation_ref: https://github.com/watchout/ai-dev-framework/pull/462#issuecomment-4761494340
+repo_spec_ref: .shirube/repo-spec.yaml
+gap_fill_plan:
+  - Record self-dogfood evidence before any external report-only pilot.
+  - Keep external rollout out of this slice.
+control_handoff_ref: .shirube/self-dogfood/control-handoff.yaml

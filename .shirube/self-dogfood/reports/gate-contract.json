@@ -1,0 +1,60 @@
+{
+  "schema": "shirube-gate-contract-check/v1",
+  "mode": "rapid-lite",
+  "profile": "hotel-lite",
+  "bootstrap": {
+    "mode": "rapid-lite",
+    "profile": "hotel-lite",
+    "framework_ref": "shirube-v3-rapid-lite@3fdff5bbf0bbfacb6decc5601e3cc6de63acbaf4",
+    "repo_spec_ref": ".shirube/repo-spec.yaml",
+    "premise_confirmed": true
+  },
+  "current_phase": "EXECUTION_READY",
+  "allowed_next_phases": [
+    "EXECUTION_READY"
+  ],
+  "forbidden_next_phases": [],
+  "verdict": "PASS_WITH_WARN",
+  "would_block": false,
+  "handoff_ref": ".shirube/self-dogfood/control-handoff.yaml",
+  "matrix_ref": ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml",
+  "cell_id": "CELL-ADF-V3-SELF-DOGFOOD-001",
+  "cell_type": "docs_only",
+  "hard_blocks": [],
+  "warnings": [
+    {
+      "item_id": "RL-PR-W001",
+      "code": "PR_size_large",
+      "message": "Changed file count exceeds the Rapid/Lite report-only threshold.",
+      "path": "changed_files"
+    }
+  ],
+  "evidence": [
+    {
+      "code": "gate_contract_matrix",
+      "source": "file",
+      "detail": ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"
+    },
+    {
+      "code": "repo_spec",
+      "source": "file",
+      "detail": ".shirube/repo-spec.yaml"
+    },
+    {
+      "code": "control_handoff",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/control-handoff.yaml"
+    },
+    {
+      "code": "changed_files",
+      "source": "file",
+      "detail": "21 changed file(s)"
+    }
+  ],
+  "required_next_actions": [
+    {
+      "item_id": "RL-PR-W001",
+      "action": "Changed file count exceeds the Rapid/Lite report-only threshold."
+    }
+  ]
+}

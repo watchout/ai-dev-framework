@@ -1,0 +1,66 @@
+schema_version: shirube-self-dogfood-rollout-decision/v1
+record_id: ROLLOUT-DECISION-ADF-SELF-DOGFOOD-001
+repo: watchout/ai-dev-framework
+work_order: https://github.com/watchout/ai-dev-framework/issues/481
+mode: rapid-lite
+profile: hotel-lite
+base_main_sha: 3fdff5bbf0bbfacb6decc5601e3cc6de63acbaf4
+decision: ROLLOUT_READY_REPORT_ONLY
+decision_reason: >
+  The self-dogfood run classified ai-dev-framework as retrofit_accelerate,
+  reached EXECUTION_READY, produced deterministic JSON reports, and had no
+  would-block findings. The only warning is the expected self-audit file-count
+  warning from storing durable evidence in this PR.
+gate_results:
+  adoption:
+    report: .shirube/self-dogfood/reports/adoption.json
+    verdict: PASS
+    disposition: retrofit_accelerate
+    current_phase: ADOPTION_READY
+    would_block: false
+  lifecycle:
+    report: .shirube/self-dogfood/reports/lifecycle.json
+    verdict: PASS
+    current_phase: EXECUTION_READY
+    would_block: false
+  gate_contract:
+    report: .shirube/self-dogfood/reports/gate-contract.json
+    verdict: PASS_WITH_WARN
+    current_phase: EXECUTION_READY
+    would_block: false
+  design_rules:
+    report: .shirube/self-dogfood/reports/design-rules.json
+    verdict: PASS
+    would_block: false
+  aggregate:
+    report: .shirube/self-dogfood/reports/rapid-lite-report/aggregate.json
+    verdict: PASS_WITH_WARN
+    would_block: false
+findings:
+  blockers: []
+  warnings:
+    - item_id: RL-PR-W001
+      code: PR_size_large
+      source: .shirube/self-dogfood/reports/gate-contract.json
+      classification: expected_self_audit_evidence_volume
+      interpretation: >
+        The self-audit stores input and output evidence as repo files, so the
+        changed-file count is above the Rapid/Lite report-only threshold. This
+        does not indicate kernel drift or external rollout risk.
+known_follow_ups:
+  - issue: https://github.com/watchout/ai-dev-framework/issues/472
+    finding: merge-notify.yml fails with no jobs.
+    rollout_blocker: false
+    reason: >
+      The known merge-notify issue is separate from Rapid/Lite gate visibility
+      and does not affect local/report-only gate execution.
+required_next_actions:
+  - Pilot only in report-only mode.
+  - Keep external rollout to one target repository until owner review accepts this evidence.
+non_scope_confirmed:
+  - No required checks were enabled.
+  - No branch setting changes were made.
+  - No runtime or production behavior was changed.
+  - No package or lockfile files were changed.
+  - No B3 or shirube-audit schema was changed.
+  - No external repository was mutated.

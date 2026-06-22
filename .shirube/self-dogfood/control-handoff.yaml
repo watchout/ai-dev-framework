@@ -1,0 +1,82 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-SELF-DOGFOOD-001
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: shirube-v3-rapid-lite@3fdff5bbf0bbfacb6decc5601e3cc6de63acbaf4
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: https://github.com/watchout/ai-dev-framework/pull/462#issuecomment-4761494340
+repo: watchout/ai-dev-framework
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/481
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+spec_review_state: ready_for_implementation
+protected_surfaces:
+  - repo_spec_confirmation_evidence
+rps_scope:
+  shirube_owns:
+    - Rapid/Lite report-only self-audit evidence for ai-dev-framework.
+    - Local gate execution records for adoption, lifecycle, gate contract, and design rules.
+  shirube_does_not_own:
+    - External repository rollout.
+    - Required check activation.
+    - Runtime or production behavior.
+acceptance_criteria:
+  - Self-audit gate reports are recorded as durable files.
+  - Adoption disposition is retrofit_accelerate.
+  - External rollout decision is one of the declared rollout states.
+validation:
+  required_commands:
+    - node scripts/shirube/check-adoption.mjs --format json
+    - node scripts/shirube/check-gate-contract.mjs --format json
+    - node scripts/shirube/check-design-rules.mjs --format json
+    - node scripts/shirube/check-lifecycle.mjs --format json
+    - node scripts/shirube/run-rapid-lite-report.mjs --format json
+  test_expectations:
+    - Self-audit changed files remain inside .shirube/self-dogfood.
+    - JSON reports are deterministic for the supplied inputs.
+  required_evidence:
+    - .shirube/self-dogfood/reports/adoption.json
+    - .shirube/self-dogfood/reports/gate-contract.json
+    - .shirube/self-dogfood/reports/design-rules.json
+    - .shirube/self-dogfood/reports/lifecycle.json
+    - .shirube/self-dogfood/reports/rapid-lite-report/aggregate.json
+cell:
+  CELL-ID: CELL-ADF-V3-SELF-DOGFOOD-001
+  cell_type: docs_only
+  risk_class: R2
+  goal: Dogfood Shirube Rapid/Lite on ai-dev-framework before external rollout.
+  non_scope:
+    - External repository rollout.
+    - Required check activation.
+    - Branch setting changes.
+    - Runtime or production behavior.
+    - Package or lockfile changes.
+  allowed_paths:
+    - .shirube/evidence/rps-confirmation.yaml
+    - .shirube/repo-spec.yaml
+    - .shirube/self-dogfood/**
+  forbidden_paths:
+    - .github/workflows/**
+    - src/**
+    - lib/**
+    - bin/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - deploy/**
+    - .env
+    - .env.*
+    - private-config/**
+    - secrets/**
+    - "**/branch-protection/**"
+    - "**/ruleset/**"
+  stop_conditions:
+    - External repository mutation is requested.
+    - Required check activation is requested.
+    - Branch setting changes are requested.
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false

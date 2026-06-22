@@ -1,0 +1,123 @@
+{
+  "schema": "shirube-rapid-lite-report/v1",
+  "report_only": true,
+  "generated_at": "2026-06-22T23:49:09.292Z",
+  "result_dir": ".shirube/self-dogfood/reports/rapid-lite-report",
+  "verdict": "PASS_WITH_WARN",
+  "would_block": false,
+  "gates": [
+    {
+      "gate": "adoption",
+      "status": "ran",
+      "reason": null,
+      "command": "node scripts/shirube/check-adoption.mjs --adoption-plan .shirube/self-dogfood/adoption-intake.yaml --existing-state .shirube/self-dogfood/existing-state-scan.yaml --repo-spec .shirube/repo-spec.yaml --handoff .shirube/self-dogfood/control-handoff.yaml --changed-files .shirube/self-dogfood/changed-files.txt --format json",
+      "output_path": ".shirube/self-dogfood/reports/rapid-lite-report/adoption.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "current_phase": "ADOPTION_READY",
+      "disposition": "retrofit_accelerate",
+      "would_block": false,
+      "blockers": [],
+      "warnings": [],
+      "required_next_actions": []
+    },
+    {
+      "gate": "lifecycle",
+      "status": "ran",
+      "reason": null,
+      "command": "node scripts/shirube/check-lifecycle.mjs --state .shirube/self-dogfood/lifecycle-state.yaml --adoption-report .shirube/self-dogfood/reports/rapid-lite-report/adoption.json --repo-spec .shirube/repo-spec.yaml --handoff .shirube/self-dogfood/control-handoff.yaml --gate-contract-report .shirube/self-dogfood/reports/rapid-lite-report/gate-contract.json --design-rule-report .shirube/self-dogfood/reports/rapid-lite-report/design-rules.json --changed-files .shirube/self-dogfood/changed-files.txt --format json",
+      "output_path": ".shirube/self-dogfood/reports/rapid-lite-report/lifecycle.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "current_phase": "EXECUTION_READY",
+      "disposition": "retrofit_accelerate",
+      "would_block": false,
+      "blockers": [],
+      "warnings": [],
+      "required_next_actions": []
+    },
+    {
+      "gate": "gate-contract",
+      "status": "ran",
+      "reason": null,
+      "command": "node scripts/shirube/check-gate-contract.mjs --matrix .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml --repo-spec .shirube/repo-spec.yaml --handoff .shirube/self-dogfood/control-handoff.yaml --changed-files .shirube/self-dogfood/changed-files.txt --format json",
+      "output_path": ".shirube/self-dogfood/reports/rapid-lite-report/gate-contract.json",
+      "exit_code": 0,
+      "verdict": "PASS_WITH_WARN",
+      "current_phase": "EXECUTION_READY",
+      "disposition": null,
+      "would_block": false,
+      "blockers": [],
+      "warnings": [
+        {
+          "item_id": "RL-PR-W001",
+          "code": "PR_size_large",
+          "message": "Changed file count exceeds the Rapid/Lite report-only threshold.",
+          "path": "changed_files"
+        }
+      ],
+      "required_next_actions": [
+        {
+          "item_id": "RL-PR-W001",
+          "action": "Changed file count exceeds the Rapid/Lite report-only threshold."
+        }
+      ]
+    },
+    {
+      "gate": "design-rules",
+      "status": "ran",
+      "reason": null,
+      "command": "node scripts/shirube/check-design-rules.mjs --rule-pack .shirube/design-rule-packs/shirube-default-design-rules.yaml --changed-files .shirube/self-dogfood/changed-files.txt --diff-root . --handoff .shirube/self-dogfood/control-handoff.yaml --pr-body .shirube/self-dogfood/pr-body.md --format json",
+      "output_path": ".shirube/self-dogfood/reports/rapid-lite-report/design-rules.json",
+      "exit_code": 0,
+      "verdict": "PASS",
+      "current_phase": null,
+      "disposition": null,
+      "would_block": false,
+      "blockers": [],
+      "warnings": [],
+      "required_next_actions": []
+    }
+  ],
+  "discovered_inputs": {
+    "adoptionPlan": ".shirube/self-dogfood/adoption-intake.yaml",
+    "existingState": ".shirube/self-dogfood/existing-state-scan.yaml",
+    "legacyInventory": null,
+    "specReconciliation": null,
+    "lifecycleState": ".shirube/self-dogfood/lifecycle-state.yaml",
+    "adoptionReport": null,
+    "gateContractReport": null,
+    "designRuleReport": null,
+    "repoSpec": ".shirube/repo-spec.yaml",
+    "frameworkLock": null,
+    "handoff": ".shirube/self-dogfood/control-handoff.yaml",
+    "ownerDecision": null,
+    "postMerge": null,
+    "matrix": ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml",
+    "rulePack": ".shirube/design-rule-packs/shirube-default-design-rules.yaml"
+  },
+  "changed_files_count": 21,
+  "changed_files": [
+    ".shirube/evidence/rps-confirmation.yaml",
+    ".shirube/repo-spec.yaml",
+    ".shirube/self-dogfood/adoption-intake.yaml",
+    ".shirube/self-dogfood/changed-files.txt",
+    ".shirube/self-dogfood/control-handoff.yaml",
+    ".shirube/self-dogfood/existing-state-scan.yaml",
+    ".shirube/self-dogfood/lifecycle-state.yaml",
+    ".shirube/self-dogfood/pr-body.md",
+    ".shirube/self-dogfood/reports/adoption.json",
+    ".shirube/self-dogfood/reports/design-rules.json",
+    ".shirube/self-dogfood/reports/gate-contract.json",
+    ".shirube/self-dogfood/reports/lifecycle.json",
+    ".shirube/self-dogfood/reports/rapid-lite-report/adoption.json",
+    ".shirube/self-dogfood/reports/rapid-lite-report/aggregate.json",
+    ".shirube/self-dogfood/reports/rapid-lite-report/design-rules.json",
+    ".shirube/self-dogfood/reports/rapid-lite-report/gate-contract.json",
+    ".shirube/self-dogfood/reports/rapid-lite-report/lifecycle.json",
+    ".shirube/self-dogfood/reports/rapid-lite-report/summary.md",
+    ".shirube/self-dogfood/reports/rapid-lite-report/workflow-output.json",
+    ".shirube/self-dogfood/reports/self-audit-summary.md",
+    ".shirube/self-dogfood/rollout-decision.yaml"
+  ]
+}

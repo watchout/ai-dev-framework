@@ -1,0 +1,36 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-ADF-SELF-DOGFOOD-001
+repo: watchout/ai-dev-framework
+observed_at: 2026-06-23T00:00:00Z
+specs:
+  - path: .shirube/repo-spec.yaml
+    status: current
+  - path: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+    status: current
+implementation:
+  - path: scripts/shirube/check-adoption.mjs
+    status: active
+  - path: scripts/shirube/check-lifecycle.mjs
+    status: active
+  - path: scripts/shirube/check-gate-contract.mjs
+    status: active
+  - path: scripts/shirube/check-design-rules.mjs
+    status: active
+  - path: scripts/shirube/run-rapid-lite-report.mjs
+    status: active
+tests:
+  - path: test/shirube/adoption.test.ts
+    status: useful
+  - path: test/shirube/lifecycle.test.ts
+    status: useful
+  - path: test/shirube/gate-contract.test.ts
+    status: useful
+  - path: test/shirube/design-rules.test.ts
+    status: useful
+  - path: test/shirube/rapid-lite-report.test.ts
+    status: useful
+known_drift: []
+material_drift: []
+unsafe_changes: []
+llm_truth_claims: []
+unknowns: []

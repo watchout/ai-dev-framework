@@ -1,0 +1,12 @@
+schema_version: shirube-rps-confirmation/v1
+record_id: RPS-CONFIRMATION-ADF-450-001
+repo: watchout/ai-dev-framework
+rps_id: ADF-RPS-450
+source_pr: https://github.com/watchout/ai-dev-framework/pull/462
+exact_head_sha: fd4d65089b69089ed560d36ba85d63396d525f6d
+authority_role: CEO
+authority_actor: watchout
+verdict: CONFIRMED
+created_at: 2026-06-21T00:00:00Z
+evidence_refs:
+  - https://github.com/watchout/ai-dev-framework/pull/462#issuecomment-4761494340
