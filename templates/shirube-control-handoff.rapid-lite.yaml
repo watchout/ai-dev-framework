@@ -1,0 +1,97 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-RAPID-LITE-EXAMPLE-001
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/458
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+
+repo: owner/repo
+repo_local_issue: https://github.com/owner/repo/issues/0
+owner:
+  role: repo_owner
+  actor: owner
+next_role: implementation
+
+cell:
+  CELL-ID: CELL-EXAMPLE-RAPID-LITE-001
+  cell_type: docs_only
+  risk_class: R0
+  goal: Replace this with one concrete goal.
+  non_scope:
+    - protected surface changes
+    - production or deploy changes
+    - branch protection or ruleset changes
+    - required check activation
+    - live AUN, Discord, queue, DB, LaunchAgent, or external repo mutation
+  allowed_paths:
+    - docs/**
+  forbidden_paths:
+    - src/**
+    - scripts/**
+    - .github/workflows/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - deploy/**
+    - .env
+    - .env.*
+    - secrets/**
+    - '**/branch-protection/**'
+    - '**/ruleset/**'
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - protected surface requested
+    - missing exact head evidence
+    - missing or placeholder validation evidence
+    - owner decision missing
+  authorized_next_cells: []
+
+implementation_boundary:
+  summary: Replace this with the bounded implementation approach.
+  expected_pr_count: 1
+  forbidden_operations:
+    - merge
+    - approve
+    - branch protection mutation
+    - ruleset mutation
+    - required check activation
+    - production or deploy mutation
+    - secret read or write
+    - live AUN, Discord, DB, queue, LaunchAgent, or external repository mutation
+
+validation:
+  required_commands:
+    - git diff --check
+  required_evidence:
+    - PR_head_SHA
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+  optional_evidence:
+    - screenshots_or_logs
+    - semantic_audit_record
+
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: null
+
+post_merge:
+  required_when_done_claimed: true
+  required_evidence:
+    - merge_commit
+    - merged_at
+    - post_merge_smoke_or_NA
+    - next_step
+    - no_unresolved_follow_up_blocker
+
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: repo_local_issue_or_control_handoff
