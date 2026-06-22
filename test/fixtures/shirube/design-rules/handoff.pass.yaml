@@ -1,0 +1,22 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-DESIGN-RULE-PASS-001
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: implementation
+cell:
+  CELL-ID: CELL-ADF-V3-DESIGN-RULE-GATE-001
+  cell_type: docs_only
+  risk_class: R2
+  goal: Exercise design rule pass fixture.
+  allowed_paths:
+    - src/**
+  forbidden_paths:
+    - .github/workflows/**
+validation:
+  required_commands:
+    - node scripts/shirube/check-design-rules.mjs --format json
+  required_evidence:
+    - design_rule_report
