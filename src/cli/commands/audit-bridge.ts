@@ -53,12 +53,14 @@ function resolveAuditBridgeCliInput(options: AuditBridgeCheckOptions): AuditBrid
   ];
   const overrides: Partial<AuditBridgeCheckInput> = {
     itemSetFile: options.itemSet,
-    evidenceFiles,
     expectedHead: options.head,
     expectedBase: options.base,
     implementationActor: options.implementationActor,
     implementationModel: options.implementationModel,
   };
+  if (evidenceFiles.length > 0) {
+    overrides.evidenceFiles = evidenceFiles;
+  }
 
   if (!options.fixture) return overrides;
 

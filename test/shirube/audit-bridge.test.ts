@@ -154,12 +154,47 @@ describe("Shirube audit bridge admissibility", () => {
     ]));
   });
 
+  it("preserves fixture evidence artifacts through the CLI for head mismatch checks", () => {
+    const result = runCli([
+      "--fixture",
+      fixture("head-mismatch.fixture.json"),
+      "--format",
+      "json",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.report.verdict).toBe("BLOCKED");
+    expect(result.report.artifact_consistency).toBe("BLOCKED");
+    expect(blockerCodes(result.report)).toEqual(expect.arrayContaining([
+      "head_mismatch",
+      "evidence_artifact_head_mismatch",
+    ]));
+  });
+
   it("blocks placeholder evidence artifacts through the shared artifact primitive", () => {
     const report = buildReport("placeholder-artifact.fixture.json");
 
     expect(report.verdict).toBe("BLOCKED");
     expect(report.artifact_consistency).toBe("BLOCKED");
     expect(blockerCodes(report)).toEqual(expect.arrayContaining([
+      "evidence_artifact_placeholder_or_pending_value",
+      "evidence_artifact_invalid_commit_sha",
+    ]));
+  });
+
+  it("preserves fixture evidence artifacts through the CLI for placeholder checks", () => {
+    const result = runCli([
+      "--fixture",
+      fixture("placeholder-artifact.fixture.json"),
+      "--format",
+      "json",
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.report.verdict).toBe("BLOCKED");
+    expect(result.report.admissible).toBe(false);
+    expect(result.report.would_block).toBe(true);
+    expect(blockerCodes(result.report)).toEqual(expect.arrayContaining([
       "evidence_artifact_placeholder_or_pending_value",
       "evidence_artifact_invalid_commit_sha",
     ]));
