@@ -1,0 +1,60 @@
+schema_version: shirube-audit/v1
+document_type: audit_item_set
+item_set_id: AUDIT-ITEM-SET-COMPANY-DEV-OS-PROFILE-C1
+stage: stage-3
+items:
+  - item_id: C1-PROFILE-SCHEMA-DRAFT
+    criterion: The canonical profile draft is explicitly non-authoritative and includes every required C1 top-level section.
+    required_evidence:
+      - .shirube/company-dev-os/canonical-profile.draft.yaml
+      - schema_version shirube-company-dev-os-profile/v0-draft
+      - status draft_readonly_not_authoritative
+  - item_id: C1-C0-GAP-HANDLING
+    criterion: Every C0 gap from GAP-C0-001 through GAP-C0-007 has explicit C1 treatment with status, profile field, risk, and follow-up.
+    required_evidence:
+      - c0_gap_handling section
+      - GAP-C0-001 through GAP-C0-007 rows
+      - status and required_followup fields
+  - item_id: C1-ROLE-ALIAS-MAKER-CHECKER
+    criterion: Role aliases and canonical role IDs preserve one bot equals one role equals one LLM and keep maker/checker boundaries separate.
+    required_evidence:
+      - role_ids section
+      - role_aliases section
+      - maker_checker_rules section
+      - dev-impl cannot self-audit, self-approve, merge, or release
+  - item_id: C1-GATE-RISK-AUTHORITY-MAPPING
+    criterion: Low, medium, and high Company Dev OS risk classes are mapped to draft Shirube gate profiles without changing live policy, and protected surfaces require authority owners.
+    required_evidence:
+      - risk_tiers section
+      - protected_surface_triggers section
+      - gate_sequences section
+      - authority_owners section
+  - item_id: C1-EVIDENCE-COMPLETION-MODEL
+    criterion: Evidence, transition, rework, completion, and non-completion states preserve exact head, source request, evidence refs, verdict, next state, and responsible next role.
+    required_evidence:
+      - evidence_requirements section
+      - transition_request_structure section
+      - rework_instruction_structure section
+      - completion_states and non_completion_states sections
+  - item_id: C1-READONLY-PROJECTION-BOUNDARY
+    criterion: Projection targets remain read-only, inventory-only, planning-only, or candidate/template only and do not authorize workflow, ruleset, branch protection, AUN, target repo, production, or deploy mutation.
+    required_evidence:
+      - projection_targets section
+      - non_authority_boundaries section
+      - stop_conditions section
+  - item_id: C1-FIXTURE-COVERAGE
+    criterion: Required C1 fixtures exist and cover the valid minimal case plus role vocabulary conflict, missing authority owner, missing maker/checker, enforcement attempt, and overlay precedence conflict.
+    required_evidence:
+      - .shirube/company-dev-os/profile-fixtures/valid-minimal-profile.fixture.yaml
+      - .shirube/company-dev-os/profile-fixtures/role-vocab-conflict.fixture.yaml
+      - .shirube/company-dev-os/profile-fixtures/missing-authority-owner.fixture.yaml
+      - .shirube/company-dev-os/profile-fixtures/missing-maker-checker.fixture.yaml
+      - .shirube/company-dev-os/profile-fixtures/enforcement-attempt.fixture.yaml
+      - .shirube/company-dev-os/profile-fixtures/overlay-precedence-conflict.fixture.yaml
+  - item_id: C1-SCOPE-NONENFORCEMENT
+    criterion: The C1 PR stays under .shirube/** and does not change runtime, CLI, validators, schemas, B3 behavior, workflows, required checks, branch protection, rulesets, AUN, target repos, package files, production, deploy, or existing overlays.
+    required_evidence:
+      - PR changed files
+      - Cell allowed_paths and forbidden_paths
+      - non-scope confirmation
+      - local checks

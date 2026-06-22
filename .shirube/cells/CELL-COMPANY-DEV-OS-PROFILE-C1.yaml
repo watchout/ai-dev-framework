@@ -1,0 +1,148 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-COMPANY-DEV-OS-PROFILE-C1
+SPEC-ID: SPEC-COMPANY-DEV-OS-PROFILE-C1
+risk_tier: R3
+goal: Create the read-only Company Dev OS canonical profile draft, profile fixtures, and B3-compatible C1 audit item set.
+covered_req_ids:
+  - REQ-COMPANY-DEV-OS-C1-001
+  - REQ-COMPANY-DEV-OS-C1-002
+  - REQ-COMPANY-DEV-OS-C1-003
+  - REQ-COMPANY-DEV-OS-C1-004
+  - REQ-COMPANY-DEV-OS-C1-005
+  - REQ-COMPANY-DEV-OS-C1-006
+  - REQ-COMPANY-DEV-OS-C1-007
+  - REQ-COMPANY-DEV-OS-C1-008
+  - SEC-COMPANY-DEV-OS-C1-001
+allowed_paths:
+  - .shirube/specs/SPEC-COMPANY-DEV-OS-PROFILE-C1.md
+  - .shirube/cells/CELL-COMPANY-DEV-OS-PROFILE-C1.yaml
+  - .shirube/impls/IMPL-COMPANY-DEV-OS-PROFILE-C1.md
+  - .shirube/company-dev-os/canonical-profile.draft.yaml
+  - .shirube/company-dev-os/profile-fixtures/valid-minimal-profile.fixture.yaml
+  - .shirube/company-dev-os/profile-fixtures/role-vocab-conflict.fixture.yaml
+  - .shirube/company-dev-os/profile-fixtures/missing-authority-owner.fixture.yaml
+  - .shirube/company-dev-os/profile-fixtures/missing-maker-checker.fixture.yaml
+  - .shirube/company-dev-os/profile-fixtures/enforcement-attempt.fixture.yaml
+  - .shirube/company-dev-os/profile-fixtures/overlay-precedence-conflict.fixture.yaml
+  - .shirube/audits/AUDIT-ITEM-SET-COMPANY-DEV-OS-PROFILE-C1.yaml
+forbidden_paths:
+  - src/**
+  - lib/**
+  - bin/**
+  - scripts/**
+  - schemas/**
+  - .github/workflows/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - .env.*
+  - secrets/**
+  - "**/branch-protection/**"
+  - "**/ruleset/**"
+acceptance_criteria:
+  - id: AC-COMPANY-DEV-OS-C1-001
+    statement: The canonical profile draft is present, explicitly non-authoritative, and includes all required top-level sections.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C1-001]
+  - id: AC-COMPANY-DEV-OS-C1-002
+    statement: Role aliases, canonical role IDs, maker/checker separation, and state transition authority boundaries are represented in the profile.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C1-002, REQ-COMPANY-DEV-OS-C1-003]
+  - id: AC-COMPANY-DEV-OS-C1-003
+    statement: Risk tiers, protected surfaces, gate sequences, evidence requirements, transition/rework structures, completion states, projection targets, overlay precedence, adoption states, and authority owners are represented as draft profile data.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C1-004, REQ-COMPANY-DEV-OS-C1-005]
+  - id: AC-COMPANY-DEV-OS-C1-004
+    statement: Every C0 gap row appears with status, profile field, risk, and required follow-up.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C1-006]
+  - id: AC-COMPANY-DEV-OS-C1-005
+    statement: All six required data-only fixtures exist and declare the expected future-validator result.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C1-007]
+  - id: AC-COMPANY-DEV-OS-C1-006
+    statement: The committed C1 audit item set uses shirube-audit/v1 and includes all required C1 item IDs.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C1-008]
+  - id: AC-COMPANY-DEV-OS-C1-007
+    statement: The PR remains .shirube-only and does not mutate runtime, CLI, schema, workflow, enforcement, AUN, target repository, package, production, deploy, or existing overlay behavior.
+    linked_req_ids: [SEC-COMPANY-DEV-OS-C1-001]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-COMPANY-DEV-OS-C1-001"
+  - "TEST-MAP-ID: TEST-MAP-COMPANY-DEV-OS-C1-002"
+  - "TEST-MAP-ID: TEST-MAP-COMPANY-DEV-OS-C1-003"
+  - "TEST-MAP-ID: TEST-MAP-COMPANY-DEV-OS-C1-004"
+required_evidence:
+  - profile_draft_review
+  - c0_gap_handling_review
+  - fixture_review
+  - b3_item_set_review
+  - diff_check
+  - breaking_change_scan
+  - yaml_parse
+  - lint_type_build
+  - conveyor_check_result
+  - codex_audit_exact_head_record_after_pr_creation
+non_goals:
+  - runtime behavior changes
+  - CLI behavior changes
+  - schema validator or profile validator changes
+  - B3 audit bridge behavior changes
+  - active workflow changes
+  - required check activation
+  - branch protection or ruleset mutation
+  - AUN queue/control implementation
+  - AUN DB/schema mutation
+  - AUN agent routing mutation
+  - Discord, queue, LaunchAgent, or transport changes
+  - target repository mutation
+  - production or deploy behavior changes
+  - package or lockfile changes
+  - replacement or removal of existing Company Dev OS overlays
+  - marking Shirube canonical profile authoritative
+  - C2 validator or doctor implementation
+stop_conditions:
+  - request to make the profile authoritative
+  - request to replace or remove existing Company Dev OS overlays
+  - request to implement C2 validator or doctor behavior
+  - request to change B3 audit bridge behavior
+  - request to mutate AUN queue, DB, control path, agent routing, Discord, LaunchAgent, or transport
+  - request to mutate branch protection, rulesets, required checks, or workflows
+  - request to mutate target repositories
+  - request to change runtime, CLI, schemas, packages, lockfiles, production, or deploy behavior
+  - request to fake a passing exact-head audit record before codex-audit produces it
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  allowed_commands:
+    - read-only source inspection
+    - local validation and targeted checks
+    - git diff --check
+    - bash scripts/detect-breaking-changes.sh origin/main
+    - YAML parse for changed .yaml/.yml files
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npm run --silent shirube -- conveyor check <pr-url> --format json
+    - git push origin <branch>
+    - gh pr create --draft
+  forbidden_commands:
+    - active workflow mutation
+    - branch protection mutation
+    - ruleset mutation
+    - required check activation
+    - B3 audit bridge behavior mutation
+    - schema validator mutation
+    - AUN, Discord, DB, queue, LaunchAgent, or production mutation
+    - target repository mutation
+    - package or lockfile mutation
+    - merge
+  handoff_conditions:
+    - draft PR opened
+    - exact head SHA reported
+    - changed files reported
+    - checks reported
+    - non-scope confirmation reported
+    - C1 B3-compatible item-set path reported
+    - codex-audit exact-head record requirement reported
+  completion_evidence:
+    - draft PR body
+    - implementation handoff comment
+    - local command results
+    - conveyor check result
+    - committed C1 audit item set

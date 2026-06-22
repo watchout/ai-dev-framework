@@ -1,0 +1,64 @@
+schema_version: shirube-company-dev-os-profile-fixture/v0-draft
+fixture_id: VALID-MINIMAL-PROFILE
+description: Minimal profile shape expected to pass a future C2 read-only validator.
+expected_future_validator_verdict: PASS
+profile_fragment:
+  schema_version: shirube-company-dev-os-profile/v0-draft
+  profile_id: valid-minimal-profile
+  status: draft_readonly_not_authoritative
+  source_inventory: C0
+  source_refs:
+    - .shirube/specs/SPEC-COMPANY-DEV-OS-PROFILE-C0.md
+  role_ids:
+    dev-goal:
+      default_llm: claude
+      authority_class: planning_only
+  role_aliases:
+    spec:
+      maps_to: [dev-goal]
+      status: draft_resolved
+  roles:
+    dev-goal:
+      may: [define goals]
+      must_not: [implement, audit, merge]
+      one_bot_one_role_one_llm: true
+  maker_checker_rules:
+    default: implementation_owner_must_not_self_approve
+  risk_tiers:
+    company_dev_os_low:
+      draft_shirube_mapping: R0_or_R1
+  protected_surface_triggers: []
+  gate_sequences:
+    low:
+      required_gates: [dev-goal]
+  transition_request_structure:
+    required_fields: [repo, issue_or_pr, exact_head, requested_next_state, evidence_refs]
+  rework_instruction_structure:
+    required_fields: [target_artifact_or_pr, blocking_findings, allowed_next_action]
+  evidence_requirements:
+    required_fields: [repo, issue_or_pr, exact_head, source_request, verdict, next_state]
+  completion_states:
+    - state: done
+      required_evidence: [exact_head, evidence_refs]
+  non_completion_states: [blocked, rework_required]
+  projection_targets:
+    github_pr_comment:
+      status: planning_only
+      allowed: [evidence_link_summary]
+      forbidden: [required_check_activation]
+  overlay_precedence:
+    precedence_order: [repository_ssot, existing_company_dev_os_overlay, shirube_profile_projection_candidate]
+    conflict_policy:
+      unresolved_conflict: block_projection
+  adoption_states:
+    - state: PROFILE_DRAFTED
+      authorized_by_c1: true
+  stop_conditions:
+    - request_to_make_profile_authoritative
+  authority_owners:
+    ai_dev_framework_governance_profile:
+      owner_role: release_owner
+      owner_actor: watchout
+  non_authority_boundaries:
+    green_ci:
+      default: supporting_evidence_only

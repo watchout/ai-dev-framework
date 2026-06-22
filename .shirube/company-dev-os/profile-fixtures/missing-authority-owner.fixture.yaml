@@ -1,0 +1,16 @@
+schema_version: shirube-company-dev-os-profile-fixture/v0-draft
+fixture_id: MISSING-AUTHORITY-OWNER
+description: High-risk protected surface with no explicit authority owner.
+expected_future_validator_verdict: BLOCKED
+expected_blocker: missing_authority_owner
+profile_fragment:
+  risk_tiers:
+    company_dev_os_high:
+      draft_shirube_mapping: R3
+      gate_profile: protected_surface_requires_owner
+  protected_surface_triggers:
+    - trigger_id: PROTECTED-AUN-QUEUE-CONTROL
+      surfaces: [AUN queue lifecycle, routing]
+      required_route: protected_authority_owner
+  authority_owners: {}
+  risk_if_allowed: AUN queue or routing work could proceed without protected authority.

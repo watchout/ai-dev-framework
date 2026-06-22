@@ -1,0 +1,18 @@
+schema_version: shirube-company-dev-os-profile-fixture/v0-draft
+fixture_id: OVERLAY-PRECEDENCE-CONFLICT
+description: Existing AGENTS, CLAUDE, and SSOT precedence conflict without a machine-readable resolution.
+expected_future_validator_verdict: BLOCKED
+expected_blocker: unresolved_overlay_precedence_conflict
+profile_fragment:
+  overlay_precedence:
+    precedence_order:
+      - shirube_profile_projection_candidate
+      - existing_repo_agents_or_claude_instructions
+      - repository_ssot
+    conflict_policy:
+      unresolved_conflict: allow_projection
+  projection_targets:
+    agents_runtime_overlay_output:
+      status: candidate_template_only
+      allowed: [replace_existing_overlay]
+  risk_if_allowed: A generated candidate could override active repo instructions before shadow validation.

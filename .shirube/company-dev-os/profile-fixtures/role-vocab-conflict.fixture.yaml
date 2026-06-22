@@ -1,0 +1,14 @@
+schema_version: shirube-company-dev-os-profile-fixture/v0-draft
+fixture_id: ROLE-VOCAB-CONFLICT
+description: Unresolved arc alias conflict that a future C2 validator must block.
+expected_future_validator_verdict: BLOCKED
+expected_blocker: unresolved_role_vocab_conflict
+profile_fragment:
+  role_aliases:
+    arc:
+      maps_to: [dev-tech, dev-lead, dev-impl]
+      status: conflict
+      conflict_reason: Old arc is mapped to planning and implementation authority at the same time.
+  maker_checker_rules:
+    default: missing_for_arc_composite
+  risk_if_allowed: A single composite role could design and implement without checker separation.

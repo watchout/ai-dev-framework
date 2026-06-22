@@ -1,0 +1,17 @@
+schema_version: shirube-company-dev-os-profile-fixture/v0-draft
+fixture_id: MISSING-MAKER-CHECKER
+description: Gate path where the implementation owner also approves the audit.
+expected_future_validator_verdict: BLOCKED
+expected_blocker: missing_maker_checker_separation
+profile_fragment:
+  roles:
+    dev-impl:
+      actor: codex-adf
+    dev-l1:
+      actor: codex-adf
+  maker_checker_rules:
+    default: implementation_owner_may_self_approve
+  gate_sequences:
+    medium:
+      required_gates: [dev-impl, dev-l1]
+  risk_if_allowed: Implementation owner could self-audit and merge without independent review.

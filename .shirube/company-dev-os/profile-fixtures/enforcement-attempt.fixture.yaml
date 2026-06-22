@@ -1,0 +1,20 @@
+schema_version: shirube-company-dev-os-profile-fixture/v0-draft
+fixture_id: ENFORCEMENT-ATTEMPT
+description: Projection target attempts enforcement or external mutation during a read-only profile phase.
+expected_future_validator_verdict: BLOCKED
+expected_blocker: forbidden_projection_mutation
+profile_fragment:
+  projection_targets:
+    github_workflow:
+      status: apply
+      attempts: [create_required_check, edit_active_workflow]
+    branch_ruleset:
+      status: apply
+      attempts: [modify_ruleset, require_status_check]
+    aun_projection:
+      status: apply
+      attempts: [db_write, queue_dispatch, discord_live_write]
+  non_authority_boundaries:
+    profile_projection:
+      default: violated
+  risk_if_allowed: Draft profile work could activate enforcement, AUN control, or protected repo settings without approval.
