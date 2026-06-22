@@ -1,0 +1,5 @@
+rule_pack_id: DESIGN-RULE-PACK-MISSING-SCHEMA-001
+mode: rapid-lite
+profile: hotel-lite
+status: draft_report_only
+rules: []
