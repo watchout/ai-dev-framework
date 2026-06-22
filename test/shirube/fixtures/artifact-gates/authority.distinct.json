@@ -1,0 +1,20 @@
+{
+  "implementation_actor": "codex-adf",
+  "approvals": [
+    {
+      "authority": "audit",
+      "actor": "shirube-auditor",
+      "role": "evidence_owner"
+    },
+    {
+      "authority": "merge",
+      "actor": "watchout",
+      "role": "release_owner"
+    },
+    {
+      "authority": "release",
+      "actor": "release-desk",
+      "role": "repo_owner"
+    }
+  ]
+}

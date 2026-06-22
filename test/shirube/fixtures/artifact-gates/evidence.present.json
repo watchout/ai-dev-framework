@@ -1,0 +1,30 @@
+{
+  "schema_version": "shirube-evidence/v1",
+  "EVIDENCE-ID": "EVIDENCE-ADF-452-D-PRESENT",
+  "SPEC-ID": "SPEC-ADF-452-D",
+  "CELL-ID": "CELL-ADF-452-D",
+  "IMPL-ID": "IMPL-ADF-452-D",
+  "PR-ID": "https://github.com/watchout/ai-dev-framework/pull/461",
+  "commit_sha": "1111111111111111111111111111111111111111",
+  "base_ref": "main",
+  "ratify_status": "RATIFIED (ref 4761000138)",
+  "audit_results": ["AUDIT-ADF-452-D-SPEC", "AUDIT-ADF-452-D-IMPL"],
+  "ci_runs": [
+    {
+      "name": "unit",
+      "result": "PASS",
+      "url": "local:unit"
+    }
+  ],
+  "artifact_locations": ["test/shirube/fixtures/artifact-gates/evidence.present.json"],
+  "post_merge_verification": {
+    "result": "N/A",
+    "evidence": ["pre-merge fixture"]
+  },
+  "waiver_refs": [],
+  "release_or_rollback_decision": {
+    "result": "N/A",
+    "evidence": ["not applicable to fixture"],
+    "decision_owner": "release_owner"
+  }
+}
