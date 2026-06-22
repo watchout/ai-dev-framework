@@ -1,0 +1,37 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-RAPID-LITE-MISSING-FRAMEWORK-001
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: https://github.com/watchout/ai-dev-framework/issues/470#issuecomment-rps-confirmed
+repo: watchout/ai-dev-framework
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/470
+pr_head_sha: "0123456789abcdef0123456789abcdef01234567"
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: implementation
+spec_review_state: ready_for_implementation
+rps_scope:
+  shirube_owns: [Rapid/Lite local report-only gate contract checks]
+  shirube_does_not_own: [workflows, required checks, AUN runtime]
+acceptance_criteria: [framework bootstrap evidence is checked]
+validation:
+  required_commands: [git diff --check]
+  test_expectations: [framework reference is required]
+  required_evidence: [PR_head_SHA, changed_files, validation_commands, validation_results, owner_decision]
+owner_decision:
+  required_before_merge: true
+  exact_head_sha: "0123456789abcdef0123456789abcdef01234567"
+  decision_ref: https://github.com/watchout/ai-dev-framework/issues/470#issuecomment-missing-framework
+cell:
+  CELL-ID: CELL-ADF-V3-RAPID-LITE-GATE-CHECK-MISSING-FRAMEWORK
+  cell_type: docs_only
+  risk_class: R2
+  goal: Verify missing framework bootstrap blocks.
+  non_scope: [workflows, required checks, AUN runtime]
+  allowed_paths: [docs/**]
+  forbidden_paths: [src/**, .github/workflows/**]
+  stop_conditions: [missing framework reference]
+legacy_source_boundary:
+  legacy_sources_are_truth: false
