@@ -1,0 +1,26 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-COMPANY-DEV-OS-PROFILE-C0-SPEC
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-COMPANY-DEV-OS-PROFILE-C0.md
+verdict: PASS
+findings:
+  - check_id: SPEC-SCOPE
+    result: PASS
+    evidence:
+      - SPEC-COMPANY-DEV-OS-PROFILE-C0 is limited to read-only inventory and mapping for Company Dev OS to Shirube canonical profile adoption.
+  - check_id: SPEC-REQUIRED-SECTIONS
+    result: PASS
+    evidence:
+      - The spec includes source inventory, role vocabulary inventory, role boundary mapping, gate/transition mapping, risk/protected-surface mapping, evidence/completion mapping, read-only projection candidates, adoption state machine, gaps/conflicts/stop conditions, and non-scope boundary sections.
+  - check_id: SPEC-MAPPING-COLUMNS
+    result: PASS
+    evidence:
+      - Mapping tables include old_source_rule, current_source_location, shirube_canonical_field_candidate, projection_target_candidate, status, risk_if_lost, and notes.
+  - check_id: SPEC-NON-SCOPE
+    result: PASS
+    evidence:
+      - The spec does not authorize runtime, CLI, workflow, branch protection, ruleset, AUN, target repo, production, deploy, package, lockfile, or overlay replacement changes.
+auditor: codex-adf
+created_at: 2026-06-22T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1

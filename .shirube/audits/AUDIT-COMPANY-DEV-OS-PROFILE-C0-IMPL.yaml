@@ -1,0 +1,27 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-COMPANY-DEV-OS-PROFILE-C0-IMPL
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-COMPANY-DEV-OS-PROFILE-C0.md
+  - .shirube/cells/CELL-COMPANY-DEV-OS-PROFILE-C0.yaml
+verdict: PASS
+findings:
+  - check_id: IMPL-SCOPE
+    result: PASS
+    evidence:
+      - Implementation is limited to .shirube C0 docs/spec, Cell, Impl, and audit artifacts.
+  - check_id: IMPL-SOURCE-REVIEW
+    result: PASS
+    evidence:
+      - The implementation plan lists external Company Dev OS sources, local dry-run overlay references, and current Shirube policy sources reviewed for C0.
+  - check_id: IMPL-STOP-CONDITIONS
+    result: PASS
+    evidence:
+      - The Cell records unmapped protected governance rules, conflicting role vocabulary, ambiguous authority owner, missing evidence model, AUN/control mutation, protected settings mutation, and overlay replacement as stop conditions.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - Runtime, CLI, schema validator, workflow, required check, branch protection, ruleset, AUN, Discord, DB, queue, LaunchAgent, target repo, production, deploy, package, lockfile, and overlay replacement changes are non-goals.
+auditor: codex-adf
+created_at: 2026-06-22T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1

@@ -1,0 +1,117 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-COMPANY-DEV-OS-PROFILE-C0
+SPEC-ID: SPEC-COMPANY-DEV-OS-PROFILE-C0
+risk_tier: R3
+goal: Create the read-only Company Dev OS to Shirube canonical profile C0 inventory and mapping artifact.
+covered_req_ids:
+  - REQ-COMPANY-DEV-OS-C0-001
+  - REQ-COMPANY-DEV-OS-C0-002
+  - REQ-COMPANY-DEV-OS-C0-003
+  - REQ-COMPANY-DEV-OS-C0-004
+  - REQ-COMPANY-DEV-OS-C0-005
+  - SEC-COMPANY-DEV-OS-C0-001
+allowed_paths:
+  - .shirube/specs/SPEC-COMPANY-DEV-OS-PROFILE-C0.md
+  - .shirube/cells/CELL-COMPANY-DEV-OS-PROFILE-C0.yaml
+  - .shirube/impls/IMPL-COMPANY-DEV-OS-PROFILE-C0.md
+  - .shirube/audits/AUDIT-COMPANY-DEV-OS-PROFILE-C0-SPEC.yaml
+  - .shirube/audits/AUDIT-COMPANY-DEV-OS-PROFILE-C0-IMPL.yaml
+forbidden_paths:
+  - src/**
+  - lib/**
+  - bin/**
+  - scripts/**
+  - .github/workflows/**
+  - package.json
+  - package-lock.json
+  - pnpm-lock.yaml
+  - deploy/**
+  - .env
+  - .env.*
+  - secrets/**
+  - "**/branch-protection/**"
+  - "**/ruleset/**"
+acceptance_criteria:
+  - id: AC-COMPANY-DEV-OS-C0-001
+    statement: Source inventory covers Company Dev OS root, role matrices, review gates, state transitions, runtime activation, AUN registry, local dry-run overlays, and relevant repo profiles.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C0-001]
+  - id: AC-COMPANY-DEV-OS-C0-002
+    statement: Mapping tables include required columns and classify every listed protected rule as mapped, partial, gap, or conflict.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C0-002]
+  - id: AC-COMPANY-DEV-OS-C0-003
+    statement: Role vocabulary conflicts, authority ambiguity, evidence model gaps, AUN identity gaps, overlay precedence gaps, and state alias gaps are explicit.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C0-003]
+  - id: AC-COMPANY-DEV-OS-C0-004
+    statement: Read-only projection candidates remain separated from control, enforcement, AUN queue/DB, branch protection, rulesets, workflows, and production behavior.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C0-004, SEC-COMPANY-DEV-OS-C0-001]
+  - id: AC-COMPANY-DEV-OS-C0-005
+    statement: Adoption state machine names all required states and marks C0 as inventory-only.
+    linked_req_ids: [REQ-COMPANY-DEV-OS-C0-005]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-COMPANY-DEV-OS-C0-001"
+  - "TEST-MAP-ID: TEST-MAP-COMPANY-DEV-OS-C0-002"
+required_evidence:
+  - source_inventory_review
+  - mapping_table_review
+  - gap_conflict_review
+  - diff_check
+  - breaking_change_scan
+  - yaml_parse
+  - lint_type_build
+  - conveyor_check_result
+non_goals:
+  - runtime behavior changes
+  - CLI behavior changes
+  - schema validator changes
+  - active workflow changes
+  - required check activation
+  - branch protection or ruleset mutation
+  - AUN queue/control implementation
+  - AUN DB/schema mutation
+  - Discord, queue, LaunchAgent, or transport changes
+  - target repository mutation
+  - production or deploy behavior changes
+  - package or lockfile changes
+  - replacement or removal of existing Company Dev OS overlays
+stop_conditions:
+  - unmapped protected governance rule
+  - conflicting role vocabulary
+  - ambiguous authority owner
+  - unverified runtime behavior claim
+  - missing evidence model
+  - missing maker/checker mapping
+  - request to mutate AUN queue, DB, or control path
+  - request to mutate branch protection, rulesets, required checks, or workflows
+  - request to replace existing Company Dev OS overlays before shadow validation
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  allowed_commands:
+    - read-only source inspection
+    - local validation and targeted checks
+    - git diff --check
+    - bash scripts/detect-breaking-changes.sh origin/main
+    - npm run lint
+    - npm run type-check
+    - npm run build:cli
+    - npm run --silent shirube -- conveyor check <pr-url> --format json
+    - git push origin <branch>
+    - gh pr create --draft
+  forbidden_commands:
+    - active workflow mutation
+    - branch protection mutation
+    - ruleset mutation
+    - AUN, Discord, DB, queue, LaunchAgent, or production mutation
+    - target repository mutation
+    - package or lockfile mutation
+    - merge
+  handoff_conditions:
+    - draft PR opened
+    - exact head SHA reported
+    - changed files reported
+    - checks reported
+    - non-scope confirmation reported
+  completion_evidence:
+    - draft PR body
+    - implementation handoff comment
+    - local command results
+    - conveyor check result
