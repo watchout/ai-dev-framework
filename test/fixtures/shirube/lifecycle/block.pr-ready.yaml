@@ -1,0 +1,12 @@
+schema_version: shirube-lifecycle-state/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+repo: owner/repo
+current_phase: PR_READY
+framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
+adoption_report_ref: test/fixtures/shirube/lifecycle/adoption.greenfield-ready.json
+repo_spec_ref: test/fixtures/shirube/lifecycle/repo-spec.ready.yaml
+handoff_ref: test/fixtures/shirube/lifecycle/handoff.ready.yaml
+last_allowed_phase: IMPLEMENTED
+updated_at: 2026-06-22T21:00:00Z
+updated_by: codex

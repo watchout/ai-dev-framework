@@ -1,0 +1,36 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-LIFECYCLE-READY-001
+framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: https://github.com/owner/repo/issues/1#rps-confirmed
+repo: owner/repo
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: implementation
+spec_review_state: ready_for_implementation
+cell:
+  CELL-ID: CELL-ADF-V3-LIFECYCLE-GUARD-001
+  cell_type: docs_only
+  risk_class: R2
+  goal: Exercise lifecycle-ready fixture.
+  non_scope:
+    - workflows
+    - required checks
+  allowed_paths:
+    - docs/**
+    - scripts/shirube/**
+    - test/shirube/**
+    - test/fixtures/shirube/**
+    - templates/**
+  forbidden_paths:
+    - .github/workflows/**
+    - package.json
+    - package-lock.json
+validation:
+  required_commands:
+    - node scripts/shirube/check-lifecycle.mjs --format json
+  required_evidence:
+    - lifecycle_check_report

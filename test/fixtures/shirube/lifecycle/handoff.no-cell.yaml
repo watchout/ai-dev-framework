@@ -1,0 +1,26 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-LIFECYCLE-NO-CELL-001
+framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
+repo_spec_ref: .shirube/repo-spec.yaml
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: implementation
+spec_review_state: ready_for_implementation
+cell:
+  cell_type: docs_only
+  risk_class: R2
+  goal: Missing CELL-ID fixture.
+  non_scope:
+    - workflows
+  allowed_paths:
+    - docs/**
+  forbidden_paths:
+    - .github/workflows/**
+validation:
+  required_commands:
+    - git diff --check
+  required_evidence:
+    - lifecycle_check_report

@@ -1,0 +1,19 @@
+{
+  "schema": "shirube-gate-contract-check/v1",
+  "mode": "rapid-lite",
+  "profile": "hotel-lite",
+  "current_phase": "BLOCKED",
+  "verdict": "BLOCKED",
+  "would_block": true,
+  "head_sha": "0123456789abcdef0123456789abcdef01234567",
+  "hard_blocks": [
+    {
+      "item_id": "RL-PR-003",
+      "code": "forbidden_paths_touched",
+      "message": "Fixture blocked.",
+      "path": ".github/workflows/example.yml"
+    }
+  ],
+  "warnings": [],
+  "evidence": []
+}

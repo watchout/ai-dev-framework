@@ -1,0 +1,8 @@
+schema_version: shirube-repo-spec/v1
+repo: owner/repo
+purpose: Unconfirmed fixture RPS for lifecycle tests.
+confirmation_evidence:
+  rps_readiness:
+    verdict: DRAFTED
+    authority_actor: null
+    evidence_ref: null

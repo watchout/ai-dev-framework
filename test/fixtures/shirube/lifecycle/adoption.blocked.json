@@ -1,0 +1,21 @@
+{
+  "schema": "shirube-adoption-check/v1",
+  "lane": "adoption_intake",
+  "disposition": "retrofit_recover",
+  "current_phase": "RECOVERY_REQUIRED",
+  "verdict": "BLOCKED",
+  "would_block": true,
+  "allowed_next_phases": ["ADOPTION_REQUIRED", "RPS_REQUIRED"],
+  "forbidden_next_phases": ["EXECUTION_READY", "IMPLEMENTED", "MERGED", "RELEASED"],
+  "blockers": [
+    {
+      "item_id": "RECOVER-001",
+      "code": "material_drift",
+      "message": "Fixture blocked.",
+      "path": "existing_state_scan"
+    }
+  ],
+  "warnings": [],
+  "evidence": [],
+  "required_next_actions": []
+}
