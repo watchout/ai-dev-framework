@@ -1,0 +1,29 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-RAPID-LITE-OUTSIDE-PATH-001
+repo: watchout/ai-dev-framework
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/470
+pr_head_sha: "0123456789abcdef0123456789abcdef01234567"
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: implementation
+acceptance_criteria: [changed file outside allowed paths is blocked]
+validation:
+  required_commands: [git diff --check]
+  test_expectations: [path boundary is checked]
+  required_evidence: [PR_head_SHA, changed_files, validation_commands, validation_results, owner_decision]
+owner_decision:
+  required_before_merge: true
+  exact_head_sha: "0123456789abcdef0123456789abcdef01234567"
+  decision_ref: https://github.com/watchout/ai-dev-framework/issues/470#issuecomment-outside-path
+cell:
+  CELL-ID: CELL-ADF-V3-RAPID-LITE-GATE-CHECK-OUTSIDE
+  cell_type: docs_only
+  risk_class: R2
+  allowed_paths: [docs/**]
+  forbidden_paths: [.github/workflows/**, package.json, package-lock.json]
+  stop_conditions: [changed file outside allowed_paths]
+legacy_source_boundary:
+  legacy_sources_are_truth: false
