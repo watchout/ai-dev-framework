@@ -1,0 +1,6 @@
+schema_version: shirube-repo-spec/v1
+repo: watchout/ai-dev-framework
+owner: watchout
+confirmation_evidence:
+  rps_readiness:
+    required: true

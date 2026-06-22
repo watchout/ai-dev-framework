@@ -1,11 +1,9 @@
 schema_version: shirube-control-handoff/rapid-lite/v1
 mode: rapid-lite
 profile: hotel-lite
-control_handoff_id: CH-RAPID-LITE-FORBIDDEN-PATH-001
+control_handoff_id: CH-RAPID-LITE-MISSING-RPS-001
 matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
 framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
-repo_spec_ref: .shirube/repo-spec.yaml
-owner_confirmation_ref: https://github.com/watchout/ai-dev-framework/issues/470#issuecomment-rps-confirmed
 repo: watchout/ai-dev-framework
 repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/470
 pr_head_sha: "0123456789abcdef0123456789abcdef01234567"
@@ -17,23 +15,23 @@ spec_review_state: ready_for_implementation
 rps_scope:
   shirube_owns: [Rapid/Lite local report-only gate contract checks]
   shirube_does_not_own: [workflows, required checks, AUN runtime]
-acceptance_criteria: [forbidden path is blocked even when allowed path is broad]
+acceptance_criteria: [missing RPS blocks]
 validation:
   required_commands: [git diff --check]
-  test_expectations: [forbidden path is checked]
+  test_expectations: [RPS evidence is checked]
   required_evidence: [PR_head_SHA, changed_files, validation_commands, validation_results, owner_decision]
 owner_decision:
   required_before_merge: true
   exact_head_sha: "0123456789abcdef0123456789abcdef01234567"
-  decision_ref: https://github.com/watchout/ai-dev-framework/issues/470#issuecomment-forbidden-path
+  decision_ref: https://github.com/watchout/ai-dev-framework/issues/470#issuecomment-missing-rps
 cell:
-  CELL-ID: CELL-ADF-V3-RAPID-LITE-GATE-CHECK-FORBIDDEN
-  cell_type: scaffold
+  CELL-ID: CELL-ADF-V3-RAPID-LITE-GATE-CHECK-MISSING-RPS
+  cell_type: docs_only
   risk_class: R2
-  goal: Verify forbidden paths block.
+  goal: Verify missing RPS blocks.
   non_scope: [workflows, required checks, AUN runtime]
-  allowed_paths: [.github/workflows/**]
-  forbidden_paths: [.github/workflows/**]
-  stop_conditions: [forbidden path touched]
+  allowed_paths: [docs/**]
+  forbidden_paths: [src/**, .github/workflows/**]
+  stop_conditions: [missing RPS]
 legacy_source_boundary:
   legacy_sources_are_truth: false

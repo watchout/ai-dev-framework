@@ -2,6 +2,10 @@ schema_version: shirube-control-handoff/rapid-lite/v1
 mode: rapid-lite
 profile: hotel-lite
 control_handoff_id: CH-RAPID-LITE-PLACEHOLDER-EVIDENCE-001
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: https://github.com/watchout/ai-dev-framework/issues/470#issuecomment-rps-confirmed
 repo: watchout/ai-dev-framework
 repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/470
 pr_head_sha: "0123456789abcdef0123456789abcdef01234567"
@@ -9,6 +13,10 @@ owner:
   role: repo_owner
   actor: watchout
 next_role: implementation
+spec_review_state: ready_for_implementation
+rps_scope:
+  shirube_owns: [Rapid/Lite local report-only gate contract checks]
+  shirube_does_not_own: [workflows, required checks, AUN runtime]
 acceptance_criteria: [placeholder evidence is blocked]
 validation:
   required_commands: [git diff --check]
@@ -27,6 +35,8 @@ cell:
   CELL-ID: CELL-ADF-V3-RAPID-LITE-GATE-CHECK-PLACEHOLDER
   cell_type: docs_only
   risk_class: R2
+  goal: Verify placeholder evidence blocks.
+  non_scope: [workflows, required checks, AUN runtime]
   allowed_paths: [docs/**]
   forbidden_paths: [src/**, .github/workflows/**]
   stop_conditions: [placeholder evidence found]
