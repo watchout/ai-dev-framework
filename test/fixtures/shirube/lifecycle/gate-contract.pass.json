@@ -1,0 +1,12 @@
+{
+  "schema": "shirube-gate-contract-check/v1",
+  "mode": "rapid-lite",
+  "profile": "hotel-lite",
+  "current_phase": "EXECUTION_READY",
+  "verdict": "PASS",
+  "would_block": false,
+  "head_sha": "0123456789abcdef0123456789abcdef01234567",
+  "hard_blocks": [],
+  "warnings": [],
+  "evidence": []
+}

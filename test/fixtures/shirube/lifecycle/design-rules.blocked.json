@@ -1,0 +1,13 @@
+{
+  "schema": "shirube-design-rules-check/v1",
+  "verdict": "BLOCKED",
+  "would_block": true,
+  "findings": [
+    {
+      "item_id": "DR-CODE-001",
+      "code": "duplicate_logic",
+      "message": "Fixture blocked."
+    }
+  ],
+  "warnings": []
+}

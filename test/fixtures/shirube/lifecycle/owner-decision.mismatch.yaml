@@ -1,0 +1,7 @@
+schema_version: shirube-owner-decision/v1
+decision: APPROVED_EXACT_HEAD
+exact_head_sha: "fedcba9876543210fedcba9876543210fedcba98"
+authority_role: owner
+authority_actor: watchout
+created_at: 2026-06-22T21:30:00Z
+evidence_ref: https://github.com/owner/repo/pull/1#owner-final-decision

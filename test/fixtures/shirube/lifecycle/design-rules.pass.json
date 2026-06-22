@@ -1,0 +1,7 @@
+{
+  "schema": "shirube-design-rules-check/v1",
+  "verdict": "PASS",
+  "would_block": false,
+  "findings": [],
+  "warnings": []
+}

@@ -1,0 +1,8 @@
+schema_version: shirube-post-merge-evidence/v1
+source_pr: 1
+approved_head_sha: "0123456789abcdef0123456789abcdef01234567"
+merge_commit_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+merged_at_utc: 2026-06-22T21:53:00Z
+post_merge_smoke: PASS
+unresolved_follow_up_blockers:
+  - merge-notify workflow failure unresolved

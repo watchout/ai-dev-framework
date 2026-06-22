@@ -1,0 +1,21 @@
+{
+  "schema": "shirube-adoption-check/v1",
+  "lane": "adoption_intake",
+  "disposition": "retrofit_accelerate",
+  "current_phase": "GAP_FILL_REQUIRED",
+  "verdict": "PASS_WITH_WARN",
+  "would_block": false,
+  "allowed_next_phases": ["RPS_DRAFT_FROM_CURRENT_REALITY", "GAP_FILL_OR_RECONCILIATION_PLAN"],
+  "forbidden_next_phases": [],
+  "blockers": [],
+  "warnings": [
+    {
+      "item_id": "RETRO-W001",
+      "code": "shirube_gap_fill_required",
+      "message": "Fixture warning.",
+      "path": "adoption_intake"
+    }
+  ],
+  "evidence": [],
+  "required_next_actions": []
+}
