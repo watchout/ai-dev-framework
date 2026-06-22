@@ -1,0 +1,45 @@
+{
+  "schema_version": "shirube-audit/v1",
+  "document_type": "audit_record",
+  "audit_id": "AUDIT-BRIDGE-FIXTURE-VALID",
+  "audit_type": "impl-audit",
+  "stage": "stage-9",
+  "reviewer_actor": "codex-audit",
+  "reviewer_model": "gpt-5-audit",
+  "target_head": "1111111111111111111111111111111111111111",
+  "target_refs": [
+    "https://github.com/watchout/ai-dev-framework/pull/999",
+    "IMPL-BRIDGE-FIXTURE"
+  ],
+  "item_set_ref": "../item-set.yaml",
+  "matched_items": [
+    {
+      "item_id": "STAGE9-FIXTURE-SCOPE",
+      "reason": "Answered by structured item result.",
+      "evidence_ref": ["https://github.com/watchout/ai-dev-framework/pull/999/files"]
+    },
+    {
+      "item_id": "STAGE9-FIXTURE-EVIDENCE",
+      "reason": "Answered by structured item result.",
+      "evidence_ref": ["test/shirube/fixtures/artifact-gates/evidence.present.json"]
+    }
+  ],
+  "missing_items": [],
+  "extra_items": [],
+  "conflicting_items": [],
+  "items": [
+    {
+      "item_id": "STAGE9-FIXTURE-SCOPE",
+      "verdict": "PASS",
+      "reason": "Fixture scope matches the audited implementation.",
+      "evidence_ref": ["https://github.com/watchout/ai-dev-framework/pull/999/files"]
+    },
+    {
+      "item_id": "STAGE9-FIXTURE-EVIDENCE",
+      "verdict": "PASS",
+      "reason": "Fixture includes durable evidence references.",
+      "evidence_ref": ["test/shirube/fixtures/artifact-gates/evidence.present.json"]
+    }
+  ],
+  "aggregate_verdict": "PASS"
+}

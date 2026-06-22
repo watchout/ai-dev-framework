@@ -47,6 +47,7 @@ import { registerConveyorCommand } from "./commands/conveyor.js";
 import { registerEvidenceCommand } from "./commands/evidence.js";
 import { registerWaiverCommand } from "./commands/waiver.js";
 import { registerAuthorityCommand } from "./commands/authority.js";
+import { registerAuditBridgeCommand } from "./commands/audit-bridge.js";
 import { setWriteThrough, type RunState } from "./lib/run-model.js";
 import { syncTaskStatusToGitHub, resolveIssueNumber } from "./lib/state-writer.js";
 
@@ -88,6 +89,7 @@ registerConveyorCommand(program);
 registerEvidenceCommand(program);
 registerWaiverCommand(program);
 registerAuthorityCommand(program);
+registerAuditBridgeCommand(program);
 
 // Design ingest
 registerIngestCommand(program);
