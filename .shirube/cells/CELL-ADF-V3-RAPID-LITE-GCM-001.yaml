@@ -11,6 +11,9 @@ covered_req_ids:
   - REQ-ADF-V3-RL-GCM-005
   - REQ-ADF-V3-RL-GCM-006
   - REQ-ADF-V3-RL-GCM-007
+  - REQ-ADF-V3-RL-GCM-008
+  - REQ-ADF-V3-RL-GCM-009
+  - REQ-ADF-V3-RL-GCM-010
   - SEC-ADF-V3-RL-GCM-001
 allowed_paths:
   - ".shirube/specs/SPEC-ADF-V3-RAPID-LITE-GCM-001.md"
@@ -58,18 +61,29 @@ acceptance_criteria:
   - id: AC-ADF-V3-RL-GCM-007
     linked_req_ids: [SEC-ADF-V3-RL-GCM-001]
     statement: The PR is design-only and touches only allowed paths.
+  - id: AC-ADF-V3-RL-GCM-008
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-008]
+    statement: The matrix and design doc define bootstrap, RPS, minimal handoff, Cell, PR diff, validation evidence, and owner/head checks in order.
+  - id: AC-ADF-V3-RL-GCM-009
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-009]
+    statement: The design doc defines RPS as Repository Premise Spec and forbids separate Promise SSOT.
+  - id: AC-ADF-V3-RL-GCM-010
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-010]
+    statement: The handoff template contains the framework/RPS/owner-confirmation/RPS-scope/spec-review fields required by the executable Rapid/Lite gate.
 required_tests:
   - "TEST-MAP-ID: TEST-MAP-ADF-V3-RAPID-LITE-GCM-001"
   - "YAML parse: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"
   - "YAML parse: .shirube/cells/CELL-ADF-V3-RAPID-LITE-GCM-001.yaml"
   - "YAML parse: .shirube/audits/AUDIT-ADF-V3-RAPID-LITE-GCM-SPEC-001.yaml"
   - "YAML parse: .shirube/audits/AUDIT-ADF-V3-RAPID-LITE-GCM-IMPL-001.yaml"
+  - "Review: bootstrap/RPS/minimal handoff contracts align with #471 executable gate"
   - "Diff scope review against allowed_paths and forbidden_paths"
 required_evidence:
   - design_matrix_review
   - rapid_lite_hard_warn_baseline_review
   - audit_item_id_namespace_review
   - hotel_lite_profile_review
+  - bootstrap_rps_handoff_alignment_review
   - yaml_parse
   - diff_scope_check
   - non_scope_confirmation

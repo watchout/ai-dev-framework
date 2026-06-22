@@ -4,6 +4,13 @@ profile: hotel-lite
 control_handoff_id: CH-RAPID-LITE-EXAMPLE-001
 parent_ssot: https://github.com/watchout/ai-dev-framework/issues/458
 matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: shirube-v3-rapid-lite@<commit-or-tag>
+framework_lock_ref: null
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: null
+owner_confirmation_ref: <durable RPS owner confirmation ref>
+premise_confirmation_ref: null
+spec_review_state: ready_for_implementation
 
 repo: owner/repo
 repo_local_issue: https://github.com/owner/repo/issues/0
@@ -11,6 +18,12 @@ owner:
   role: repo_owner
   actor: owner
 next_role: implementation
+
+rps_scope:
+  shirube_owns:
+    - <what Shirube controls in this repo>
+  shirube_does_not_own:
+    - <what Shirube does not control>
 
 cell:
   CELL-ID: CELL-EXAMPLE-RAPID-LITE-001

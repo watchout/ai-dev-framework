@@ -38,6 +38,13 @@ artifact_policy:
   collapsed_artifact_name: control_handoff
   canonical_template: templates/shirube-control-handoff.rapid-lite.yaml
   non_optional_invariants:
+    - mode
+    - profile
+    - framework_ref or framework_lock_ref
+    - repo_spec_ref or premise_ref
+    - owner_confirmation_ref or premise_confirmation_ref when RPS readiness confirmation is required
+    - rps_scope
+    - spec_review_state
     - repo_local_issue
     - control_handoff
     - CELL-ID
@@ -168,6 +175,46 @@ cell_types:
     hard_block_code: protected_surface_requires_standard_or_enterprise
 
 stage_contracts:
+  bootstrap:
+    purpose: Establish framework source/ref and Rapid/Lite profile before any implementation.
+    hard_blocks:
+      - item_id: RL-BOOT-001
+        code: missing_framework_lock
+        reason: Framework lock or handoff framework/matrix reference is missing.
+      - item_id: RL-BOOT-002
+        code: missing_mode_or_profile
+        reason: mode/profile must be rapid-lite / hotel-lite in the first implementation.
+    warnings:
+      - item_id: RL-BOOT-003
+        code: framework_ref_unpinned
+        reason: framework_ref is symbolic and should be pinned before enforcement.
+
+  rps:
+    purpose: Ensure Repository Premise Spec exists and is confirmed before Rapid/Lite execution.
+    hard_blocks:
+      - item_id: RL-RPS-001
+        code: missing_premise_ssot
+        reason: RPS / Repository Premise Spec or handoff premise reference is missing.
+      - item_id: RL-RPS-002
+        code: missing_premise_owner_confirmation
+        reason: RPS owner confirmation is missing when required.
+      - item_id: RL-RPS-003
+        code: rps_scope_missing
+        reason: RPS or handoff does not state what Shirube owns and does not own for the repo.
+      - item_id: RL-RPS-004
+        code: legacy_source_as_truth
+        reason: Legacy/external docs are treated as authority without current repo-local RPS/control reference.
+
+  minimal_spec_handoff:
+    purpose: Ensure collapsed Rapid/Lite handoff still contains the minimal spec boundary.
+    hard_blocks:
+      - item_id: RL-SPEC-004
+        code: missing_minimal_spec_boundary
+        reason: goal, non_scope, risk_class, cell_type, paths, or validation plan is missing.
+      - item_id: RL-SPEC-005
+        code: missing_spec_review_state
+        reason: handoff does not state whether it is ready for implementation and who owns the next role.
+
   goal_issue:
     purpose: Establish the durable control entry point before goal-mode work.
     required_evidence:
@@ -442,6 +489,8 @@ rapid_lite_audit_item_namespace:
     does not replace `shirube-audit/v1` and does not introduce a competing B3
     schema.
   required_hard_item_prefixes:
+    - RL-BOOT-
+    - RL-RPS-
     - RL-GOAL-
     - RL-SPEC-
     - RL-CELL-

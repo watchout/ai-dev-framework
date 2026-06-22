@@ -21,6 +21,10 @@ findings:
     result: PASS
     evidence:
       - The spec requires a hotel-lite profile inheriting the Rapid/Lite hard baseline.
+  - check_id: SPEC-BOOTSTRAP-RPS-HANDOFF
+    result: PASS
+    evidence:
+      - The spec requires bootstrap, RPS / Repository Premise Spec, and minimal handoff preflights before Cell and PR diff checks.
   - check_id: SPEC-NON-SCOPE
     result: PASS
     evidence:

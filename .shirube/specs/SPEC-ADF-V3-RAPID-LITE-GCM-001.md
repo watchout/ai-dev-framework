@@ -39,6 +39,9 @@ Rapid/Lite is not a lower-quality bypass lane. It is an artifact-collapsed lane:
 | REQ-ADF-V3-RL-GCM-005 | Rapid/Lite must define cell types and required evidence for docs-only, scaffold, code-lite, integration-lite, and protected-stop work. |
 | REQ-ADF-V3-RL-GCM-006 | Rapid/Lite must define an audit item_id namespace that can be mapped into `shirube-audit/v1` item sets without creating a competing audit schema. |
 | REQ-ADF-V3-RL-GCM-007 | The hotel-lite profile must inherit Rapid/Lite hard blocks while explicitly blocking protected, production, secret, and live-operation surfaces. |
+| REQ-ADF-V3-RL-GCM-008 | Rapid/Lite must include mechanical bootstrap, RPS / Repository Premise Spec, and minimal spec handoff preflights before Cell and PR diff checks. |
+| REQ-ADF-V3-RL-GCM-009 | Rapid/Lite must not create a separate Promise SSOT artifact, schema, or phase; RPS means Repository Premise Spec and is the first authority artifact. |
+| REQ-ADF-V3-RL-GCM-010 | The Rapid/Lite handoff template must include the framework, RPS, owner-confirmation, RPS-scope, and spec-review-state fields required by the executable gate. |
 | SEC-ADF-V3-RL-GCM-001 | This design slice must not authorize enforcement, protected setting mutation, external repository mutation, production activation, or live agent dispatch. |
 
 ## Acceptance Criteria
@@ -52,17 +55,22 @@ Rapid/Lite is not a lower-quality bypass lane. It is an artifact-collapsed lane:
 | AC-ADF-V3-RL-GCM-005 | REQ-ADF-V3-RL-GCM-006 | The matrix declares Rapid/Lite item_id values and explains that they are contract item IDs, not a replacement for `shirube-audit/v1`. |
 | AC-ADF-V3-RL-GCM-006 | REQ-ADF-V3-RL-GCM-007 | The hotel-lite profile is present and inherits the Rapid/Lite hard baseline. |
 | AC-ADF-V3-RL-GCM-007 | SEC-ADF-V3-RL-GCM-001 | Changed files are limited to `.shirube` design artifacts, docs, and templates. |
+| AC-ADF-V3-RL-GCM-008 | REQ-ADF-V3-RL-GCM-008 | The matrix and design doc define the executable preflight order as bootstrap, RPS, minimal handoff, Cell, PR diff, validation evidence, then owner/head checks. |
+| AC-ADF-V3-RL-GCM-009 | REQ-ADF-V3-RL-GCM-009 | The design doc states that RPS means Repository Premise Spec and forbids creating a separate Promise SSOT artifact, schema, or phase. |
+| AC-ADF-V3-RL-GCM-010 | REQ-ADF-V3-RL-GCM-010 | The handoff template includes `framework_ref`, `framework_lock_ref`, `repo_spec_ref`, `premise_ref`, owner/premise confirmation refs, `rps_scope`, and `spec_review_state`. |
 
 ## Test / Validation Plan
 
 - YAML parse for `.shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml`.
 - YAML parse for `.shirube/cells/CELL-ADF-V3-RAPID-LITE-GCM-001.yaml`.
 - YAML parse for `.shirube/audits/AUDIT-ADF-V3-RAPID-LITE-GCM-SPEC-001.yaml` and `.shirube/audits/AUDIT-ADF-V3-RAPID-LITE-GCM-IMPL-001.yaml`.
+- Review that the matrix contains bootstrap, RPS, and minimal_spec_handoff contracts before Cell and PR diff checks.
+- Review that the template fields required by the executable Rapid/Lite gate are present.
 - Review that no `src/**`, `scripts/**`, `.github/workflows/**`, package, lockfile, deploy, or protected-setting files are changed.
 - Review that the matrix does not redefine `shirube-audit/v1`; it only supplies Rapid/Lite contract item IDs for later item-set generation.
 
 ## Open Decisions
 
 - Standard and Enterprise baselines remain future work.
-- A later executable Cell may add `check-gate-contract` and schema validation after this design baseline is accepted.
+- A later executable Cell may add or update `check-gate-contract` and schema validation after this design baseline is accepted.
 - A later pilot Cell may graduate a subset of Rapid/Lite Hard BLOCK checks from report-only to required checks after owner approval.

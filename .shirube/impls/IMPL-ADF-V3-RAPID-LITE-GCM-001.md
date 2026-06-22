@@ -18,6 +18,9 @@ Add a design-only Rapid/Lite Gate Contract Matrix baseline for Shirube V3.
 - REQ-ADF-V3-RL-GCM-005
 - REQ-ADF-V3-RL-GCM-006
 - REQ-ADF-V3-RL-GCM-007
+- REQ-ADF-V3-RL-GCM-008
+- REQ-ADF-V3-RL-GCM-009
+- REQ-ADF-V3-RL-GCM-010
 - SEC-ADF-V3-RL-GCM-001
 
 ## Planned File Changes
@@ -35,7 +38,9 @@ Add a design-only Rapid/Lite Gate Contract Matrix baseline for Shirube V3.
 
 ## Implementation Notes
 
-This Cell intentionally adds design artifacts only. The matrix is structured so a later implementation Cell can turn it into an executable gate without re-deciding the Rapid/Lite baseline.
+This Cell intentionally adds design artifacts only. The matrix is structured so the executable Rapid/Lite gate can read the same design baseline without re-deciding the Rapid/Lite baseline.
+
+The design baseline includes the mechanical bootstrap / RPS amendment required by #470: bootstrap, RPS, and minimal handoff checks precede Cell boundary and PR diff checks. RPS means Repository Premise Spec; this Cell does not create a separate Promise SSOT artifact, schema, or phase.
 
 The matrix does not redefine `shirube-audit/v1`. It defines Rapid/Lite contract item IDs that can be mapped into existing `shirube-audit/v1` item sets in a later Cell.
 
@@ -53,6 +58,7 @@ The matrix does not redefine `shirube-audit/v1`. It defines Rapid/Lite contract 
 - Confirm changed files are inside Cell `allowed_paths`.
 - Confirm no `forbidden_paths` are touched.
 - Confirm Rapid/Lite explicitly keeps exact head, diff scope, evidence, owner decision, and CELL-ID as non-optional invariants.
+- Confirm Rapid/Lite explicitly keeps framework/RPS/owner-confirmation/RPS-scope/spec-review-state as non-optional preflight inputs before PR diff checks.
 - Confirm hotel-lite is a profile using the Rapid/Lite baseline, not a separate process.
 
 ## Known Risks

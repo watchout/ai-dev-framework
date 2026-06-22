@@ -1,7 +1,7 @@
 # Shirube V3 Rapid/Lite Gate Contract Matrix
 
-Status: draft design baseline  
-Parent SSOT: https://github.com/watchout/ai-dev-framework/issues/458  
+Status: draft design baseline
+Parent SSOT: https://github.com/watchout/ai-dev-framework/issues/458
 Matrix: `.shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml`
 
 ## 1. Purpose
@@ -32,7 +32,21 @@ Rapid/Lite:
   but exact head, diff scope, evidence, owner decision, and CELL-ID remain mandatory.
 ```
 
-## 2. Core rule
+## 2. Executable Preflight Order
+
+The executable Rapid/Lite gate must check layers in this order:
+
+1. bootstrap / adoption preflight
+2. RPS / Repository Premise Spec preflight
+3. Rapid/Lite control handoff / minimal spec preflight
+4. Cell boundary
+5. PR diff scope
+6. validation evidence
+7. owner decision / head match
+
+RPS means Repository Premise Spec. RPS is the only canonical first authority artifact for repository premise and ownership. Do not create Promise SSOT as a separate artifact, schema, or phase.
+
+## 3. Core rule
 
 ```text
 Collapse artifacts, not control.
@@ -41,6 +55,11 @@ Collapse artifacts, not control.
 Rapid/Lite may use one control handoff instead of separate Goal, SPEC, CELL, and IMPL files. It must still preserve:
 
 - repo-local issue or PR anchor;
+- framework ref or framework lock ref;
+- repo-spec ref or premise ref;
+- owner confirmation ref or premise confirmation ref when RPS readiness confirmation is required;
+- RPS scope stating what Shirube owns and does not own for the repo;
+- spec review state for implementation readiness;
 - `CELL-ID`;
 - risk class;
 - allowed paths;
@@ -53,13 +72,16 @@ Rapid/Lite may use one control handoff instead of separate Goal, SPEC, CELL, and
 - next role;
 - post-merge evidence when done is claimed.
 
-## 3. Hard BLOCK baseline
+## 4. Hard BLOCK baseline
 
 The first Rapid/Lite Hard BLOCK baseline is intentionally small and structural. These are hard from day one because they can be checked without semantic interpretation.
 
 | Area | Hard BLOCK examples |
 | --- | --- |
-| Goal / Issue | missing control handoff, missing repo-local issue, missing owner/next role, legacy-as-truth |
+| Bootstrap | missing framework lock or framework/matrix reference, missing mode/profile |
+| RPS / Repository Premise Spec | missing premise SSOT, missing premise owner confirmation, missing RPS scope, legacy source as truth |
+| Minimal handoff / spec | missing minimal spec boundary, missing spec review state |
+| Goal / Issue | missing control handoff, missing repo-local issue, missing owner/next role |
 | Cell | missing CELL-ID, missing risk class, missing allowed_paths, missing forbidden_paths, missing stop_conditions, unauthorized next cell |
 | PR / Diff | missing PR head SHA, changed files outside allowed_paths, forbidden_paths touched, head mismatch, scope drift |
 | Evidence | missing validation evidence, placeholder evidence, stale evidence, failed required validation without owner decision |
@@ -68,12 +90,13 @@ The first Rapid/Lite Hard BLOCK baseline is intentionally small and structural. 
 | Merge | owner decision missing, merge head mismatch, unresolved Hard BLOCK |
 | Post-merge | missing merge commit, missing merged_at, missing smoke or N/A evidence, unresolved follow-up blocker |
 
-## 4. WARN baseline
+## 5. WARN baseline
 
 Rapid/Lite uses WARN for quality and maturity issues that should be visible but should not stop fast implementation by default.
 
 | Area | WARN examples |
 | --- | --- |
+| Bootstrap | symbolic framework ref that should be pinned before enforcement |
 | Spec | AC/TEST granularity low, semantic edge cases need review, recommended fields missing |
 | Cell | cell size large, cell type inferred |
 | Impl | implementation detail low, rollback/revert plan light |
@@ -92,7 +115,7 @@ Standard   = structural Hard BLOCK + stronger REQ/AC/TEST trace + required audit
 Enterprise = Standard + protected authority + rollout + strict evidence
 ```
 
-## 5. Cell types
+## 6. Cell types
 
 Rapid/Lite defines these initial cell types:
 
@@ -106,7 +129,7 @@ Rapid/Lite defines these initial cell types:
 
 Any protected-stop condition escalates out of Rapid/Lite to Standard or Enterprise.
 
-## 6. hotel-lite profile
+## 7. hotel-lite profile
 
 The first target profile is `hotel-lite`.
 
@@ -128,14 +151,17 @@ It warns on `integration_lite` and blocks:
 - live AUN / Discord / queue / DB / LaunchAgent dispatch;
 - irreversible customer-impacting operation.
 
-## 7. Audit item ID rule
+## 8. Audit item ID rule
 
 Rapid/Lite audit item IDs use the `RL-*` namespace.
 
 Examples:
 
 ```text
+RL-BOOT-001  missing_framework_lock
+RL-RPS-001   missing_premise_ssot
 RL-GOAL-001  missing_control_handoff
+RL-SPEC-004  missing_minimal_spec_boundary
 RL-CELL-002  missing_allowed_paths
 RL-PR-002    changed_files_outside_allowed_paths
 RL-EVID-002  placeholder_evidence
@@ -147,13 +173,18 @@ These IDs are contract item IDs. They do not replace `shirube-audit/v1`.
 
 A later implementation Cell may generate or maintain `shirube-audit/v1` item sets from this matrix. B3 remains the admissibility gate for audit records.
 
-## 8. Goal-mode handoff shape
+## 9. Goal-mode handoff shape
 
 A Rapid/Lite runner should receive one compact handoff containing:
 
 ```text
 mode
 profile
+framework_ref or framework_lock_ref
+repo_spec_ref or premise_ref
+owner_confirmation_ref or premise_confirmation_ref when required
+rps_scope
+spec_review_state
 repo
 repo-local issue
 control_handoff_id
@@ -174,7 +205,7 @@ forbidden_operations
 
 The template is `templates/shirube-control-handoff.rapid-lite.yaml`.
 
-## 9. Graduation path
+## 10. Graduation path
 
 Rapid/Lite can later become executable in three steps:
 
@@ -184,7 +215,7 @@ Rapid/Lite can later become executable in three steps:
 
 Do not graduate WARN items to required checks until Standard or Enterprise baselines are explicitly approved.
 
-## 10. Non-scope
+## 11. Non-scope
 
 This design does not:
 
