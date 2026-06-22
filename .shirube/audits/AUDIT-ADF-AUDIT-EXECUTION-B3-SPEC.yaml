@@ -1,0 +1,22 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-AUDIT-EXECUTION-B3-SPEC
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-ADF-AUDIT-EXECUTION-B3.md
+verdict: PASS
+findings:
+  - check_id: SPEC-SCOPE
+    result: PASS
+    evidence:
+      - SPEC-ADF-AUDIT-EXECUTION-B3 limits the slice to report-only Bridge tooling and B3 governance records.
+  - check_id: SPEC-REQ-MAP
+    result: PASS
+    evidence:
+      - Requirements cover CLI output, schema structure validation, item coverage, maker/checker, artifact consistency reuse, failure semantics, and non-scope controls.
+  - check_id: SPEC-NON-GOALS
+    result: PASS
+    evidence:
+      - The spec excludes B2 item changes, schema changes, enforcement, branch protection, rulesets, workflow activation, AUN, target repositories, production, deploy, and package changes.
+auditor: codex-adf
+created_at: 2026-06-22T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1

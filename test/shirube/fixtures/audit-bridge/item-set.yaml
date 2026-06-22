@@ -1,0 +1,15 @@
+schema_version: shirube-audit/v1
+document_type: audit_item_set
+item_set_id: AUDIT-ITEM-SET-BRIDGE-FIXTURE-V1
+stage: stage-9
+items:
+  - item_id: STAGE9-FIXTURE-SCOPE
+    criterion: Fixture scope remains bounded to the audited implementation.
+    required_evidence:
+      - PR diff
+      - implementation ref
+  - item_id: STAGE9-FIXTURE-EVIDENCE
+    criterion: Fixture reporting includes durable evidence references.
+    required_evidence:
+      - evidence artifact
+      - command output

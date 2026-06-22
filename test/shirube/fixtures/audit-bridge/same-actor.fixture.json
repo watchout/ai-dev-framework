@@ -1,0 +1,8 @@
+{
+  "schema": "shirube-audit-bridge-fixture/v1",
+  "audit_record_ref": "records/valid.json",
+  "item_set_ref": "item-set.yaml",
+  "implementation_actor": "codex-audit",
+  "implementation_model": "gpt-5-codex",
+  "expected_head": "1111111111111111111111111111111111111111"
+}

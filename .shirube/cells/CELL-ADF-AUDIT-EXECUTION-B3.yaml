@@ -1,0 +1,87 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-AUDIT-EXECUTION-B3
+SPEC-ID: SPEC-ADF-AUDIT-EXECUTION-B3
+risk_tier: R1
+goal: Implement the report-only Shirube audit Bridge admissibility command for structured audit records.
+covered_req_ids:
+  - REQ-ADF-AUDIT-B3-001
+  - REQ-ADF-AUDIT-B3-002
+  - REQ-ADF-AUDIT-B3-003
+  - REQ-ADF-AUDIT-B3-004
+  - REQ-ADF-AUDIT-B3-005
+  - REQ-ADF-AUDIT-B3-006
+  - REQ-ADF-AUDIT-B3-007
+  - SEC-ADF-AUDIT-B3-001
+allowed_paths:
+  - src/cli/**
+  - test/shirube/**
+  - .shirube/**
+forbidden_paths:
+  - .github/workflows/**
+  - deploy/**
+  - .env
+  - .env.*
+  - secrets/**
+  - "**/branch-protection/**"
+  - "**/ruleset/**"
+acceptance_criteria:
+  - id: AC-ADF-AUDIT-B3-001
+    statement: The audit Bridge command emits deterministic JSON for PASS, BLOCKED, and FAILURE cases.
+    linked_req_ids: [REQ-ADF-AUDIT-B3-001, REQ-ADF-AUDIT-B3-007]
+  - id: AC-ADF-AUDIT-B3-002
+    statement: Structured audit records and item sets are checked against the v1 envelope without changing the schema.
+    linked_req_ids: [REQ-ADF-AUDIT-B3-002]
+  - id: AC-ADF-AUDIT-B3-003
+    statement: Required item coverage, duplicates, unknown IDs, invalid evidence, UNVERIFIED items, and maker/checker violations are fixture-tested.
+    linked_req_ids: [REQ-ADF-AUDIT-B3-003, REQ-ADF-AUDIT-B3-004, REQ-ADF-AUDIT-B3-005]
+  - id: AC-ADF-AUDIT-B3-004
+    statement: Shared artifact consistency primitive is used for head and placeholder evidence checks.
+    linked_req_ids: [REQ-ADF-AUDIT-B3-006]
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-AUDIT-B3-001"
+  - "TEST-MAP-ID: TEST-MAP-ADF-AUDIT-B3-002"
+  - "TEST-MAP-ID: TEST-MAP-ADF-AUDIT-B3-003"
+required_evidence:
+  - audit_bridge_json_result
+  - focused_vitest_result
+  - breaking_change_scan
+  - diff_check
+  - lint_type_build
+  - conveyor_check_result
+non_goals:
+  - semantic judgment of LLM audit reasons
+  - freeform prose parsing as authority
+  - B2 item content or ID changes
+  - shirube-audit/v1 schema changes
+  - required check activation
+  - branch protection or ruleset changes
+  - workflow activation or modification
+  - AUN or multi-agent automation activation
+  - target repository mutation
+  - production or deploy behavior changes
+  - package or lockfile changes
+stop_conditions:
+  - Bridge implementation requires changing the canonical audit schema.
+  - Bridge implementation requires enforcement or protected settings changes.
+  - Bridge implementation requires package dependency changes.
+execution_contract:
+  canonical_term: Goal-directed bounded execution
+  allowed_commands:
+    - local fixture tests
+    - local CLI checks
+    - lint, type-check, and build
+    - non-mutating GitHub PR creation
+  forbidden_commands:
+    - branch protection mutation
+    - ruleset mutation
+    - workflow activation or required-check changes
+    - AUN or target repository mutation
+    - production or deploy changes
+  handoff_conditions:
+    - draft PR opened for Shirube command review
+    - exact head SHA reported
+    - checks and report-only conveyor output reported
+  completion_evidence:
+    - draft PR body
+    - local command output
+    - remote report-only checks

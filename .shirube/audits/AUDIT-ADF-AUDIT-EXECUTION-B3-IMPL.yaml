@@ -1,0 +1,27 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-AUDIT-EXECUTION-B3-IMPL
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-ADF-AUDIT-EXECUTION-B3.md
+  - .shirube/cells/CELL-ADF-AUDIT-EXECUTION-B3.yaml
+verdict: PASS
+findings:
+  - check_id: IMPL-SCOPE
+    result: PASS
+    evidence:
+      - Implementation is limited to src/cli, test/shirube, and .shirube B3 records.
+  - check_id: IMPL-REPORT-ONLY
+    result: PASS
+    evidence:
+      - Valid BLOCKED Bridge reports remain exit-code zero; malformed inputs return FAILURE and nonzero exit.
+  - check_id: IMPL-PRIMITIVE-REUSE
+    result: PASS
+    evidence:
+      - The implementation calls the existing artifact consistency and evidence check primitives for head/base and placeholder/pending evidence checks.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - No schema, B2 item, enforcement, workflow, branch protection, ruleset, AUN, target repository, production, deploy, package, or lockfile change is planned.
+auditor: codex-adf
+created_at: 2026-06-22T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1
