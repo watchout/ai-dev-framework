@@ -1,0 +1,111 @@
+schema_version: shirube-cell/v1
+CELL-ID: CELL-ADF-V3-RAPID-LITE-GCM-001
+SPEC-ID: SPEC-ADF-V3-RAPID-LITE-GCM-001
+risk_tier: R3
+goal: Add the Rapid/Lite Gate Contract Matrix design baseline for Shirube V3.
+covered_req_ids:
+  - REQ-ADF-V3-RL-GCM-001
+  - REQ-ADF-V3-RL-GCM-002
+  - REQ-ADF-V3-RL-GCM-003
+  - REQ-ADF-V3-RL-GCM-004
+  - REQ-ADF-V3-RL-GCM-005
+  - REQ-ADF-V3-RL-GCM-006
+  - REQ-ADF-V3-RL-GCM-007
+  - SEC-ADF-V3-RL-GCM-001
+allowed_paths:
+  - ".shirube/specs/SPEC-ADF-V3-RAPID-LITE-GCM-001.md"
+  - ".shirube/cells/CELL-ADF-V3-RAPID-LITE-GCM-001.yaml"
+  - ".shirube/impls/IMPL-ADF-V3-RAPID-LITE-GCM-001.md"
+  - ".shirube/audits/AUDIT-ADF-V3-RAPID-LITE-GCM-SPEC-001.yaml"
+  - ".shirube/audits/AUDIT-ADF-V3-RAPID-LITE-GCM-IMPL-001.yaml"
+  - ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"
+  - "docs/standards/shirube-v3-rapid-lite-gate-contract-matrix.md"
+  - "templates/shirube-control-handoff.rapid-lite.yaml"
+forbidden_paths:
+  - "src/**"
+  - "lib/**"
+  - "bin/**"
+  - "scripts/**"
+  - ".github/workflows/**"
+  - "package.json"
+  - "package-lock.json"
+  - "pnpm-lock.yaml"
+  - "deploy/**"
+  - ".env"
+  - ".env.*"
+  - "secrets/**"
+  - "**/branch-protection/**"
+  - "**/ruleset/**"
+acceptance_criteria:
+  - id: AC-ADF-V3-RL-GCM-001
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-001]
+    statement: Rapid/Lite is defined as artifact-collapsed, not evidence-optional.
+  - id: AC-ADF-V3-RL-GCM-002
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-002, REQ-ADF-V3-RL-GCM-003]
+    statement: The matrix contains the initial structural Hard BLOCK baseline.
+  - id: AC-ADF-V3-RL-GCM-003
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-004]
+    statement: The matrix contains the initial Rapid/Lite WARN baseline.
+  - id: AC-ADF-V3-RL-GCM-004
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-005]
+    statement: Rapid/Lite cell types and required evidence are defined.
+  - id: AC-ADF-V3-RL-GCM-005
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-006]
+    statement: Rapid/Lite audit item IDs are defined without redefining shirube-audit/v1.
+  - id: AC-ADF-V3-RL-GCM-006
+    linked_req_ids: [REQ-ADF-V3-RL-GCM-007]
+    statement: hotel-lite profile inherits Rapid/Lite hard blocks and blocks protected/live surfaces.
+  - id: AC-ADF-V3-RL-GCM-007
+    linked_req_ids: [SEC-ADF-V3-RL-GCM-001]
+    statement: The PR is design-only and touches only allowed paths.
+required_tests:
+  - "TEST-MAP-ID: TEST-MAP-ADF-V3-RAPID-LITE-GCM-001"
+  - "YAML parse: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"
+  - "YAML parse: .shirube/cells/CELL-ADF-V3-RAPID-LITE-GCM-001.yaml"
+  - "YAML parse: .shirube/audits/AUDIT-ADF-V3-RAPID-LITE-GCM-SPEC-001.yaml"
+  - "YAML parse: .shirube/audits/AUDIT-ADF-V3-RAPID-LITE-GCM-IMPL-001.yaml"
+  - "Diff scope review against allowed_paths and forbidden_paths"
+required_evidence:
+  - design_matrix_review
+  - rapid_lite_hard_warn_baseline_review
+  - audit_item_id_namespace_review
+  - hotel_lite_profile_review
+  - yaml_parse
+  - diff_scope_check
+  - non_scope_confirmation
+non_goals:
+  - executable gate implementation
+  - schema validator implementation
+  - workflow enforcement
+  - required check activation
+  - branch protection or ruleset mutation
+  - runtime behavior changes
+  - AUN, Discord, DB, queue, LaunchAgent, production, or deploy changes
+  - package or lockfile changes
+  - Company Dev OS profile migration
+stop_conditions:
+  - request to make Rapid/Lite bypass exact head, diff scope, evidence, owner decision, or CELL-ID requirements
+  - request to redefine shirube-audit/v1 instead of mapping Rapid/Lite item IDs into existing audit records
+  - request to activate required checks or branch protection in this design slice
+  - request to include Standard or Enterprise final baselines in this Rapid/Lite slice
+  - request to change runtime, workflow, package, lockfile, or protected settings
+execution_contract:
+  canonical_term: Goal-directed bounded design slice
+  allowed_commands:
+    - read-only source inspection
+    - YAML parse
+    - git diff --check
+    - draft PR creation
+  forbidden_commands:
+    - active workflow mutation
+    - branch protection mutation
+    - ruleset mutation
+    - required check activation
+    - AUN, Discord, DB, queue, LaunchAgent, production, or deploy mutation
+    - package or lockfile mutation
+    - merge
+  handoff_conditions:
+    - draft PR opened
+    - exact head SHA reported
+    - changed files reported
+    - design-only non-scope confirmed
