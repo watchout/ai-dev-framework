@@ -1,0 +1,34 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-V3-RAPID-LITE-GCM-SPEC-001
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-ADF-V3-RAPID-LITE-GCM-001.md
+verdict: PASS
+findings:
+  - check_id: SPEC-SCOPE
+    result: PASS
+    evidence:
+      - SPEC-ADF-V3-RAPID-LITE-GCM-001 is limited to design-only Rapid/Lite Gate Contract Matrix baseline artifacts.
+  - check_id: SPEC-HARD-WARN-BASELINE
+    result: PASS
+    evidence:
+      - The spec requires stage-level Hard BLOCK and WARN classification for Rapid/Lite.
+  - check_id: SPEC-AUDIT-ITEM-ID-ALIGNMENT
+    result: PASS
+    evidence:
+      - The spec requires Rapid/Lite contract item IDs without redefining shirube-audit/v1.
+  - check_id: SPEC-HOTEL-LITE-PROFILE
+    result: PASS
+    evidence:
+      - The spec requires a hotel-lite profile inheriting the Rapid/Lite hard baseline.
+  - check_id: SPEC-BOOTSTRAP-RPS-HANDOFF
+    result: PASS
+    evidence:
+      - The spec requires bootstrap, RPS / Repository Premise Spec, and minimal handoff preflights before Cell and PR diff checks.
+  - check_id: SPEC-NON-SCOPE
+    result: PASS
+    evidence:
+      - The spec excludes workflow enforcement, required checks, branch protection, runtime, AUN, production, package, lockfile, and Company Dev OS migration changes.
+auditor: codex-adf
+created_at: 2026-06-22T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1

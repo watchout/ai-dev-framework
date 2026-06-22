@@ -1,0 +1,35 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-V3-RAPID-LITE-GCM-IMPL-001
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-ADF-V3-RAPID-LITE-GCM-001.md
+  - .shirube/cells/CELL-ADF-V3-RAPID-LITE-GCM-001.yaml
+verdict: PASS
+findings:
+  - check_id: IMPL-CELL-SCOPE
+    result: PASS
+    evidence:
+      - Impl maps to CELL-ADF-V3-RAPID-LITE-GCM-001 and SPEC-ADF-V3-RAPID-LITE-GCM-001.
+  - check_id: IMPL-REQUIREMENT-COVERAGE
+    result: PASS
+    evidence:
+      - Impl lists all REQ-ADF-V3-RL-GCM-* and SEC-ADF-V3-RL-GCM-001 covered requirements.
+  - check_id: IMPL-PATH-BOUNDARY
+    result: PASS
+    evidence:
+      - Planned files are limited to .shirube design artifacts, docs/standards, and templates.
+  - check_id: IMPL-BOOTSTRAP-RPS-HANDOFF
+    result: PASS
+    evidence:
+      - Impl records framework/RPS/owner-confirmation/RPS-scope/spec-review-state as non-optional Rapid/Lite preflight inputs before PR diff checks.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - Impl excludes executable gates, workflows, required checks, branch protection, runtime, AUN, production, package, and lockfile changes.
+  - check_id: IMPL-NEXT-REVIEW
+    result: PASS
+    evidence:
+      - Impl asks next review to validate Hard/WARN baseline, hotel-lite applicability, and Standard/Enterprise deferral.
+auditor: codex-adf
+created_at: 2026-06-22T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1
