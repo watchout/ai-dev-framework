@@ -1,0 +1,40 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-EXAMPLE-001
+repo: owner/repo
+mode: report_only
+profile: hotel-lite
+framework_ref: shirube-v3-rapid-lite@<PINNED_VERSION_OR_COMMIT>
+updated_at: 2026-06-23T00:00:00Z
+stale_after_days: 90
+owner:
+  role: repo_owner
+  actor: <owner>
+calibration:
+  started_at: 2026-06-23T00:00:00Z
+  minimum_prs: 3
+  false_positive_review_required: true
+promotion:
+  from: report_only
+  to: owner_block
+  required_evidence:
+    - self_dogfood_passed
+    - no_unclassified_blockers
+    - owner_accepts_warn_policy
+hard_block_subset:
+  - missing_rps
+  - missing_handoff
+  - adoption_report_blocked
+  - gate_contract_blocked
+  - lifecycle_blocked
+  - design_rule_blocked
+  - owner_head_mismatch
+  - forbidden_path_touched
+  - protected_surface_without_explicit_cell
+required_check:
+  owner_approved: false
+  owner_approval_ref: null
+non_scope:
+  - branch protection mutation
+  - ruleset mutation
+  - required check activation
+  - external repository mutation

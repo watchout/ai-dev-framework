@@ -1,0 +1,6 @@
+schema_version: shirube-owner-decision/v1
+decision: APPROVED_REQUIRED_CHECK
+exact_head_sha: 754dd12f014cbce0ee3d6247863589df0265abb3
+authority_role: repo_owner
+authority_actor: watchout
+evidence_ref: https://github.com/watchout/ai-dev-framework/issues/483#required-check-approved
