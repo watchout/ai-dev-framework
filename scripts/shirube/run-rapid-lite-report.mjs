@@ -84,6 +84,7 @@ function runGateContract({ resultDir, refs, changedFilesPath }) {
   addArg(args, "--framework-lock", refs.frameworkLock);
   args.push("--handoff", refs.handoff);
   addArg(args, "--changed-files", changedFilesPath);
+  addArg(args, "--validation", refs.validation);
   addArg(args, "--owner-decision", refs.ownerDecision);
   args.push("--format", "json");
   return runGate({ gate: "gate-contract", args, outputPath: path.join(resultDir, "gate-contract.json") });
@@ -326,6 +327,7 @@ function discoverRefs({ prBody, changedFiles }) {
     repoSpec: refFromBody(prBody, ["repo_spec_ref", "repo_spec", "repo-spec", "premise_ref"]),
     frameworkLock: refFromBody(prBody, ["framework_lock_ref", "framework_lock", "framework-lock"]),
     handoff: refFromBody(prBody, ["handoff_ref", "handoff", "control_handoff_ref", "control_handoff", "control-handoff"]),
+    validation: refFromBody(prBody, ["validation_ref", "validation_evidence_ref", "validation_evidence", "validation-evidence"]),
     ownerDecision: refFromBody(prBody, ["owner_decision_ref", "owner_decision", "owner-decision"]),
     postMerge: refFromBody(prBody, ["post_merge_ref", "post_merge", "post-merge"]),
     matrix: refFromBody(prBody, ["matrix_ref", "gate_contract_matrix_ref", "gate_contract_matrix"]),
@@ -346,6 +348,7 @@ function discoverRefs({ prBody, changedFiles }) {
     repoSpec: resolveRef({ name: "repo_spec", explicit: explicit.repoSpec, defaults: [".shirube/repo-spec.yaml"], records }),
     frameworkLock: resolveRef({ name: "framework_lock", explicit: explicit.frameworkLock, defaults: [".shirube/shirube-framework-lock.yaml"], records }),
     handoff: resolveRef({ name: "handoff", explicit: explicit.handoff, candidates: bySchema(schemaMatches, "shirube-control-handoff/rapid-lite/v1"), defaults: [".shirube/control-handoff.yaml"], records }),
+    validation: resolveRef({ name: "validation", explicit: explicit.validation, defaults: [".shirube/evidence/validation.yaml", ".shirube/evidence/validation-evidence.yaml"], records }),
     ownerDecision: resolveRef({ name: "owner_decision", explicit: explicit.ownerDecision, defaults: [".shirube/evidence/owner-decision.yaml"], records }),
     postMerge: resolveRef({ name: "post_merge", explicit: explicit.postMerge, defaults: [".shirube/evidence/post-merge.yaml"], records }),
     matrix: resolveRef({ name: "matrix", explicit: explicit.matrix, defaults: [".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"], records }),
