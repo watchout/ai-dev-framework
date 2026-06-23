@@ -3,6 +3,17 @@ shirube_gate_pack:
   mode: partial_shirube_pilot
   target_repo: owner/repo
   target_pr: 0
+  execution_context_ref: .shirube/execution-context.yaml
+  execution_context:
+    primary_repo: owner/repo
+    work_order: owner/repo#0
+    pr: owner/repo#0
+    active_role: dev
+    support_relations:
+      - repo: watchout/ai-dev-framework
+        relation: framework_support
+      - repo: owner/control-repo
+        relation: control_source
   control_source:
     type: github_issue
     ref: owner/control-repo#0

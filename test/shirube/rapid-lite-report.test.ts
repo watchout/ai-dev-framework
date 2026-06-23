@@ -34,7 +34,13 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       "--changed-files",
       fixture("gate-contract/changed-files.pass.txt"),
       "--pr-body",
-      fixture("rapid-lite-report/pr-body.pass.md"),
+      fixture("execution-context/pr-body.report-pass.md"),
+      "--actual-repo",
+      "watchout/ai-dev-framework",
+      "--actual-branch",
+      "codex/487-execution-context-lock",
+      "--actual-head",
+      "0123456789abcdef0123456789abcdef01234567",
       "--diff-root",
       ".",
       "--format",
@@ -47,17 +53,20 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(result.json.report_only).toBe(true);
       expect(["PASS", "PASS_WITH_WARN", "BLOCKED"]).toContain(result.json.verdict);
       expect(result.json.gates.map((gate: { gate: string }) => gate.gate)).toEqual([
+        "execution-context",
         "adoption",
         "lifecycle",
         "gate-contract",
         "design-rules",
       ]);
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "execution-context").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "adoption").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "lifecycle").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "design-rules").status).toBe("ran");
       expect(readFileSync(path.join(result.resultDir, "aggregate.json"), "utf8")).toContain("shirube-rapid-lite-report/v1");
       expect(readFileSync(path.join(result.resultDir, "summary.md"), "utf8")).toContain("<!-- shirube-rapid-lite-gates-report/v1 -->");
+      expect(readFileSync(path.join(result.resultDir, "execution-context.json"), "utf8")).toContain("shirube-execution-context-check/v1");
       expect(readFileSync(path.join(result.resultDir, "adoption.json"), "utf8")).toContain("shirube-adoption-check/v1");
       expect(readFileSync(path.join(result.resultDir, "lifecycle.json"), "utf8")).toContain("shirube-lifecycle-check/v1");
       expect(readFileSync(path.join(result.resultDir, "gate-contract.json"), "utf8")).toContain("shirube-gate-contract-check/v1");
@@ -79,6 +88,10 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
 
     try {
       expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      const executionContext = result.json.gates.find((gate: { gate: string }) => gate.gate === "execution-context");
+      expect(executionContext.verdict).toBe("BLOCKED");
+      expect(executionContext.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("CTX-001");
       expect(result.json.discovered_inputs.handoff).not.toBe(".shirube/self-dogfood/control-handoff.yaml");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract").status).toBe("skipped");
     } finally {
@@ -111,6 +124,12 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       fixture("gate-contract/changed-files.pass.txt"),
       "--pr-body",
       fixture("rapid-lite-report/pr-body.external-validation.md"),
+      "--actual-repo",
+      "watchout/ai-dev-framework",
+      "--actual-branch",
+      "codex/487-execution-context-lock",
+      "--actual-head",
+      "0123456789abcdef0123456789abcdef01234567",
       "--diff-root",
       ".",
       "--format",
@@ -125,6 +144,37 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(gateContract.verdict).toBe("PASS");
       expect(gateContract.blockers.map((finding: { item_id: string }) => finding.item_id)).not.toContain("RL-PR-001");
       expect(readFileSync(path.join(result.resultDir, "gate-contract.json"), "utf8")).toContain("validation.external-head.yaml");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("runs execution-context first and blocks aggregate when context fails", () => {
+    const result = run([
+      "--changed-files",
+      fixture("gate-contract/changed-files.pass.txt"),
+      "--pr-body",
+      fixture("execution-context/pr-body.report-mismatch.md"),
+      "--actual-repo",
+      "watchout/other-repo",
+      "--actual-branch",
+      "codex/487-execution-context-lock",
+      "--actual-head",
+      "0123456789abcdef0123456789abcdef01234567",
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      expect(result.json.would_block).toBe(true);
+      expect(result.json.owner_must_not_merge).toBe(true);
+      expect(result.json.gates[0].gate).toBe("execution-context");
+      expect(result.json.gates[0].verdict).toBe("BLOCKED");
+      expect(result.json.gates[0].blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("CTX-002");
     } finally {
       rmSync(result.resultDir, { recursive: true, force: true });
     }
