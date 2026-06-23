@@ -39,21 +39,40 @@ export function buildRapidLiteReport(options) {
   const adoption = runAdoption({ resultDir, refs, changedFilesPath });
   records.push(adoption);
 
+  const lifecycle = runLifecycle({
+    resultDir,
+    refs,
+    changedFilesPath,
+    adoptionReportPath: adoption.status === "ran" ? adoption.output_path : refs.adoptionReport,
+    gateContractReportPath: refs.gateContractReport,
+    designRuleReportPath: refs.designRuleReport,
+  });
+  records.push(lifecycle);
+
   const gateContract = runGateContract({ resultDir, refs, changedFilesPath });
   records.push(gateContract);
 
   const designRules = runDesignRules({ resultDir, refs, changedFilesPath, prBodyPath, diffRoot });
   records.push(designRules);
 
-  const lifecycle = runLifecycle({
+  const preEnforcementAggregatePath = writeInterimAggregate({ resultDir, refs, records, changedFiles, filename: "pre-enforcement-aggregate.json" });
+  const enforcementPolicy = runEnforcementPolicy({ resultDir, refs, aggregatePath: preEnforcementAggregatePath });
+  if (enforcementPolicy) records.push(enforcementPolicy);
+
+  const preControlStateAggregatePath = writeInterimAggregate({ resultDir, refs, records, changedFiles, filename: "pre-control-state-aggregate.json" });
+  const controlState = runControlStateCompleteness({
     resultDir,
     refs,
     changedFilesPath,
+    aggregatePath: preControlStateAggregatePath,
+    executionContextReportPath: executionContext.status === "ran" ? executionContext.output_path : refs.executionContextReport,
     adoptionReportPath: adoption.status === "ran" ? adoption.output_path : refs.adoptionReport,
+    lifecycleReportPath: lifecycle.status === "ran" ? lifecycle.output_path : refs.lifecycleReport,
     gateContractReportPath: gateContract.status === "ran" ? gateContract.output_path : refs.gateContractReport,
     designRuleReportPath: designRules.status === "ran" ? designRules.output_path : refs.designRuleReport,
+    enforcementPolicyReportPath: enforcementPolicy?.status === "ran" ? enforcementPolicy.output_path : refs.enforcementPolicyReport,
   });
-  records.splice(2, 0, lifecycle);
+  records.push(controlState);
 
   const aggregate = aggregateReport({ resultDir, refs, records, changedFiles });
   writeFileSync(path.join(resultDir, "aggregate.json"), `${JSON.stringify(aggregate, null, 2)}\n`);
@@ -121,6 +140,58 @@ function runDesignRules({ resultDir, refs, changedFilesPath, prBodyPath, diffRoo
   addArg(args, "--pr-body", prBodyPath);
   args.push("--format", "json");
   return runGate({ gate: "design-rules", args, outputPath: path.join(resultDir, "design-rules.json") });
+}
+
+function runEnforcementPolicy({ resultDir, refs, aggregatePath }) {
+  if (!refs.enforcementPolicy) return null;
+  const args = [
+    "scripts/shirube/check-enforcement-policy.mjs",
+    "--policy",
+    refs.enforcementPolicy,
+    "--aggregate",
+    aggregatePath,
+  ];
+  addArg(args, "--owner-decision", refs.ownerDecision);
+  args.push("--format", "json");
+  return runGate({ gate: "enforcement-policy", args, outputPath: path.join(resultDir, "enforcement-policy.json") });
+}
+
+function runControlStateCompleteness({
+  resultDir,
+  refs,
+  changedFilesPath,
+  aggregatePath,
+  executionContextReportPath,
+  adoptionReportPath,
+  lifecycleReportPath,
+  gateContractReportPath,
+  designRuleReportPath,
+  enforcementPolicyReportPath,
+}) {
+  const args = [
+    "scripts/shirube/check-control-state-completeness.mjs",
+  ];
+  addArg(args, "--control-state", refs.controlState);
+  addArg(args, "--execution-context-report", executionContextReportPath);
+  addArg(args, "--repo-spec", refs.repoSpec);
+  addArg(args, "--source-mirror", refs.sourceMirror);
+  addArg(args, "--adoption-report", adoptionReportPath);
+  addArg(args, "--lifecycle-report", lifecycleReportPath);
+  addArg(args, "--gate-contract-report", gateContractReportPath);
+  addArg(args, "--design-rule-report", designRuleReportPath);
+  addArg(args, "--enforcement-policy-report", enforcementPolicyReportPath);
+  addArg(args, "--readiness-report", refs.readinessReport);
+  addArg(args, "--handoff", refs.handoff);
+  addArg(args, "--matrix", refs.matrix);
+  addArg(args, "--changed-files", changedFilesPath);
+  addArg(args, "--validation", refs.validation);
+  addArg(args, "--owner-decision", refs.ownerDecision);
+  addArg(args, "--audit-record", refs.auditRecord);
+  addArg(args, "--audit-item-set", refs.auditItemSet);
+  addArg(args, "--post-merge", refs.postMerge);
+  addArg(args, "--aggregate", aggregatePath);
+  args.push("--format", "json");
+  return runGate({ gate: "control-state-completeness", args, outputPath: path.join(resultDir, "control-state-completeness.json") });
 }
 
 function runLifecycle({ resultDir, refs, changedFilesPath, adoptionReportPath, gateContractReportPath, designRuleReportPath }) {
@@ -252,6 +323,13 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
   };
 }
 
+function writeInterimAggregate({ resultDir, refs, records, changedFiles, filename }) {
+  const aggregate = aggregateReport({ resultDir, refs, records, changedFiles });
+  const outputPath = path.join(resultDir, filename);
+  writeFileSync(outputPath, `${JSON.stringify(aggregate, null, 2)}\n`);
+  return outputPath;
+}
+
 function renderSummary(report) {
   const lines = [
     MARKER,
@@ -335,6 +413,7 @@ function appendActions(lines, actions) {
 function discoverRefs({ prBody, changedFiles }) {
   const explicit = {
     executionContext: refFromBody(prBody, ["execution_context_ref", "execution_context", "context_ref", "context"]),
+    executionContextReport: refFromBody(prBody, ["execution_context_report_ref", "execution_context_report", "context_report_ref"]),
     adoptionPlan: refFromBody(prBody, ["adoption_plan_ref", "adoption_plan", "adoption-plan", "adoption plan"]),
     existingState: refFromBody(prBody, ["existing_state_ref", "existing_state", "existing-state", "existing state"]),
     legacyInventory: refFromBody(prBody, ["legacy_inventory_ref", "legacy_inventory", "legacy-inventory"]),
@@ -351,12 +430,20 @@ function discoverRefs({ prBody, changedFiles }) {
     postMerge: refFromBody(prBody, ["post_merge_ref", "post_merge", "post-merge"]),
     matrix: refFromBody(prBody, ["matrix_ref", "gate_contract_matrix_ref", "gate_contract_matrix"]),
     rulePack: refFromBody(prBody, ["rule_pack_ref", "rule_pack", "rule-pack", "design_rule_pack_ref"]),
+    sourceMirror: refFromBody(prBody, ["source_mirror_ref", "source_mirror", "source-mirror"]),
+    enforcementPolicy: refFromBody(prBody, ["enforcement_policy_ref", "enforcement_policy", "enforcement-policy"]),
+    enforcementPolicyReport: refFromBody(prBody, ["enforcement_policy_report_ref", "enforcement_policy_report", "enforcement-policy-report"]),
+    readinessReport: refFromBody(prBody, ["readiness_report_ref", "readiness_report", "full_adoption_report_ref", "full_adoption_report"]),
+    auditRecord: refFromBody(prBody, ["audit_record_ref", "audit_record", "audit-ref", "reviewer_audit_ref"]),
+    auditItemSet: refFromBody(prBody, ["audit_item_set_ref", "audit_item_set", "audit-item-set"]),
+    controlState: refFromBody(prBody, ["control_state_ref", "control_state", "control-state", "control_state_completeness_ref"]),
   };
 
   const schemaMatches = schemasFromFiles(walkFiles(changedFiles));
   const records = [];
   const refs = {
     executionContext: resolveRef({ name: "execution_context", explicit: explicit.executionContext, candidates: bySchema(schemaMatches, "shirube-execution-context/v1"), defaults: [".shirube/execution-context.yaml"], records }),
+    executionContextReport: resolveRef({ name: "execution_context_report", explicit: explicit.executionContextReport, defaults: [".shirube/reports/execution-context.json"], records }),
     adoptionPlan: resolveRef({ name: "adoption_plan", explicit: explicit.adoptionPlan, candidates: bySchema(schemaMatches, "shirube-adoption-intake/v1"), defaults: [".shirube/adoption-intake.yaml", ".shirube/adoption/intake.yaml"], records }),
     existingState: resolveRef({ name: "existing_state", explicit: explicit.existingState, candidates: bySchema(schemaMatches, "shirube-existing-state-scan/v1"), defaults: [".shirube/existing-state-scan.yaml", ".shirube/adoption/existing-state-scan.yaml"], records }),
     legacyInventory: resolveRef({ name: "legacy_inventory", explicit: explicit.legacyInventory, defaults: [".shirube/legacy-inventory.yaml"], records }),
@@ -373,6 +460,13 @@ function discoverRefs({ prBody, changedFiles }) {
     postMerge: resolveRef({ name: "post_merge", explicit: explicit.postMerge, defaults: [".shirube/evidence/post-merge.yaml"], records }),
     matrix: resolveRef({ name: "matrix", explicit: explicit.matrix, defaults: [".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"], records }),
     rulePack: firstExisting(explicit.rulePack, ".shirube/design-rule-packs/shirube-default-design-rules.yaml"),
+    sourceMirror: resolveRef({ name: "source_mirror", explicit: explicit.sourceMirror, candidates: bySchema(schemaMatches, "shirube-source-mirror/v1"), defaults: [".shirube/source-mirrors/control-issue.yaml"], records }),
+    enforcementPolicy: resolveRef({ name: "enforcement_policy", explicit: explicit.enforcementPolicy, candidates: bySchema(schemaMatches, "shirube-enforcement-policy/v1"), defaults: [".shirube/enforcement-policy.yaml"], records }),
+    enforcementPolicyReport: resolveRef({ name: "enforcement_policy_report", explicit: explicit.enforcementPolicyReport, defaults: [".shirube/reports/enforcement-policy.json"], records }),
+    readinessReport: resolveRef({ name: "readiness_report", explicit: explicit.readinessReport, defaults: [".shirube/reports/readiness.json", ".shirube/readiness.yaml"], records }),
+    auditRecord: resolveRef({ name: "audit_record", explicit: explicit.auditRecord, candidates: [...bySchema(schemaMatches, "shirube-audit/v1"), ...bySchema(schemaMatches, "shirube-audit-record/v1")], defaults: [], records }),
+    auditItemSet: resolveRef({ name: "audit_item_set", explicit: explicit.auditItemSet, candidates: bySchema(schemaMatches, "shirube-audit-item-set/v1"), defaults: [], records }),
+    controlState: resolveRef({ name: "control_state", explicit: explicit.controlState, candidates: bySchema(schemaMatches, "shirube-control-state-completeness-config/v1"), defaults: [".shirube/control-state-completeness.yaml"], records }),
   };
   return { refs, records };
 }

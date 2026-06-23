@@ -1,0 +1,12 @@
+{
+  "schema": "shirube-enforcement-policy-check/v1",
+  "mode": "report_only",
+  "verdict": "PASS",
+  "would_block": false,
+  "ci_should_fail": false,
+  "owner_must_not_merge": false,
+  "blockers": [],
+  "warnings": [],
+  "failures": [],
+  "required_next_actions": []
+}

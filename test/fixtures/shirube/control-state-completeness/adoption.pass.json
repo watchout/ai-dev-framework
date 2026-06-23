@@ -1,0 +1,11 @@
+{
+  "schema": "shirube-adoption-check/v1",
+  "lane": "adoption_intake",
+  "disposition": "retrofit_accelerate",
+  "current_phase": "ADOPTION_READY",
+  "verdict": "PASS",
+  "would_block": false,
+  "blockers": [],
+  "warnings": [],
+  "required_next_actions": []
+}

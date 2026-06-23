@@ -1,0 +1,12 @@
+{
+  "schema": "shirube-execution-context-check/v1",
+  "verdict": "FAILURE",
+  "report_failed": true,
+  "would_block": true,
+  "owner_must_not_merge": true,
+  "blockers": [
+    { "item_id": "CTX-FAILURE", "code": "context_parse_error", "message": "bad context" }
+  ],
+  "warnings": [],
+  "required_next_actions": []
+}

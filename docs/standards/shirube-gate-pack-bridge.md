@@ -49,6 +49,8 @@ owner_decision_ref: .shirube/evidence/owner-decision.yaml
 
 `run-rapid-lite-report` also runs `check-execution-context` before the other gates. If the execution context blocks, the aggregate report sets `would_block=true` and `owner_must_not_merge=true` while preserving report-only workflow behavior.
 
+The report runner also emits a Control State Completeness report after the gate pack evidence is collected. A Gate Pack Bridge PR must not claim full Shirube control unless that report reaches full readiness; otherwise it remains partial pilot or report-only evidence.
+
 ## Template
 
 Use `templates/shirube-gate-pack-bridge.yaml` for repositories without `.shirube/**`. The bridge should later be converted into repo-local overlay artifacts instead of becoming a permanent substitute for overlay adoption.

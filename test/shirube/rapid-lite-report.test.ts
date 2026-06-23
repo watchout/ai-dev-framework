@@ -58,12 +58,18 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
         "lifecycle",
         "gate-contract",
         "design-rules",
+        "enforcement-policy",
+        "control-state-completeness",
       ]);
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "execution-context").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "adoption").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "lifecycle").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "design-rules").status).toBe("ran");
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "enforcement-policy").status).toBe("ran");
+      const controlState = result.json.gates.find((gate: { gate: string }) => gate.gate === "control-state-completeness");
+      expect(controlState.status).toBe("ran");
+      expect(controlState.verdict).toBe("PASS");
       expect(readFileSync(path.join(result.resultDir, "aggregate.json"), "utf8")).toContain("shirube-rapid-lite-report/v1");
       expect(readFileSync(path.join(result.resultDir, "summary.md"), "utf8")).toContain("<!-- shirube-rapid-lite-gates-report/v1 -->");
       expect(readFileSync(path.join(result.resultDir, "execution-context.json"), "utf8")).toContain("shirube-execution-context-check/v1");
@@ -71,6 +77,8 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(readFileSync(path.join(result.resultDir, "lifecycle.json"), "utf8")).toContain("shirube-lifecycle-check/v1");
       expect(readFileSync(path.join(result.resultDir, "gate-contract.json"), "utf8")).toContain("shirube-gate-contract-check/v1");
       expect(readFileSync(path.join(result.resultDir, "design-rules.json"), "utf8")).toContain("shirube-design-rule-check/v1");
+      expect(readFileSync(path.join(result.resultDir, "enforcement-policy.json"), "utf8")).toContain("shirube-enforcement-policy-check/v1");
+      expect(readFileSync(path.join(result.resultDir, "control-state-completeness.json"), "utf8")).toContain("shirube-control-state-completeness/v1");
     } finally {
       rmSync(result.resultDir, { recursive: true, force: true });
     }
@@ -175,6 +183,7 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(result.json.gates[0].gate).toBe("execution-context");
       expect(result.json.gates[0].verdict).toBe("BLOCKED");
       expect(result.json.gates[0].blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("CTX-002");
+      expect(result.json.gates.at(-1).gate).toBe("control-state-completeness");
     } finally {
       rmSync(result.resultDir, { recursive: true, force: true });
     }

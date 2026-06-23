@@ -1,0 +1,11 @@
+{
+  "schema": "shirube-adoption-check/v1",
+  "lane": "adoption_intake",
+  "disposition": "retrofit_recover",
+  "current_phase": "GAP_FILL_OR_RECONCILIATION_PLAN",
+  "verdict": "BLOCKED",
+  "would_block": true,
+  "blockers": [{ "item_id": "RECOVER-001", "code": "material_drift", "message": "recover" }],
+  "warnings": [],
+  "required_next_actions": []
+}

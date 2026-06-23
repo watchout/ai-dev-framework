@@ -1,0 +1,11 @@
+{
+  "schema": "shirube-audit/v1",
+  "audit_id": "AUDIT-CSC-001",
+  "target_refs": {
+    "cell_id": "CELL-ADF-CSC-001"
+  },
+  "items": [
+    { "item_id": "AUDIT-1", "verdict": "PASS", "evidence_ref": "validation.pass.yaml" },
+    { "item_id": "AUDIT-1", "verdict": "PASS", "evidence_ref": "validation.pass.yaml" }
+  ]
+}

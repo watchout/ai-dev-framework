@@ -1,0 +1,12 @@
+schema_version: shirube-source-mirror/v1
+source_type: github_issue
+source_repo: watchout/omotenasuai-control
+issue_number: 15
+source_url: https://github.com/watchout/omotenasuai-control/issues/15
+fetched_at: 2026-06-23T00:00:00Z
+sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+extracted_fields:
+  target_repo: watchout/ai-dev-framework
+  control_source: watchout/omotenasuai-control#15
+generated_by: codex-adf
+framework_ref: watchout/ai-dev-framework@55011bbc0518ed5d3a23cf1187fcab345b61fc29

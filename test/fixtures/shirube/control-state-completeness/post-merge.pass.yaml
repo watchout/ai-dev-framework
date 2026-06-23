@@ -1,0 +1,7 @@
+schema_version: shirube-post-merge-evidence/v1
+status: finalized
+source_pr: 490
+approved_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+merge_commit_sha: cccccccccccccccccccccccccccccccccccccccc
+merged_at_utc: 2026-06-23T00:00:00Z
+post_merge_smoke: PASS
