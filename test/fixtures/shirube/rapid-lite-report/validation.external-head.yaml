@@ -1,0 +1,16 @@
+schema_version: shirube-validation-evidence/v1
+pr_head_sha: "0123456789abcdef0123456789abcdef01234567"
+required_commands:
+  - git diff --check
+required_evidence:
+  - PR_head_SHA
+  - changed_files
+  - validation_commands
+  - validation_results
+  - owner_decision
+commands:
+  - git diff --check
+results:
+  - command: git diff --check
+    result: PASS
+evidence_ref: https://github.com/watchout/ai-dev-framework/issues/487#issuecomment-external-head-evidence
