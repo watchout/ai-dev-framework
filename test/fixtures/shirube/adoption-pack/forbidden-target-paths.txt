@@ -1,0 +1,14 @@
+scripts/shirube/check-adoption.mjs
+src/index.ts
+app/page.tsx
+api/handler.ts
+lib/runtime.ts
+db/schema.sql
+migrations/001.sql
+package.json
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+.env
+deploy/production.yaml
+.github/workflows/shirube-rapid-lite-gates-report.yml

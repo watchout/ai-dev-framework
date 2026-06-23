@@ -1,0 +1,18 @@
+schema_version: shirube-source-mirror/v1
+source_type: github_issue
+source_repo: {{SOURCE_REPO}}
+issue_number: {{ISSUE_NUMBER}}
+source_ref: {{SOURCE_CONTROL}}
+source_url: {{SOURCE_URL}}
+fetched_at: {{FETCHED_AT}}
+sha256: {{DIGEST_SHA256}}
+extracted_fields:
+  target_repo: {{TARGET_REPO}}
+  product: {{PRODUCT}}
+  current_status: PARTIAL_SHIRUBE_PILOT
+  target_status_after_merge: RAPID_LITE_REPORT_ONLY
+  adoption_lane: adoption_intake
+  source_of_truth_policy: GitHub Control issue is the control source; this mirror is a machine-readable snapshot, not independent truth.
+generated_by: {{GENERATED_BY}}
+framework_ref: {{FRAMEWORK_REF}}
+mirror_is_truth: false
