@@ -2,6 +2,27 @@
 
 > **統合元**: 21_AI_ESCALATION.md
 > **目的**: AIが不明点に遭遇した際の中断/続行判断と、Decision Backlog による進行管理を定義する
+> **v1.2.0 update**: Protected category auto-promotion triggers added (§0).
+
+---
+
+## 0. Tier Auto-Promotion Triggers (v1.2.0)
+
+Before any implementation, AI must scan the diff / planned change for protected patterns.
+If ANY pattern below is detected, **tier upgrades to Full** regardless of declared tier.
+
+| Category | Auto-promote trigger |
+|----------|---------------------|
+| Security/Auth | auth, permission, credential, token, encryption, secret, session (in non-test code) |
+| Data | DB schema, migration, DROP TABLE, ALTER TABLE, data-loss risk |
+| Public API | public API route, MCP tool contract, external protocol, response shape change |
+| Agent infra | routing, queue lifecycle, claim-finalize, recovery-complete |
+| Runtime | process lifecycle, runtime adapter, live transport, state-daemon |
+| Production | deploy, billing, pricing, customer-impacting |
+| Governance | merge authority, branch protection, gate-bypass, governance-flow |
+
+**When auto-promoted**: AI must notify the implementer: `"WARNING: protected pattern detected → upgrading to Full tier. Applying full audit chain."`
+**Tool support**: `shirube gate check` runs `protected-pattern-detector.ts` automatically on git diff.
 
 ---
 

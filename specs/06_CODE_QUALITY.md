@@ -3,6 +3,21 @@
 > 統合元: 17_CODE_AUDIT.md + 18_TEST_FORMAT.md + 19_CI_PR_STANDARDS.md
 >
 > 実装コードの品質監査、テスト実施フォーマット、CI/PRの合格基準を一元化する。
+> **v1.2.0 update**: Tiered quality gates added (Nano/Standard/Full). 100/100 requirement applies to Full tier only.
+
+---
+
+## Tiered Quality Gates (v1.2.0)
+
+Quality gates scale with tier. The 100-point scorecard below applies in full only to **Full** tier.
+
+| Tier | Audit | Score threshold | Deliberation |
+|------|-------|----------------|--------------|
+| **Nano** | CI Gate 0 (typecheck + lint + test) | Pass/fail, no scorecard | None |
+| **Standard** | CI Gate 0 + async L1 audit signal | ≥80/100 | None |
+| **Full** | CI Gate 0 + mandatory L1/L2 audit | 100/100 required | Stage 5.5 required |
+
+**Protected category auto-promotion**: Any diff touching protected surfaces (auth/DB/public-API/routing/runtime/deploy/governance) applies Full quality gates regardless of declared tier.
 
 ---
 
@@ -16,12 +31,14 @@ AI実装完了
 ① SSOT準拠チェック（全MUST要件の実装確認）
   ↓
 ② コード品質スコアリング（100点満点）
-  ├── 100点 → 合格 → テストへ
-  ├── 90-99点 → 修正プロンプト → AI修正 → 再監査
-  └── 89点以下 → 問題箇所特定 → 再実装 → 再監査
+  ├── Nano: CI Gate 0 pass → 合格
+  ├── Standard: 80点以上 → 合格（非同期 audit signal 付き）
+  ├── Full/Protected: 100点 → 合格 → テストへ
+  ├── Full: 90-99点 → 修正プロンプト → AI修正 → 再監査
+  └── Full: 89点以下 → 問題箇所特定 → 再実装 → 再監査
 ```
 
-### 1.2 品質スコアカード（100点満点・合格=100点）
+### 1.2 品質スコアカード（100点満点・Full tier: 合格=100点、Standard tier: 合格=80点）
 
 | # | カテゴリ | 配点 | 評価基準 |
 |---|---------|------|---------|

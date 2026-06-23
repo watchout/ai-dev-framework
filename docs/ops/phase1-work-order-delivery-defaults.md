@@ -42,6 +42,10 @@ Until #267 adds the PR evidence template, include:
 
 ```text
 Work Order:
+GitHub durable state:
+Phase goal:
+Runner policy:
+Evidence contract:
 Delivery profile:
 Risk class:
 Resolved lane:
@@ -53,6 +57,10 @@ Implementation owner:
 Review owner:
 Audit owner:
 Merge authority:
+Current owner:
+Next action:
+Evidence required:
+Required review:
 Stop conditions:
 Verification:
 ```

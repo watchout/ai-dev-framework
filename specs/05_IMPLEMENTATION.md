@@ -7,6 +7,42 @@
 
 ---
 
+## Tier Mode Slice Control (v1.2.0)
+
+The tier assigned to a PR determines the depth of review required before merge.
+
+| Tier | Slice mode | Discovery | Review depth | CI requirement |
+|------|-----------|-----------|--------------|----------------|
+| **Nano** | Skip interview; use issue + PR description | No new hearing | CI Gate 0 only | Exact HEAD SHA |
+| **Standard** | Fast-track; ≤5 confirmatory questions | Abbreviated | ≥80 quality score + L1 LGTM | Exact HEAD SHA |
+| **Full** | Full 30Q + Stage 5.5 Deliberation | Complete | 100/100 + full 5-layer chain | Exact HEAD SHA |
+
+### Declaring Tier
+
+Declare tier in the PR description or `.shirube/profile.json`:
+
+```json
+{ "tier": "standard" }
+```
+
+Omitting `tier` defaults to `standard`. Setting `tier: "nano"` is only valid if the diff contains no protected surfaces (see `07_AI_PROTOCOL.md §0`).
+
+### Slice-Mode Impact on Task Decomposition
+
+| Stage | Nano | Standard | Full |
+|-------|------|----------|------|
+| Hearing | Skip — use Issue title + description | ≤5 confirmatory Qs | Full 30Q + Deliberation |
+| SSOT sections required | §1 Purpose only | §1–§3 (CORE) | All sections per 03_SSOT_FORMAT.md |
+| Implementation | No additional gates | Gate A/B | Gate A/B/C |
+| Audit | CI Gate 0 only | Quality sweep (≥80) | Adversarial review (100/100) |
+| Complete evidence | CI green + merge SHA | + L1 LGTM | + L2 LGTM + human approval |
+
+### Auto-Promotion
+
+If `protected-pattern-detector.ts` detects any protected surface in the diff (auth, db, public-api, routing, runtime, deploy, governance), the tier is automatically promoted to `full` regardless of the declared value. The promotion is logged in the AI Change Record.
+
+---
+
 ## Principle
 
 ```

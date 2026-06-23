@@ -6,10 +6,7 @@
 > AI-driven hearing, IEEE/ISO-compliant SSOT generation, and quality audit.
 >
 > Agent Skill: `framework-feature-spec` (Deliberation Protocol built-in)
->
-> **v1.1.0 Note**: Deliberation Protocol (multi-perspective review) は framework 強制ではなく、
-> project governance として任意に適用するプラクティスです。
-> framework の enforcement は決定論的スクリプトのみ (09_ENFORCEMENT.md)。
+> **v1.2.0 update**: Deliberation Protocol (§7.5) is now **Full tier / protected surface only**. Nano and Standard tier skip §7.5.
 
 ---
 
@@ -201,10 +198,9 @@ Example:
 
 ---
 
-## 7.5. Deliberation (Multi-Perspective Review)
+## 7.5. Deliberation (Multi-Perspective Review) — Full tier / protected surface only
 
-> **v1.1.0 Note**: Review chain (Deliberation) は framework 強制ではありません。
-> Project governance として任意に適用してください。(09_ENFORCEMENT.md 参照)
+> **v1.2.0**: Skip this section for Nano and Standard tier. Only required for Full tier or when any protected category (auth/DB/public-API/routing/runtime/deploy/governance) is detected.
 
 Three experts review hearing results before SSOT generation:
 
@@ -370,10 +366,3 @@ Severity: Critical / Major / Minor
 | 9. Consistency check | AI-executed | Cross-document verification |
 | 10. Audit | AI-executed | Scoring + fixes |
 | **Total** | **1-2 hours** | |
-
----
-
-## See also
-
-- **`04b_IMPL_FORMAT.md`** — IMPL.md (施工図) のフォーマット規範。SSOT が固まった後、Step 3.4 (Lead IMPL Authoring, parent SPEC `lead-impl-workflow/SPEC.md` FR-L1) で lead-bot が per-feature `IMPL.md` を起草する際に従う必須セクション §1〜§10 + evidence label 規約 (`[検証済]` / `[文献確認]` / `[推測]`) を定義。本 SPEC が「**何を作るか**」(SSOT) を扱うのに対し、04b は「**どう作るか**」(IMPL) を扱う。
-- **`02_GENERATION_CHAIN.md` Gate 2 IMPL Presence (FR-L4)** — IMPL.md 存在 + format 整合の機械的 check section。Step 3.4 完了判定 / CI hook で WARNING-only deterministic gate として機能。

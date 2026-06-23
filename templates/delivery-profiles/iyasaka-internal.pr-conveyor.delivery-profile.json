@@ -77,6 +77,10 @@
     "work_order_id",
     "repo",
     "product",
+    "github_state_ref",
+    "phase_goal",
+    "runner_policy",
+    "evidence_contract",
     "delivery_strategy",
     "work_unit",
     "lane",
@@ -88,6 +92,12 @@
     "merge_authority",
     "scope",
     "non_goals",
+    "acceptance_criteria",
+    "role_flow",
+    "current_owner",
+    "next_action",
+    "evidence_required",
+    "required_review",
     "allowed_files",
     "allowed_actions",
     "forbidden_actions",
@@ -99,6 +109,13 @@
   ],
   "runner_contract": {
     "runner_agnostic": true,
+    "policy_model": [
+      "codex_native_fast_lane",
+      "claude_code_autonomous_lane",
+      "headless_runtime_adapter_lane",
+      "governed_manual_lane",
+      "stop_lane"
+    ],
     "allowed_runners": [
       "human",
       "codex",
@@ -125,6 +142,36 @@
       "verification_results",
       "residual_risk",
       "stop_conditions_encountered"
+    ]
+  },
+  "github_work_queue_contract": {
+    "durable_ssot": "github_issue_pr",
+    "needs_labels": [
+      "needs:arc",
+      "needs:impl",
+      "needs:audit",
+      "needs:qa",
+      "needs:check",
+      "needs:cto"
+    ],
+    "owner_label_pattern": "owner:<role-or-bot>",
+    "route_labels": [
+      "route:fast",
+      "route:protected"
+    ],
+    "blocked_labels": [
+      "blocked:aun"
+    ],
+    "ready_done_labels": [
+      "ready:merge",
+      "done:runtime-evidence"
+    ],
+    "pull_points": [
+      "startup_or_restart",
+      "after_task_completion",
+      "before_idle",
+      "aun_notification_with_github_url",
+      "approved_supervised_idle_worker"
     ]
   },
   "audit_contract": {

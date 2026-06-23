@@ -23,8 +23,6 @@ Tasks REFERENCE the SSOT. No task-specific SSOTs are created.
   |- S10 Test Cases   <- Task 5 (Test)
 ```
 
-> **Prerequisite (Step 3.4 Lead IMPL Authoring, FR-L1)**: 実装着手前に lead-bot が per-feature `IMPL.md` (施工図) を起草する。format は **`04b_IMPL_FORMAT.md`** に準拠 (§1〜§10 必須 + evidence label `[検証済]` / `[文献確認]` / `[推測]`)。Step 3.4 完了 (IMPL.md 存在 + Gate 2 IMPL Presence WARNING 0 + Pre-impl gate auditor PASS) が本 doc の Task 分解の入力前提条件。詳細は親 SPEC `lead-impl-workflow/SPEC.md` FR-L1 参照。
-
 ---
 
 ## Part 1: Determining Implementation Order
@@ -244,11 +242,7 @@ Too small -> merge into adjacent task:
 
 ---
 
-## Part 3: GitHub Projects & Issues (#61)
-
-> **v1.1.0 改訂**: plan.json / run-state.json 依存を廃止。
-> GitHub Issues が Dev Bot のタスク管理 SSOT。詳細は本セクション末尾の
-> 「GitHub Issues as Task Management SSOT」を参照。
+## Part 3: GitHub Projects & Issues
 
 ### Board Structure
 
@@ -452,26 +446,26 @@ On merge to main:
      D-4: E2Eスモークテスト (L3テスト実行)
      D-5: コンソールエラー監視
   3. Gate D PASS → 完了
-     Gate D FAIL → 決定論的エスカレーション (06_CODE_QUALITY §4.7)
+     Gate D FAIL → CTO報告 → ロールバック判断
   4. (Manual approval) Production deploy
   5. Gate D (Production) — 本番環境でも同一チェック実行
 ```
 
-### Gate D 失敗時のフロー (#62)
-
-> **v1.1.0 改訂**: CTO 判断による 3 択を廃止。決定論的エスカレーションポリシーに移行。
-> 詳細は 06_CODE_QUALITY §4.7 を参照。
+### Gate D 失敗時のフロー
 
 ```
 デプロイ完了
   ↓
 Gate D 実行（D-1〜D-5）
-  ├── 全 PASS → デプロイ成功
-  └── いずれか FAIL → 決定論的エスカレーション:
-       ├── Critical (D-1/D-2) → auto-rollback
-       ├── High (D-3) → alert + 15min grace → auto-rollback
-       ├── Medium (D-4) → follow-up Issue 作成
-       └── Low (D-5) → log only
+  ├── 全PASS → デプロイ成功
+  └── いずれかFAIL
+       ↓
+     CTO報告（Telegram経由）
+       ├── 報告内容：失敗チェック項目、エラー詳細、スクリーンショット
+       └── CTO判断：
+            ├── ロールバック → 前バージョンに戻す
+            ├── ホットフィックス → 修正してGate D再実行
+            └── 一時的に許容 → 次回デプロイで対応
 ```
 
 ---

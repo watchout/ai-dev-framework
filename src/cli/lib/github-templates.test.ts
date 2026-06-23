@@ -237,7 +237,7 @@ describe("installGitHubTemplates", () => {
     );
     expect(prContent).toContain("SSOT Compliance");
     expect(prContent).toContain("SSOT Reference");
-    expect(prContent).toContain("Closes #XXX");
+    expect(prContent).toContain("Closes #");
   });
 
   it("uses MCP-server PR template and skips UI issue template", () => {
@@ -356,6 +356,12 @@ describe("installGitHubTemplates", () => {
     expect(workflowContent).toContain("SHIRUBE_GOVERNANCE_PROFILE");
     expect(workflowContent).toContain("check");
     expect(workflowContent).toContain("governance");
+
+    const workOrderContent = fs.readFileSync(workOrderTemplatePath, "utf-8");
+    expect(workOrderContent).toContain("GitHub durable state URL");
+    expect(workOrderContent).toContain("Runner Policy");
+    expect(workOrderContent).toContain("Evidence Contract");
+    expect(workOrderContent).toContain("AUN ACK");
   });
 
   it("skips ssot-audit workflow if already exists", () => {

@@ -4,8 +4,95 @@
   "repo": "watchout/ai-dev-framework",
   "product": "shirube",
   "issue": "watchout/ai-dev-framework#269",
+  "github_state_ref": {
+    "issue_url": "https://github.com/watchout/ai-dev-framework/issues/269",
+    "pr_url": "https://github.com/watchout/ai-dev-framework/pull/<draft-pr>",
+    "durable_state": "GitHub issue/PR comments, labels, reviews, and checks are the SSOT."
+  },
   "work_package_id": "pr-conveyor-profile-contract",
   "objective": "Add a bounded PR Conveyor delivery profile capability.",
+  "phase_goal": {
+    "phase_id": "shirube-pr-conveyor-profile.impl",
+    "phase_type": "implementation",
+    "goal": "Open a bounded implementation PR for the Work Order.",
+    "scope": [
+      "Implement only the accepted Work Order slice."
+    ],
+    "non_scope": [
+      "Do not approve audit, QA, CTO, merge, or done state from the implementation runner."
+    ],
+    "acceptance_criteria": [
+      "Draft PR is open with implementation handoff and validation evidence."
+    ],
+    "target_files_or_modules": [
+      "src/cli/lib/*",
+      "src/cli/commands/*",
+      "docs/spec/*",
+      "docs/impl/*",
+      "docs/verify/*",
+      "docs/ops/*",
+      "templates/**/*"
+    ],
+    "allowed_implementation_actions": [
+      "edit allowed files",
+      "run checks",
+      "commit",
+      "push",
+      "open draft PR"
+    ],
+    "required_checks": [
+      "npm test -- <focused-pattern>",
+      "npm run type-check",
+      "npm run build:cli",
+      "npm run lint"
+    ],
+    "stop_conditions": [
+      "approval boundary reached",
+      "protected operation requested",
+      "scope expansion required"
+    ],
+    "evidence_writeback": [
+      "PR body",
+      "implementation handoff PR comment",
+      "issue progress comment"
+    ],
+    "next_phase_handoff": "L1 implementation audit"
+  },
+  "runner_policy": {
+    "policy": "codex_native_fast_lane",
+    "runner_agnostic_contract": true,
+    "execution_loop": "bounded_phase_goal",
+    "allowed_runtimes": [
+      "codex",
+      "claude_code",
+      "headless_runtime_adapter",
+      "human_manual"
+    ],
+    "github_queue_ssot": true,
+    "aun_usage": "optional_acceleration_only",
+    "stop_lane_triggers": [
+      "protected-governance boundary",
+      "audit/qa/cto approval boundary",
+      "merge or production action requested"
+    ]
+  },
+  "evidence_contract": {
+    "required_evidence": [
+      "GitHub PR body or PR comment with implementation handoff",
+      "local or CI check summary with exact command names",
+      "review/audit/QA links before merge readiness",
+      "runtime evidence before done when runtime behavior changes"
+    ],
+    "not_sufficient_evidence": [
+      "AUN ACK",
+      "queue row exists",
+      "outbound queued",
+      "Discord projection",
+      "TUI or tmux text visible",
+      "green CI alone for runtime-impacting changes"
+    ],
+    "merge_done_separation": true
+  },
   "delivery_profile_ref": "iyasaka-internal.pr-conveyor",
   "risk_class": "R2",
   "work_unit": "PR",
@@ -28,6 +115,29 @@
     "Do not enable live AUN dispatch.",
     "Do not merge automatically.",
     "Do not perform R4 protected operations."
+  ],
+  "acceptance_criteria": [
+    "The PR includes an implementation handoff, changed-file list, validation summary, known risks, and next required review."
+  ],
+  "role_flow": [
+    "arc",
+    "repo-specific implementation bot",
+    "audit",
+    "qa/check",
+    "cto-if-high-risk"
+  ],
+  "current_owner": "repo-specific implementation bot",
+  "next_action": "Implement the accepted phase goal and open a draft PR.",
+  "evidence_required": [
+    "GitHub issue/PR URL",
+    "PR comment with implementation handoff",
+    "checks run",
+    "review/audit links before merge readiness"
+  ],
+  "required_review": [
+    "L1 implementation audit",
+    "L2 audit for protected or cross-repo behavior",
+    "L3/CTO review when governance, authority, runtime, or merge policy changes"
   ],
   "allowed_files": [
     "src/cli/lib/*",

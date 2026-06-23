@@ -1,12 +1,21 @@
 {
   "name": "@watchout/shirube",
   "version": "1.2.0",
-  "private": true,
   "type": "module",
   "description": "Shirube - SSOT, CLI, Dashboard, and Skills for AI-driven development",
   "bin": {
     "shirube": "./dist/cli/index.js",
     "framework": "./dist/cli/index.js"
+  },
+  "files": [
+    "dist/cli/**",
+    "templates/**",
+    "specs/**",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   },
   "scripts": {
     "dev": "next dev",
@@ -36,7 +45,7 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^16.1.6",
-    "tsx": "^4.0.0",
+    "tsx": "^4.22.4",
     "typescript": "^5.7.0",
     "@vitest/coverage-v8": "^4.0.18",
     "vitest": "^4.0.18"
