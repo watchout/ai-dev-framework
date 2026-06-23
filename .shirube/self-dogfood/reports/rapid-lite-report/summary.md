@@ -3,7 +3,9 @@
 ## Shirube Rapid/Lite Gates Report
 
 - Verdict: `PASS_WITH_WARN`
+- Report failed: `false`
 - Would block: `false`
+- Owner must not merge: `false`
 - Report-only: `true`
 - Changed files: `21`
 
@@ -11,12 +13,12 @@ This workflow is report-only. `BLOCKED` findings are recorded as PR-visible evid
 
 ### Gate Summary
 
-| Gate | Status | Verdict | Current phase | Disposition | Would block |
-| --- | --- | --- | --- | --- | --- |
-| adoption | ran | PASS | ADOPTION_READY | retrofit_accelerate | false |
-| lifecycle | ran | PASS | EXECUTION_READY | retrofit_accelerate | false |
-| gate-contract | ran | PASS_WITH_WARN | EXECUTION_READY |  | false |
-| design-rules | ran | PASS |  |  | false |
+| Gate | Status | Verdict | Report failed | Current phase | Disposition | Would block |
+| --- | --- | --- | --- | --- | --- | --- |
+| adoption | ran | PASS | false | ADOPTION_READY | retrofit_accelerate | false |
+| lifecycle | ran | PASS | false | EXECUTION_READY | retrofit_accelerate | false |
+| gate-contract | ran | PASS_WITH_WARN | false | EXECUTION_READY |  | false |
+| design-rules | ran | PASS | false |  |  | false |
 
 ### Findings
 
@@ -34,7 +36,6 @@ This workflow is report-only. `BLOCKED` findings are recorded as PR-visible evid
 
 - none
 
-
 #### lifecycle
 
 **Blockers**
@@ -48,7 +49,6 @@ This workflow is report-only. `BLOCKED` findings are recorded as PR-visible evid
 **Required next actions**
 
 - none
-
 
 #### gate-contract
 
@@ -64,7 +64,6 @@ This workflow is report-only. `BLOCKED` findings are recorded as PR-visible evid
 
 - `RL-PR-W001`: Changed file count exceeds the Rapid/Lite report-only threshold.
 
-
 #### design-rules
 
 **Blockers**
@@ -78,7 +77,6 @@ This workflow is report-only. `BLOCKED` findings are recorded as PR-visible evid
 **Required next actions**
 
 - none
-
 
 ### Artifact Outputs
 

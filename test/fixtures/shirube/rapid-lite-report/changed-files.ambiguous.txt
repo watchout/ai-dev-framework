@@ -1,0 +1,2 @@
+test/fixtures/shirube/rapid-lite-report/handoff.ambiguous-a.yaml
+test/fixtures/shirube/rapid-lite-report/handoff.ambiguous-b.yaml

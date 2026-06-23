@@ -32,6 +32,7 @@ const HARD_MESSAGES = {
   "RL-CELL-003": ["missing_forbidden_paths", "cell.forbidden_paths must contain at least one path glob.", "cell.forbidden_paths"],
   "RL-CELL-004": ["missing_stop_conditions", "cell.stop_conditions must contain at least one stop condition.", "cell.stop_conditions"],
   "RL-CELL-006": ["protected_surface_requires_standard_or_enterprise", "Protected surfaces require Standard or Enterprise mode.", "cell.cell_type"],
+  "RL-PR-001": ["missing_pr_head_sha", "PR head SHA is required.", "pr_head_sha"],
   "RL-PR-002": ["changed_files_outside_allowed_paths", "Changed file is outside cell.allowed_paths.", "changed_files"],
   "RL-PR-003": ["forbidden_paths_touched", "Changed file matches cell.forbidden_paths.", "changed_files"],
   "RL-EVID-001": ["missing_validation_evidence", "validation.required_evidence is required.", "validation.required_evidence"],
@@ -132,9 +133,20 @@ export function buildGateContractReport(input) {
   if (allowedPaths.length === 0) hardBlocks.push(finding("RL-CELL-002"));
   if (forbiddenPaths.length === 0) hardBlocks.push(finding("RL-CELL-003"));
   if (stopConditions.length === 0) hardBlocks.push(finding("RL-CELL-004"));
-  if (isProtectedStop({ matrix, profile: bootstrap.profile, cell, cellType })) hardBlocks.push(finding("RL-CELL-006"));
+  const protectedSurfaceContext = protectedSurfaceCellContext({ handoff, cell });
+  if (isProtectedStop({ matrix, profile: bootstrap.profile, cell: protectedSurfaceContext, cellType })) hardBlocks.push(finding("RL-CELL-006"));
 
   // 5. PR diff scope
+  const expectedHead = firstPresent(
+    handoff.pr_head_sha,
+    handoff.PR_head_SHA,
+    handoff.expected_pr_head_sha,
+    validation.pr_head_sha,
+    validation.PR_head_SHA,
+    validation.expected_pr_head_sha,
+  );
+  if (isPlaceholder(expectedHead)) hardBlocks.push(finding("RL-PR-001"));
+
   for (const file of changedFiles) {
     if (allowedPaths.length > 0 && !matchesAnyGlob(file, allowedPaths)) {
       hardBlocks.push(finding("RL-PR-002", { message: `${file} is outside cell.allowed_paths.`, path: file }));
@@ -159,17 +171,12 @@ export function buildGateContractReport(input) {
   }
 
   // 7. owner decision / head match
-  if (ownerDecision.required_before_merge === true && !hasOwnerDecisionEvidence(ownerDecision, input.ownerDecisionPath)) {
+  const ownerDecisionRequired = isOwnerDecisionRequired({ matrix, profile: bootstrap.profile, handoff, ownerDecision });
+  if (ownerDecisionRequired && !hasOwnerDecisionEvidence(ownerDecision, input.ownerDecisionPath)) {
     hardBlocks.push(finding("RL-MERGE-001"));
   }
-  const expectedHead = firstPresent(
-    handoff.pr_head_sha,
-    handoff.PR_head_SHA,
-    handoff.expected_pr_head_sha,
-    validation.pr_head_sha,
-    validation.expected_pr_head_sha,
-  );
   const ownerHead = firstPresent(ownerDecision.exact_head_sha, ownerDecision.head_sha, ownerDecision.target_head);
+  if (ownerDecisionRequired && isPlaceholder(ownerHead)) hardBlocks.push(finding("RL-MERGE-001"));
   if (!isPlaceholder(expectedHead) && !isPlaceholder(ownerHead) && String(expectedHead) !== String(ownerHead)) {
     hardBlocks.push(finding("RL-MERGE-002"));
   }
@@ -460,14 +467,34 @@ function hasSpecReviewState(handoff) {
 
 function isProtectedStop({ matrix, profile, cell, cellType }) {
   if (cellType === "protected_stop") return true;
-  const forbiddenSurfaces = new Set(asArray(matrix?.profiles?.[profile]?.hard_forbidden_surfaces).map(String));
+  const forbiddenSurfaces = new Set(asArray(matrix?.profiles?.[profile]?.hard_forbidden_surfaces).flatMap(normalizeSurface));
   const requested = [
-    ...asStringArray(cell.protected_surfaces),
-    ...asStringArray(cell.requested_surfaces),
-    ...asStringArray(cell.surfaces),
-    ...asStringArray(cell.requested_operations),
+    ...surfacesFrom(cell.protected_surfaces),
+    ...surfacesFrom(cell.requested_surfaces),
+    ...surfacesFrom(cell.surfaces),
+    ...surfacesFrom(cell.requested_operations),
+    ...surfacesFrom(cell.forbidden_operations),
   ];
   return requested.some((surface) => forbiddenSurfaces.has(surface));
+}
+
+function protectedSurfaceCellContext({ handoff, cell }) {
+  return {
+    protected_surfaces: [handoff?.protected_surfaces, cell.protected_surfaces],
+    requested_surfaces: [handoff?.requested_surfaces, cell.requested_surfaces],
+    surfaces: [handoff?.surfaces, cell.surfaces],
+    requested_operations: [handoff?.requested_operations, cell.requested_operations],
+    forbidden_operations: [handoff?.forbidden_operations, cell.forbidden_operations],
+  };
+}
+
+function isOwnerDecisionRequired({ matrix, profile, handoff, ownerDecision }) {
+  return ownerDecision.required_before_merge === true ||
+    handoff.owner_decision_required === true ||
+    handoff.required_owner_decision_for_merge === true ||
+    handoff?.owner_decision?.required === true ||
+    matrix?.profiles?.[profile]?.required_owner_decision_for_merge === true ||
+    asArray(matrix?.artifact_policy?.non_optional_invariants).includes("owner_decision");
 }
 
 function hasOwnerDecisionEvidence(ownerDecision, ownerDecisionPath) {
@@ -478,6 +505,23 @@ function hasOwnerDecisionEvidence(ownerDecision, ownerDecisionPath) {
     !isPlaceholder(ownerDecision.exact_head_sha) ||
     !isPlaceholder(ownerDecision.head_sha) ||
     !isPlaceholder(ownerDecision.target_head);
+}
+
+function surfacesFrom(value) {
+  if (Array.isArray(value)) return value.flatMap(surfacesFrom);
+  if (isObject(value)) {
+    return Object.entries(value).flatMap(([key, entry]) => {
+      if (entry === true) return normalizeSurface(key);
+      return [...normalizeSurface(key), ...surfacesFrom(entry)];
+    });
+  }
+  return normalizeSurface(value);
+}
+
+function normalizeSurface(value) {
+  if (typeof value !== "string") return [];
+  const trimmed = value.trim();
+  return trimmed ? [trimmed, trimmed.toLowerCase()] : [];
 }
 
 function hasAcceptanceOrTestDetail(handoff) {

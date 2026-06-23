@@ -48,6 +48,11 @@
       "code": "design_rule_report",
       "source": "file",
       "detail": ".shirube/self-dogfood/reports/design-rules.json"
+    },
+    {
+      "code": "changed_files",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/changed-files.txt"
     }
   ],
   "required_next_actions": []

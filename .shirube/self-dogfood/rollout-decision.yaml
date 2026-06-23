@@ -2,15 +2,29 @@ schema_version: shirube-self-dogfood-rollout-decision/v1
 record_id: ROLLOUT-DECISION-ADF-SELF-DOGFOOD-001
 repo: watchout/ai-dev-framework
 work_order: https://github.com/watchout/ai-dev-framework/issues/481
+superseding_work_order: https://github.com/watchout/ai-dev-framework/issues/485
 mode: rapid-lite
 profile: hotel-lite
-base_main_sha: 3fdff5bbf0bbfacb6decc5601e3cc6de63acbaf4
-decision: ROLLOUT_READY_REPORT_ONLY
+base_main_sha: 754dd12f014cbce0ee3d6247863589df0265abb3
+decision: ROLLOUT_CONDITIONALLY_READY
 decision_reason: >
-  The self-dogfood run classified ai-dev-framework as retrofit_accelerate,
-  reached EXECUTION_READY, produced deterministic JSON reports, and had no
-  would-block findings. The only warning is the expected self-audit file-count
-  warning from storing durable evidence in this PR.
+  After #485 gate parity fixes, the self-dogfood rerun classified
+  ai-dev-framework as retrofit_accelerate, reached EXECUTION_READY, produced
+  deterministic JSON reports, and had no would-block findings. The only warning
+  is the expected self-audit file-count warning from storing durable evidence in
+  this PR. PR #486 remote checks are green at the recorded exact head, but
+  external rollout remains on hold until #486 is merged, owner review accepts
+  this revised evidence, and the rollout target is explicitly selected.
+owner_decision_context:
+  source_pr: https://github.com/watchout/ai-dev-framework/pull/482
+  approved_head_sha: f407993094b9e3bb17b6e750a9c809a336156082
+  merge_commit_sha: 754dd12f014cbce0ee3d6247863589df0265abb3
+implementation_pr_context:
+  source_pr: https://github.com/watchout/ai-dev-framework/pull/486
+  exact_head_sha: afe3a608eb84ccbfbd21a1267679c981120c5f22
+  remote_checks: PASS
+  breaking_change_check: PASS
+  status: PENDING_OWNER_REVIEW_AND_MERGE
 gate_results:
   adoption:
     report: .shirube/self-dogfood/reports/adoption.json
@@ -54,9 +68,18 @@ known_follow_ups:
     reason: >
       The known merge-notify issue is separate from Rapid/Lite gate visibility
       and does not affect local/report-only gate execution.
+  - issue: https://github.com/watchout/ai-dev-framework/issues/485
+    finding: Rapid/Lite parity/report workflow blocker fixes are implemented in PR #486.
+    rollout_blocker: true
+    reason: >
+      External rollout must wait until PR #486 is merged and owner review
+      accepts the revised self-dogfood evidence.
 required_next_actions:
-  - Pilot only in report-only mode.
-  - Keep external rollout to one target repository until owner review accepts this evidence.
+  - Do not start external rollout from this record.
+  - >
+    Review and merge PR #486 only if exact head remains
+    afe3a608eb84ccbfbd21a1267679c981120c5f22 and owner approval is recorded.
+  - Reconfirm one target repository pilot in report-only mode only after owner review accepts this revised evidence.
 non_scope_confirmed:
   - No required checks were enabled.
   - No branch setting changes were made.

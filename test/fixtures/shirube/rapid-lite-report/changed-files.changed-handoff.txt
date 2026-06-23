@@ -1,0 +1,1 @@
+test/fixtures/shirube/rapid-lite-report/handoff.changed.yaml
