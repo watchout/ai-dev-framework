@@ -1,0 +1,5 @@
+schema_version: shirube-owner-decision/v1
+decision: APPROVED_EXACT_HEAD
+exact_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+actor: watchout
+decision_ref: https://github.com/watchout/ai-dev-framework/pull/490#issuecomment-owner

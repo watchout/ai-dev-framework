@@ -67,3 +67,9 @@ The aggregate report includes the execution-context gate. A blocked execution co
 - `owner_must_not_merge: true`
 
 This does not enable required checks, branch protection, rulesets, or CI hard-blocking.
+
+## Relationship To Control State Completeness
+
+Execution Context Lock is Gate 0. Control State Completeness consumes its JSON report later in the Rapid/Lite report chain and blocks control-complete claims when the context report is missing, blocked, or failed.
+
+The execution context report remains the source for active role and repo relations. Later gates must not reinterpret lead/dev role or support/control/framework repo boundaries from prose.

@@ -1,0 +1,13 @@
+schema_version: shirube-validation-evidence/v1
+pr_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+commands:
+  - npm run test -- test/shirube/control-state-completeness.test.ts
+results:
+  - command: npm run test -- test/shirube/control-state-completeness.test.ts
+    result: PASS
+evidence_refs:
+  - pr_head_sha
+  - changed_files
+  - validation_commands
+  - validation_results
+  - owner_decision

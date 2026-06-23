@@ -1,0 +1,17 @@
+{
+  "schema": "shirube-gate-contract-check/v1",
+  "mode": "rapid-lite",
+  "profile": "hotel-lite",
+  "current_phase": "EXECUTION_READY",
+  "verdict": "PASS",
+  "would_block": false,
+  "cell_id": "CELL-ADF-CSC-001",
+  "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "hard_blocks": [],
+  "blockers": [],
+  "warnings": [],
+  "evidence": [
+    { "code": "validation_evidence", "source": "file", "detail": "test/fixtures/shirube/control-state-completeness/validation.pass.yaml" }
+  ],
+  "required_next_actions": []
+}

@@ -1,0 +1,12 @@
+{
+  "schema": "shirube-gate-contract-check/v1",
+  "current_phase": "BLOCKED",
+  "verdict": "BLOCKED",
+  "would_block": true,
+  "cell_id": "CELL-ADF-CSC-001",
+  "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "hard_blocks": [{ "item_id": "RL-PR-003", "code": "forbidden_paths_touched", "message": "blocked" }],
+  "blockers": [],
+  "warnings": [],
+  "required_next_actions": []
+}

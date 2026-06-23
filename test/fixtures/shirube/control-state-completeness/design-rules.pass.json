@@ -1,0 +1,9 @@
+{
+  "schema": "shirube-design-rule-check/v1",
+  "rule_pack_id": "shirube-default-design-rules",
+  "verdict": "PASS",
+  "would_block": false,
+  "blockers": [],
+  "warnings": [],
+  "required_next_actions": []
+}

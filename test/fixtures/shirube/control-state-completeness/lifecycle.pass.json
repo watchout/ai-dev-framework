@@ -1,0 +1,12 @@
+{
+  "schema": "shirube-lifecycle-check/v1",
+  "mode": "rapid-lite",
+  "profile": "hotel-lite",
+  "current_phase": "EXECUTION_READY",
+  "cell_id": "CELL-ADF-CSC-001",
+  "verdict": "PASS",
+  "would_block": false,
+  "blockers": [],
+  "warnings": [],
+  "required_next_actions": []
+}

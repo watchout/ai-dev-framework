@@ -1,0 +1,46 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-CSC-001
+framework_ref: watchout/ai-dev-framework@55011bbc0518ed5d3a23cf1187fcab345b61fc29
+repo_spec_ref: test/fixtures/shirube/control-state-completeness/repo-spec.pass.yaml
+repo: watchout/ai-dev-framework
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+pr_url: https://github.com/watchout/ai-dev-framework/pull/490
+pr_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: implementation
+spec_review_state: ready_for_implementation
+protected_surfaces:
+  - none
+validation:
+  required_commands:
+    - npm run test -- test/shirube/control-state-completeness.test.ts
+  required_evidence:
+    - pr_head_sha
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  decision: APPROVED_EXACT_HEAD
+  exact_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  decision_ref: https://github.com/watchout/ai-dev-framework/pull/490#issuecomment-owner
+cell:
+  CELL-ID: CELL-ADF-CSC-001
+  cell_type: docs_only
+  risk_class: R2
+  goal: Verify control-state completeness.
+  non_scope:
+    - runtime behavior
+  allowed_paths:
+    - docs/**
+    - test/fixtures/**
+  forbidden_paths:
+    - src/**
+    - .github/workflows/**
+  stop_conditions:
+    - forbidden path touched

@@ -1,0 +1,5 @@
+schema_version: shirube-audit-item-set/v1
+item_set_id: AUDIT-ITEM-SET-CSC-001
+items:
+  - item_id: AUDIT-1
+  - item_id: AUDIT-2

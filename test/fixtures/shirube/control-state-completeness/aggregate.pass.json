@@ -1,0 +1,7 @@
+{
+  "schema": "shirube-rapid-lite-report/v1",
+  "verdict": "PASS",
+  "would_block": false,
+  "owner_must_not_merge": false,
+  "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}

@@ -1,0 +1,15 @@
+schema_version: shirube-repo-spec/v1
+repo: watchout/ai-dev-framework
+control_source:
+  type: github_issue
+  ref: watchout/omotenasuai-control#15
+source_refs:
+  control: watchout/omotenasuai-control#15
+scope:
+  - Shirube Rapid/Lite control-state completeness gate.
+non_scope:
+  - runtime behavior
+confirmation_evidence:
+  rps_readiness:
+    verdict: CONFIRMED
+    ref: https://github.com/watchout/ai-dev-framework/issues/487#issuecomment-rps

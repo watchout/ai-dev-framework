@@ -1,0 +1,19 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-CSC-001
+repo: watchout/ai-dev-framework
+validation:
+  required_commands:
+    - npm test
+  required_evidence:
+    - missing_artifact_ref
+cell:
+  CELL-ID: CELL-ADF-CSC-001
+  cell_type: docs_only
+  risk_class: R2
+  goal: Missing evidence.
+  allowed_paths:
+    - docs/**
+  forbidden_paths:
+    - src/**
