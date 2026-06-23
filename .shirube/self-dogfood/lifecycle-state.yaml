@@ -1,0 +1,14 @@
+schema_version: shirube-lifecycle-state/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+repo: watchout/ai-dev-framework
+current_phase: EXECUTION_READY
+framework_ref: shirube-v3-rapid-lite@3fdff5bbf0bbfacb6decc5601e3cc6de63acbaf4
+adoption_report_ref: .shirube/self-dogfood/reports/adoption.json
+repo_spec_ref: .shirube/repo-spec.yaml
+handoff_ref: .shirube/self-dogfood/control-handoff.yaml
+gate_contract_report_ref: .shirube/self-dogfood/reports/gate-contract.json
+design_rule_report_ref: .shirube/self-dogfood/reports/design-rules.json
+last_allowed_phase: HANDOFF_READY
+updated_at: 2026-06-23T00:00:00Z
+updated_by: codex-adf

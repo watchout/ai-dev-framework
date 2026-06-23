@@ -1,0 +1,59 @@
+{
+  "schema": "shirube-lifecycle-check/v1",
+  "mode": "rapid-lite",
+  "profile": "hotel-lite",
+  "current_phase": "EXECUTION_READY",
+  "verdict": "PASS",
+  "would_block": false,
+  "adoption": {
+    "report_ref": ".shirube/self-dogfood/reports/rapid-lite-report/adoption.json",
+    "lane": "adoption_intake",
+    "disposition": "retrofit_accelerate",
+    "current_phase": "ADOPTION_READY",
+    "verdict": "PASS"
+  },
+  "allowed_next_phases": [
+    "IMPLEMENTED"
+  ],
+  "forbidden_next_phases": [],
+  "blockers": [],
+  "warnings": [],
+  "evidence": [
+    {
+      "code": "lifecycle_state",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/lifecycle-state.yaml"
+    },
+    {
+      "code": "adoption_report",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/reports/rapid-lite-report/adoption.json"
+    },
+    {
+      "code": "repo_spec",
+      "source": "file",
+      "detail": ".shirube/repo-spec.yaml"
+    },
+    {
+      "code": "control_handoff",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/control-handoff.yaml"
+    },
+    {
+      "code": "gate_contract_report",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/reports/rapid-lite-report/gate-contract.json"
+    },
+    {
+      "code": "design_rule_report",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/reports/rapid-lite-report/design-rules.json"
+    },
+    {
+      "code": "changed_files",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/changed-files.txt"
+    }
+  ],
+  "required_next_actions": []
+}

@@ -1,0 +1,89 @@
+{
+  "schema": "shirube-design-rule-check/v1",
+  "rule_pack_id": "DESIGN-RULE-PACK-SHIRUBE-DEFAULT-001",
+  "verdict": "PASS",
+  "would_block": false,
+  "rule_results": [
+    {
+      "rule_id": "DR-ARCH-001",
+      "code": "low_generality_new_domain_shape",
+      "severity": "WARN",
+      "verdict": "PASS",
+      "path": null,
+      "evidence": []
+    },
+    {
+      "rule_id": "DR-CODE-001",
+      "code": "duplicated_code_block",
+      "severity": "WARN",
+      "verdict": "PASS",
+      "path": null,
+      "evidence": []
+    },
+    {
+      "rule_id": "DR-CONFIG-001",
+      "code": "source_hardcoded_variable_item",
+      "severity": "WARN",
+      "verdict": "PASS",
+      "path": null,
+      "evidence": []
+    },
+    {
+      "rule_id": "DR-CONFIG-002",
+      "code": "hidden_business_constant_in_source",
+      "severity": "WARN",
+      "verdict": "PASS",
+      "path": null,
+      "evidence": []
+    },
+    {
+      "rule_id": "DR-DATA-001",
+      "code": "hard_delete_without_soft_delete_policy",
+      "severity": "BLOCK",
+      "verdict": "PASS",
+      "path": null,
+      "evidence": []
+    },
+    {
+      "rule_id": "DR-LLM-001",
+      "code": "llm_must_not_be_final_decider",
+      "severity": "BLOCK",
+      "verdict": "PASS",
+      "path": null,
+      "evidence": []
+    },
+    {
+      "rule_id": "DR-SAFE-001",
+      "code": "protected_surface_without_explicit_cell",
+      "severity": "BLOCK",
+      "verdict": "PASS",
+      "path": null,
+      "evidence": []
+    }
+  ],
+  "blockers": [],
+  "warnings": [],
+  "evidence": [
+    {
+      "code": "rule_pack",
+      "source": "file",
+      "detail": ".shirube/design-rule-packs/shirube-default-design-rules.yaml"
+    },
+    {
+      "code": "changed_files",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/changed-files.txt"
+    },
+    {
+      "code": "diff_root",
+      "source": "filesystem",
+      "detail": "."
+    },
+    {
+      "code": "handoff",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/control-handoff.yaml"
+    }
+  ],
+  "required_next_actions": []
+}

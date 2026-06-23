@@ -261,9 +261,11 @@ audit_assignment:
 confirmation_evidence:
   rps_readiness:
     required: true
+    verdict: CONFIRMED
     authority_role: CEO
     authority_actor: watchout
     canonical_artifact_path: .shirube/evidence/rps-confirmation.yaml
+    evidence_ref: https://github.com/watchout/ai-dev-framework/pull/462#issuecomment-4761494340
     accepted_sinks:
       - repository_file
       - github_issue_comment
