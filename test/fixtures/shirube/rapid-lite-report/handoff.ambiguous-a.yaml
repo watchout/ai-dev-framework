@@ -1,0 +1,16 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-RAPID-LITE-REPORT-AMBIGUOUS-A
+framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
+repo_spec_ref: .shirube/repo-spec.yaml
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/485
+cell:
+  CELL-ID: CELL-ADF-V3-RAPID-LITE-REPORT-AMBIGUOUS-A
+  cell_type: docs_only
+  risk_class: R2
+  goal: Ambiguous fixture A.
+  non_scope: [external rollout]
+  allowed_paths: [test/fixtures/shirube/rapid-lite-report/**]
+  forbidden_paths: [src/**]
+  stop_conditions: [ambiguous artifact selected]

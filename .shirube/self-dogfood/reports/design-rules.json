@@ -83,6 +83,11 @@
       "code": "handoff",
       "source": "file",
       "detail": ".shirube/self-dogfood/control-handoff.yaml"
+    },
+    {
+      "code": "pr_body",
+      "source": "file",
+      "detail": ".shirube/self-dogfood/pr-body.md"
     }
   ],
   "required_next_actions": []

@@ -8,6 +8,7 @@ repo_spec_ref: .shirube/repo-spec.yaml
 owner_confirmation_ref: https://github.com/watchout/ai-dev-framework/pull/462#issuecomment-4761494340
 repo: watchout/ai-dev-framework
 repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/481
+pr_head_sha: f407993094b9e3bb17b6e750a9c809a336156082
 owner:
   role: repo_owner
   actor: watchout
@@ -43,6 +44,12 @@ validation:
     - .shirube/self-dogfood/reports/design-rules.json
     - .shirube/self-dogfood/reports/lifecycle.json
     - .shirube/self-dogfood/reports/rapid-lite-report/aggregate.json
+owner_decision:
+  required_before_merge: true
+  decision: APPROVED_EXACT_HEAD
+  exact_head_sha: f407993094b9e3bb17b6e750a9c809a336156082
+  decision_ref: https://github.com/watchout/ai-dev-framework/pull/482
+  merged_commit_sha: 754dd12f014cbce0ee3d6247863589df0265abb3
 cell:
   CELL-ID: CELL-ADF-V3-SELF-DOGFOOD-001
   cell_type: docs_only

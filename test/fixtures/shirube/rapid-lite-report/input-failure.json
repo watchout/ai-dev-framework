@@ -1,0 +1,6 @@
+{
+  "schema": "shirube-rapid-lite-input-collection/v1",
+  "status": "FAILURE",
+  "code": "changed_files_collection_failed",
+  "message": "No merge base was available in the workflow checkout."
+}

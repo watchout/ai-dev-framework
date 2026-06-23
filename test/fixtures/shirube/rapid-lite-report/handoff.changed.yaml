@@ -1,0 +1,45 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-RAPID-LITE-REPORT-CHANGED-HANDOFF
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: shirube-v3-rapid-lite@0123456789abcdef0123456789abcdef01234567
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: https://github.com/watchout/ai-dev-framework/issues/485#issuecomment-rps-confirmed
+repo: watchout/ai-dev-framework
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/485
+pr_head_sha: "0123456789abcdef0123456789abcdef01234567"
+owner: { role: repo_owner, actor: watchout }
+next_role: implementation
+spec_review_state: ready_for_implementation
+rps_scope:
+  shirube_owns: [Rapid/Lite report helper fixture resolution]
+  shirube_does_not_own: [external rollout, required checks, branch protection]
+acceptance_criteria:
+  - changed-file handoff is selected without scanning stale repo artifacts
+validation:
+  required_commands: [git diff --check]
+  test_expectations: [changed-file artifact wins over stale repo artifacts]
+  required_evidence: [PR_head_SHA, changed_files, validation_commands, validation_results, owner_decision]
+owner_decision:
+  required_before_merge: true
+  exact_head_sha: "0123456789abcdef0123456789abcdef01234567"
+  decision_ref: https://github.com/watchout/ai-dev-framework/issues/485#issuecomment-owner-decision
+cell:
+  CELL-ID: CELL-ADF-V3-RAPID-LITE-REPORT-CHANGED-HANDOFF
+  cell_type: docs_only
+  risk_class: R2
+  goal: Verify changed-file artifact resolution.
+  non_scope: [external rollout, required checks, branch protection]
+  allowed_paths:
+    - test/fixtures/shirube/rapid-lite-report/**
+  forbidden_paths:
+    - src/**
+    - scripts/**
+    - .github/workflows/**
+  stop_conditions:
+    - stale artifact selected
+    - ambiguous artifact selected
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false

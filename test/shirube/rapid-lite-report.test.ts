@@ -66,4 +66,114 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       rmSync(result.resultDir, { recursive: true, force: true });
     }
   }, 15000);
+
+  it("does not select stale self-dogfood handoffs from the repo tree", () => {
+    const result = run([
+      "--changed-files",
+      fixture("rapid-lite-report/changed-files.empty.txt"),
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.discovered_inputs.handoff).not.toBe(".shirube/self-dogfood/control-handoff.yaml");
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract").status).toBe("skipped");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  });
+
+  it("uses a changed-file handoff before any stale repo-local handoff", () => {
+    const result = run([
+      "--changed-files",
+      fixture("rapid-lite-report/changed-files.changed-handoff.txt"),
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.discovered_inputs.handoff).toBe("test/fixtures/shirube/rapid-lite-report/handoff.changed.yaml");
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract").status).toBe("ran");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("blocks ambiguous current-PR artifact discovery instead of picking a stale artifact", () => {
+    const result = run([
+      "--changed-files",
+      fixture("rapid-lite-report/changed-files.ambiguous.txt"),
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      expect(result.json.would_block).toBe(true);
+      expect(result.json.owner_must_not_merge).toBe(true);
+      const discovery = result.json.gates.find((gate: { gate: string }) => gate.gate === "discovery");
+      expect(discovery.verdict).toBe("BLOCKED");
+      expect(discovery.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("RL-DISC-001");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports missing changed-files input as report_failed and would_block", () => {
+    const result = run([
+      "--changed-files",
+      fixture("rapid-lite-report/missing-changed-files.txt"),
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("FAILURE");
+      expect(result.json.report_failed).toBe(true);
+      expect(result.json.would_block).toBe(true);
+      expect(result.json.owner_must_not_merge).toBe(true);
+      const inputCollection = result.json.gates.find((gate: { gate: string }) => gate.gate === "input-collection");
+      expect(inputCollection.report_failed).toBe(true);
+      expect(inputCollection.blockers[0].code).toBe("changed_files_missing");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  });
+
+  it("reports workflow input collection failures as report_failed and would_block", () => {
+    const result = run([
+      "--changed-files",
+      fixture("rapid-lite-report/changed-files.empty.txt"),
+      "--input-failure",
+      fixture("rapid-lite-report/input-failure.json"),
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("FAILURE");
+      expect(result.json.report_failed).toBe(true);
+      expect(result.json.would_block).toBe(true);
+      expect(result.json.owner_must_not_merge).toBe(true);
+      const inputCollection = result.json.gates.find((gate: { gate: string }) => gate.gate === "input-collection");
+      expect(inputCollection.blockers[0].code).toBe("changed_files_collection_failed");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  });
 });

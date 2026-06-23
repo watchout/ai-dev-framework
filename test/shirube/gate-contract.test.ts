@@ -136,6 +136,60 @@ describe("Rapid/Lite gate contract check", () => {
     expect(hardBlockIds(result)).toContain("RL-CELL-006");
   });
 
+  it("blocks missing PR head SHA", () => {
+    const result = check("missing-pr-head.block.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(hardBlockIds(result)).toContain("RL-PR-001");
+  });
+
+  it("blocks missing owner decision when the profile requires owner merge evidence", () => {
+    const result = check("missing-owner-decision.block.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(hardBlockIds(result)).toContain("RL-MERGE-001");
+  });
+
+  it("blocks owner decision exact-head mismatch", () => {
+    const result = check("owner-head-mismatch.block.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(hardBlockIds(result)).toContain("RL-MERGE-002");
+  });
+
+  it("blocks top-level required-check protected surfaces", () => {
+    const result = check("top-level-protected-required-check.block.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(hardBlockIds(result)).toContain("RL-CELL-006");
+  });
+
+  it("blocks top-level auth protected surfaces", () => {
+    const result = check("top-level-protected-auth.block.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(hardBlockIds(result)).toContain("RL-CELL-006");
+  });
+
+  it("still blocks cell-level protected surfaces", () => {
+    const result = check("cell-level-protected-surface.block.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(hardBlockIds(result)).toContain("RL-CELL-006");
+  });
+
   it("blocks missing framework lock or handoff framework/matrix reference", () => {
     const result = check("missing-framework-lock.block.yaml");
 
