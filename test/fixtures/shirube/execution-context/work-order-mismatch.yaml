@@ -1,0 +1,16 @@
+schema_version: shirube-execution-context/v1
+mode: full_control_pilot
+profile: hotel-lite
+primary:
+  repo: watchout/ai-dev-framework
+  product: AI Dev Framework
+  work_order: watchout/omotenasuai-control#15
+  pr: watchout/ai-dev-framework#489
+active_role: dev
+repo_relations:
+  - repo: watchout/ai-dev-framework
+    relation: primary
+common_contract:
+  primary_repo_required: true
+  work_order_required: true
+  active_role_required: true

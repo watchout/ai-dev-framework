@@ -1,0 +1,2 @@
+docs/standards/shirube-execution-context-lock.md
+templates/shirube-execution-context.yaml

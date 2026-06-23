@@ -20,14 +20,17 @@ Do not call partial repositories `V3 complete`, `enforced`, `fully controlled`, 
 
 A PR must not be treated as Shirube-controlled unless it records:
 
-1. Control source.
-2. Scope and non-scope.
-3. Allowed paths and forbidden paths.
-4. Protected surface declaration.
-5. Exact head SHA.
-6. Validation evidence.
-7. Owner decision against the exact head.
-8. Post-merge evidence requirement.
+1. Execution context lock.
+2. Control source.
+3. Scope and non-scope.
+4. Allowed paths and forbidden paths.
+5. Protected surface declaration.
+6. Exact head SHA.
+7. Validation evidence.
+8. Owner decision against the exact head.
+9. Post-merge evidence requirement.
+
+The execution context lock must identify the primary implementation repo, current work order, current PR, active role, and support/control/framework repo relations. A PR without execution context evidence is Gate Pack Bridge material at most; it must not be called Shirube-controlled.
 
 ## External Exact-Head Evidence
 
@@ -36,12 +39,15 @@ Exact head approval should be attachable outside committed target-repo files. A 
 For report-only pilots, use PR body/comment refs such as:
 
 ```text
+execution_context_ref: .shirube/execution-context.yaml
 handoff_ref: .shirube/control-handoffs/CH-001.yaml
 validation_evidence_ref: .shirube/evidence/validation.yaml
 owner_decision_ref: .shirube/evidence/owner-decision.yaml
 ```
 
 `run-rapid-lite-report` forwards `validation_evidence_ref` to `check-gate-contract`, allowing `pr_head_sha` evidence to live outside the committed handoff while still being machine-checked.
+
+`run-rapid-lite-report` also runs `check-execution-context` before the other gates. If the execution context blocks, the aggregate report sets `would_block=true` and `owner_must_not_merge=true` while preserving report-only workflow behavior.
 
 ## Template
 

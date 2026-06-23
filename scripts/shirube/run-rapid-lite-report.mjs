@@ -26,11 +26,15 @@ export function buildRapidLiteReport(options) {
   const prBody = prBodyPath && existsSync(prBodyPath) ? readFileSync(prBodyPath, "utf8") : "";
   const discovery = discoverRefs({ prBody, changedFiles });
   const refs = discovery.refs;
+  const actual = actualContextFromOptions(options);
   const records = [];
 
   if (changedFilesResult.failure) records.push(failureRecord("input-collection", changedFilesResult.failure));
   if (inputFailurePath) records.push(readInputFailureRecord(inputFailurePath));
   records.push(...discovery.records);
+
+  const executionContext = runExecutionContext({ resultDir, refs, changedFilesPath, prBodyPath, actual });
+  records.push(executionContext);
 
   const adoption = runAdoption({ resultDir, refs, changedFilesPath });
   records.push(adoption);
@@ -49,12 +53,26 @@ export function buildRapidLiteReport(options) {
     gateContractReportPath: gateContract.status === "ran" ? gateContract.output_path : refs.gateContractReport,
     designRuleReportPath: designRules.status === "ran" ? designRules.output_path : refs.designRuleReport,
   });
-  records.splice(1, 0, lifecycle);
+  records.splice(2, 0, lifecycle);
 
   const aggregate = aggregateReport({ resultDir, refs, records, changedFiles });
   writeFileSync(path.join(resultDir, "aggregate.json"), `${JSON.stringify(aggregate, null, 2)}\n`);
   writeFileSync(path.join(resultDir, "summary.md"), renderSummary(aggregate));
   return aggregate;
+}
+
+function runExecutionContext({ resultDir, refs, changedFilesPath, prBodyPath, actual }) {
+  const args = [
+    "scripts/shirube/check-execution-context.mjs",
+  ];
+  addArg(args, "--context", refs.executionContext);
+  addArg(args, "--pr-body", prBodyPath);
+  addArg(args, "--changed-files", changedFilesPath);
+  addArg(args, "--actual-repo", actual.actualRepo);
+  addArg(args, "--actual-branch", actual.actualBranch);
+  addArg(args, "--actual-head", actual.actualHead);
+  args.push("--format", "json");
+  return runGate({ gate: "execution-context", args, outputPath: path.join(resultDir, "execution-context.json") });
 }
 
 function runAdoption({ resultDir, refs, changedFilesPath }) {
@@ -316,6 +334,7 @@ function appendActions(lines, actions) {
 
 function discoverRefs({ prBody, changedFiles }) {
   const explicit = {
+    executionContext: refFromBody(prBody, ["execution_context_ref", "execution_context", "context_ref", "context"]),
     adoptionPlan: refFromBody(prBody, ["adoption_plan_ref", "adoption_plan", "adoption-plan", "adoption plan"]),
     existingState: refFromBody(prBody, ["existing_state_ref", "existing_state", "existing-state", "existing state"]),
     legacyInventory: refFromBody(prBody, ["legacy_inventory_ref", "legacy_inventory", "legacy-inventory"]),
@@ -337,6 +356,7 @@ function discoverRefs({ prBody, changedFiles }) {
   const schemaMatches = schemasFromFiles(walkFiles(changedFiles));
   const records = [];
   const refs = {
+    executionContext: resolveRef({ name: "execution_context", explicit: explicit.executionContext, candidates: bySchema(schemaMatches, "shirube-execution-context/v1"), defaults: [".shirube/execution-context.yaml"], records }),
     adoptionPlan: resolveRef({ name: "adoption_plan", explicit: explicit.adoptionPlan, candidates: bySchema(schemaMatches, "shirube-adoption-intake/v1"), defaults: [".shirube/adoption-intake.yaml", ".shirube/adoption/intake.yaml"], records }),
     existingState: resolveRef({ name: "existing_state", explicit: explicit.existingState, candidates: bySchema(schemaMatches, "shirube-existing-state-scan/v1"), defaults: [".shirube/existing-state-scan.yaml", ".shirube/adoption/existing-state-scan.yaml"], records }),
     legacyInventory: resolveRef({ name: "legacy_inventory", explicit: explicit.legacyInventory, defaults: [".shirube/legacy-inventory.yaml"], records }),
@@ -535,6 +555,30 @@ function readInputFailureRecord(filePath) {
       message: error instanceof Error ? error.message : String(error),
       path: filePath,
     });
+  }
+}
+
+function actualContextFromOptions(options) {
+  const fromEvent = actualFromGithubEvent();
+  return {
+    actualRepo: stringOption(options["actual-repo"]) ?? process.env.GITHUB_REPOSITORY ?? fromEvent.actualRepo ?? null,
+    actualBranch: stringOption(options["actual-branch"]) ?? process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? fromEvent.actualBranch ?? null,
+    actualHead: stringOption(options["actual-head"]) ?? fromEvent.actualHead ?? process.env.GITHUB_SHA ?? null,
+  };
+}
+
+function actualFromGithubEvent() {
+  const eventPath = process.env.GITHUB_EVENT_PATH;
+  if (!eventPath || !existsSync(eventPath)) return {};
+  try {
+    const event = JSON.parse(readFileSync(eventPath, "utf8"));
+    return {
+      actualRepo: event.repository?.full_name ?? null,
+      actualBranch: event.pull_request?.head?.ref ?? event.ref_name ?? null,
+      actualHead: event.pull_request?.head?.sha ?? event.after ?? null,
+    };
+  } catch {
+    return {};
   }
 }
 
