@@ -1,0 +1,10 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-INVALID-MODE-001
+repo: watchout/ai-dev-framework
+mode: permanent_report_only
+profile: hotel-lite
+framework_ref: shirube-v3-rapid-lite@754dd12f014cbce0ee3d6247863589df0265abb3
+updated_at: 2026-06-23T00:00:00Z
+owner:
+  role: repo_owner
+  actor: watchout

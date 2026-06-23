@@ -1,0 +1,55 @@
+schema_version: shirube-enforcement-modes/v1
+mode_set_id: SHIRUBE-ENFORCEMENT-MODES-RAPID-LITE-001
+profile: hotel-lite
+purpose: >
+  Define the Rapid/Lite graduation path from report-only observation to owner
+  process blocking, CI hard-blocking, and required-check readiness.
+modes:
+  report_only:
+    stage: 0
+    purpose: observation and calibration
+    aggregate_would_block_result: PASS_WITH_WARN
+    ci_should_fail: false
+    owner_must_not_merge: true
+    exception: explicit pilot exception may allow owner merge while findings are classified
+    allowed_for_external_rollout_start: true
+  owner_block:
+    stage: 1
+    purpose: operational merge discipline before required checks
+    aggregate_would_block_result: BLOCKED
+    ci_should_fail: false
+    owner_must_not_merge: true
+    exception: exact-head owner exception required to proceed
+  ci_hard_block:
+    stage: 2
+    purpose: mechanical CI failure for hard blocks without branch protection mutation
+    aggregate_would_block_result: BLOCKED
+    ci_should_fail: true
+    owner_must_not_merge: true
+    exception: owner exception alone is insufficient unless policy explicitly permits waiver
+  required_check:
+    stage: 3
+    purpose: readiness declaration for branch-protection/ruleset enforcement
+    aggregate_would_block_result: BLOCKED
+    ci_should_fail: true
+    owner_must_not_merge: true
+    branch_protection_activation: out_of_scope
+    required_readiness_evidence:
+      - owner approval for required-check mode
+      - clean report-only or owner-block calibration evidence
+      - no unclassified blockers
+      - documented false-positive review
+recommended_path:
+  - stage: report_only
+    suggested_window: pilot PR 1-3
+  - stage: owner_block
+    suggested_window: after false-positive review
+  - stage: ci_hard_block
+    suggested_window: after 3-5 clean PRs
+  - stage: required_check
+    suggested_window: after owner approval and protected-settings Cell
+non_scope:
+  - branch protection mutation
+  - ruleset mutation
+  - required check activation
+  - runtime, AUN, production, package, or lockfile behavior

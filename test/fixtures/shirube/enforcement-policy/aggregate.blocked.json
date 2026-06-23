@@ -1,0 +1,24 @@
+{
+  "schema": "shirube-rapid-lite-report/v1",
+  "verdict": "BLOCKED",
+  "would_block": true,
+  "report_only": true,
+  "gates": [
+    {
+      "gate": "gate-contract",
+      "status": "ran",
+      "verdict": "BLOCKED",
+      "current_phase": "BLOCKED",
+      "would_block": true,
+      "blockers": [
+        {
+          "item_id": "RL-PR-003",
+          "code": "forbidden_paths_touched",
+          "path": ".github/workflows/example.yml"
+        }
+      ],
+      "warnings": [],
+      "required_next_actions": []
+    }
+  ]
+}
