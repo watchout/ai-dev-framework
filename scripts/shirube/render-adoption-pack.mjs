@@ -24,6 +24,10 @@ const TEMPLATE_OUTPUTS = {
   "docs-shirube-readme.md": "docs/shirube/README.md",
 };
 
+const WORKFLOW_CALLER_TEMPLATE_OUTPUT = {
+  "workflow-caller.yml": ".github/workflows/shirube-rapid-lite-gates-report.yml",
+};
+
 const TARGET_ALLOWED_PATHS = [
   ".shirube/**",
   "docs/shirube/**",
@@ -58,7 +62,11 @@ export function buildAdoptionPackRender(options) {
   const templatesDir = path.join("templates", "adoption-pack", input.profile);
   const generatedFiles = [];
 
-  for (const [templateName, outputRelativePath] of Object.entries(TEMPLATE_OUTPUTS)) {
+  const templateOutputs = input.includeWorkflowCaller
+    ? { ...TEMPLATE_OUTPUTS, ...WORKFLOW_CALLER_TEMPLATE_OUTPUT }
+    : TEMPLATE_OUTPUTS;
+
+  for (const [templateName, outputRelativePath] of Object.entries(templateOutputs)) {
     const templatePath = path.join(templatesDir, templateName);
     if (!existsSync(templatePath)) {
       return failureReport(input, [{
@@ -88,7 +96,8 @@ export function buildAdoptionPackRender(options) {
     target_change_policy: {
       allowed_paths: TARGET_ALLOWED_PATHS,
       forbidden_paths: TARGET_FORBIDDEN_PATHS,
-      workflow_caller_generated: false,
+      workflow_caller_generated: input.includeWorkflowCaller,
+      workflow_caller_path: input.includeWorkflowCaller ? WORKFLOW_CALLER_TEMPLATE_OUTPUT["workflow-caller.yml"] : null,
       runtime_changes_allowed: false,
       package_changes_allowed: false,
       branch_protection_changes_allowed: false,
@@ -98,6 +107,9 @@ export function buildAdoptionPackRender(options) {
     required_next_actions: [
       "Open a target-repo adoption PR containing only the generated overlay files.",
       "Owner must fill exact-head decision evidence before merge if any gate would block.",
+      input.includeWorkflowCaller
+        ? "The generated workflow caller must stay report-only and pinned to the recorded ADF framework_ref."
+        : "Add the optional thin workflow caller only in an approved workflow-caller slice.",
       "Do not mix runtime, API, DB, package, deploy, branch protection, ruleset, or required-check changes into the adoption PR.",
     ],
   };
@@ -117,6 +129,7 @@ function normalizeInput(options) {
     generatedAt: stringOption(options["generated-at"]) ?? "<GENERATED_AT_UTC>",
     fetchedAt: stringOption(options["fetched-at"]) ?? "<FETCHED_AT_UTC>",
     generatedBy: stringOption(options["generated-by"]) ?? "codex-adf",
+    includeWorkflowCaller: booleanOption(options["include-workflow-caller"]),
   };
 }
 
@@ -156,6 +169,7 @@ function templateValues(input) {
   const source = parseSourceControl(input.sourceControl);
   const [targetOwner, targetName] = input.targetRepo.split("/");
   const frameworkRepo = input.frameworkRef.split("@")[0];
+  const frameworkRefName = input.frameworkRef.slice(input.frameworkRef.indexOf("@") + 1);
   const sourceUrl = `https://github.com/${source.repo}/issues/${source.issue}`;
   const digest = createHash("sha256")
     .update([
@@ -178,6 +192,7 @@ function templateValues(input) {
     EXISTING_SCAN_ID: `EXISTING-STATE-${id}-001`,
     FETCHED_AT: input.fetchedAt,
     FRAMEWORK_REF: input.frameworkRef,
+    FRAMEWORK_REF_NAME: frameworkRefName,
     FRAMEWORK_REPO: frameworkRepo,
     GENERATED_AT: input.generatedAt,
     GENERATED_BY: input.generatedBy,
@@ -258,6 +273,10 @@ function slugId(value) {
 
 function stringOption(value) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function booleanOption(value) {
+  return value === true || value === "true" || value === "1" || value === "yes";
 }
 
 function main() {

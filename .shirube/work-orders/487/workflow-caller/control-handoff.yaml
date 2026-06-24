@@ -1,0 +1,143 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-WORKFLOW-CALLER-001
+parent: "#487"
+parent_inputs:
+  - "#487"
+  - "#505"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/487
+v_next_hardening_input: https://github.com/watchout/ai-dev-framework/issues/505
+work_order: watchout/ai-dev-framework#487
+pr: "watchout/ai-dev-framework#<PR_NUMBER_PENDING>"
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@c16d024cf868a0872d05ba32e347b07a5bf62533
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Generic reusable Rapid/Lite report workflow in ADF.
+    - Target-repo thin workflow caller template for report-only pilots.
+    - Optional adoption-pack caller rendering and safety checking.
+    - PR-local Shirube evidence artifacts for this workflow-caller slice.
+  shirube_does_not_own:
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - CI hard-blocking.
+    - Runtime/API/DB/product/package/lockfile behavior.
+    - External repository mutation.
+    - final framework readiness claim.
+cell:
+  CELL-ID: CELL-ADF-V3-WORKFLOW-CALLER-001
+  cell_type: integration_lite
+  risk_class: R2
+  goal: Add the report-only reusable workflow and thin target caller template so target repos can run pinned ADF Rapid/Lite gates without copying scripts.
+  acceptance_criteria:
+    - ADF exposes a reusable Rapid/Lite report workflow callable from target repos.
+    - The hotel-lite adoption pack can optionally render a thin caller workflow.
+    - The thin caller uses a pinned ADF reusable workflow ref and report_only=true.
+    - Target pack safety check accepts only the exact thin caller workflow path.
+    - Target repos do not receive scripts/shirube/**, package, lockfile, runtime, API, DB, deploy, branch-protection, ruleset, or required-check changes.
+  non_scope:
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - CI hard-blocking
+    - runtime/API/DB/product/package/lockfile changes
+    - external repository mutation
+    - heavy #505 flow/gate hardening features
+    - final framework readiness claim
+  allowed_paths:
+    - .shirube/work-orders/487/workflow-caller/**
+    - .github/workflows/shirube-rapid-lite-reusable.yml
+    - docs/standards/shirube-adoption-pack-check.md
+    - docs/standards/shirube-overlay-adoption-pack.md
+    - docs/standards/shirube-rapid-lite-workflow-caller.md
+    - scripts/shirube/check-adoption.mjs
+    - scripts/shirube/check-adoption-pack.mjs
+    - scripts/shirube/render-adoption-pack.mjs
+    - scripts/shirube/run-rapid-lite-report.mjs
+    - templates/adoption-pack/hotel-lite/control-handoff.yaml
+    - templates/adoption-pack/hotel-lite/docs-shirube-readme.md
+    - templates/adoption-pack/hotel-lite/repo-spec.yaml
+    - templates/adoption-pack/hotel-lite/workflow-caller.yml
+    - test/fixtures/shirube/adoption-pack/expected-files-with-workflow-caller.txt
+    - test/fixtures/shirube/adoption-pack/forbidden-target-paths.txt
+    - test/fixtures/shirube/adoption/changed-files.thin-caller.txt
+    - test/fixtures/shirube/adoption/handoff.thin-caller.yaml
+    - test/fixtures/shirube/workflow-caller/**
+    - test/shirube/adoption.test.ts
+    - test/shirube/adoption-pack-check.test.ts
+    - test/shirube/adoption-pack.test.ts
+    - test/shirube/workflow-caller.test.ts
+  forbidden_paths:
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - active workflows
+    touched: true
+    reason: This slice adds a reusable report-only workflow and a generated thin caller template. It does not activate required checks, branch protection, rulesets, or CI hard-blocking.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - required check activation added
+    - branch protection or ruleset mutation added
+    - CI hard-blocking added
+    - runtime/API/DB/product/package/lockfile change added
+    - external repo mutation added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/adoption.test.ts test/shirube/workflow-caller.test.ts test/shirube/adoption-pack.test.ts test/shirube/adoption-pack-check.test.ts
+    - node scripts/shirube/render-adoption-pack.mjs sample command with --include-workflow-caller
+    - node scripts/shirube/check-adoption-pack.mjs sample command against generated caller pack
+    - YAML parse for reusable workflow, caller template, and generated caller workflow
+    - node scripts/shirube/run-rapid-lite-report.mjs PR-local sample command
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - pr_head_sha
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  target_head: c16d024cf868a0872d05ba32e347b07a5bf62533
+  exact_head_sha: pending-owner-final-decision
+  decision_ref: .shirube/work-orders/487/workflow-caller/owner-decision-pending.yaml
+post_merge_policy:
+  evidence_required_before_complete: true
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/487

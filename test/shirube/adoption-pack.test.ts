@@ -38,6 +38,10 @@ function run(args: string[]): { exitCode: number; json: any; stdout: string } {
 }
 
 function render(out: string): { exitCode: number; json: any; stdout: string } {
+  return renderWithOptions(out, []);
+}
+
+function renderWithOptions(out: string, extraArgs: string[]): { exitCode: number; json: any; stdout: string } {
   return run([
     "--profile",
     "hotel-lite",
@@ -51,6 +55,7 @@ function render(out: string): { exitCode: number; json: any; stdout: string } {
     frameworkRef(),
     "--mode",
     "render",
+    ...extraArgs,
     "--out",
     out,
     "--format",
@@ -58,8 +63,8 @@ function render(out: string): { exitCode: number; json: any; stdout: string } {
   ]);
 }
 
-function expectedFiles(): string[] {
-  return readFileSync(fixture("expected-files.txt"), "utf8")
+function expectedFiles(name = "expected-files.txt"): string[] {
+  return readFileSync(fixture(name), "utf8")
     .split(/\r?\n/)
     .map((line) => line.trim())
     .filter(Boolean)
@@ -102,6 +107,26 @@ describe("Shirube overlay adoption pack renderer", () => {
     }
   });
 
+  it("optionally renders the thin workflow caller without copied scripts or package files", () => {
+    const out = mkdtempSync(path.join(tmpdir(), "shirube-adoption-pack-"));
+    try {
+      const result = renderWithOptions(out, ["--include-workflow-caller"]);
+      const generated = result.json.generated_files.map((file: { path: string }) => file.path).sort((a: string, b: string) => a.localeCompare(b));
+
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("PASS");
+      expect(generated).toEqual(expectedFiles("expected-files-with-workflow-caller.txt"));
+      expect(result.json.target_change_policy.workflow_caller_generated).toBe(true);
+      expect(result.json.target_change_policy.workflow_caller_path).toBe(".github/workflows/shirube-rapid-lite-gates-report.yml");
+      expect(existsSync(path.join(out, ".github/workflows/shirube-rapid-lite-gates-report.yml"))).toBe(true);
+      for (const file of forbiddenFiles()) {
+        expect(existsSync(path.join(out, file))).toBe(false);
+      }
+    } finally {
+      rmSync(out, { recursive: true, force: true });
+    }
+  });
+
   it("writes parseable control artifacts with partial-pilot to report-only semantics", () => {
     const out = mkdtempSync(path.join(tmpdir(), "shirube-adoption-pack-"));
     try {
@@ -132,9 +157,17 @@ describe("Shirube overlay adoption pack renderer", () => {
 
       expect(repoSpec.source_of_truth_policy.llm_final_authority).toBe(false);
       expect(repoSpec.source_of_truth_policy.mirror_is_truth).toBe(false);
-      expect(repoSpec.agent_permission_boundary.allowed_paths).toEqual([".shirube/**", "docs/shirube/**"]);
+      expect(repoSpec.agent_permission_boundary.allowed_paths).toEqual([
+        ".shirube/**",
+        "docs/shirube/**",
+        ".github/workflows/shirube-rapid-lite-gates-report.yml",
+      ]);
 
-      expect(handoff.cell.allowed_paths).toEqual([".shirube/**", "docs/shirube/**"]);
+      expect(handoff.cell.allowed_paths).toEqual([
+        ".shirube/**",
+        "docs/shirube/**",
+        ".github/workflows/shirube-rapid-lite-gates-report.yml",
+      ]);
       expect(handoff.cell.forbidden_paths).toContain("package.json");
       expect(handoff.owner_decision.required_before_merge).toBe(true);
       expect(handoff.post_merge.required_when_done_claimed).toBe(true);

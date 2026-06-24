@@ -20,6 +20,8 @@ node scripts/shirube/render-adoption-pack.mjs \
 
 `--framework-ref` must be pinned. The target repository records the pinned ADF ref but does not receive copied `scripts/shirube/**`.
 
+Add `--include-workflow-caller` only when the thin caller slice is in scope. That renders `.github/workflows/shirube-rapid-lite-gates-report.yml`, which calls the pinned ADF reusable workflow instead of copying gate scripts into the target repo.
+
 ## Generated Files
 
 The `hotel-lite` profile writes:
@@ -35,7 +37,11 @@ The `hotel-lite` profile writes:
 - `.shirube/control-state-completeness.yaml`
 - `docs/shirube/README.md`
 
-The first slice does not generate a workflow caller. A later approved Cell may add `.github/workflows/shirube-rapid-lite-gates-report.yml` when the thin caller is explicitly scoped.
+When `--include-workflow-caller` is set, the pack also writes:
+
+- `.github/workflows/shirube-rapid-lite-gates-report.yml`
+
+The caller must remain thin and report-only. See `docs/standards/shirube-rapid-lite-workflow-caller.md`.
 
 ## Pack Safety Check
 
@@ -59,7 +65,7 @@ Allowed:
 
 - `.shirube/**`
 - `docs/shirube/**`
-- `.github/workflows/shirube-rapid-lite-gates-report.yml` only in a later thin-caller slice
+- `.github/workflows/shirube-rapid-lite-gates-report.yml` only when the approved slice includes the thin workflow caller
 
 Forbidden:
 
@@ -83,6 +89,7 @@ The pack creates machine-readable artifacts for:
 - Control State Completeness
 - Source Mirror
 - target repo README guidance
+- optional report-only thin workflow caller
 
 The source mirror is not independent truth. It is a structured snapshot of the GitHub Control source.
 

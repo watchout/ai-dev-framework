@@ -1,0 +1,309 @@
+name: Shirube Rapid/Lite Reusable Report
+
+on:
+  workflow_call:
+    inputs:
+      framework_ref:
+        description: "Pinned ADF ref in owner/repo@ref form."
+        required: true
+        type: string
+      profile:
+        description: "Shirube Rapid/Lite profile."
+        required: false
+        default: hotel-lite
+        type: string
+      report_only:
+        description: "Keep the workflow signal-only. This slice does not hard-block CI."
+        required: false
+        default: true
+        type: boolean
+      pr_body:
+        description: "Optional PR body text. If empty, the workflow reads the GitHub event body."
+        required: false
+        default: ""
+        type: string
+      changed_files:
+        description: "Optional newline-delimited changed files. If empty, the workflow computes the PR diff."
+        required: false
+        default: ""
+        type: string
+      execution_context_ref:
+        required: false
+        default: ""
+        type: string
+      adoption_plan_ref:
+        required: false
+        default: ""
+        type: string
+      lifecycle_state_ref:
+        required: false
+        default: ""
+        type: string
+      handoff_ref:
+        required: false
+        default: ""
+        type: string
+      validation_evidence_ref:
+        required: false
+        default: ""
+        type: string
+      owner_decision_ref:
+        required: false
+        default: ""
+        type: string
+      enforcement_policy_ref:
+        required: false
+        default: ""
+        type: string
+      audit_checklist_ref:
+        required: false
+        default: ""
+        type: string
+      structured_audit_ref:
+        required: false
+        default: ""
+        type: string
+      audit_machine_evidence_ref:
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+env:
+  NODE_VERSION: "20"
+  RESULT_DIR: .shirube-rapid-lite
+  ADF_DIR: .shirube-adf
+
+jobs:
+  shirube-rapid-lite-gates-report:
+    name: Shirube Rapid/Lite Gates Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve pinned ADF ref
+        id: framework
+        env:
+          FRAMEWORK_REF: ${{ inputs.framework_ref }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const ref = process.env.FRAMEWORK_REF || "";
+          const at = ref.lastIndexOf("@");
+          const repository = ref.slice(0, at);
+          const version = ref.slice(at + 1);
+          if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository) || !version) {
+            throw new Error("framework_ref must use owner/repo@ref form.");
+          }
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `repository=${repository}\nref=${version}\n`);
+          NODE
+
+      - name: Checkout pinned ADF
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.framework.outputs.repository }}
+          ref: ${{ steps.framework.outputs.ref }}
+          path: ${{ env.ADF_DIR }}
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: ${{ env.ADF_DIR }}/package-lock.json
+
+      - name: Install ADF dependencies
+        run: npm ci --prefix "$ADF_DIR"
+
+      - name: Collect PR inputs
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BODY_INPUT: ${{ inputs.pr_body }}
+          CHANGED_FILES_INPUT: ${{ inputs.changed_files }}
+          EXECUTION_CONTEXT_REF: ${{ inputs.execution_context_ref }}
+          ADOPTION_PLAN_REF: ${{ inputs.adoption_plan_ref }}
+          LIFECYCLE_STATE_REF: ${{ inputs.lifecycle_state_ref }}
+          HANDOFF_REF: ${{ inputs.handoff_ref }}
+          VALIDATION_EVIDENCE_REF: ${{ inputs.validation_evidence_ref }}
+          OWNER_DECISION_REF: ${{ inputs.owner_decision_ref }}
+          ENFORCEMENT_POLICY_REF: ${{ inputs.enforcement_policy_ref }}
+          AUDIT_CHECKLIST_REF: ${{ inputs.audit_checklist_ref }}
+          STRUCTURED_AUDIT_REF: ${{ inputs.structured_audit_ref }}
+          AUDIT_MACHINE_EVIDENCE_REF: ${{ inputs.audit_machine_evidence_ref }}
+        run: |
+          mkdir -p "$RESULT_DIR"
+          node <<'NODE'
+          const { execFileSync } = require("child_process");
+          const fs = require("fs");
+          const path = require("path");
+
+          const resultDir = process.env.RESULT_DIR;
+          const adfDir = process.env.ADF_DIR;
+          const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
+          const inputBody = process.env.PR_BODY_INPUT || "";
+          const eventBody = event.pull_request?.body || "";
+          const refs = {
+            execution_context_ref: process.env.EXECUTION_CONTEXT_REF,
+            adoption_plan_ref: process.env.ADOPTION_PLAN_REF,
+            lifecycle_state_ref: process.env.LIFECYCLE_STATE_REF,
+            handoff_ref: process.env.HANDOFF_REF,
+            validation_evidence_ref: process.env.VALIDATION_EVIDENCE_REF,
+            owner_decision_ref: process.env.OWNER_DECISION_REF,
+            enforcement_policy_ref: process.env.ENFORCEMENT_POLICY_REF,
+            audit_checklist_ref: process.env.AUDIT_CHECKLIST_REF,
+            structured_audit_ref: process.env.STRUCTURED_AUDIT_REF,
+            audit_machine_evidence_ref: process.env.AUDIT_MACHINE_EVIDENCE_REF,
+            matrix_ref: path.join(adfDir, ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"),
+            rule_pack_ref: path.join(adfDir, ".shirube/design-rule-packs/shirube-default-design-rules.yaml"),
+          };
+          const refLines = Object.entries(refs)
+            .filter(([, value]) => value && String(value).trim())
+            .map(([key, value]) => `${key}: ${value}`);
+          const body = [
+            inputBody || eventBody,
+            "",
+            "<!-- shirube:reusable-workflow-inputs/v1 -->",
+            ...refLines,
+            "",
+          ].join("\n");
+          fs.writeFileSync(`${resultDir}/pr-body.md`, body);
+
+          const changedFilesInput = process.env.CHANGED_FILES_INPUT || "";
+          if (changedFilesInput.trim()) {
+            fs.writeFileSync(`${resultDir}/changed-files.txt`, changedFilesInput.trimEnd() + "\n");
+            fs.writeFileSync(`${resultDir}/input-collection.json`, JSON.stringify({
+              schema: "shirube-rapid-lite-input-collection/v1",
+              status: "PASS",
+              method: "workflow_call.changed_files_input",
+            }, null, 2) + "\n");
+            process.exit(0);
+          }
+
+          const attempts = [
+            {
+              label: "base-head-sha-three-dot",
+              args: ["diff", "--name-only", `${process.env.BASE_SHA}...${process.env.HEAD_SHA}`],
+            },
+            {
+              label: "base-head-sha-two-dot",
+              args: ["diff", "--name-only", process.env.BASE_SHA, process.env.HEAD_SHA],
+            },
+            {
+              label: "origin-base-three-dot",
+              before: ["fetch", "--no-tags", "--prune", "origin", process.env.BASE_REF],
+              args: ["diff", "--name-only", `origin/${process.env.BASE_REF}...HEAD`],
+            },
+            {
+              label: "head-parent",
+              args: ["diff", "--name-only", "HEAD^", "HEAD"],
+            },
+          ];
+          const errors = [];
+          for (const attempt of attempts) {
+            try {
+              if (attempt.before) execFileSync("git", attempt.before, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+              const stdout = execFileSync("git", attempt.args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+              fs.writeFileSync(`${resultDir}/changed-files.txt`, stdout);
+              fs.writeFileSync(`${resultDir}/input-collection.json`, JSON.stringify({
+                schema: "shirube-rapid-lite-input-collection/v1",
+                status: "PASS",
+                method: attempt.label,
+              }, null, 2) + "\n");
+              process.exit(0);
+            } catch (error) {
+              errors.push({
+                method: attempt.label,
+                message: error.stderr?.toString?.().trim() || error.message,
+              });
+            }
+          }
+          fs.writeFileSync(`${resultDir}/changed-files.txt`, "");
+          fs.writeFileSync(`${resultDir}/input-failure.json`, JSON.stringify({
+            schema: "shirube-rapid-lite-input-collection/v1",
+            status: "FAILURE",
+            code: "changed_files_collection_failed",
+            message: "Unable to collect PR changed files from available merge-base strategies.",
+            attempts: errors,
+          }, null, 2) + "\n");
+          NODE
+
+      - name: Run Rapid/Lite gates from pinned ADF
+        env:
+          ACTUAL_REPO: ${{ github.repository }}
+          ACTUAL_BRANCH: ${{ github.head_ref || github.ref_name }}
+          ACTUAL_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          INPUT_FAILURE_ARG=""
+          if [ -f "$RESULT_DIR/input-failure.json" ]; then
+            INPUT_FAILURE_ARG="--input-failure $RESULT_DIR/input-failure.json"
+          fi
+          node "$ADF_DIR/scripts/shirube/run-rapid-lite-report.mjs" \
+            --result-dir "$RESULT_DIR" \
+            --changed-files "$RESULT_DIR/changed-files.txt" \
+            --pr-body "$RESULT_DIR/pr-body.md" \
+            --diff-root . \
+            --actual-repo "$ACTUAL_REPO" \
+            --actual-branch "$ACTUAL_BRANCH" \
+            --actual-head "$ACTUAL_HEAD" \
+            $INPUT_FAILURE_ARG \
+            --format json > "$RESULT_DIR/workflow-output.json"
+          cat "$RESULT_DIR/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          cat "$RESULT_DIR/aggregate.json"
+
+      - name: Upsert PR comment
+        if: always() && github.event_name == 'pull_request'
+        continue-on-error: true
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require("fs");
+            const marker = "<!-- shirube-rapid-lite-gates-report/v1 -->";
+            const body = fs.existsSync(".shirube-rapid-lite/summary.md")
+              ? fs.readFileSync(".shirube-rapid-lite/summary.md", "utf8")
+              : `${marker}\n\n## Shirube Rapid/Lite Gates Report\n\nReport generation failed before summary creation.`;
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+            const previous = comments.find((comment) =>
+              comment.user?.type === "Bot" && comment.body?.includes(marker)
+            );
+            if (previous) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Upload Rapid/Lite gate JSON artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shirube-rapid-lite-gates-${{ github.event.pull_request.number }}
+          path: ${{ env.RESULT_DIR }}
+          if-no-files-found: warn
+          retention-days: 14
+          include-hidden-files: true
+
+      - name: Report-only completion
+        if: always()
+        env:
+          REPORT_ONLY: ${{ inputs.report_only }}
+        run: |
+          echo "Shirube Rapid/Lite reusable report is report-only in this slice."
+          echo "Requested report_only=$REPORT_ONLY."
+          echo "PASS, PASS_WITH_WARN, BLOCKED, and FAILURE are recorded as PR-visible evidence; this workflow does not activate required checks or branch protection."
+          exit 0

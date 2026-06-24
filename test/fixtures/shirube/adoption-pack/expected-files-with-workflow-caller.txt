@@ -1,0 +1,11 @@
+.github/workflows/shirube-rapid-lite-gates-report.yml
+.shirube/adoption-intake.yaml
+.shirube/control-handoffs/CH-001.yaml
+.shirube/control-state-completeness.yaml
+.shirube/enforcement-policy.yaml
+.shirube/execution-context.yaml
+.shirube/existing-state-scan.yaml
+.shirube/lifecycle-state.yaml
+.shirube/repo-spec.yaml
+.shirube/source-mirrors/control-issue.yaml
+docs/shirube/README.md

@@ -1,0 +1,7 @@
+opened
+synchronize
+reopened
+ready_for_review
+edited
+labeled
+unlabeled

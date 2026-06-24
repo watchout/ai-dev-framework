@@ -1,0 +1,28 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADOPTION-THIN-CALLER-001
+owner_confirmation_ref: https://github.com/owner/repo/issues/1#rps-confirmed
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: implementation
+cell:
+  CELL-ID: CELL-ADF-V3-WORKFLOW-CALLER-001
+  cell_type: integration_lite
+  risk_class: R2
+  goal: Exercise report-only thin workflow caller fixture.
+  allowed_paths:
+    - .github/workflows/shirube-rapid-lite-gates-report.yml
+  forbidden_paths:
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - active workflows
+    touched: true
+validation:
+  required_commands:
+    - node scripts/shirube/check-adoption.mjs --format json
+  required_evidence:
+    - adoption_check_report
