@@ -143,8 +143,12 @@ describe("Shirube overlay adoption pack renderer", () => {
       expect(sourceMirror.source_type).toBe("github_issue");
       expect(sourceMirror.source_repo).toBe("watchout/control");
       expect(sourceMirror.issue_number).toBe(1);
+      expect(sourceMirror.target_repo).toBe("watchout/example");
+      expect(sourceMirror.product).toBe("Example");
       expect(sourceMirror.sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(sourceMirror.mirror_is_truth).toBe(false);
+      expect(sourceMirror.source_authority.remains_authority).toBe(true);
+      expect(sourceMirror.extracted_fields.owner_confirmation).toBe("pending");
 
       expect(enforcement.mode).toBe("report_only");
       expect(enforcement.owner_observed).toBe(true);

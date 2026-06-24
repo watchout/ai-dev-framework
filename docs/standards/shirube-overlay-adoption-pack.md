@@ -86,6 +86,8 @@ The pack creates machine-readable artifacts for:
 
 The source mirror is not independent truth. It is a structured snapshot of the GitHub Control source.
 
+Use `scripts/shirube/mirror-control-source.mjs` when a standalone source mirror skeleton is needed before rendering or refreshing a target overlay. The command is offline in its first slice and keeps `mirror_is_truth=false`.
+
 ## Authority Rules
 
 LLM output is not authority.

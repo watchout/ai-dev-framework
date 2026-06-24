@@ -1,0 +1,17 @@
+schema_version
+source_type
+source_ref
+source_repo
+issue_number
+source_url
+target_repo
+product
+framework_ref
+fetched_at
+sha256
+mirror_is_truth
+generated_by
+extracted_fields.target_repo
+extracted_fields.product
+extracted_fields.owner_confirmation
+extracted_fields.control_source_status

@@ -1,0 +1,29 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+repo: watchout/ai-dev-framework
+mode: report_only
+profile: hotel-lite
+framework_ref: watchout/ai-dev-framework@75d4255a5609907a7d5a82b472c6be8a28be0284
+updated_at: 2026-06-24T01:30:00Z
+stale_after_days: 90
+owner_observed: true
+owner:
+  role: repo_owner
+  actor: watchout
+required_checks:
+  enabled: false
+branch_protection:
+  unchanged: true
+rulesets:
+  unchanged: true
+report_only_semantics:
+  aggregate_would_block_sets_owner_must_not_merge: true
+  ci_should_fail: false
+  owner_must_not_merge_without_exception: true
+non_scope:
+  - branch protection mutation
+  - ruleset mutation
+  - required check activation
+  - CI hard-blocking
+  - external repository mutation
+  - runtime/API/DB/product/package/lockfile behavior

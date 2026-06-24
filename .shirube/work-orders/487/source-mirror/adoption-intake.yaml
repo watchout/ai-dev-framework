@@ -1,0 +1,23 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+lane: adoption_intake
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@75d4255a5609907a7d5a82b472c6be8a28be0284
+profile: hotel-lite
+current_status: RAPID_LITE_REPORT_ONLY
+target_status_after_merge: RAPID_LITE_REPORT_ONLY
+disposition: retrofit_accelerate
+source_control_ref: watchout/ai-dev-framework#487
+owner:
+  role: repo_owner
+  actor: watchout
+existing_state_scan_ref: .shirube/work-orders/487/source-mirror/existing-state-scan.yaml
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+gap_fill_plan:
+  - Add PR-local execution context, handoff, validation evidence, and report-only source mirror control evidence.
+  - Keep this slice local/report-only and do not fetch live GitHub or mutate external repositories.
+spec_reconciliation_ref: null
+next_safe_cell_ref: .shirube/work-orders/487/source-mirror/control-handoff.yaml
+control_handoff_ref: .shirube/work-orders/487/source-mirror/control-handoff.yaml
+current_phase: ADOPTION_READY

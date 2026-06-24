@@ -1,0 +1,234 @@
+schema_version: shirube-structured-audit/v1
+audit_checklist_ref: .shirube/work-orders/487/source-mirror/audit-checklist.yaml
+pr_head_sha: pending-owner-final-decision
+head_evidence_status: final_exact_head_evidence_external_owner_decision_required
+reviewer_actor: codex-audit
+reviewer_model: gpt-5-audit
+implementation_actor: codex-adf
+scope_only: false
+items:
+  - item_id: AUDIT-001
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-002
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-003
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-004
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-005
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-006
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-007
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-008
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-009
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-010
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-011
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-012
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-013
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-014
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - diff_scope_report
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-015
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - diff_scope_report
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-016
+    result: PASS
+    evidence_refs:
+      - protected_surface_declaration
+      - authority_boundary_review
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-017
+    result: PASS
+    evidence_refs:
+      - protected_surface_declaration
+      - authority_boundary_review
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-018
+    result: PASS
+    evidence_refs:
+      - command_result:npm run test -- test/shirube/source-mirror.test.ts
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-019
+    result: PASS
+    evidence_refs:
+      - command_result:npm run test -- test/shirube/audit-checklist.test.ts
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-020
+    result: PASS
+    evidence_refs:
+      - command_result:node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@edf4880b4c8f9ee622239c22a6781f796a2a0318 --out .tmp/source-mirror/control-issue.yaml --format json
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-021
+    result: PASS
+    evidence_refs:
+      - command_result:node scripts/shirube/generate-audit-checklist.mjs --handoff .shirube/work-orders/487/source-mirror/control-handoff.yaml --out .shirube/work-orders/487/source-mirror/audit-checklist.yaml --format json
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-022
+    result: PASS
+    evidence_refs:
+      - command_result:node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/source-mirror/audit-checklist.yaml --audit .shirube/work-orders/487/source-mirror/structured-audit.yaml --machine-evidence .shirube/work-orders/487/source-mirror/audit-machine-evidence.yaml --format json
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-023
+    result: PASS
+    evidence_refs:
+      - command_result:YAML parse generated mirror
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-024
+    result: PASS
+    evidence_refs:
+      - command_result:npm run test -- test/shirube
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-025
+    result: PASS
+    evidence_refs:
+      - command_result:npm run type-check
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-026
+    result: PASS
+    evidence_refs:
+      - command_result:npm run build:cli
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-027
+    result: PASS
+    evidence_refs:
+      - command_result:npm run lint
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-028
+    result: PASS
+    evidence_refs:
+      - command_result:git diff --check origin/main...HEAD
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-029
+    result: PASS
+    evidence_refs:
+      - pr_head_sha
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-030
+    result: PASS
+    evidence_refs:
+      - changed_files
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-031
+    result: PASS
+    evidence_refs:
+      - validation_commands
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-032
+    result: PASS
+    evidence_refs:
+      - validation_results
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-033
+    result: PASS
+    evidence_refs:
+      - owner_decision
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."
+  - item_id: AUDIT-034
+    result: PASS
+    evidence_refs:
+      - execution_context_report
+      - maker_checker_review
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Structured semantic review found the checklist item satisfied for this local/report-only slice.
+  - item_id: AUDIT-035
+    result: PASS
+    evidence_refs:
+      - owner_decision
+      - pr_head_sha
+    confidence: high
+    notes: "PASS is based on machine evidence refs, not freeform audit prose."

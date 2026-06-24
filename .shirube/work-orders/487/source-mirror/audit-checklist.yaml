@@ -1,0 +1,266 @@
+schema_version: "shirube-audit-checklist/v1"
+audit_checklist_id: "AUDIT-CHECKLIST-CELL-ADF-V3-OVERLAY-SOURCE-MIRROR-001"
+source:
+  handoff_ref: ".shirube/work-orders/487/source-mirror/control-handoff.yaml"
+  cell_id: "CELL-ADF-V3-OVERLAY-SOURCE-MIRROR-001"
+  pr: "watchout/ai-dev-framework#499"
+  work_order: "watchout/ai-dev-framework#487"
+  implementation_actor: null
+items:
+  - item_id: "AUDIT-001"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: valid GitHub issue source renders mirror skeleton"
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-002"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: digest is stable for same inputs"
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-003"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: invalid source-control format fails"
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-004"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: invalid target repo fails"
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-005"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: mirror_is_truth=true is rejected"
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-006"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: generated YAML parses"
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-007"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: generated mirror can be used by check-adoption-pack"
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-008"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: changed file outside allowed_paths"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-009"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: forbidden path touched"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-010"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: live GitHub fetch added"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-011"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: external repository mutation added"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-012"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: runtime/API/DB/product/package/lockfile/workflow/protection change added"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-013"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: owner exact-head decision missing before merge"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-014"
+    source: "allowed_paths"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify changed files are inside allowed_paths: .shirube/work-orders/487/source-mirror/**, docs/standards/shirube-overlay-adoption-pack.md, docs/standards/shirube-source-mirror.md, scripts/shirube/check-adoption-pack.mjs, scripts/shirube/mirror-control-source.mjs, templates/adoption-pack/hotel-lite/source-mirror.github-issue.yaml, test/fixtures/shirube/source-mirror/**, test/shirube/adoption-pack.test.ts, test/shirube/source-mirror.test.ts"
+    expected_evidence:
+      - "changed_files"
+      - "diff_scope_report"
+  - item_id: "AUDIT-015"
+    source: "forbidden_paths"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify no changed file matches forbidden_paths: .github/workflows/**, .github/branch-protection/**, .github/rulesets/**, src/**, app/**, api/**, lib/**, db/**, migrations/**, package.json, package-lock.json, pnpm-lock.yaml, yarn.lock, .env*, deploy/**, deployment/**"
+    expected_evidence:
+      - "changed_files"
+      - "diff_scope_report"
+  - item_id: "AUDIT-016"
+    source: "protected_surface"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify protected surface declaration and authority handling for: auth"
+    expected_evidence:
+      - "protected_surface_declaration"
+      - "authority_boundary_review"
+  - item_id: "AUDIT-017"
+    source: "protected_surface"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify protected surface declaration and authority handling for: permissions"
+    expected_evidence:
+      - "protected_surface_declaration"
+      - "authority_boundary_review"
+  - item_id: "AUDIT-018"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run test -- test/shirube/source-mirror.test.ts"
+    expected_evidence:
+      - "command_result:npm run test -- test/shirube/source-mirror.test.ts"
+  - item_id: "AUDIT-019"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run test -- test/shirube/audit-checklist.test.ts"
+    expected_evidence:
+      - "command_result:npm run test -- test/shirube/audit-checklist.test.ts"
+  - item_id: "AUDIT-020"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@edf4880b4c8f9ee622239c22a6781f796a2a0318 --out .tmp/source-mirror/control-issue.yaml --format json"
+    expected_evidence:
+      - "command_result:node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@edf4880b4c8f9ee622239c22a6781f796a2a0318 --out .tmp/source-mirror/control-issue.yaml --format json"
+  - item_id: "AUDIT-021"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: node scripts/shirube/generate-audit-checklist.mjs --handoff .shirube/work-orders/487/source-mirror/control-handoff.yaml --out .shirube/work-orders/487/source-mirror/audit-checklist.yaml --format json"
+    expected_evidence:
+      - "command_result:node scripts/shirube/generate-audit-checklist.mjs --handoff .shirube/work-orders/487/source-mirror/control-handoff.yaml --out .shirube/work-orders/487/source-mirror/audit-checklist.yaml --format json"
+  - item_id: "AUDIT-022"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/source-mirror/audit-checklist.yaml --audit .shirube/work-orders/487/source-mirror/structured-audit.yaml --machine-evidence .shirube/work-orders/487/source-mirror/audit-machine-evidence.yaml --format json"
+    expected_evidence:
+      - "command_result:node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/source-mirror/audit-checklist.yaml --audit .shirube/work-orders/487/source-mirror/structured-audit.yaml --machine-evidence .shirube/work-orders/487/source-mirror/audit-machine-evidence.yaml --format json"
+  - item_id: "AUDIT-023"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: YAML parse generated mirror"
+    expected_evidence:
+      - "command_result:YAML parse generated mirror"
+  - item_id: "AUDIT-024"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run test -- test/shirube"
+    expected_evidence:
+      - "command_result:npm run test -- test/shirube"
+  - item_id: "AUDIT-025"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run type-check"
+    expected_evidence:
+      - "command_result:npm run type-check"
+  - item_id: "AUDIT-026"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run build:cli"
+    expected_evidence:
+      - "command_result:npm run build:cli"
+  - item_id: "AUDIT-027"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run lint"
+    expected_evidence:
+      - "command_result:npm run lint"
+  - item_id: "AUDIT-028"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: git diff --check origin/main...HEAD"
+    expected_evidence:
+      - "command_result:git diff --check origin/main...HEAD"
+  - item_id: "AUDIT-029"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: pr_head_sha"
+    expected_evidence:
+      - "pr_head_sha"
+  - item_id: "AUDIT-030"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: changed_files"
+    expected_evidence:
+      - "changed_files"
+  - item_id: "AUDIT-031"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: validation_commands"
+    expected_evidence:
+      - "validation_commands"
+  - item_id: "AUDIT-032"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: validation_results"
+    expected_evidence:
+      - "validation_results"
+  - item_id: "AUDIT-033"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: owner_decision"
+    expected_evidence:
+      - "owner_decision"
+  - item_id: "AUDIT-034"
+    source: "role_boundary"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify lead/dev/owner/auditor authority boundaries and maker-checker separation."
+    expected_evidence:
+      - "execution_context_report"
+      - "maker_checker_review"
+  - item_id: "AUDIT-035"
+    source: "owner_decision"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify owner exact-head decision policy and evidence are present before merge."
+    expected_evidence:
+      - "owner_decision"
+      - "pr_head_sha"

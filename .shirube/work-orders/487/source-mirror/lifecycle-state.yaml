@@ -1,0 +1,14 @@
+schema_version: shirube-lifecycle-state/rapid-lite/v1
+lifecycle_id: LIFECYCLE-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+mode: rapid-lite
+profile: hotel-lite
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@75d4255a5609907a7d5a82b472c6be8a28be0284
+work_order: watchout/ai-dev-framework#487
+pr: watchout/ai-dev-framework#499
+cell_id: CELL-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+current_phase: EXECUTION_READY
+updated_at: 2026-06-24T01:30:00Z
+design_rules_required: true
+owner_decision_required_before_merge: true
+post_merge_evidence_required_before_complete: true

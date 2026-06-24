@@ -1,0 +1,29 @@
+schema_version: shirube-execution-context/v1
+mode: rapid_lite_overlay_adoption
+profile: hotel-lite
+primary:
+  repo: watchout/ai-dev-framework
+  product: ai-dev-framework
+  work_order: watchout/ai-dev-framework#487
+  pr: watchout/ai-dev-framework#499
+active_role: dev
+repo_relations:
+  - repo: watchout/ai-dev-framework
+    relation: primary
+    allowed:
+      - inspect_repo
+      - implement_allowed_paths
+      - run_validation
+      - produce_impl_evidence
+    forbidden:
+      - approve_merge
+      - self_approve
+common_contract:
+  primary_repo_required: true
+  work_order_required: true
+  active_role_required: true
+  exact_head_required_for_merge_ready: true
+  owner_decision_required_for_merge_ready: true
+  llm_final_authority_forbidden: true
+  support_repo_as_target_forbidden: true
+  control_repo_as_target_forbidden: true

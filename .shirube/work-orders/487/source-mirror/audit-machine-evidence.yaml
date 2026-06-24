@@ -1,0 +1,48 @@
+schema_version: shirube-machine-evidence/v1
+head_evidence_status: final_exact_head_evidence_external_owner_decision_required
+evidence_refs:
+  - authority_boundary_review
+  - changed_files
+  - command_result:YAML parse generated mirror
+  - command_result:git diff --check origin/main...HEAD
+  - command_result:node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/source-mirror/audit-checklist.yaml --audit .shirube/work-orders/487/source-mirror/structured-audit.yaml --machine-evidence .shirube/work-orders/487/source-mirror/audit-machine-evidence.yaml --format json
+  - command_result:node scripts/shirube/generate-audit-checklist.mjs --handoff .shirube/work-orders/487/source-mirror/control-handoff.yaml --out .shirube/work-orders/487/source-mirror/audit-checklist.yaml --format json
+  - command_result:node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@edf4880b4c8f9ee622239c22a6781f796a2a0318 --out .tmp/source-mirror/control-issue.yaml --format json
+  - command_result:npm run build:cli
+  - command_result:npm run lint
+  - command_result:npm run test -- test/shirube
+  - command_result:npm run test -- test/shirube/audit-checklist.test.ts
+  - command_result:npm run test -- test/shirube/source-mirror.test.ts
+  - command_result:npm run type-check
+  - diff_scope_report
+  - execution_context_report
+  - maker_checker_review
+  - owner_decision
+  - pr_head_sha
+  - protected_surface_declaration
+  - structured_reviewer_rationale
+  - validation_commands
+  - validation_results
+command_results:
+  - command: npm run test -- test/shirube/source-mirror.test.ts
+    result: PASS
+  - command: npm run test -- test/shirube/audit-checklist.test.ts
+    result: PASS
+  - command: node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@edf4880b4c8f9ee622239c22a6781f796a2a0318 --out .tmp/source-mirror/control-issue.yaml --format json
+    result: PASS
+  - command: node scripts/shirube/generate-audit-checklist.mjs --handoff .shirube/work-orders/487/source-mirror/control-handoff.yaml --out .shirube/work-orders/487/source-mirror/audit-checklist.yaml --format json
+    result: PASS
+  - command: node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/source-mirror/audit-checklist.yaml --audit .shirube/work-orders/487/source-mirror/structured-audit.yaml --machine-evidence .shirube/work-orders/487/source-mirror/audit-machine-evidence.yaml --format json
+    result: PASS
+  - command: YAML parse generated mirror
+    result: PASS
+  - command: npm run test -- test/shirube
+    result: PASS
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+  - command: git diff --check origin/main...HEAD
+    result: PASS
