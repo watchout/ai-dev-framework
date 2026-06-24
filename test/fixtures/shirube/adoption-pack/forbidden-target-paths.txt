@@ -11,4 +11,3 @@ pnpm-lock.yaml
 yarn.lock
 .env
 deploy/production.yaml
-.github/workflows/shirube-rapid-lite-gates-report.yml

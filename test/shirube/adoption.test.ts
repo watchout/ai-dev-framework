@@ -188,6 +188,27 @@ describe("Shirube adoption intake check", () => {
     expect(blockerIds(result)).toContain("RECOVER-004");
   });
 
+  it("allows the exact report-only thin workflow caller when handoff declares it", () => {
+    const result = check("retrofit.pass.yaml", [
+      "--existing-state",
+      fixture("existing-state.healthy.yaml"),
+      "--repo-spec",
+      fixture("repo-spec.ready.yaml"),
+      "--spec-reconciliation",
+      fixture("spec-reconciliation.ready.yaml"),
+      "--handoff",
+      fixture("handoff.thin-caller.yaml"),
+      "--changed-files",
+      fixture("changed-files.thin-caller.txt"),
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.verdict).toBe("PASS");
+    expect(result.json.disposition).toBe("retrofit_accelerate");
+    expect(blockerIds(result)).not.toContain("RECOVER-004");
+  });
+
   it("blocks retrofit with no owner-confirmed direction", () => {
     const result = check("retrofit.no-owner-direction.yaml", [
       "--existing-state",

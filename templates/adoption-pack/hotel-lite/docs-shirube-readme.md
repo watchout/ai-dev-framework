@@ -34,6 +34,7 @@ Allowed adoption paths:
 
 - `.shirube/**`
 - `docs/shirube/**`
+- `.github/workflows/shirube-rapid-lite-gates-report.yml` only when an approved thin workflow caller slice generated it
 
 Forbidden in the adoption PR:
 

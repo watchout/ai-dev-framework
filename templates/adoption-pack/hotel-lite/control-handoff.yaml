@@ -34,7 +34,7 @@ cell:
     - API handlers
     - DB schema or migrations
     - package or lockfile changes
-    - active workflow changes unless a later thin-caller Cell explicitly approves them
+    - active workflow changes except the generated report-only thin caller
     - required check activation
     - branch protection or ruleset mutation
     - production or deploy changes
@@ -42,6 +42,7 @@ cell:
   allowed_paths:
     - .shirube/**
     - docs/shirube/**
+    - .github/workflows/shirube-rapid-lite-gates-report.yml
   forbidden_paths:
     - scripts/shirube/**
     - src/**
@@ -57,7 +58,6 @@ cell:
     - .env*
     - deploy/**
     - deployment/**
-    - .github/workflows/**
     - '**/branch-protection/**'
     - '**/ruleset/**'
   protected_surfaces:

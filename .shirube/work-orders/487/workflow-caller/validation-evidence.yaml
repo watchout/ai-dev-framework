@@ -1,0 +1,59 @@
+schema_version: shirube-validation-evidence/v1
+evidence_id: VALIDATION-ADF-V3-WORKFLOW-CALLER-001
+repo: watchout/ai-dev-framework
+pr: 0
+cell_id: CELL-ADF-V3-WORKFLOW-CALLER-001
+pr_head_sha: c16d024cf868a0872d05ba32e347b07a5bf62533
+head_evidence_status: current_pr_validation_input_not_final_owner_exact_head
+result: PASS
+commands:
+  - npm run test -- test/shirube/adoption.test.ts test/shirube/workflow-caller.test.ts test/shirube/adoption-pack.test.ts test/shirube/adoption-pack-check.test.ts
+  - node scripts/shirube/render-adoption-pack.mjs --profile hotel-lite --target-repo watchout/example --product Example --source-control watchout/control#1 --framework-ref watchout/ai-dev-framework@<HEAD> --mode render --include-workflow-caller --out .tmp/shirube-adoption-pack-workflow --format json
+  - node scripts/shirube/check-adoption-pack.mjs --pack-root .tmp/shirube-adoption-pack-workflow --target-repo watchout/example --profile hotel-lite --format json
+  - YAML parse for reusable workflow, caller template, and generated caller workflow
+  - node scripts/shirube/run-rapid-lite-report.mjs PR-local sample command
+  - npm run test -- test/shirube
+  - npm run type-check
+  - npm run build:cli
+  - npm run lint
+  - git diff --check origin/main...HEAD
+validation_results:
+  - command: npm run test -- test/shirube/adoption.test.ts test/shirube/workflow-caller.test.ts test/shirube/adoption-pack.test.ts test/shirube/adoption-pack-check.test.ts
+    result: PASS
+    detail: 4 files / 36 tests
+  - command: node scripts/shirube/render-adoption-pack.mjs sample command with --include-workflow-caller
+    result: PASS
+  - command: node scripts/shirube/check-adoption-pack.mjs sample command against generated caller pack
+    result: PASS
+  - command: YAML parse for reusable workflow, caller template, and generated caller workflow
+    result: PASS
+  - command: node scripts/shirube/run-rapid-lite-report.mjs PR-local sample command
+    result: PASS_WITH_WARN
+    detail: would_block=false; owner_must_not_merge=false; control-state-completeness PASS
+  - command: npm run test -- test/shirube
+    result: PASS
+    detail: 18 files / 239 tests
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+    detail: existing pages-directory notice only
+  - command: git diff --check origin/main...HEAD
+    result: PASS
+evidence_refs:
+  - .tmp/shirube-workflow-caller-report/changed-files.txt
+  - .github/workflows/shirube-rapid-lite-reusable.yml
+  - templates/adoption-pack/hotel-lite/workflow-caller.yml
+  - scripts/shirube/run-rapid-lite-report.mjs
+  - scripts/shirube/check-adoption.mjs
+  - scripts/shirube/render-adoption-pack.mjs
+  - scripts/shirube/check-adoption-pack.mjs
+  - test/shirube/workflow-caller.test.ts
+  - test/shirube/adoption.test.ts
+  - test/fixtures/shirube/adoption/handoff.thin-caller.yaml
+  - test/fixtures/shirube/adoption/changed-files.thin-caller.txt
+  - test/shirube/adoption-pack.test.ts
+  - test/shirube/adoption-pack-check.test.ts
+note: Final exact-head validation and owner approval are external PR evidence. This committed file records current local validation inputs only.

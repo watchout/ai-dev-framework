@@ -1,0 +1,15 @@
+framework_ref
+profile
+report_only
+pr_body
+changed_files
+execution_context_ref
+adoption_plan_ref
+lifecycle_state_ref
+handoff_ref
+validation_evidence_ref
+owner_decision_ref
+enforcement_policy_ref
+audit_checklist_ref
+structured_audit_ref
+audit_machine_evidence_ref

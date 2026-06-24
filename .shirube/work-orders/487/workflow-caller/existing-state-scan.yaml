@@ -1,0 +1,26 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-STATE-ADF-V3-WORKFLOW-CALLER-001
+repo: watchout/ai-dev-framework
+observed_at: 2026-06-24T00:00:00Z
+source_control_ref: watchout/ai-dev-framework#487
+classification:
+  current_status: RAPID_LITE_REPORT_ONLY
+  target_status_after_merge: RAPID_LITE_REPORT_ONLY
+  disposition: retrofit_accelerate
+specs:
+  - path: https://github.com/watchout/ai-dev-framework/issues/487
+    status: parent_work_order
+    authority: github_issue
+implementation:
+  - path: .github/workflows/shirube-rapid-lite-reusable.yml
+    status: new_reusable_report_only_workflow
+  - path: templates/adoption-pack/hotel-lite/workflow-caller.yml
+    status: new_target_thin_caller_template
+tests:
+  - path: test/shirube/workflow-caller.test.ts
+    status: added
+legacy_sources: []
+known_drift: []
+unsafe_changes: []
+llm_truth_claims: []
+unknowns: []

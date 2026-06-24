@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import {
   isMain,
   isObject,
@@ -12,6 +13,7 @@ import {
 const SCHEMA = "shirube-rapid-lite-report/v1";
 const MARKER = "<!-- shirube-rapid-lite-gates-report/v1 -->";
 const DEFAULT_RESULT_DIR = ".shirube-rapid-lite";
+const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 
 export function buildRapidLiteReport(options) {
   const resultDir = stringOption(options["result-dir"]) ?? DEFAULT_RESULT_DIR;
@@ -86,7 +88,7 @@ export function buildRapidLiteReport(options) {
 
 function runExecutionContext({ resultDir, refs, changedFilesPath, prBodyPath, actual }) {
   const args = [
-    "scripts/shirube/check-execution-context.mjs",
+    gateScript("check-execution-context.mjs"),
   ];
   addArg(args, "--context", refs.executionContext);
   addArg(args, "--pr-body", prBodyPath);
@@ -101,7 +103,7 @@ function runExecutionContext({ resultDir, refs, changedFilesPath, prBodyPath, ac
 function runAdoption({ resultDir, refs, changedFilesPath }) {
   if (!refs.adoptionPlan) return skipped("adoption", "No adoption intake plan was found.");
   const args = [
-    "scripts/shirube/check-adoption.mjs",
+    gateScript("check-adoption.mjs"),
     "--adoption-plan",
     refs.adoptionPlan,
   ];
@@ -118,7 +120,7 @@ function runAdoption({ resultDir, refs, changedFilesPath }) {
 function runGateContract({ resultDir, refs, changedFilesPath }) {
   if (!refs.handoff) return skipped("gate-contract", "No Rapid/Lite control handoff was found.");
   const args = [
-    "scripts/shirube/check-gate-contract.mjs",
+    gateScript("check-gate-contract.mjs"),
   ];
   addArg(args, "--matrix", refs.matrix);
   addArg(args, "--repo-spec", refs.repoSpec);
@@ -134,7 +136,7 @@ function runGateContract({ resultDir, refs, changedFilesPath }) {
 function runDesignRules({ resultDir, refs, changedFilesPath, prBodyPath, diffRoot }) {
   if (!refs.rulePack) return skipped("design-rules", "No design rule pack was found.");
   const args = [
-    "scripts/shirube/check-design-rules.mjs",
+    gateScript("check-design-rules.mjs"),
     "--rule-pack",
     refs.rulePack,
   ];
@@ -150,7 +152,7 @@ function runAuditChecklist({ resultDir, refs, actual }) {
   const outputPath = path.join(resultDir, "audit-checklist.json");
   if (refs.auditChecklist) {
     const args = [
-      "scripts/shirube/check-audit-checklist.mjs",
+      gateScript("check-audit-checklist.mjs"),
       "--checklist",
       refs.auditChecklist,
     ];
@@ -162,7 +164,7 @@ function runAuditChecklist({ resultDir, refs, actual }) {
   }
   if (refs.structuredAudit || refs.auditMachineEvidence) {
     const args = [
-      "scripts/shirube/check-audit-checklist.mjs",
+      gateScript("check-audit-checklist.mjs"),
     ];
     addArg(args, "--audit", refs.structuredAudit);
     addArg(args, "--machine-evidence", refs.auditMachineEvidence);
@@ -179,7 +181,7 @@ function runAuditChecklist({ resultDir, refs, actual }) {
 function runEnforcementPolicy({ resultDir, refs, aggregatePath }) {
   if (!refs.enforcementPolicy) return null;
   const args = [
-    "scripts/shirube/check-enforcement-policy.mjs",
+    gateScript("check-enforcement-policy.mjs"),
     "--policy",
     refs.enforcementPolicy,
     "--aggregate",
@@ -204,7 +206,7 @@ function runControlStateCompleteness({
   enforcementPolicyReportPath,
 }) {
   const args = [
-    "scripts/shirube/check-control-state-completeness.mjs",
+    gateScript("check-control-state-completeness.mjs"),
   ];
   addArg(args, "--control-state", refs.controlState);
   addArg(args, "--execution-context-report", executionContextReportPath);
@@ -235,7 +237,7 @@ function runControlStateCompleteness({
 function runLifecycle({ resultDir, refs, changedFilesPath, adoptionReportPath, gateContractReportPath, designRuleReportPath }) {
   if (!refs.lifecycleState) return skipped("lifecycle", "No lifecycle state was found.");
   const args = [
-    "scripts/shirube/check-lifecycle.mjs",
+    gateScript("check-lifecycle.mjs"),
     "--state",
     refs.lifecycleState,
   ];
@@ -771,6 +773,10 @@ function actualFromGithubEvent() {
 
 function addArg(args, key, value) {
   if (value) args.push(key, value);
+}
+
+function gateScript(filename) {
+  return path.join(SCRIPT_DIR, filename);
 }
 
 function stringOption(value) {

@@ -37,7 +37,7 @@ function run(script: string, args: string[]): { exitCode: number; json: any; std
   }
 }
 
-function render(out: string): void {
+function render(out: string, includeWorkflowCaller = false): void {
   const result = run(renderScript, [
     "--profile",
     "hotel-lite",
@@ -51,6 +51,7 @@ function render(out: string): void {
     frameworkRef(),
     "--mode",
     "render",
+    ...(includeWorkflowCaller ? ["--include-workflow-caller"] : []),
     "--out",
     out,
     "--format",
@@ -72,10 +73,10 @@ function check(out: string, targetRepo = "watchout/example"): { exitCode: number
   ]);
 }
 
-function withPack(fn: (out: string) => void): void {
+function withPack(fn: (out: string) => void, includeWorkflowCaller = false): void {
   const out = mkdtempSync(path.join(tmpdir(), "shirube-adoption-pack-check-"));
   try {
-    render(out);
+    render(out, includeWorkflowCaller);
     fn(out);
   } finally {
     rmSync(out, { recursive: true, force: true });
@@ -127,6 +128,29 @@ describe("Shirube adoption pack check", () => {
         expect(existsSync(path.join(out, file))).toBe(true);
       }
     });
+  });
+
+  it("passes when the optional thin workflow caller is present", () => {
+    withPack((out) => {
+      const result = check(out);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("PASS");
+      expect(result.json.would_block).toBe(false);
+      expect(existsSync(path.join(out, ".github/workflows/shirube-rapid-lite-gates-report.yml"))).toBe(true);
+    }, true);
+  });
+
+  it("blocks unrelated workflow files outside the thin caller path", () => {
+    withPack((out) => {
+      mkdirSync(path.join(out, ".github/workflows"), { recursive: true });
+      writeFileSync(path.join(out, ".github/workflows/other.yml"), "name: Other\n");
+      const result = check(out);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      expect(blockerIds(result)).toContain("ADOPT-PACK-012");
+    }, true);
   });
 
   it("blocks a missing execution context", () => {

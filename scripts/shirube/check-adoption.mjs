@@ -184,7 +184,8 @@ function recoverySignals({ input, existingState }) {
   if (presentArray(existingState.material_drift) || presentArray(existingState.known_drift)) signals.push("material_drift");
   if (existingState.legacy_is_truth === true || input.adoptionPlan?.legacy_is_truth === true || hasLegacyAuthority(existingState)) signals.push("legacy_as_truth");
   if (existingState.llm_reconciliation_as_truth === true || presentArray(existingState.llm_truth_claims) || input.adoptionPlan?.llm_reconciliation_as_truth === true) signals.push("llm_as_truth");
-  if (presentArray(existingState.unsafe_changes) || hasUnsafeChangedFiles(input.changedFiles) || input.adoptionPlan?.unsafe_change_requested === true) signals.push("unsafe_change");
+  const changedFilesForUnsafeDetection = excludeAllowedWorkflowCaller(input.changedFiles, input.handoff);
+  if (presentArray(existingState.unsafe_changes) || hasUnsafeChangedFiles(changedFilesForUnsafeDetection) || input.adoptionPlan?.unsafe_change_requested === true) signals.push("unsafe_change");
   return [...new Set(signals)];
 }
 
@@ -198,6 +199,10 @@ function hasLegacyAuthority(state) {
   return sources.some((source) => source.authority === "truth" || source.authority === "canonical" || source.legacy_is_truth === true);
 }
 
+function excludeAllowedWorkflowCaller(files, handoff) {
+  return files.filter((file) => !isAllowedThinWorkflowCaller(file, handoff));
+}
+
 function hasUnsafeChangedFiles(files) {
   return files.some((file) => matchesAnyGlob(file, [
     ".github/workflows/**",
@@ -209,6 +214,17 @@ function hasUnsafeChangedFiles(files) {
     "**/branch-protection/**",
     "**/ruleset/**",
   ]));
+}
+
+function isAllowedThinWorkflowCaller(file, handoff) {
+  if (!file.startsWith(".github/workflows/")) return false;
+  const cell = isObject(handoff?.cell) ? handoff.cell : {};
+  const allowedPaths = asStringArray(cell.allowed_paths);
+  if (!allowedPaths.includes(file)) return false;
+  const declaredSurfaces = surfaceValues(handoff?.protected_surfaces)
+    .concat(surfaceValues(cell.protected_surfaces))
+    .map((value) => value.toLowerCase());
+  return declaredSurfaces.includes("active workflows") || declaredSurfaces.includes("workflow");
 }
 
 function hasRps(repoSpec, plan) {
@@ -545,6 +561,20 @@ function asArray(value) {
   if (Array.isArray(value)) return value;
   if (value === undefined || value === null) return [];
   return [value];
+}
+
+function asStringArray(value) {
+  return asArray(value).filter((entry) => typeof entry === "string" && entry.trim()).map((entry) => entry.trim());
+}
+
+function surfaceValues(value) {
+  if (Array.isArray(value)) return value.flatMap(surfaceValues);
+  if (isObject(value)) {
+    if (Array.isArray(value.declared)) return value.declared.flatMap(surfaceValues);
+    return Object.entries(value).flatMap(([key, entry]) => entry === true ? [key] : surfaceValues(entry));
+  }
+  if (typeof value === "string") return [value];
+  return [];
 }
 
 function nonEmptyString(value) {

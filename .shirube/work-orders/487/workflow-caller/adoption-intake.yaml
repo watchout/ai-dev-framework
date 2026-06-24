@@ -1,0 +1,21 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-ADF-V3-WORKFLOW-CALLER-001
+lane: adoption_intake
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@c16d024cf868a0872d05ba32e347b07a5bf62533
+profile: hotel-lite
+current_status: RAPID_LITE_REPORT_ONLY
+target_status_after_merge: RAPID_LITE_REPORT_ONLY
+disposition: retrofit_accelerate
+source_control_ref: watchout/ai-dev-framework#487
+owner:
+  role: repo_owner
+  actor: watchout
+existing_state_scan_ref: .shirube/work-orders/487/workflow-caller/existing-state-scan.yaml
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+gap_fill_plan:
+  - Add generic reusable workflow and thin caller template for target repo report-only pilots.
+  - Keep target repos script-free and package-free.
+next_safe_cell_ref: .shirube/work-orders/487/workflow-caller/control-handoff.yaml
+control_handoff_ref: .shirube/work-orders/487/workflow-caller/control-handoff.yaml

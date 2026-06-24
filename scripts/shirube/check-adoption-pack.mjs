@@ -47,6 +47,7 @@ const FORBIDDEN_PATTERNS = [
 const ALLOWED_OVERLAY_PATTERNS = [
   ".shirube/**",
   "docs/shirube/**",
+  ".github/workflows/shirube-rapid-lite-gates-report.yml",
 ];
 
 const RUNTIME_OR_PACKAGE_PATTERNS = [

@@ -47,6 +47,12 @@ The hotel-lite pack must contain:
 
 The pack must not contain copied `scripts/shirube/**`, runtime/API/DB/package/deploy files, branch protection files, or ruleset files.
 
+When the approved slice includes the thin workflow caller, the pack may also contain exactly:
+
+- `.github/workflows/shirube-rapid-lite-gates-report.yml`
+
+Other workflow, branch-protection, or ruleset files remain outside the allowed overlay scope.
+
 ## Machine Checks
 
 The gate checks:
