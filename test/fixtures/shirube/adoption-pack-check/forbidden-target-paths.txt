@@ -1,0 +1,16 @@
+scripts/shirube/**
+src/**
+app/**
+api/**
+lib/**
+db/**
+migrations/**
+package.json
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+.env*
+deploy/**
+deployment/**
+.github/branch-protection/**
+.github/rulesets/**
