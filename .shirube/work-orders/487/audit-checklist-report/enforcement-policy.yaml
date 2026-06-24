@@ -1,0 +1,29 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-ADF-V3-AUDIT-CHECKLIST-REPORT-001
+repo: watchout/ai-dev-framework
+mode: report_only
+profile: hotel-lite
+framework_ref: watchout/ai-dev-framework@4ccf37a785d212b9458403c49270ab256a7a616e
+updated_at: 2026-06-24T06:50:00Z
+stale_after_days: 90
+owner_observed: true
+owner:
+  role: repo_owner
+  actor: watchout
+required_checks:
+  enabled: false
+branch_protection:
+  unchanged: true
+rulesets:
+  unchanged: true
+report_only_semantics:
+  aggregate_would_block_sets_owner_must_not_merge: true
+  ci_should_fail: false
+  owner_must_not_merge_without_exception: true
+non_scope:
+  - branch protection mutation
+  - ruleset mutation
+  - required check activation
+  - CI hard-blocking
+  - external repository mutation
+  - runtime/API/DB/product/package/lockfile behavior

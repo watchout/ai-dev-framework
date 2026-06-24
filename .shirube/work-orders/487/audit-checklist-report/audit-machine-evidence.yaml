@@ -1,0 +1,37 @@
+schema_version: shirube-machine-evidence/v1
+head_evidence_status: final_exact_head_evidence_external_owner_decision_required
+evidence_refs:
+  - authority_boundary_review
+  - changed_files
+  - command_result:git diff --check origin/main...HEAD
+  - command_result:node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/audit-checklist-report/audit-checklist.yaml --audit .shirube/work-orders/487/audit-checklist-report/structured-audit.yaml --machine-evidence .shirube/work-orders/487/audit-checklist-report/audit-machine-evidence.yaml --format json
+  - command_result:node scripts/shirube/run-rapid-lite-report.mjs sample command with audit-checklist refs
+  - command_result:npm run build:cli
+  - command_result:npm run lint
+  - command_result:npm run test -- test/shirube
+  - command_result:npm run test -- test/shirube/rapid-lite-report.test.ts test/shirube/control-state-completeness.test.ts test/shirube/audit-checklist.test.ts
+  - command_result:npm run type-check
+  - diff_scope_report
+  - owner_decision
+  - post_merge_evidence
+  - pr_head_sha
+  - protected_surface_declaration
+  - structured_reviewer_rationale
+  - validation_results
+command_results:
+  - command: npm run test -- test/shirube/rapid-lite-report.test.ts test/shirube/control-state-completeness.test.ts test/shirube/audit-checklist.test.ts
+    result: PASS
+  - command: npm run test -- test/shirube
+    result: PASS
+  - command: node scripts/shirube/run-rapid-lite-report.mjs sample command with audit-checklist refs
+    result: PASS
+  - command: node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/audit-checklist-report/audit-checklist.yaml --audit .shirube/work-orders/487/audit-checklist-report/structured-audit.yaml --machine-evidence .shirube/work-orders/487/audit-checklist-report/audit-machine-evidence.yaml --format json
+    result: PASS
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+  - command: git diff --check origin/main...HEAD
+    result: PASS

@@ -1,0 +1,75 @@
+schema_version: shirube-structured-audit/v1
+audit_checklist_ref: .shirube/work-orders/487/audit-checklist-report/audit-checklist.yaml
+pr_head_sha: pending
+head_evidence_status: final_exact_head_evidence_external_owner_decision_required
+reviewer_actor: codex-audit
+reviewer_model: gpt-5-audit
+implementation_actor: codex-adf
+scope_only: false
+items:
+  - item_id: AUDIT-001
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Report discovery and artifact output are covered by rapid-lite-report tests and sample command evidence.
+  - item_id: AUDIT-002
+    result: PASS
+    evidence_refs:
+      - structured_reviewer_rationale
+    confidence: high
+    notes: CSC propagation is covered by control-state-completeness tests and fixtures.
+  - item_id: AUDIT-003
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - diff_scope_report
+    confidence: high
+    notes: PASS is based on changed-file and diff-scope evidence.
+  - item_id: AUDIT-004
+    result: PASS
+    evidence_refs:
+      - changed_files
+      - diff_scope_report
+    confidence: high
+    notes: PASS is based on changed-file and diff-scope evidence.
+  - item_id: AUDIT-005
+    result: PASS
+    evidence_refs:
+      - protected_surface_declaration
+      - authority_boundary_review
+      - structured_reviewer_rationale
+    confidence: high
+    notes: Protected-surface vocabulary is documentation/evidence wording only; no protected setting is mutated.
+  - item_id: AUDIT-006
+    result: PASS
+    evidence_refs:
+      - command_result:npm run test -- test/shirube/rapid-lite-report.test.ts test/shirube/control-state-completeness.test.ts test/shirube/audit-checklist.test.ts
+    confidence: high
+    notes: PASS is based on machine command evidence.
+  - item_id: AUDIT-007
+    result: PASS
+    evidence_refs:
+      - command_result:npm run test -- test/shirube
+    confidence: high
+    notes: PASS is based on machine command evidence.
+  - item_id: AUDIT-008
+    result: PASS
+    evidence_refs:
+      - command_result:node scripts/shirube/run-rapid-lite-report.mjs sample command with audit-checklist refs
+    confidence: high
+    notes: PASS is based on machine command evidence.
+  - item_id: AUDIT-009
+    result: PASS
+    evidence_refs:
+      - pr_head_sha
+      - owner_decision
+      - validation_results
+    confidence: high
+    notes: Validation evidence and pending owner exact-head policy are present; final approval remains external.
+  - item_id: AUDIT-010
+    result: PASS
+    evidence_refs:
+      - post_merge_evidence
+    confidence: high
+    notes: Handoff requires post-merge evidence before completion is claimed.
