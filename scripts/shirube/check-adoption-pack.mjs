@@ -258,7 +258,7 @@ function targetRepoFindings(input, artifacts) {
     [".shirube/adoption-intake.yaml", artifacts.adoptionIntake?.repo],
     [".shirube/control-handoffs/CH-001.yaml", artifacts.handoff?.repo],
     [".shirube/lifecycle-state.yaml", artifacts.lifecycleState?.repo],
-    [".shirube/source-mirrors/control-issue.yaml", artifacts.sourceMirror?.extracted_fields?.target_repo],
+    [".shirube/source-mirrors/control-issue.yaml", artifacts.sourceMirror?.target_repo ?? artifacts.sourceMirror?.extracted_fields?.target_repo],
     [".shirube/enforcement-policy.yaml", artifacts.enforcementPolicy?.repo],
     [".shirube/control-state-completeness.yaml", artifacts.controlStateCompleteness?.repo],
   ];
