@@ -1,0 +1,15 @@
+schema_version: shirube-machine-evidence/v1
+pr_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+evidence_refs:
+  - changed_files
+  - diff_scope_report
+  - pr_head_sha
+  - validation_results
+  - owner_decision
+  - post_merge_evidence
+  - protected_surface_declaration
+  - maker_checker_review
+  - structured-review-notes
+command_results:
+  - command: npm run test -- test/shirube/audit-checklist.test.ts
+    result: PASS

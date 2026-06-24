@@ -1,0 +1,12 @@
+schema_version: shirube-structured-audit/v1
+audit_checklist_ref: test/fixtures/shirube/audit-checklist/checklist.pass.yaml
+pr_head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+reviewer_actor: codex-audit
+reviewer_model: gpt-5-audit
+items:
+  - item_id: AUDIT-001
+    result: PASS
+    evidence_refs:
+      - structured-review-notes
+    confidence: high
+    notes: "Head mismatch fixture."

@@ -1,0 +1,41 @@
+schema_version: shirube-validation-evidence/v1
+evidence_id: VALIDATION-ADF-V3-AUDIT-CHECKLIST-P0-001
+repo: watchout/ai-dev-framework
+cell_id: CELL-ADF-V3-AUDIT-CHECKLIST-P0-001
+pr_head_sha: 41087a14887605be1eea773626a373c89a7ada45
+head_evidence_status: current_pr_validation_input_not_final_owner_exact_head
+result: PASS
+commands:
+  - npm run test -- test/shirube/audit-checklist.test.ts
+  - node scripts/shirube/generate-audit-checklist.mjs --handoff test/fixtures/shirube/audit-checklist/handoff.pass.yaml --out .tmp/audit-checklist/checklist.yaml --format json
+  - node scripts/shirube/check-audit-checklist.mjs --checklist .tmp/audit-checklist/checklist.yaml --audit test/fixtures/shirube/audit-checklist/audit.pass.yaml --machine-evidence test/fixtures/shirube/audit-checklist/machine-evidence.pass.yaml --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --format json
+  - npm run test -- test/shirube
+  - npm run type-check
+  - npm run build:cli
+  - npm run lint
+  - git diff --check origin/main...HEAD
+validation_results:
+  - command: npm run test -- test/shirube/audit-checklist.test.ts
+    result: PASS
+    detail: 1 file / 12 tests
+  - command: sample generate-audit-checklist
+    result: PASS
+  - command: sample check-audit-checklist
+    result: PASS
+  - command: npm run test -- test/shirube
+    result: PASS
+    detail: 16 files / 219 tests
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+    detail: existing pages-directory notice only
+  - command: git diff --check origin/main...HEAD
+    result: PASS
+evidence_refs:
+  - scripts/shirube/generate-audit-checklist.mjs
+  - scripts/shirube/check-audit-checklist.mjs
+  - docs/standards/shirube-audit-checklist.md
+  - test/shirube/audit-checklist.test.ts

@@ -1,0 +1,10 @@
+schema_version: shirube-owner-decision-evidence/v1
+record_id: OWNER-DECISION-PENDING-ADF-V3-AUDIT-CHECKLIST-P0-001
+repo: watchout/ai-dev-framework
+cell_id: CELL-ADF-V3-AUDIT-CHECKLIST-P0-001
+decision: PENDING_OWNER_FINAL_REVIEW
+approval_granted: false
+target_head: 41087a14887605be1eea773626a373c89a7ada45
+exact_head_sha: pending-owner-final-decision
+required_before_merge: true
+note: This committed file records the pending exact-head policy for machine gates. It is not owner approval, and final exact-head evidence must be supplied externally by owner final decision.

@@ -1,0 +1,28 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-STATE-ADF-V3-AUDIT-CHECKLIST-P0-001
+repo: watchout/ai-dev-framework
+observed_at: 2026-06-24T04:00:00Z
+specs:
+  - path: https://github.com/watchout/ai-dev-framework/issues/487
+    status: current
+    authority: parent_work_order
+  - path: https://github.com/watchout/ai-dev-framework/issues/501
+    status: current
+    authority: audit_hardening_input
+  - path: https://github.com/watchout/ai-dev-framework/issues/502
+    status: current
+    authority: audit_hardening_input
+implementation:
+  - path: scripts/shirube/generate-audit-checklist.mjs
+    status: current_pr_slice
+  - path: scripts/shirube/check-audit-checklist.mjs
+    status: current_pr_slice
+tests:
+  - path: test/shirube/audit-checklist.test.ts
+    status: present
+legacy_sources: []
+known_drift: []
+material_drift: []
+unsafe_changes: []
+llm_truth_claims: []
+unknowns: []

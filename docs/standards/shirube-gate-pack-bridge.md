@@ -29,6 +29,7 @@ A PR must not be treated as Shirube-controlled unless it records:
 7. Validation evidence.
 8. Owner decision against the exact head.
 9. Post-merge evidence requirement.
+10. Audit checklist reference when a formal/full operational audit is requested.
 
 The execution context lock must identify the primary implementation repo, current work order, current PR, active role, and support/control/framework repo relations. A PR without execution context evidence is Gate Pack Bridge material at most; it must not be called Shirube-controlled.
 
@@ -50,6 +51,30 @@ owner_decision_ref: .shirube/evidence/owner-decision.yaml
 `run-rapid-lite-report` also runs `check-execution-context` before the other gates. If the execution context blocks, the aggregate report sets `would_block=true` and `owner_must_not_merge=true` while preserving report-only workflow behavior.
 
 The report runner also emits a Control State Completeness report after the gate pack evidence is collected. A Gate Pack Bridge PR must not claim full Shirube control unless that report reaches full readiness; otherwise it remains partial pilot or report-only evidence.
+
+## Audit Checklist P0
+
+For formal/full operational audit requests, a scope-only audit request is not enough. Generate an itemized checklist from the handoff:
+
+```bash
+node scripts/shirube/generate-audit-checklist.mjs \
+  --handoff .shirube/control-handoffs/CH-001.yaml \
+  --out .shirube/audit-checklists/AUDIT-CHECKLIST-001.yaml \
+  --format json
+```
+
+Then require the reviewer to answer the checklist one item at a time and check the response:
+
+```bash
+node scripts/shirube/check-audit-checklist.mjs \
+  --checklist .shirube/audit-checklists/AUDIT-CHECKLIST-001.yaml \
+  --audit .shirube/audits/AUDIT-001.yaml \
+  --machine-evidence .shirube/evidence/validation.yaml \
+  --expected-head <exact-head-sha> \
+  --format json
+```
+
+Executable checklist items use machine evidence as authority. LLM prose cannot override missing command results, gate reports, diff/path checks, CI conclusions, or exact-head validation evidence.
 
 ## Template
 

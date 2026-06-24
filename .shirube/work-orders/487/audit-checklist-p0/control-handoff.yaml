@@ -1,0 +1,112 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-AUDIT-CHECKLIST-P0-001
+parent: "#487"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/487
+work_order: watchout/ai-dev-framework#487
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@80dd9674277f41ce50ab2b9965f9653082f815a8
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Local/report-only Shirube audit checklist P0 scripts, docs, templates, and tests.
+    - PR-local Shirube evidence artifacts for this audit-hardening slice.
+  shirube_does_not_own:
+    - Full #502 research proposal implementation.
+    - Required check activation, branch protection, rulesets, runtime, product, package, lockfile, external repo, multi-model judge, calibrated abstention, refutation, or audit corpus behavior.
+cell:
+  CELL-ID: CELL-ADF-V3-AUDIT-CHECKLIST-P0-001
+  cell_type: code_lite
+  risk_class: R2
+  goal: Add generic P0 audit checklist generation and checking for Shirube handoffs.
+  acceptance_criteria:
+    - Checklist is generated from handoff acceptance criteria, stop conditions, paths, protected surfaces, validation commands, evidence, role boundaries, owner decision policy, and post-merge policy.
+    - Structured audit checker blocks missing, duplicate, unanswered, unsupported executable, unresolved FAIL, un-escalated UNVERIFIED, head mismatch, maker/checker, and scope-only full operational audit cases.
+  non_scope:
+    - required check activation
+    - branch protection or ruleset mutation
+    - runtime/API/DB/product/package/lockfile changes
+    - external repository mutation
+    - multi-model judge orchestration
+    - calibrated abstention thresholds
+    - refutation or debate requirement
+    - ground-truth audit corpus
+    - final framework readiness claim
+  allowed_paths:
+    - .shirube/work-orders/487/audit-checklist-p0/**
+    - docs/standards/shirube-audit-checklist.md
+    - docs/standards/shirube-control-state-completeness.md
+    - docs/standards/shirube-gate-pack-bridge.md
+    - scripts/shirube/check-audit-checklist.mjs
+    - scripts/shirube/check-control-state-completeness.mjs
+    - scripts/shirube/generate-audit-checklist.mjs
+    - templates/shirube-audit-checklist.yaml
+    - test/fixtures/shirube/audit-checklist/**
+    - test/shirube/audit-checklist.test.ts
+  forbidden_paths:
+    - .github/workflows/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+  protected_surfaces:
+    declared:
+      - none
+    touched: false
+    reason: This slice adds local/report-only audit tooling and docs only.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - required check activation added
+    - branch protection or ruleset mutation added
+    - runtime/API/DB/product/package/lockfile change added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/audit-checklist.test.ts
+    - node scripts/shirube/generate-audit-checklist.mjs --handoff test/fixtures/shirube/audit-checklist/handoff.pass.yaml --out .tmp/audit-checklist/checklist.yaml --format json
+    - node scripts/shirube/check-audit-checklist.mjs --checklist .tmp/audit-checklist/checklist.yaml --audit test/fixtures/shirube/audit-checklist/audit.pass.yaml --machine-evidence test/fixtures/shirube/audit-checklist/machine-evidence.pass.yaml --expected-head aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --format json
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - pr_head_sha
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: pending-owner-final-decision
+  decision_ref: .shirube/work-orders/487/audit-checklist-p0/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/487
