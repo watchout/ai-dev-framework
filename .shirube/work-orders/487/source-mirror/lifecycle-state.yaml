@@ -3,7 +3,7 @@ lifecycle_id: LIFECYCLE-ADF-V3-OVERLAY-SOURCE-MIRROR-001
 mode: rapid-lite
 profile: hotel-lite
 repo: watchout/ai-dev-framework
-framework_ref: watchout/ai-dev-framework@7186fb8a1830341b6446f00a1317d16f4d9316c5
+framework_ref: watchout/ai-dev-framework@75d4255a5609907a7d5a82b472c6be8a28be0284
 work_order: watchout/ai-dev-framework#487
 pr: watchout/ai-dev-framework#499
 cell_id: CELL-ADF-V3-OVERLAY-SOURCE-MIRROR-001
