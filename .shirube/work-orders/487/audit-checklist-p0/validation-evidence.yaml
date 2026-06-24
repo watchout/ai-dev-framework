@@ -2,8 +2,8 @@ schema_version: shirube-validation-evidence/v1
 evidence_id: VALIDATION-ADF-V3-AUDIT-CHECKLIST-P0-001
 repo: watchout/ai-dev-framework
 cell_id: CELL-ADF-V3-AUDIT-CHECKLIST-P0-001
-pr_head_sha: 80dd9674277f41ce50ab2b9965f9653082f815a8
-exact_head_sha: 80dd9674277f41ce50ab2b9965f9653082f815a8
+pr_head_sha: 41087a14887605be1eea773626a373c89a7ada45
+head_evidence_status: current_pr_validation_input_not_final_owner_exact_head
 result: PASS
 commands:
   - npm run test -- test/shirube/audit-checklist.test.ts

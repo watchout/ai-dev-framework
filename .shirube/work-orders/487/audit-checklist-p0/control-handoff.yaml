@@ -104,7 +104,7 @@ owner_decision:
     - APPROVED_EXACT_HEAD
     - CHANGES_REQUIRED
     - BLOCKED
-  exact_head_sha: 80dd9674277f41ce50ab2b9965f9653082f815a8
+  exact_head_sha: pending-owner-final-decision
   decision_ref: .shirube/work-orders/487/audit-checklist-p0/owner-decision-pending.yaml
 legacy_source_boundary:
   legacy_sources_may_inform: true

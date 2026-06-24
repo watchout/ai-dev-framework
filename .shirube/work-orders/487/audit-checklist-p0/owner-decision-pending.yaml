@@ -4,6 +4,7 @@ repo: watchout/ai-dev-framework
 cell_id: CELL-ADF-V3-AUDIT-CHECKLIST-P0-001
 decision: PENDING_OWNER_FINAL_REVIEW
 approval_granted: false
-exact_head_sha: 80dd9674277f41ce50ab2b9965f9653082f815a8
+target_head: 41087a14887605be1eea773626a373c89a7ada45
+exact_head_sha: pending-owner-final-decision
 required_before_merge: true
-note: This file records the exact-head merge requirement for machine gates. It is not owner approval.
+note: This committed file records the pending exact-head policy for machine gates. It is not owner approval, and final exact-head evidence must be supplied externally by owner final decision.
