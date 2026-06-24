@@ -190,6 +190,44 @@ describe("Shirube control state completeness check", () => {
     expect(blockerIds(result)).toContain("CSC-012");
   });
 
+  it("accepts an audit checklist report as required audit evidence", () => {
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--audit-checklist-report": fixture("audit-checklist.pass.json"),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.state).toBe("CONTROL_COMPLETE");
+    expect(blockerIds(result)).not.toContain("CSC-012");
+    expect(result.json.inventory.audit_checklist_report.present).toBe(true);
+  });
+
+  it("propagates audit checklist blockers into control-state completeness", () => {
+    const result = check({
+      "--audit-checklist-report": fixture("audit-checklist.blocked.json"),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.state).toBe("CONTROL_BLOCKED");
+    expect(blockerIds(result)).toContain("AUDIT-LIST-005");
+    expect(result.json.would_block).toBe(true);
+    expect(result.json.owner_must_not_merge).toBe(true);
+  });
+
+  it("fails when an audit checklist report failed", () => {
+    const result = check({
+      "--audit-checklist-report": fixture("audit-checklist.failure.json"),
+    });
+
+    expect(result.exitCode).toBe(1);
+    expectShape(result);
+    expect(result.json.state).toBe("CONTROL_FAILURE");
+    expect(blockerIds(result)).toContain("AUDIT-LIST-001");
+    expect(blockerIds(result)).toContain("CSC-017");
+  });
+
   it("blocks duplicate or incomplete audit item answers", () => {
     const result = check({
       "--handoff": fixture("handoff.audit-required.yaml"),

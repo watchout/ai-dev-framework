@@ -1,0 +1,26 @@
+{
+  "schema": "shirube-audit-checklist-check/v1",
+  "verdict": "FAILURE",
+  "report_failed": true,
+  "would_block": true,
+  "owner_must_not_merge": true,
+  "audit_checklist_ref": "test/fixtures/shirube/audit-checklist/checklist.malformed.yaml",
+  "structured_audit_ref": null,
+  "pr_head_sha": null,
+  "inventory": {},
+  "blockers": [
+    {
+      "item_id": "AUDIT-LIST-001",
+      "code": "missing_audit_checklist",
+      "message": "Audit checklist is missing or unreadable.",
+      "path": "test/fixtures/shirube/audit-checklist/checklist.malformed.yaml"
+    }
+  ],
+  "warnings": [],
+  "required_next_actions": [
+    {
+      "item_id": "AUDIT-LIST-001",
+      "action": "Fix malformed audit checklist input and rerun."
+    }
+  ]
+}

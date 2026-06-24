@@ -58,6 +58,7 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
         "lifecycle",
         "gate-contract",
         "design-rules",
+        "audit-checklist",
         "enforcement-policy",
         "control-state-completeness",
       ]);
@@ -66,6 +67,7 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "lifecycle").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "design-rules").status).toBe("ran");
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "audit-checklist").status).toBe("skipped");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "enforcement-policy").status).toBe("ran");
       const controlState = result.json.gates.find((gate: { gate: string }) => gate.gate === "control-state-completeness");
       expect(controlState.status).toBe("ran");
@@ -79,6 +81,72 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(readFileSync(path.join(result.resultDir, "design-rules.json"), "utf8")).toContain("shirube-design-rule-check/v1");
       expect(readFileSync(path.join(result.resultDir, "enforcement-policy.json"), "utf8")).toContain("shirube-enforcement-policy-check/v1");
       expect(readFileSync(path.join(result.resultDir, "control-state-completeness.json"), "utf8")).toContain("shirube-control-state-completeness/v1");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("runs audit checklist when checklist and structured audit refs are present", () => {
+    const result = run([
+      "--changed-files",
+      fixture("gate-contract/changed-files.pass.txt"),
+      "--pr-body",
+      fixture("rapid-lite-report/pr-body.audit-checklist.md"),
+      "--actual-repo",
+      "watchout/ai-dev-framework",
+      "--actual-branch",
+      "codex/487-audit-checklist-report",
+      "--actual-head",
+      "0123456789abcdef0123456789abcdef01234567",
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.discovered_inputs.auditChecklist).toBe("test/fixtures/shirube/audit-checklist/checklist.pass.yaml");
+      expect(result.json.discovered_inputs.structuredAudit).toBe("test/fixtures/shirube/rapid-lite-report/audit.pass.yaml");
+      expect(result.json.discovered_inputs.auditMachineEvidence).toBe("test/fixtures/shirube/audit-checklist/machine-evidence.pass.yaml");
+      const auditChecklist = result.json.gates.find((gate: { gate: string }) => gate.gate === "audit-checklist");
+      expect(auditChecklist.status).toBe("ran");
+      expect(auditChecklist.verdict).toBe("PASS");
+      expect(auditChecklist.would_block).toBe(false);
+      expect(readFileSync(path.join(result.resultDir, "audit-checklist.json"), "utf8")).toContain("shirube-audit-checklist-check/v1");
+      expect(readFileSync(path.join(result.resultDir, "summary.md"), "utf8")).toContain("audit-checklist");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("blocks aggregate when audit checklist check blocks", () => {
+    const result = run([
+      "--changed-files",
+      fixture("gate-contract/changed-files.pass.txt"),
+      "--pr-body",
+      fixture("rapid-lite-report/pr-body.audit-checklist-blocked.md"),
+      "--actual-repo",
+      "watchout/ai-dev-framework",
+      "--actual-branch",
+      "codex/487-audit-checklist-report",
+      "--actual-head",
+      "0123456789abcdef0123456789abcdef01234567",
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      expect(result.json.would_block).toBe(true);
+      expect(result.json.owner_must_not_merge).toBe(true);
+      const auditChecklist = result.json.gates.find((gate: { gate: string }) => gate.gate === "audit-checklist");
+      expect(auditChecklist.status).toBe("ran");
+      expect(auditChecklist.verdict).toBe("BLOCKED");
+      expect(auditChecklist.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("AUDIT-LIST-005");
     } finally {
       rmSync(result.resultDir, { recursive: true, force: true });
     }

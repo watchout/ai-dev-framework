@@ -1,0 +1,54 @@
+schema_version: shirube-validation-evidence/v1
+evidence_id: VALIDATION-ADF-V3-AUDIT-CHECKLIST-REPORT-001
+repo: watchout/ai-dev-framework
+pr: 506
+cell_id: CELL-ADF-V3-AUDIT-CHECKLIST-REPORT-001
+pr_head_sha: bc3dde8337d4774c811089bbf61d7f42372772f3
+head_evidence_status: current_pr_validation_input_not_final_owner_exact_head
+result: PASS
+commands:
+  - npm run test -- test/shirube/rapid-lite-report.test.ts test/shirube/control-state-completeness.test.ts test/shirube/audit-checklist.test.ts
+  - npm run test -- test/shirube
+  - node scripts/shirube/check-control-state-completeness.mjs sample command with audit-checklist report
+  - node scripts/shirube/run-rapid-lite-report.mjs sample command with audit-checklist refs
+  - node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/audit-checklist-report/audit-checklist.yaml --audit .shirube/work-orders/487/audit-checklist-report/structured-audit.yaml --machine-evidence .shirube/work-orders/487/audit-checklist-report/audit-machine-evidence.yaml --format json
+  - npm run type-check
+  - npm run build:cli
+  - npm run lint
+  - git diff --check origin/main...HEAD
+validation_results:
+  - command: npm run test -- test/shirube/rapid-lite-report.test.ts test/shirube/control-state-completeness.test.ts test/shirube/audit-checklist.test.ts
+    result: PASS
+    detail: 3 files / 45 tests
+  - command: npm run test -- test/shirube
+    result: PASS
+    detail: 17 files / 231 tests
+  - command: sample check-control-state-completeness with audit-checklist report
+    result: PASS
+    detail: CONTROL_COMPLETE
+  - command: sample run-rapid-lite-report with audit-checklist refs
+    result: PASS_WITH_WARN
+    detail: audit-checklist PASS, control-state-completeness PASS
+  - command: sample check-audit-checklist for PR-local evidence
+    result: PASS
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+    detail: existing pages-directory notice only
+  - command: git diff --check origin/main...HEAD
+    result: PASS
+evidence_refs:
+  - scripts/shirube/run-rapid-lite-report.mjs
+  - scripts/shirube/check-control-state-completeness.mjs
+  - docs/standards/shirube-audit-checklist.md
+  - docs/standards/shirube-control-state-completeness.md
+  - docs/standards/shirube-gate-pack-bridge.md
+  - test/shirube/rapid-lite-report.test.ts
+  - test/shirube/control-state-completeness.test.ts
+  - .shirube/work-orders/487/audit-checklist-report/control-handoff.yaml
+  - .shirube/work-orders/487/audit-checklist-report/audit-checklist.yaml
+  - .shirube/work-orders/487/audit-checklist-report/structured-audit.yaml
+  - .shirube/work-orders/487/audit-checklist-report/audit-machine-evidence.yaml

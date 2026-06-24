@@ -1,0 +1,18 @@
+{
+  "schema": "shirube-audit-checklist-check/v1",
+  "verdict": "PASS",
+  "would_block": false,
+  "owner_must_not_merge": false,
+  "audit_checklist_ref": "test/fixtures/shirube/audit-checklist/checklist.pass.yaml",
+  "structured_audit_ref": "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+  "pr_head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "inventory": {
+    "checklist_items": 11,
+    "audit_items": 11,
+    "machine_evidence_refs": 9,
+    "operational_mode": "full_operational"
+  },
+  "blockers": [],
+  "warnings": [],
+  "required_next_actions": []
+}

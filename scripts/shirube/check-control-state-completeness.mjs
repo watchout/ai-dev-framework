@@ -68,6 +68,7 @@ export function buildControlStateCompletenessReport(input) {
     ["lifecycle_report", input.lifecycleReport],
     ["gate_contract_report", input.gateContractReport],
     ["design_rule_report", input.designRuleReport],
+    ["audit_checklist_report", input.auditChecklistReport],
     ["enforcement_policy_report", input.enforcementPolicyReport],
     ["readiness_report", input.readinessReport],
   ];
@@ -161,10 +162,20 @@ export function buildControlStateCompletenessReport(input) {
   }
 
   const auditRequired = auditIsRequired(input);
-  if (auditRequired && !isObject(input.auditRecord)) {
+  if (auditRequired && !isObject(input.auditChecklistReport)) {
+    missingStates.push(missingState("audit_checklist_report", input.auditChecklistReportPath));
+    blockers.push(finding("CSC-012", {
+      path: input.auditChecklistReportPath ?? "audit_checklist_report",
+      message: "Formal audit/reviewer audit is required but no audit checklist check report is present.",
+    }));
+  }
+  if (auditRequired && !isObject(input.auditRecord) && !isObject(input.auditChecklistReport)) {
     missingStates.push(missingState("audit_record", input.auditRecordPath));
     blockers.push(finding("CSC-012", { path: input.auditRecordPath ?? "audit_record" }));
   }
+
+  blockers.push(...auditChecklistReportBlockers(input.auditChecklistReport));
+  warnings.push(...auditChecklistReportWarnings(input.auditChecklistReport));
 
   const auditFinding = auditItemSetFinding(input);
   if (auditFinding) {
@@ -242,6 +253,7 @@ function buildInventory(input) {
     lifecycle_report: inventoryRecord(input.lifecycleReportPath, lifecycle),
     gate_contract_report: inventoryRecord(input.gateContractReportPath, gate),
     design_rule_report: inventoryRecord(input.designRuleReportPath, input.designRuleReport),
+    audit_checklist_report: inventoryRecord(input.auditChecklistReportPath, input.auditChecklistReport),
     enforcement_policy_report: inventoryRecord(input.enforcementPolicyReportPath, enforcement),
     readiness_report: inventoryRecord(input.readinessReportPath, input.readinessReport),
     handoff: inventoryRecord(input.handoffPath, handoff),
@@ -449,10 +461,12 @@ function evidenceRefSet(input) {
     input.lifecycleReportPath,
     input.gateContractReportPath,
     input.designRuleReportPath,
+    input.auditChecklistReportPath,
     input.enforcementPolicyReportPath,
     input.readinessReportPath,
     input.validationPath,
     input.ownerDecisionPath,
+    input.auditChecklistPath,
     input.auditRecordPath,
     input.postMergePath,
     ...asArray(input.validation?.evidence_refs),
@@ -470,6 +484,7 @@ function hasEvidenceByType({ key, input }) {
     validation_commands: asArray(input.validation?.commands).length > 0 || asArray(input.validation?.required_commands).length > 0 || asArray(input.handoff?.validation?.required_commands).length > 0,
     validation_results: asArray(input.validation?.results).length > 0 || asArray(input.validation?.validation_results).length > 0 || input.validation?.result === "PASS",
     owner_decision: isObject(input.ownerDecision) || isObject(input.handoff?.owner_decision),
+    audit_checklist_report: isObject(input.auditChecklistReport),
   };
   return typeMap[key] === true;
 }
@@ -536,6 +551,42 @@ function auditIsRequired(input) {
     input.handoff?.formal_audit_required === true ||
     asArray(input.handoff?.required_audits).length > 0 ||
     ["R3", "R4"].includes(risk);
+}
+
+function auditChecklistReportBlockers(report) {
+  if (!isBlockingReport(report)) return [];
+  const blockers = [
+    ...asArray(report?.blockers),
+    ...asArray(report?.hard_blocks),
+  ].filter((item) => isObject(item));
+  const auditBlockers = blockers
+    .filter((item) => String(item.item_id ?? "").startsWith("AUDIT-LIST-"))
+    .map((item) => ({
+      item_id: item.item_id,
+      code: item.code ?? "audit_checklist_blocker",
+      message: item.message ?? "Audit checklist report blocked.",
+      path: item.path ?? "audit_checklist_report",
+    }));
+  if (auditBlockers.length > 0) return auditBlockers;
+  return [{
+    item_id: "AUDIT-LIST-001",
+    code: "audit_checklist_report_blocked",
+    message: "Audit checklist report is blocking but did not include itemized blockers.",
+    path: "audit_checklist_report",
+  }];
+}
+
+function auditChecklistReportWarnings(report) {
+  if (!isObject(report)) return [];
+  return asArray(report.warnings)
+    .filter((item) => isObject(item))
+    .filter((item) => String(item.item_id ?? "").startsWith("AUDIT-LIST-"))
+    .map((item) => ({
+      item_id: item.item_id,
+      code: item.code ?? "audit_checklist_warning",
+      message: item.message ?? "Audit checklist report warning.",
+      path: item.path ?? "audit_checklist_report",
+    }));
 }
 
 function auditItemSetFinding(input) {
@@ -605,6 +656,7 @@ function staleArtifactRefs(input) {
     input.lifecycleReportPath,
     input.gateContractReportPath,
     input.designRuleReportPath,
+    input.auditChecklistReportPath,
     input.enforcementPolicyReportPath,
     input.readinessReportPath,
     input.handoffPath,
@@ -661,6 +713,7 @@ function openBlockers(input) {
     ...asArray(input.gateContractReport?.blockers),
     ...asArray(input.gateContractReport?.hard_blocks),
     ...asArray(input.designRuleReport?.blockers),
+    ...asArray(input.auditChecklistReport?.blockers),
     ...asArray(input.enforcementPolicyReport?.blockers),
     ...asArray(input.postMerge?.unresolved_follow_up_blockers),
   ].filter(Boolean);
@@ -752,6 +805,7 @@ function requiredNextActions(blockers, warnings, state) {
 }
 
 function actionFor(itemId) {
+  if (String(itemId).startsWith("AUDIT-LIST-")) return "Resolve the structured audit checklist finding and rerun check-audit-checklist.";
   const actions = {
     "CSC-001": "Run check-execution-context and provide its JSON report.",
     "CSC-002": "Provide a machine-readable RPS / PRS artifact.",
@@ -793,6 +847,7 @@ function readInput(options) {
     validationPath: stringOption(options.validation),
     ownerDecisionPath: stringOption(options["owner-decision"]),
     auditChecklistPath: stringOption(options["audit-checklist"]),
+    auditChecklistReportPath: stringOption(options["audit-checklist-report"]),
     auditRecordPath: stringOption(options["audit-record"]) ?? stringOption(options["structured-audit"]),
     auditItemSetPath: stringOption(options["audit-item-set"]),
     postMergePath: stringOption(options["post-merge"]),
