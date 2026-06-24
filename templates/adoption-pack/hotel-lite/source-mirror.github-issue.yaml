@@ -18,5 +18,5 @@ source_authority:
 extracted_fields:
   target_repo: {{TARGET_REPO}}
   product: {{PRODUCT}}
-  owner_confirmation: pending
+  owner_confirmation: {{OWNER_CONFIRMATION_REF}}
   control_source_status: snapshot

@@ -1,0 +1,42 @@
+schema_version: shirube-validation-evidence/v1
+evidence_id: VALIDATION-ADF-V3-OVERLAY-PILOT-READINESS-001
+repo: watchout/ai-dev-framework
+pr: 0
+cell_id: CELL-ADF-V3-OVERLAY-PILOT-READINESS-001
+pr_head_sha: 6917720d0ea02fe96f3b7752aa802bc135ec1b19
+head_evidence_status: current_pr_validation_input_not_final_owner_exact_head
+result: PASS
+commands:
+  - npm run test -- test/shirube/overlay-pilot-readiness.test.ts
+  - npm run test -- test/shirube/overlay-pilot-readiness.test.ts test/shirube/adoption-pack.test.ts test/shirube/adoption-pack-check.test.ts test/shirube/workflow-caller.test.ts
+  - node scripts/shirube/render-adoption-pack.mjs --profile hotel-lite --target-repo watchout/example --product Example --source-control watchout/example#1 --framework-ref watchout/ai-dev-framework@<HEAD> --owner-actor watchout --owner-confirmation-ref https://github.com/watchout/example/issues/1#issuecomment-owner-confirmed --cell-id CELL-EXAMPLE-ADOPTION-001 --mode render --include-workflow-caller --out .tmp/overlay-pilot-readiness-sample --format json
+  - node scripts/shirube/check-overlay-pilot-readiness.mjs --pack-root .tmp/overlay-pilot-readiness-sample --target-repo watchout/example --profile hotel-lite --actual-head 0123456789abcdef0123456789abcdef01234567 --format json
+  - npm run test -- test/shirube
+  - npm run type-check
+  - npm run build:cli
+  - npm run lint
+  - git diff --check origin/main...HEAD
+validation_results:
+  - command: npm run test -- test/shirube/overlay-pilot-readiness.test.ts
+    result: PASS
+    detail: 1 file / 8 tests
+  - command: npm run test -- focused adoption pack/readiness/workflow caller tests
+    result: PASS
+    detail: 4 files / 28 tests
+  - command: node scripts/shirube/render-adoption-pack.mjs sample command with --include-workflow-caller
+    result: PASS
+  - command: node scripts/shirube/check-overlay-pilot-readiness.mjs sample command
+    result: PASS_WITH_WARN
+    detail: would_block=false; owner_must_not_merge=false; dry-run PASS_WITH_WARN
+evidence_refs:
+  - scripts/shirube/check-overlay-pilot-readiness.mjs
+  - scripts/shirube/render-adoption-pack.mjs
+  - scripts/shirube/check-execution-context.mjs
+  - scripts/shirube/check-control-state-completeness.mjs
+  - templates/adoption-pack/hotel-lite/execution-context.yaml
+  - templates/adoption-pack/hotel-lite/control-handoff.yaml
+  - templates/adoption-pack/hotel-lite/lifecycle-state.yaml
+  - test/shirube/overlay-pilot-readiness.test.ts
+  - test/shirube/source-mirror.test.ts
+  - docs/standards/shirube-overlay-pilot-readiness.md
+note: Final exact-head validation and owner approval are external PR evidence. This committed file records current local validation inputs only.

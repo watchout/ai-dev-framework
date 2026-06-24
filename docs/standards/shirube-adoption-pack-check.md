@@ -4,6 +4,8 @@
 
 The gate is local and report-only. It does not mutate target repositories, create PRs, enable required checks, change branch protection, or copy ADF scripts.
 
+This gate checks static pack safety only. Before opening a target adoption PR, also run `check-overlay-pilot-readiness` so the generated overlay is exercised through `run-rapid-lite-report`.
+
 ## Command
 
 ```bash
@@ -52,6 +54,8 @@ When the approved slice includes the thin workflow caller, the pack may also con
 - `.github/workflows/shirube-rapid-lite-gates-report.yml`
 
 Other workflow, branch-protection, or ruleset files remain outside the allowed overlay scope.
+
+The rendered pack must include concrete owner/cell values for pilot readiness. `owner.actor: null` and `CELL-ID: <CELL-ID>` are not pilot-ready output.
 
 ## Machine Checks
 

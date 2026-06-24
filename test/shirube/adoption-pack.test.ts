@@ -53,6 +53,12 @@ function renderWithOptions(out: string, extraArgs: string[]): { exitCode: number
     "watchout/control#1",
     "--framework-ref",
     frameworkRef(),
+    "--owner-actor",
+    "watchout",
+    "--owner-confirmation-ref",
+    "https://github.com/watchout/control/issues/1#issuecomment-owner-confirmed",
+    "--cell-id",
+    "CELL-EXAMPLE-ADOPTION-001",
     "--mode",
     "render",
     ...extraArgs,
@@ -169,10 +175,14 @@ describe("Shirube overlay adoption pack renderer", () => {
         ".github/workflows/shirube-rapid-lite-gates-report.yml",
       ]);
       expect(handoff.cell.forbidden_paths).toContain("package.json");
+      expect(handoff.cell["CELL-ID"]).toBe("CELL-EXAMPLE-ADOPTION-001");
+      expect(handoff.owner.actor).toBe("watchout");
+      expect(handoff.owner_confirmation_ref).toBe("https://github.com/watchout/control/issues/1#issuecomment-owner-confirmed");
       expect(handoff.owner_decision.required_before_merge).toBe(true);
+      expect(handoff.owner_decision.committed_pending_policy_only).toBe(true);
       expect(handoff.post_merge.required_when_done_claimed).toBe(true);
 
-      expect(lifecycle.current_phase).toBe("ADOPTION_READY");
+      expect(lifecycle.current_phase).toBe("HANDOFF_READY");
       expect(sourceMirror.source_type).toBe("github_issue");
       expect(sourceMirror.source_repo).toBe("watchout/control");
       expect(sourceMirror.issue_number).toBe(1);
@@ -181,10 +191,11 @@ describe("Shirube overlay adoption pack renderer", () => {
       expect(sourceMirror.sha256).toMatch(/^[a-f0-9]{64}$/);
       expect(sourceMirror.mirror_is_truth).toBe(false);
       expect(sourceMirror.source_authority.remains_authority).toBe(true);
-      expect(sourceMirror.extracted_fields.owner_confirmation).toBe("pending");
+      expect(sourceMirror.extracted_fields.owner_confirmation).toBe("https://github.com/watchout/control/issues/1#issuecomment-owner-confirmed");
 
       expect(enforcement.mode).toBe("report_only");
       expect(enforcement.owner_observed).toBe(true);
+      expect(enforcement.owner.actor).toBe("watchout");
       expect(enforcement.required_checks.enabled).toBe(false);
       expect(enforcement.branch_protection.unchanged).toBe(true);
 
@@ -206,12 +217,15 @@ describe("Shirube overlay adoption pack renderer", () => {
     expect(result.exitCode).toBe(1);
     expect(result.json.schema).toBe("shirube-adoption-pack-render/v1");
     expect(result.json.verdict).toBe("FAILURE");
-    expect(result.json.errors.map((error: { code: string }) => error.code)).toEqual(expect.arrayContaining([
-      "invalid_target_repo",
-      "missing_product",
-      "invalid_source_control",
-      "invalid_framework_ref",
-      "missing_output",
-    ]));
+      expect(result.json.errors.map((error: { code: string }) => error.code)).toEqual(expect.arrayContaining([
+        "invalid_target_repo",
+        "missing_product",
+        "invalid_source_control",
+        "invalid_framework_ref",
+        "missing_owner_actor",
+        "missing_owner_confirmation_ref",
+        "missing_cell_id",
+        "missing_output",
+      ]));
   });
 });

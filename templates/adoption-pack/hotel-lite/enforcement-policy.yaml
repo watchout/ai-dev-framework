@@ -9,7 +9,7 @@ stale_after_days: 90
 owner_observed: true
 owner:
   role: repo_owner
-  actor: null
+  actor: {{OWNER_ACTOR}}
 required_checks:
   enabled: false
 branch_protection:

@@ -624,15 +624,23 @@ function hasPostMergeEvidence(value) {
 }
 
 function claimsFullControl(input) {
-  const text = JSON.stringify([
+  const text = scalarClaimValues([
     input.controlState,
     input.repoSpec,
     input.handoff,
     input.readinessReport,
     input.adoptionReport,
     input.lifecycleReport,
-  ]);
+  ]).join("\n");
   return /FULL_CONTROL|fully controlled|V3 complete|required-check protected/i.test(text);
+}
+
+function scalarClaimValues(value) {
+  const values = [];
+  visit(value, "value", (_path, entry) => {
+    if (typeof entry === "string") values.push(entry);
+  });
+  return values;
 }
 
 function readinessIsFullControlReady(report) {

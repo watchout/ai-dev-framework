@@ -2,7 +2,7 @@ schema_version: shirube-lifecycle-state/rapid-lite/v1
 mode: rapid-lite
 profile: hotel-lite
 repo: {{TARGET_REPO}}
-current_phase: ADOPTION_READY
+current_phase: {{LIFECYCLE_CURRENT_PHASE}}
 framework_ref: {{FRAMEWORK_REF}}
 adoption_report_ref: null
 repo_spec_ref: .shirube/repo-spec.yaml
@@ -13,7 +13,7 @@ enforcement_policy_report_ref: null
 control_state_completeness_report_ref: null
 owner_decision_ref: null
 post_merge_ref: null
-last_allowed_phase: ADOPTION_READY
+last_allowed_phase: {{LIFECYCLE_LAST_ALLOWED_PHASE}}
 updated_at: {{GENERATED_AT}}
 updated_by: {{GENERATED_BY}}
 owner_must_not_merge_until_exact_head_decision: true

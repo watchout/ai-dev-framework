@@ -67,6 +67,8 @@ If `changed_files` is empty, the reusable workflow computes the PR diff from Git
 
 The reusable workflow also injects ADF-local `matrix_ref` and `rule_pack_ref` paths into the effective PR-body evidence so target repositories do not need to copy the gate contract matrix or default design rule pack.
 
+Final owner exact-head evidence should be supplied outside the attested commit, for example through an owner-decision PR comment parser or workflow-provided evidence input. A committed pending owner-decision YAML file is policy only and must not be treated as approval.
+
 ## Report-Only Semantics
 
 This workflow is signal-only in the initial overlay slice:
@@ -90,3 +92,5 @@ The workflow caller must not:
 The target adoption PR may include this workflow only together with `.shirube/**` and `docs/shirube/**` overlay artifacts.
 
 Adoption checks treat workflow changes as unsafe by default. The fixed caller path is allowed only when the handoff lists the exact workflow file in `cell.allowed_paths` and explicitly declares the `active workflows` protected surface. Broad `.github/workflows/**` permission is not accepted for Rapid/Lite overlay adoption.
+
+Before opening the target adoption PR, run `check-overlay-pilot-readiness` against the rendered pack. Static pack safety is not enough; the generated overlay must also dry-run through `run-rapid-lite-report` with `would_block=false`.

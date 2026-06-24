@@ -63,9 +63,10 @@ confirmation_evidence:
   rps_readiness:
     required: true
     authority_role: owner
-    authority_actor: null
-    verdict: PENDING
-    evidence_refs: []
+    authority_actor: {{OWNER_ACTOR}}
+    verdict: CONFIRMED
+    evidence_refs:
+      - {{OWNER_CONFIRMATION_REF}}
 required_evidence:
   adoption:
     - .shirube/execution-context.yaml
