@@ -1,0 +1,30 @@
+{
+  "schema": "shirube-audit-checklist-check/v1",
+  "verdict": "BLOCKED",
+  "would_block": true,
+  "owner_must_not_merge": true,
+  "audit_checklist_ref": "test/fixtures/shirube/audit-checklist/checklist.pass.yaml",
+  "structured_audit_ref": "test/fixtures/shirube/audit-checklist/audit.executable-no-machine.yaml",
+  "pr_head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "inventory": {
+    "checklist_items": 11,
+    "audit_items": 1,
+    "machine_evidence_refs": 0,
+    "operational_mode": "full_operational"
+  },
+  "blockers": [
+    {
+      "item_id": "AUDIT-LIST-005",
+      "code": "executable_item_pass_without_machine_evidence",
+      "message": "Executable PASS requires concrete machine evidence.",
+      "path": "AUDIT-003"
+    }
+  ],
+  "warnings": [],
+  "required_next_actions": [
+    {
+      "item_id": "AUDIT-LIST-005",
+      "action": "Attach machine evidence for executable PASS items or change the result."
+    }
+  ]
+}

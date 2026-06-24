@@ -91,6 +91,12 @@ Executable items are not satisfied by LLM prose. A `PASS` on an executable item 
 
 Semantic items may use reviewer judgment, but required items still need evidence references or explicit rationale.
 
+## Rapid/Lite Report Integration
+
+`run-rapid-lite-report` discovers `audit_checklist_ref`, `structured_audit_ref`, `audit_machine_evidence_ref`, and `audit_checklist_report_ref` from PR metadata or changed current-PR artifacts. When checklist evidence is present, it runs `check-audit-checklist`, writes `audit-checklist.json`, and includes the gate in the aggregate summary.
+
+Audit Checklist P0 remains conditional in Rapid/Lite. A missing checklist is not a hard blocker for every report-only bootstrap PR. It becomes blocking when the handoff, profile, or risk class requires audit acceptance. If the audit checklist check returns `BLOCKED`, the aggregate report sets `would_block=true`; if it returns `FAILURE`, the aggregate sets both `report_failed=true` and `would_block=true`.
+
 ## Hard Blocks
 
 - `AUDIT-LIST-001 missing_audit_checklist`

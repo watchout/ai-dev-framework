@@ -50,6 +50,8 @@ owner_decision_ref: .shirube/evidence/owner-decision.yaml
 
 `run-rapid-lite-report` also runs `check-execution-context` before the other gates. If the execution context blocks, the aggregate report sets `would_block=true` and `owner_must_not_merge=true` while preserving report-only workflow behavior.
 
+When `audit_checklist_ref` and structured audit evidence are present, `run-rapid-lite-report` runs `check-audit-checklist` and writes `audit-checklist.json`. The audit checklist gate is conditional: it is skipped for lightweight report-only PRs unless audit refs are present or the handoff/profile requires audit evidence.
+
 The report runner also emits a Control State Completeness report after the gate pack evidence is collected. A Gate Pack Bridge PR must not claim full Shirube control unless that report reaches full readiness; otherwise it remains partial pilot or report-only evidence.
 
 ## Audit Checklist P0

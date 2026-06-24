@@ -1,0 +1,12 @@
+schema_version: shirube-structured-audit/v1
+audit_checklist_ref: test/fixtures/shirube/audit-checklist/checklist.pass.yaml
+pr_head_sha: "0123456789abcdef0123456789abcdef01234567"
+reviewer_actor: codex-audit
+reviewer_model: gpt-5-audit
+items:
+  - item_id: AUDIT-003
+    result: PASS
+    evidence_refs:
+      - llm-claimed-diff-ok
+    confidence: high
+    notes: "This lacks machine evidence."

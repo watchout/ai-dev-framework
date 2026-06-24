@@ -55,6 +55,9 @@ export function buildRapidLiteReport(options) {
   const designRules = runDesignRules({ resultDir, refs, changedFilesPath, prBodyPath, diffRoot });
   records.push(designRules);
 
+  const auditChecklist = runAuditChecklist({ resultDir, refs, actual });
+  records.push(auditChecklist);
+
   const preEnforcementAggregatePath = writeInterimAggregate({ resultDir, refs, records, changedFiles, filename: "pre-enforcement-aggregate.json" });
   const enforcementPolicy = runEnforcementPolicy({ resultDir, refs, aggregatePath: preEnforcementAggregatePath });
   if (enforcementPolicy) records.push(enforcementPolicy);
@@ -70,6 +73,7 @@ export function buildRapidLiteReport(options) {
     lifecycleReportPath: lifecycle.status === "ran" ? lifecycle.output_path : refs.lifecycleReport,
     gateContractReportPath: gateContract.status === "ran" ? gateContract.output_path : refs.gateContractReport,
     designRuleReportPath: designRules.status === "ran" ? designRules.output_path : refs.designRuleReport,
+    auditChecklistReportPath: auditChecklist.status === "ran" ? auditChecklist.output_path : refs.auditChecklistReport,
     enforcementPolicyReportPath: enforcementPolicy?.status === "ran" ? enforcementPolicy.output_path : refs.enforcementPolicyReport,
   });
   records.push(controlState);
@@ -142,6 +146,36 @@ function runDesignRules({ resultDir, refs, changedFilesPath, prBodyPath, diffRoo
   return runGate({ gate: "design-rules", args, outputPath: path.join(resultDir, "design-rules.json") });
 }
 
+function runAuditChecklist({ resultDir, refs, actual }) {
+  const outputPath = path.join(resultDir, "audit-checklist.json");
+  if (refs.auditChecklist) {
+    const args = [
+      "scripts/shirube/check-audit-checklist.mjs",
+      "--checklist",
+      refs.auditChecklist,
+    ];
+    addArg(args, "--audit", refs.structuredAudit);
+    addArg(args, "--machine-evidence", refs.auditMachineEvidence);
+    addArg(args, "--expected-head", actual.actualHead);
+    args.push("--format", "json");
+    return runGate({ gate: "audit-checklist", args, outputPath });
+  }
+  if (refs.structuredAudit || refs.auditMachineEvidence) {
+    const args = [
+      "scripts/shirube/check-audit-checklist.mjs",
+    ];
+    addArg(args, "--audit", refs.structuredAudit);
+    addArg(args, "--machine-evidence", refs.auditMachineEvidence);
+    addArg(args, "--expected-head", actual.actualHead);
+    args.push("--format", "json");
+    return runGate({ gate: "audit-checklist", args, outputPath });
+  }
+  if (refs.auditChecklistReport) {
+    return readExistingGateReport({ gate: "audit-checklist", reportPath: refs.auditChecklistReport, outputPath });
+  }
+  return skipped("audit-checklist", "No audit checklist refs were found; audit checklist is conditional unless required by handoff/profile.");
+}
+
 function runEnforcementPolicy({ resultDir, refs, aggregatePath }) {
   if (!refs.enforcementPolicy) return null;
   const args = [
@@ -166,6 +200,7 @@ function runControlStateCompleteness({
   lifecycleReportPath,
   gateContractReportPath,
   designRuleReportPath,
+  auditChecklistReportPath,
   enforcementPolicyReportPath,
 }) {
   const args = [
@@ -179,6 +214,7 @@ function runControlStateCompleteness({
   addArg(args, "--lifecycle-report", lifecycleReportPath);
   addArg(args, "--gate-contract-report", gateContractReportPath);
   addArg(args, "--design-rule-report", designRuleReportPath);
+  addArg(args, "--audit-checklist-report", auditChecklistReportPath);
   addArg(args, "--enforcement-policy-report", enforcementPolicyReportPath);
   addArg(args, "--readiness-report", refs.readinessReport);
   addArg(args, "--handoff", refs.handoff);
@@ -186,6 +222,8 @@ function runControlStateCompleteness({
   addArg(args, "--changed-files", changedFilesPath);
   addArg(args, "--validation", refs.validation);
   addArg(args, "--owner-decision", refs.ownerDecision);
+  addArg(args, "--audit-checklist", refs.auditChecklist);
+  addArg(args, "--structured-audit", refs.structuredAudit);
   addArg(args, "--audit-record", refs.auditRecord);
   addArg(args, "--audit-item-set", refs.auditItemSet);
   addArg(args, "--post-merge", refs.postMerge);
@@ -250,13 +288,60 @@ function runGate({ gate, args, outputPath }) {
     writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
   }
 
-  const reportFailed = report.report_failed === true || report.verdict === "FAILURE" || (result.status ?? 0) !== 0;
+  return gateRecordFromReport({
+    gate,
+    command,
+    outputPath,
+    exitCode: result.status ?? 1,
+    report,
+  });
+}
+
+function readExistingGateReport({ gate, reportPath, outputPath }) {
+  try {
+    const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+    return gateRecordFromReport({
+      gate,
+      command: `read ${reportPath}`,
+      outputPath,
+      exitCode: 0,
+      report,
+    });
+  } catch (error) {
+    const finding = {
+      code: "unreadable_gate_report",
+      message: error instanceof Error ? error.message : String(error),
+      path: reportPath,
+    };
+    const report = {
+      schema: "shirube-rapid-lite-gate-run/v1",
+      verdict: "FAILURE",
+      report_failed: true,
+      would_block: true,
+      blockers: [finding],
+      warnings: [],
+      required_next_actions: [finding],
+    };
+    writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+    return gateRecordFromReport({
+      gate,
+      command: `read ${reportPath}`,
+      outputPath,
+      exitCode: 1,
+      report,
+    });
+  }
+}
+
+function gateRecordFromReport({ gate, command, outputPath, exitCode, report }) {
+  const reportFailed = report.report_failed === true || report.verdict === "FAILURE" || exitCode !== 0;
   return {
     gate,
     status: "ran",
     command,
     output_path: outputPath,
-    exit_code: result.status ?? 1,
+    exit_code: exitCode,
     verdict: report.verdict ?? "UNKNOWN",
     report_failed: reportFailed,
     current_phase: report.current_phase ?? null,
@@ -434,6 +519,10 @@ function discoverRefs({ prBody, changedFiles }) {
     enforcementPolicy: refFromBody(prBody, ["enforcement_policy_ref", "enforcement_policy", "enforcement-policy"]),
     enforcementPolicyReport: refFromBody(prBody, ["enforcement_policy_report_ref", "enforcement_policy_report", "enforcement-policy-report"]),
     readinessReport: refFromBody(prBody, ["readiness_report_ref", "readiness_report", "full_adoption_report_ref", "full_adoption_report"]),
+    auditChecklist: refFromBody(prBody, ["audit_checklist_ref", "audit_checklist", "audit-checklist"]),
+    structuredAudit: refFromBody(prBody, ["structured_audit_ref", "structured_audit", "structured-audit"]),
+    auditMachineEvidence: refFromBody(prBody, ["audit_machine_evidence_ref", "audit_machine_evidence", "audit-machine-evidence", "machine_evidence_ref", "machine_evidence"]),
+    auditChecklistReport: refFromBody(prBody, ["audit_checklist_report_ref", "audit_checklist_report", "audit-checklist-report"]),
     auditRecord: refFromBody(prBody, ["audit_record_ref", "audit_record", "audit-ref", "reviewer_audit_ref"]),
     auditItemSet: refFromBody(prBody, ["audit_item_set_ref", "audit_item_set", "audit-item-set"]),
     controlState: refFromBody(prBody, ["control_state_ref", "control_state", "control-state", "control_state_completeness_ref"]),
@@ -464,6 +553,10 @@ function discoverRefs({ prBody, changedFiles }) {
     enforcementPolicy: resolveRef({ name: "enforcement_policy", explicit: explicit.enforcementPolicy, candidates: bySchema(schemaMatches, "shirube-enforcement-policy/v1"), defaults: [".shirube/enforcement-policy.yaml"], records }),
     enforcementPolicyReport: resolveRef({ name: "enforcement_policy_report", explicit: explicit.enforcementPolicyReport, defaults: [".shirube/reports/enforcement-policy.json"], records }),
     readinessReport: resolveRef({ name: "readiness_report", explicit: explicit.readinessReport, defaults: [".shirube/reports/readiness.json", ".shirube/readiness.yaml"], records }),
+    auditChecklist: resolveRef({ name: "audit_checklist", explicit: explicit.auditChecklist, candidates: bySchema(schemaMatches, "shirube-audit-checklist/v1"), defaults: [], records }),
+    structuredAudit: resolveRef({ name: "structured_audit", explicit: explicit.structuredAudit, candidates: bySchema(schemaMatches, "shirube-structured-audit/v1"), defaults: [], records }),
+    auditMachineEvidence: resolveRef({ name: "audit_machine_evidence", explicit: explicit.auditMachineEvidence, candidates: bySchema(schemaMatches, "shirube-machine-evidence/v1"), defaults: [], records }),
+    auditChecklistReport: resolveRef({ name: "audit_checklist_report", explicit: explicit.auditChecklistReport, candidates: bySchema(schemaMatches, "shirube-audit-checklist-check/v1"), defaults: [], records }),
     auditRecord: resolveRef({ name: "audit_record", explicit: explicit.auditRecord, candidates: [...bySchema(schemaMatches, "shirube-audit/v1"), ...bySchema(schemaMatches, "shirube-audit-record/v1")], defaults: [], records }),
     auditItemSet: resolveRef({ name: "audit_item_set", explicit: explicit.auditItemSet, candidates: bySchema(schemaMatches, "shirube-audit-item-set/v1"), defaults: [], records }),
     controlState: resolveRef({ name: "control_state", explicit: explicit.controlState, candidates: bySchema(schemaMatches, "shirube-control-state-completeness-config/v1"), defaults: [".shirube/control-state-completeness.yaml"], records }),

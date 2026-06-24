@@ -15,6 +15,7 @@ node scripts/shirube/check-control-state-completeness.mjs \
   --lifecycle-report .shirube-rapid-lite/lifecycle.json \
   --gate-contract-report .shirube-rapid-lite/gate-contract.json \
   --design-rule-report .shirube-rapid-lite/design-rules.json \
+  --audit-checklist-report .shirube-rapid-lite/audit-checklist.json \
   --enforcement-policy-report .shirube-rapid-lite/enforcement-policy.json \
   --handoff .shirube/control-handoffs/CH-001.yaml \
   --matrix .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml \
@@ -46,10 +47,10 @@ The gate inventories:
 - execution context report, active role, and repo relations;
 - RPS / PRS;
 - source mirrors;
-- adoption, lifecycle, gate-contract, design-rule, enforcement-policy, and readiness reports;
+- adoption, lifecycle, gate-contract, design-rule, audit-checklist, enforcement-policy, and readiness reports;
 - handoff, allowed paths, forbidden paths, protected surfaces, and required evidence;
 - validation evidence, owner exact-head decision, formal audit/reviewer audit when required, post-merge evidence, and open blockers.
-- audit checklist and structured per-item audit response when full operational audit acceptance is requested.
+- audit checklist report and structured per-item audit response when full operational audit acceptance is requested.
 
 ## Cross-Checks
 
@@ -91,7 +92,7 @@ The gate reconciles:
 - `CSC-016 stale_artifact_reference`
 - `CSC-017 report_failure_ignored`
 
-For P0 audit checklist hardening, use the `AUDIT-LIST-*` findings from `check-audit-checklist` as the authoritative itemized audit readiness result. Missing, duplicate, unanswered, or unsupported executable audit items must block full operational audit acceptance even when freeform audit prose says PASS.
+For P0 audit checklist hardening, use the `AUDIT-LIST-*` findings from `check-audit-checklist` as the authoritative itemized audit readiness result. Missing, duplicate, unanswered, or unsupported executable audit items must block full operational audit acceptance even when freeform audit prose says PASS. Control State Completeness consumes `audit-checklist.json` when provided and propagates `AUDIT-LIST-*` blockers instead of converting them into freeform prose.
 
 ## Runner Integration
 
@@ -102,9 +103,10 @@ For P0 audit checklist hardening, use the `AUDIT-LIST-*` findings from `check-au
 3. lifecycle
 4. gate-contract
 5. design-rules
-6. enforcement-policy, when a policy is present
-7. control-state-completeness
+6. audit-checklist, when checklist or structured audit refs are present
+7. enforcement-policy, when a policy is present
+8. control-state-completeness
 
-Control-state completeness consumes the earlier gate reports and writes `.shirube-rapid-lite/control-state-completeness.json`.
+Control-state completeness consumes the earlier gate reports and writes `.shirube-rapid-lite/control-state-completeness.json`. Audit checklist evidence is conditional for Rapid/Lite: missing checklist evidence is only a hard blocker when the handoff, profile, or risk class requires audit acceptance.
 
 This gate does not enable required checks, mutate branch protection/rulesets, change runtime behavior, alter package files, change B3 or `shirube-audit/v1`, or mutate external repositories.
