@@ -1,0 +1,22 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-STATE-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+repo: watchout/ai-dev-framework
+observed_at: 2026-06-24T01:30:00Z
+specs:
+  - path: https://github.com/watchout/ai-dev-framework/issues/487
+    status: current
+    authority: control_source
+implementation:
+  - path: scripts/shirube/mirror-control-source.mjs
+    status: current_pr_slice
+  - path: templates/adoption-pack/hotel-lite/source-mirror.github-issue.yaml
+    status: current_pr_slice
+tests:
+  - path: test/shirube/source-mirror.test.ts
+    status: present
+legacy_sources: []
+known_drift: []
+material_drift: []
+unsafe_changes: []
+llm_truth_claims: []
+unknowns: []

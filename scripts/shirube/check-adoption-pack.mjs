@@ -50,19 +50,7 @@ const ALLOWED_OVERLAY_PATTERNS = [
 ];
 
 const RUNTIME_OR_PACKAGE_PATTERNS = [
-  "src/**",
-  "app/**",
-  "api/**",
-  "lib/**",
-  "db/**",
-  "migrations/**",
-  "package.json",
-  "package-lock.json",
-  "pnpm-lock.yaml",
-  "yarn.lock",
-  ".env*",
-  "deploy/**",
-  "deployment/**",
+  ...FORBIDDEN_PATTERNS.filter((pattern) => !pattern.startsWith(".github/")),
 ];
 
 const REQUIRED_CONTROL_STATE_INVENTORY = [

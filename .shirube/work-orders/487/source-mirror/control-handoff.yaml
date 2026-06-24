@@ -1,0 +1,132 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+parent: "#487"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/487
+work_order: watchout/ai-dev-framework#487
+pr: watchout/ai-dev-framework#499
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@7186fb8a1830341b6446f00a1317d16f4d9316c5
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Local/report-only source mirror generator and Shirube overlay templates in ai-dev-framework.
+    - PR-local Shirube evidence artifacts for this source mirror slice.
+  shirube_does_not_own:
+    - Live GitHub fetching in this slice.
+    - External repository mutation.
+    - Target repository PR creation.
+    - Required check activation, branch protection, rulesets, runtime, product, package, lockfile, workflow caller, deploy, or production changes.
+cell:
+  CELL-ID: CELL-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+  cell_type: code_lite
+  risk_class: R2
+  goal: Add an offline GitHub issue source mirror skeleton generator for Shirube overlay adoption packs.
+  non_scope:
+    - live GitHub API fetch
+    - external repository mutation
+    - target repo PR creation
+    - workflow caller generation
+    - required check activation
+    - branch protection or ruleset mutation
+    - runtime/API/DB/product/package/lockfile changes
+    - framework completion or readiness graduation claim
+  allowed_paths:
+    - .shirube/work-orders/487/source-mirror/**
+    - docs/standards/shirube-overlay-adoption-pack.md
+    - docs/standards/shirube-source-mirror.md
+    - scripts/shirube/check-adoption-pack.mjs
+    - scripts/shirube/mirror-control-source.mjs
+    - templates/adoption-pack/hotel-lite/source-mirror.github-issue.yaml
+    - test/fixtures/shirube/source-mirror/**
+    - test/shirube/adoption-pack.test.ts
+    - test/shirube/source-mirror.test.ts
+  forbidden_paths:
+    - .github/workflows/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+  protected_surfaces:
+    declared:
+      - auth
+      - permissions
+    touched: false
+    reason: Design-rule text scan sees authority/permission vocabulary in governance/tooling files; this slice does not change auth or permission behavior.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - live GitHub fetch added
+    - external repository mutation added
+    - runtime/API/DB/product/package/lockfile/workflow/protection change added
+    - owner exact-head decision missing before merge
+implementation_boundary:
+  summary: Implement an offline source mirror skeleton generator and keep generated mirrors non-authoritative.
+  expected_pr_count: 1
+  forbidden_operations:
+    - live GitHub API fetch
+    - external repository mutation
+    - target repo PR creation
+    - workflow caller generation
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - runtime/API/DB/product/package/lockfile mutation
+validation:
+  required_commands:
+    - npm run test -- test/shirube/source-mirror.test.ts
+    - node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@7186fb8a1830341b6446f00a1317d16f4d9316c5 --out .tmp/source-mirror/control-issue.yaml --format json
+    - YAML parse generated mirror
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - pr_head_sha
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+  acceptance_tests:
+    - valid GitHub issue source renders mirror skeleton
+    - digest is stable for same inputs
+    - invalid source-control format fails
+    - invalid target repo fails
+    - mirror_is_truth=true is rejected
+    - generated YAML parses
+    - generated mirror can be used by check-adoption-pack
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: 7186fb8a1830341b6446f00a1317d16f4d9316c5
+  decision_ref: .shirube/work-orders/487/source-mirror/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/487

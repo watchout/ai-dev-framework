@@ -1,0 +1,10 @@
+schema_version: shirube-owner-decision-evidence/v1
+record_id: OWNER-DECISION-PENDING-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+repo: watchout/ai-dev-framework
+pr: 499
+cell_id: CELL-ADF-V3-OVERLAY-SOURCE-MIRROR-001
+decision: PENDING_OWNER_FINAL_REVIEW
+approval_granted: false
+exact_head_sha: 7186fb8a1830341b6446f00a1317d16f4d9316c5
+required_before_merge: true
+note: This file records the exact-head merge requirement for machine gates. It is not owner approval.
