@@ -5,6 +5,7 @@ pr: 499
 cell_id: CELL-ADF-V3-OVERLAY-SOURCE-MIRROR-001
 decision: PENDING_OWNER_FINAL_REVIEW
 approval_granted: false
-exact_head_sha: 75d4255a5609907a7d5a82b472c6be8a28be0284
+target_head: bddcf899b275430e4213f45365b883d6668862ac
+exact_head_sha: pending-owner-final-decision
 required_before_merge: true
-note: This file records the exact-head merge requirement for machine gates. It is not owner approval.
+note: This committed file records the pending exact-head policy for machine gates. It is not owner approval, and final exact-head evidence must be supplied externally by owner final decision.

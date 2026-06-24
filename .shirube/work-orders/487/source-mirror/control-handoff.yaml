@@ -8,7 +8,7 @@ work_order: watchout/ai-dev-framework#487
 pr: watchout/ai-dev-framework#499
 repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
 matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
-framework_ref: watchout/ai-dev-framework@75d4255a5609907a7d5a82b472c6be8a28be0284
+framework_ref: watchout/ai-dev-framework@edf4880b4c8f9ee622239c22a6781f796a2a0318
 repo_spec_ref: .shirube/repo-spec.yaml
 premise_ref: .shirube/repo-spec.yaml
 owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
@@ -97,7 +97,10 @@ implementation_boundary:
 validation:
   required_commands:
     - npm run test -- test/shirube/source-mirror.test.ts
-    - node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@75d4255a5609907a7d5a82b472c6be8a28be0284 --out .tmp/source-mirror/control-issue.yaml --format json
+    - npm run test -- test/shirube/audit-checklist.test.ts
+    - node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@edf4880b4c8f9ee622239c22a6781f796a2a0318 --out .tmp/source-mirror/control-issue.yaml --format json
+    - node scripts/shirube/generate-audit-checklist.mjs --handoff .shirube/work-orders/487/source-mirror/control-handoff.yaml --out .shirube/work-orders/487/source-mirror/audit-checklist.yaml --format json
+    - node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/source-mirror/audit-checklist.yaml --audit .shirube/work-orders/487/source-mirror/structured-audit.yaml --machine-evidence .shirube/work-orders/487/source-mirror/audit-machine-evidence.yaml --format json
     - YAML parse generated mirror
     - npm run test -- test/shirube
     - npm run type-check
@@ -124,7 +127,7 @@ owner_decision:
     - APPROVED_EXACT_HEAD
     - CHANGES_REQUIRED
     - BLOCKED
-  exact_head_sha: 75d4255a5609907a7d5a82b472c6be8a28be0284
+  exact_head_sha: pending-owner-final-decision
   decision_ref: .shirube/work-orders/487/source-mirror/owner-decision-pending.yaml
 legacy_source_boundary:
   legacy_sources_may_inform: true

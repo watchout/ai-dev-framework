@@ -3,12 +3,15 @@ evidence_id: VALIDATION-ADF-V3-OVERLAY-SOURCE-MIRROR-001
 repo: watchout/ai-dev-framework
 pr: 499
 cell_id: CELL-ADF-V3-OVERLAY-SOURCE-MIRROR-001
-pr_head_sha: 75d4255a5609907a7d5a82b472c6be8a28be0284
-exact_head_sha: 75d4255a5609907a7d5a82b472c6be8a28be0284
+pr_head_sha: bddcf899b275430e4213f45365b883d6668862ac
+head_evidence_status: current_pr_validation_input_not_final_owner_exact_head
 result: PASS
 commands:
   - npm run test -- test/shirube/source-mirror.test.ts
-  - node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@75d4255a5609907a7d5a82b472c6be8a28be0284 --out .tmp/source-mirror/control-issue.yaml --format json
+  - npm run test -- test/shirube/audit-checklist.test.ts
+  - node scripts/shirube/mirror-control-source.mjs --source-control watchout/control#1 --target-repo watchout/example --product Example --framework-ref watchout/ai-dev-framework@edf4880b4c8f9ee622239c22a6781f796a2a0318 --out .tmp/source-mirror/control-issue.yaml --format json
+  - node scripts/shirube/generate-audit-checklist.mjs --handoff .shirube/work-orders/487/source-mirror/control-handoff.yaml --out .shirube/work-orders/487/source-mirror/audit-checklist.yaml --format json
+  - node scripts/shirube/check-audit-checklist.mjs --checklist .shirube/work-orders/487/source-mirror/audit-checklist.yaml --audit .shirube/work-orders/487/source-mirror/structured-audit.yaml --machine-evidence .shirube/work-orders/487/source-mirror/audit-machine-evidence.yaml --format json
   - YAML parse generated mirror
   - npm run test -- test/shirube
   - npm run type-check
@@ -19,13 +22,21 @@ validation_results:
   - command: npm run test -- test/shirube/source-mirror.test.ts
     result: PASS
     detail: 1 file / 7 tests
+  - command: npm run test -- test/shirube/audit-checklist.test.ts
+    result: PASS
+    detail: 1 file / 12 tests
   - command: sample mirror-control-source
+    result: PASS
+  - command: generate audit checklist
+    result: PASS
+    detail: 35 items
+  - command: check audit checklist
     result: PASS
   - command: YAML parse generated mirror
     result: PASS
   - command: npm run test -- test/shirube
     result: PASS
-    detail: 16 files / 214 tests
+    detail: 17 files / 226 tests
   - command: npm run type-check
     result: PASS
   - command: npm run build:cli
@@ -40,3 +51,6 @@ evidence_refs:
   - docs/standards/shirube-source-mirror.md
   - test/shirube/source-mirror.test.ts
   - .shirube/work-orders/487/source-mirror/control-handoff.yaml
+  - .shirube/work-orders/487/source-mirror/audit-checklist.yaml
+  - .shirube/work-orders/487/source-mirror/structured-audit.yaml
+  - .shirube/work-orders/487/source-mirror/audit-machine-evidence.yaml
