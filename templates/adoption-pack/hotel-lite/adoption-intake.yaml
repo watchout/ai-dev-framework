@@ -1,0 +1,40 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: {{ADOPTION_ID}}
+lane: adoption_intake
+repo: {{TARGET_REPO}}
+framework_ref: {{FRAMEWORK_REF}}
+profile: hotel-lite
+current_status: PARTIAL_SHIRUBE_PILOT
+target_status_after_merge: RAPID_LITE_REPORT_ONLY
+disposition: retrofit_accelerate
+source_control_ref: {{SOURCE_CONTROL}}
+source_mirror_ref: .shirube/source-mirrors/control-issue.yaml
+owner:
+  role: repo_owner
+  actor: null
+existing_state_scan_ref: .shirube/existing-state-scan.yaml
+existing_state_scan:
+  specs:
+    - path: {{SOURCE_URL}}
+      status: source_mirror_pending_owner_review
+      authority: control_source_snapshot
+  implementation:
+    - path: runtime/product tree
+      status: not_modified_by_adoption_pack
+  tests:
+    - path: repository test suite
+      status: not_modified_by_adoption_pack
+  legacy_sources: []
+  known_drift: []
+  unsafe_changes: []
+  llm_truth_claims: []
+  unknowns:
+    - Full runtime/API/DB/package inventory is not performed by the renderer.
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: null
+gap_fill_plan:
+  - Fill owner confirmation and exact-head evidence before merge readiness.
+  - Keep adoption PR limited to .shirube/** and docs/shirube/** unless a later workflow caller Cell is approved.
+spec_reconciliation_ref: null
+next_safe_cell_ref: .shirube/control-handoffs/CH-001.yaml
+control_handoff_ref: .shirube/control-handoffs/CH-001.yaml

@@ -1,0 +1,26 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: {{EXISTING_SCAN_ID}}
+repo: {{TARGET_REPO}}
+observed_at: {{GENERATED_AT}}
+source_control_ref: {{SOURCE_CONTROL}}
+source_mirror_ref: .shirube/source-mirrors/control-issue.yaml
+classification:
+  current_status: PARTIAL_SHIRUBE_PILOT
+  target_status_after_merge: RAPID_LITE_REPORT_ONLY
+  disposition: retrofit_accelerate
+specs:
+  - path: {{SOURCE_URL}}
+    status: mirrored_control_source
+    authority: control_source_snapshot
+implementation:
+  - path: runtime/product code
+    status: not_scanned_by_renderer
+tests:
+  - path: repository tests
+    status: not_scanned_by_renderer
+legacy_sources: []
+known_drift: []
+unsafe_changes: []
+llm_truth_claims: []
+unknowns:
+  - Runtime/API/DB/package/deploy surfaces require owner-specific scan before product work.
