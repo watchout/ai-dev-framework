@@ -1,0 +1,22 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-ADF-V3-AUDIT-CHECKLIST-P0-001
+lane: adoption_intake
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@80dd9674277f41ce50ab2b9965f9653082f815a8
+profile: hotel-lite
+current_status: RAPID_LITE_REPORT_ONLY
+target_status_after_merge: RAPID_LITE_REPORT_ONLY
+disposition: retrofit_accelerate
+source_control_ref: watchout/ai-dev-framework#487
+owner:
+  role: repo_owner
+  actor: watchout
+existing_state_scan_ref: .shirube/work-orders/487/audit-checklist-p0/existing-state-scan.yaml
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+gap_fill_plan:
+  - Add local/report-only audit checklist generator and checker.
+  - Keep #502 research proposal deferred beyond P0.
+next_safe_cell_ref: .shirube/work-orders/487/audit-checklist-p0/control-handoff.yaml
+control_handoff_ref: .shirube/work-orders/487/audit-checklist-p0/control-handoff.yaml
+current_phase: ADOPTION_READY

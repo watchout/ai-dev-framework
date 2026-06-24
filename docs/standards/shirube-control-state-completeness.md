@@ -23,6 +23,8 @@ node scripts/shirube/check-control-state-completeness.mjs \
   --owner-decision .shirube/evidence/owner-decision.yaml \
   --audit-record .shirube/audits/AUDIT-001.json \
   --audit-item-set .shirube/audit-item-sets/stage-6-impl-audit.yaml \
+  --audit-checklist .shirube/audit-checklists/AUDIT-CHECKLIST-001.yaml \
+  --structured-audit .shirube/audits/AUDIT-001.yaml \
   --post-merge .shirube/evidence/post-merge.yaml \
   --format json
 ```
@@ -47,6 +49,7 @@ The gate inventories:
 - adoption, lifecycle, gate-contract, design-rule, enforcement-policy, and readiness reports;
 - handoff, allowed paths, forbidden paths, protected surfaces, and required evidence;
 - validation evidence, owner exact-head decision, formal audit/reviewer audit when required, post-merge evidence, and open blockers.
+- audit checklist and structured per-item audit response when full operational audit acceptance is requested.
 
 ## Cross-Checks
 
@@ -63,6 +66,7 @@ The gate reconciles:
 - required evidence names against concrete evidence refs;
 - owner exact-head decision against PR/gate head;
 - audit item records against required audit item sets;
+- checklist-required audit responses against `shirube-audit-checklist/v1` via `check-audit-checklist`;
 - post-merge evidence before `COMPLETE`;
 - full-control claims against full-readiness evidence;
 - report failures so they cannot be ignored.
@@ -86,6 +90,8 @@ The gate reconciles:
 - `CSC-015 full_control_claim_without_full_readiness`
 - `CSC-016 stale_artifact_reference`
 - `CSC-017 report_failure_ignored`
+
+For P0 audit checklist hardening, use the `AUDIT-LIST-*` findings from `check-audit-checklist` as the authoritative itemized audit readiness result. Missing, duplicate, unanswered, or unsupported executable audit items must block full operational audit acceptance even when freeform audit prose says PASS.
 
 ## Runner Integration
 

@@ -1,0 +1,72 @@
+schema_version: shirube-structured-audit/v1
+audit_checklist_ref: test/fixtures/shirube/audit-checklist/checklist.pass.yaml
+pr_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+reviewer_actor: codex-audit
+reviewer_model: gpt-5-audit
+items:
+  - item_id: AUDIT-001
+    result: PASS
+    evidence_refs:
+      - structured-review-notes
+    confidence: high
+    notes: "Checklist generation is covered by generated fixture comparison."
+  - item_id: AUDIT-002
+    result: PASS
+    evidence_refs:
+      - changed_files
+    confidence: high
+    notes: "No stop condition observed."
+  - item_id: AUDIT-003
+    result: PASS
+    evidence_refs:
+      - diff_scope_report
+    confidence: high
+    notes: "Diff stays within allowed paths."
+  - item_id: AUDIT-004
+    result: PASS
+    evidence_refs:
+      - diff_scope_report
+    confidence: high
+    notes: "Forbidden paths are untouched."
+  - item_id: AUDIT-005
+    result: PASS
+    evidence_refs:
+      - protected_surface_declaration
+    confidence: high
+    notes: "No protected surface is touched."
+  - item_id: AUDIT-006
+    result: PASS
+    evidence_refs:
+      - "command_result:npm run test -- test/shirube/audit-checklist.test.ts"
+    confidence: high
+    notes: "Focused tests passed."
+  - item_id: AUDIT-007
+    result: PASS
+    evidence_refs:
+      - pr_head_sha
+    confidence: high
+    notes: "Exact head evidence is present."
+  - item_id: AUDIT-008
+    result: PASS
+    evidence_refs:
+      - validation_results
+    confidence: high
+    notes: "Validation results are present."
+  - item_id: AUDIT-009
+    result: PASS
+    evidence_refs:
+      - maker_checker_review
+    confidence: high
+    notes: "Reviewer differs from implementation actor."
+  - item_id: AUDIT-010
+    result: PASS
+    evidence_refs:
+      - owner_decision
+    confidence: high
+    notes: "Owner decision policy exists."
+  - item_id: AUDIT-011
+    result: PASS
+    evidence_refs:
+      - post_merge_evidence
+    confidence: high
+    notes: "Post-merge evidence policy exists."

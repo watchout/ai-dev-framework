@@ -1,0 +1,40 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+work_order: watchout/ai-dev-framework#487
+pr: watchout/ai-dev-framework#999
+implementation_actor: codex-adf
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+cell:
+  CELL-ID: CELL-ADF-AUDIT-CHECKLIST-001
+  cell_type: code_lite
+  risk_class: R2
+  goal: Add audit checklist P0 scripts.
+  acceptance_criteria:
+    - Audit checklist is generated from handoff facts.
+  stop_conditions:
+    - Required audit item is not answered.
+  allowed_paths:
+    - scripts/shirube/**
+    - test/shirube/**
+  forbidden_paths:
+    - package.json
+    - .github/workflows/**
+  protected_surfaces:
+    declared:
+      - none
+    touched: false
+validation:
+  required_commands:
+    - npm run test -- test/shirube/audit-checklist.test.ts
+  required_evidence:
+    - pr_head_sha
+    - validation_results
+owner_decision:
+  required_before_merge: true
+  exact_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+post_merge:
+  required: true

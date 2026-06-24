@@ -1,0 +1,13 @@
+schema_version: shirube-lifecycle-state/rapid-lite/v1
+lifecycle_id: LIFECYCLE-ADF-V3-AUDIT-CHECKLIST-P0-001
+mode: rapid-lite
+profile: hotel-lite
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@80dd9674277f41ce50ab2b9965f9653082f815a8
+work_order: watchout/ai-dev-framework#487
+cell_id: CELL-ADF-V3-AUDIT-CHECKLIST-P0-001
+current_phase: EXECUTION_READY
+updated_at: 2026-06-24T04:00:00Z
+design_rules_required: true
+owner_decision_required_before_merge: true
+post_merge_evidence_required_before_complete: true
