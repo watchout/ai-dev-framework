@@ -37,6 +37,20 @@ The `hotel-lite` profile writes:
 
 The first slice does not generate a workflow caller. A later approved Cell may add `.github/workflows/shirube-rapid-lite-gates-report.yml` when the thin caller is explicitly scoped.
 
+## Pack Safety Check
+
+Before applying a rendered pack to a target repository, run:
+
+```bash
+node scripts/shirube/check-adoption-pack.mjs \
+  --pack-root .tmp/shirube-adoption-pack \
+  --target-repo owner/repo \
+  --profile hotel-lite \
+  --format json
+```
+
+The check verifies that the pack is lightweight, machine-readable, target-repo aligned, report-only, and free of forbidden runtime/API/DB/package/script/protection changes. See `docs/standards/shirube-adoption-pack-check.md`.
+
 ## Target PR Scope
 
 Generated adoption PRs are control-plane overlay PRs only.

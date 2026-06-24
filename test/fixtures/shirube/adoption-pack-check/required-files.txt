@@ -1,0 +1,10 @@
+.shirube/execution-context.yaml
+.shirube/adoption-intake.yaml
+.shirube/existing-state-scan.yaml
+.shirube/repo-spec.yaml
+.shirube/control-handoffs/CH-001.yaml
+.shirube/lifecycle-state.yaml
+.shirube/source-mirrors/control-issue.yaml
+.shirube/enforcement-policy.yaml
+.shirube/control-state-completeness.yaml
+docs/shirube/README.md
