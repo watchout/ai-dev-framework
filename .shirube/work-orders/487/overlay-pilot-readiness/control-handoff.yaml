@@ -1,0 +1,145 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-OVERLAY-PILOT-READINESS-001
+parent: "#487"
+parent_inputs:
+  - "#487"
+  - "#505"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/487
+v_next_hardening_input: https://github.com/watchout/ai-dev-framework/issues/505
+work_order: watchout/ai-dev-framework#487
+pr: "watchout/ai-dev-framework#<PR_NUMBER_PENDING>"
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@6917720d0ea02fe96f3b7752aa802bc135ec1b19
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Generic overlay pilot readiness dry-run gate in ADF.
+    - Hotel-lite adoption pack template alignment needed for dry-run parity.
+    - PR-local Shirube evidence artifacts for this readiness slice.
+  shirube_does_not_own:
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - CI hard-blocking.
+    - Runtime/API/DB/product/package/lockfile behavior.
+    - External repository mutation.
+    - live GitHub fetch.
+    - target repository PR creation.
+    - final framework readiness claim.
+cell:
+  CELL-ID: CELL-ADF-V3-OVERLAY-PILOT-READINESS-001
+  cell_type: code_lite
+  risk_class: R2
+  goal: Add a local report-only gate that blocks target adoption PR creation when the generated overlay would already produce Rapid/Lite BLOCKED.
+  acceptance_criteria:
+    - Same-repo source control renders without triggering CTX-006.
+    - Rendered packs require owner actor, owner confirmation ref, and concrete CELL-ID before pilot readiness.
+    - Generated lifecycle state is accepted by check-lifecycle during dry-run.
+    - External exact-head evidence is documented as outside the committed attested head.
+    - check-overlay-pilot-readiness runs check-adoption-pack and run-rapid-lite-report against the generated overlay.
+    - would_block=true in the generated overlay dry-run blocks pilot readiness.
+  non_scope:
+    - live GitHub fetch
+    - external repository mutation
+    - target repository PR creation
+    - required check activation
+    - branch protection or ruleset mutation
+    - runtime/API/DB/product/package changes
+    - final framework readiness claim
+    - heavy #505 flow/gate hardening features
+  allowed_paths:
+    - .shirube/work-orders/487/overlay-pilot-readiness/**
+    - docs/standards/shirube-adoption-pack-check.md
+    - docs/standards/shirube-overlay-adoption-pack.md
+    - docs/standards/shirube-overlay-pilot-readiness.md
+    - docs/standards/shirube-rapid-lite-workflow-caller.md
+    - scripts/shirube/check-control-state-completeness.mjs
+    - scripts/shirube/check-execution-context.mjs
+    - scripts/shirube/check-overlay-pilot-readiness.mjs
+    - scripts/shirube/render-adoption-pack.mjs
+    - templates/adoption-pack/hotel-lite/adoption-intake.yaml
+    - templates/adoption-pack/hotel-lite/control-handoff.yaml
+    - templates/adoption-pack/hotel-lite/enforcement-policy.yaml
+    - templates/adoption-pack/hotel-lite/execution-context.yaml
+    - templates/adoption-pack/hotel-lite/lifecycle-state.yaml
+    - templates/adoption-pack/hotel-lite/repo-spec.yaml
+    - templates/adoption-pack/hotel-lite/source-mirror.github-issue.yaml
+    - test/fixtures/shirube/overlay-pilot-readiness/**
+    - test/shirube/adoption-pack-check.test.ts
+    - test/shirube/adoption-pack.test.ts
+    - test/shirube/overlay-pilot-readiness.test.ts
+    - test/shirube/source-mirror.test.ts
+    - test/shirube/workflow-caller.test.ts
+  forbidden_paths:
+    - .github/workflows/**
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - none
+    touched: false
+    reason: This slice adds local/report-only scripts, docs, templates, and tests. It does not change active workflows or protected repository settings.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - active workflow change added
+    - required check activation added
+    - branch protection or ruleset mutation added
+    - CI hard-blocking added
+    - runtime/API/DB/product/package/lockfile change added
+    - external repo mutation added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/overlay-pilot-readiness.test.ts
+    - node scripts/shirube/render-adoption-pack.mjs sample command with --include-workflow-caller
+    - node scripts/shirube/check-overlay-pilot-readiness.mjs sample command
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - pr_head_sha
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  target_head: 6917720d0ea02fe96f3b7752aa802bc135ec1b19
+  exact_head_sha: pending-owner-final-decision
+  decision_ref: .shirube/work-orders/487/overlay-pilot-readiness/owner-decision-pending.yaml
+post_merge_policy:
+  evidence_required_before_complete: true
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/487

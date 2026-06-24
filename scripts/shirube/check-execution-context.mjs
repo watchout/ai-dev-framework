@@ -61,7 +61,7 @@ export function buildExecutionContextReport(input) {
   const currentPrRepo = repoFromRef(primary.pr);
   const relations = asRelationRecords(context.repo_relations);
   const actualRelation = actualRepo ? relations.find((relation) => relation.repo === actualRepo) : null;
-  const primaryRelation = primaryRepo ? relations.find((relation) => relation.repo === primaryRepo && relation.relation !== "primary") : null;
+  const primaryRelation = primaryRepo ? relations.find((relation) => relation.repo === primaryRepo && !isPrimaryRelation(relation.relation)) : null;
   const implementationClaim = hasImplementationClaim({ context, prBody, changedFiles });
   const mergeReadyClaim = hasMergeReadyClaim({ context, prBody });
   const authorityClaim = hasAuditOrOwnerAuthorityClaim({ context, prBody });
@@ -94,7 +94,7 @@ export function buildExecutionContextReport(input) {
   if (mergeReadyClaim && !hasOwnerExactHeadDecision({ context, prBody, actualHead })) {
     blockers.push(finding("CTX-010"));
   }
-  if (actualRelation && actualRelation.relation !== "primary" && supportPermissionExceeded({ relation: actualRelation, implementationClaim, mergeReadyClaim, authorityClaim })) {
+  if (actualRelation && !isPrimaryRelation(actualRelation.relation) && supportPermissionExceeded({ relation: actualRelation, implementationClaim, mergeReadyClaim, authorityClaim })) {
     blockers.push(finding("CTX-011", { path: `repo_relations.${input.actualRepo}` }));
   }
   if (activeRole === "lead" && implementationClaim) blockers.push(finding("CTX-015"));
@@ -363,10 +363,14 @@ function hasOwnerExactHeadDecision({ context, prBody, actualHead }) {
 }
 
 function supportPermissionExceeded({ relation, implementationClaim, mergeReadyClaim, authorityClaim }) {
-  if (implementationClaim && (relation.forbidden.includes("implementation_target") || relation.relation !== "primary")) return true;
-  if (mergeReadyClaim && (relation.forbidden.includes("merge_ready_claim") || relation.relation !== "primary")) return true;
-  if (authorityClaim && (relation.forbidden.includes("merge_decision") || relation.forbidden.includes("approve_merge") || relation.relation !== "primary")) return true;
+  if (implementationClaim && (relation.forbidden.includes("implementation_target") || !isPrimaryRelation(relation.relation))) return true;
+  if (mergeReadyClaim && (relation.forbidden.includes("merge_ready_claim") || !isPrimaryRelation(relation.relation))) return true;
+  if (authorityClaim && (relation.forbidden.includes("merge_decision") || relation.forbidden.includes("approve_merge") || !isPrimaryRelation(relation.relation))) return true;
   return false;
+}
+
+function isPrimaryRelation(value) {
+  return value === "primary" || value === "primary_with_control_issue" || value === "same_repo_control_source";
 }
 
 function isProductImplementationPath(filePath) {

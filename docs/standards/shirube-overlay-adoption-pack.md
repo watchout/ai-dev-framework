@@ -13,12 +13,15 @@ node scripts/shirube/render-adoption-pack.mjs \
   --product ProductName \
   --source-control owner/control-repo#123 \
   --framework-ref watchout/ai-dev-framework@<PINNED_SHA> \
+  --owner-actor <repo-owner> \
+  --owner-confirmation-ref <owner-confirmation-ref> \
+  --cell-id <CELL-ID> \
   --mode render \
   --out .tmp/shirube-adoption-pack \
   --format json
 ```
 
-`--framework-ref` must be pinned. The target repository records the pinned ADF ref but does not receive copied `scripts/shirube/**`.
+`--framework-ref` must be pinned. `--owner-actor`, `--owner-confirmation-ref`, and `--cell-id` are required for pilot-ready output; the renderer must not emit `owner.actor: null` or `CELL-ID: <CELL-ID>`. The target repository records the pinned ADF ref but does not receive copied `scripts/shirube/**`.
 
 Add `--include-workflow-caller` only when the thin caller slice is in scope. That renders `.github/workflows/shirube-rapid-lite-gates-report.yml`, which calls the pinned ADF reusable workflow instead of copying gate scripts into the target repo.
 
@@ -57,6 +60,23 @@ node scripts/shirube/check-adoption-pack.mjs \
 
 The check verifies that the pack is lightweight, machine-readable, target-repo aligned, report-only, and free of forbidden runtime/API/DB/package/script/protection changes. See `docs/standards/shirube-adoption-pack-check.md`.
 
+## Pilot Readiness Dry-Run
+
+Before opening a target repository adoption PR, run:
+
+```bash
+node scripts/shirube/check-overlay-pilot-readiness.mjs \
+  --pack-root .tmp/shirube-adoption-pack \
+  --target-repo owner/repo \
+  --profile hotel-lite \
+  --actual-head <sha-or-placeholder> \
+  --format json
+```
+
+This gate runs both `check-adoption-pack` and a local `run-rapid-lite-report` dry-run against the rendered overlay. A pack that passes `check-adoption-pack` is not pilot-ready if the Rapid/Lite dry-run would already be `BLOCKED`.
+
+See `docs/standards/shirube-overlay-pilot-readiness.md`.
+
 ## Target PR Scope
 
 Generated adoption PRs are control-plane overlay PRs only.
@@ -93,6 +113,8 @@ The pack creates machine-readable artifacts for:
 
 The source mirror is not independent truth. It is a structured snapshot of the GitHub Control source.
 
+If the control issue is in the same repository as the target repository, the execution context keeps the target as `primary` and marks the source relation as `same_repo_control_source` instead of `control_source`. This keeps the repo as the implementation target and avoids `CTX-006`.
+
 Use `scripts/shirube/mirror-control-source.mjs` when a standalone source mirror skeleton is needed before rendering or refreshing a target overlay. The command is offline in its first slice and keeps `mirror_is_truth=false`.
 
 ## Authority Rules
@@ -100,6 +122,8 @@ Use `scripts/shirube/mirror-control-source.mjs` when a standalone source mirror 
 LLM output is not authority.
 
 `BLOCKED` or `would_block=true` means the owner must not merge unless an explicit exact-head pilot exception exists.
+
+Final owner exact-head approval is external to the committed overlay. It may come from a PR owner-decision comment parser, workflow input, or external validation/owner-decision evidence file outside the attested commit. Pending owner-decision YAML inside the overlay is policy only and must not be treated as approval.
 
 `report_only` is calibration and observation. It is not the final enforcement state. Promotion to `owner_block`, `ci_hard_block`, or `required_check` requires later owner-approved work.
 

@@ -126,7 +126,10 @@ function normalizeInput(options) {
     out: stringOption(options.out),
     format: stringOption(options.format),
     activeRole: stringOption(options["active-role"]) ?? "lead",
-    generatedAt: stringOption(options["generated-at"]) ?? "<GENERATED_AT_UTC>",
+    ownerActor: stringOption(options["owner-actor"]),
+    ownerConfirmationRef: stringOption(options["owner-confirmation-ref"]),
+    cellId: stringOption(options["cell-id"]),
+    generatedAt: stringOption(options["generated-at"]) ?? new Date().toISOString(),
     fetchedAt: stringOption(options["fetched-at"]) ?? "<FETCHED_AT_UTC>",
     generatedBy: stringOption(options["generated-by"]) ?? "codex-adf",
     includeWorkflowCaller: booleanOption(options["include-workflow-caller"]),
@@ -159,6 +162,15 @@ function validateInput(input) {
   if (!["lead", "dev"].includes(input.activeRole)) {
     errors.push({ code: "invalid_active_role", message: "--active-role must be lead or dev.", path: "active-role" });
   }
+  if (!input.ownerActor) {
+    errors.push({ code: "missing_owner_actor", message: "--owner-actor is required for pilot-ready render output.", path: "owner-actor" });
+  }
+  if (!input.ownerConfirmationRef) {
+    errors.push({ code: "missing_owner_confirmation_ref", message: "--owner-confirmation-ref is required for pilot-ready render output.", path: "owner-confirmation-ref" });
+  }
+  if (!input.cellId) {
+    errors.push({ code: "missing_cell_id", message: "--cell-id is required for pilot-ready render output.", path: "cell-id" });
+  }
   if (!input.out) {
     errors.push({ code: "missing_output", message: "--out is required.", path: "out" });
   }
@@ -170,6 +182,7 @@ function templateValues(input) {
   const [targetOwner, targetName] = input.targetRepo.split("/");
   const frameworkRepo = input.frameworkRef.split("@")[0];
   const frameworkRefName = input.frameworkRef.slice(input.frameworkRef.indexOf("@") + 1);
+  const sameRepoSourceControl = source.repo.toLowerCase() === input.targetRepo.toLowerCase();
   const sourceUrl = `https://github.com/${source.repo}/issues/${source.issue}`;
   const digest = createHash("sha256")
     .update([
@@ -185,8 +198,10 @@ function templateValues(input) {
   return {
     ACTIVE_ROLE: input.activeRole,
     ADOPTION_ID: `ADOPT-${id}-001`,
+    CELL_ID: input.cellId,
     CONTROL_HANDOFF_ID: "CH-001",
     CONTROL_STATE_ID: `CONTROL-STATE-${id}-001`,
+    CONTROL_SOURCE_RELATION: sameRepoSourceControl ? "same_repo_control_source" : "control_source",
     DIGEST_SHA256: digest,
     ENFORCEMENT_POLICY_ID: `ENFORCEMENT-POLICY-${id}-001`,
     EXISTING_SCAN_ID: `EXISTING-STATE-${id}-001`,
@@ -197,6 +212,10 @@ function templateValues(input) {
     GENERATED_AT: input.generatedAt,
     GENERATED_BY: input.generatedBy,
     ISSUE_NUMBER: String(source.issue),
+    LIFECYCLE_CURRENT_PHASE: "HANDOFF_READY",
+    LIFECYCLE_LAST_ALLOWED_PHASE: "HANDOFF_READY",
+    OWNER_ACTOR: input.ownerActor,
+    OWNER_CONFIRMATION_REF: input.ownerConfirmationRef,
     PRODUCT: input.product,
     REPO_SPEC_ID: `RPS-${id}-001`,
     SOURCE_CONTROL: input.sourceControl,

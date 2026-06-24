@@ -11,7 +11,7 @@ source_control_ref: {{SOURCE_CONTROL}}
 source_mirror_ref: .shirube/source-mirrors/control-issue.yaml
 owner:
   role: repo_owner
-  actor: null
+  actor: {{OWNER_ACTOR}}
 existing_state_scan_ref: .shirube/existing-state-scan.yaml
 existing_state_scan:
   specs:
@@ -31,7 +31,7 @@ existing_state_scan:
   unknowns:
     - Full runtime/API/DB/package inventory is not performed by the renderer.
 repo_spec_ref: .shirube/repo-spec.yaml
-owner_confirmation_ref: null
+owner_confirmation_ref: {{OWNER_CONFIRMATION_REF}}
 gap_fill_plan:
   - Fill owner confirmation and exact-head evidence before merge readiness.
   - Keep adoption PR limited to .shirube/** and docs/shirube/** unless a later workflow caller Cell is approved.

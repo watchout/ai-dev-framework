@@ -1,0 +1,11 @@
+schema_version: shirube-owner-decision-evidence/v1
+record_id: OWNER-DECISION-PENDING-ADF-V3-OVERLAY-PILOT-READINESS-001
+repo: watchout/ai-dev-framework
+pr: 0
+cell_id: CELL-ADF-V3-OVERLAY-PILOT-READINESS-001
+decision: PENDING_OWNER_FINAL_REVIEW
+approval_granted: false
+target_head: 6917720d0ea02fe96f3b7752aa802bc135ec1b19
+exact_head_sha: pending-owner-final-decision
+required_before_merge: true
+note: This committed file records pending exact-head policy for machine gates. It is not owner approval; final exact-head evidence must be supplied externally by owner final decision.

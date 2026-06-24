@@ -52,7 +52,8 @@ repo_relations:
       - implementation_target
       - merge_ready_claim
   - repo: {{SOURCE_REPO}}
-    relation: control_source
+    relation: {{CONTROL_SOURCE_RELATION}}
+    control_issue_ref: {{SOURCE_CONTROL}}
     allowed:
       - read
       - cite
