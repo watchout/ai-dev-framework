@@ -2,6 +2,7 @@
   "schema_version": "shirube-work-result/v1",
   "work_result_id": "WR-ADF-511-COMPLETED-001",
   "work_order_id": "WO-ADF-511-ORCHESTRATION-CONTRACT-001",
+  "idempotency_key": "shirube:watchout/ai-dev-framework:WO-ADF-511-ORCHESTRATION-CONTRACT-001:0123456789abcdef0123456789abcdef01234567",
   "status": "COMPLETED",
   "repo": {
     "full_name": "watchout/ai-dev-framework",

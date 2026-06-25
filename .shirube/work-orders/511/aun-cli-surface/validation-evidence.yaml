@@ -1,0 +1,52 @@
+schema_version: shirube-validation-evidence/v1
+evidence_id: VALIDATION-ADF-V3-AUN-CLI-SURFACE-001
+repo: watchout/ai-dev-framework
+pr: pending
+cell_id: CELL-ADF-V3-AUN-CLI-SURFACE-001
+pr_head_sha: external-pr-runtime-head
+head_evidence_status: current_pr_validation_input_not_final_owner_exact_head
+result: PASS
+commands:
+  - npm run test -- test/shirube/aun-cli-surface.test.ts test/shirube/orchestration-contract.test.ts
+  - npx tsx src/cli/index.ts work-order export sample command
+  - npx tsx src/cli/index.ts work-order validate sample command
+  - npx tsx src/cli/index.ts work-result validate sample command
+  - npx tsx src/cli/index.ts work-result import sample command
+  - npm run test -- test/shirube
+  - npm run type-check
+  - npm run build:cli
+  - npm run lint
+  - git diff --check origin/main...HEAD
+  - YAML parse for .shirube/work-orders/511/aun-cli-surface/*.yaml
+validation_results:
+  - command: npm run test -- test/shirube/aun-cli-surface.test.ts test/shirube/orchestration-contract.test.ts
+    result: PASS
+    detail: 2 files / 16 tests
+  - command: npm run test -- test/shirube/aun-cli-surface.test.ts test/shirube/orchestration-contract.test.ts src/cli/commands/cli-smoke.test.ts
+    result: PASS
+    detail: 3 files / 31 tests
+  - command: sample work-order export / validate / work-result validate / work-result import
+    result: PASS
+  - command: npm run test -- test/shirube
+    result: PASS
+    detail: 22 files / 284 tests
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+    detail: existing Next pages-directory notice only
+  - command: git diff --check origin/main...HEAD
+    result: PASS
+  - command: YAML parse for .shirube/work-orders/511/aun-cli-surface/*.yaml
+    result: PASS
+evidence_refs:
+  - docs/contracts/shirube-aun-cli-integration-surface.md
+  - schemas/shirube/work-order.v1.schema.json
+  - schemas/shirube/work-result.v1.schema.json
+  - src/cli/commands/work-order.ts
+  - src/cli/commands/work-result.ts
+  - src/cli/lib/orchestration-contract.ts
+  - test/shirube/aun-cli-surface.test.ts
+  - .shirube/work-orders/511/aun-cli-surface/control-state-completeness.yaml

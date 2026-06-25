@@ -49,7 +49,12 @@ export function buildWorkOrderValidationReport(options = {}) {
     would_block: verdict === "BLOCKED",
     file,
     work_order_id: document?.work_order_id ?? null,
+    idempotency_key: document?.idempotency_key ?? null,
     status: document?.status ?? null,
+    target: {
+      package: document?.target?.package ?? null,
+      capability: document?.target?.capability ?? null,
+    },
     aun_consumable: verdict !== "BLOCKED" && document?.status === "READY_FOR_AUN",
     blockers,
     warnings,
@@ -62,10 +67,12 @@ export function validateWorkOrderDocument(document) {
   const findings = [];
   requireConst(findings, document?.schema_version, WORK_ORDER_SCHEMA, "schema_version", "WO-001", "schema_version must be shirube-work-order/v1.");
   requirePattern(findings, document?.work_order_id, /^WO-[A-Z0-9._:-]+$/, "work_order_id", "WO-002", "work_order_id must use WO-*.");
+  requireString(findings, document?.idempotency_key, "idempotency_key", "WO-025", "idempotency_key is required.");
   requireEnum(findings, document?.status, WORK_ORDER_STATUSES, "status", "WO-003", "status must be a known Work Order state.");
 
   requireRepo(findings, document?.repo, "repo");
   requirePattern(findings, document?.repo?.head_sha, /^[a-f0-9]{7,40}$/, "repo.head_sha", "WO-004", "repo.head_sha must be a git SHA.", { optional: true });
+  requireTarget(findings, document?.target, "target");
 
   requirePattern(findings, document?.cell?.cell_id, /^CELL-[A-Z0-9._:-]+$/, "cell.cell_id", "WO-005", "cell.cell_id must use CELL-*.");
   requireEnum(findings, document?.cell?.risk_tier, RISK_TIERS, "cell.risk_tier", "WO-006", "cell.risk_tier must be R0, R1, R2, or R3.");
@@ -73,6 +80,7 @@ export function validateWorkOrderDocument(document) {
 
   requireString(findings, document?.task?.title, "task.title", "WO-008", "task.title is required.");
   requireString(findings, document?.task?.goal, "task.goal", "WO-009", "task.goal is required.");
+  requireNonEmptyStringArray(findings, document?.task?.scope, "task.scope", "WO-026", "task.scope must list included scope.");
   requireNonEmptyStringArray(findings, document?.task?.non_scope, "task.non_scope", "WO-010", "task.non_scope must list excluded scope.");
   requireNonEmptyStringArray(findings, document?.task?.allowed_paths, "task.allowed_paths", "WO-011", "task.allowed_paths is required.");
   requireNonEmptyStringArray(findings, document?.task?.forbidden_paths, "task.forbidden_paths", "WO-012", "task.forbidden_paths is required.");
@@ -133,6 +141,15 @@ export function requireRepo(findings, repo, path) {
   }
   requirePattern(findings, repo.full_name, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/, `${path}.full_name`, "WO-023", "repo.full_name must be owner/repo.");
   requireString(findings, repo.default_branch, `${path}.default_branch`, "WO-024", "repo.default_branch is required.");
+}
+
+export function requireTarget(findings, target, path) {
+  if (!isObject(target)) {
+    findings.push(block("WO-027", path, "target must be an object."));
+    return;
+  }
+  requireString(findings, target.package, `${path}.package`, "WO-028", "target.package is required.");
+  requireString(findings, target.capability, `${path}.capability`, "WO-029", "target.capability is required.");
 }
 
 export function requireString(findings, value, path, code, message) {
@@ -209,7 +226,12 @@ function failureReport({ file, code, message }) {
     would_block: true,
     file: file ?? null,
     work_order_id: null,
+    idempotency_key: null,
     status: null,
+    target: {
+      package: null,
+      capability: null,
+    },
     aun_consumable: false,
     blockers: [{ item_id: "WO-FAILURE", code, message, path: file ?? "file" }],
     warnings: [],

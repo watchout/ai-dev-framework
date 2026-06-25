@@ -91,7 +91,27 @@ Evidence references point to authoritative artifacts. They are not the authority
 
 ## Validators
 
-Use the local report-only validators:
+Use the public CLI as the canonical integration surface:
+
+```sh
+shirube work-order export --format json
+
+shirube work-order validate \
+  --file fixtures/orchestration/shirube-work-order.ready-for-aun.json \
+  --format json
+
+shirube work-result validate \
+  --file fixtures/orchestration/aun-work-result.completed.json \
+  --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json \
+  --format json
+
+shirube work-result import \
+  --file fixtures/orchestration/aun-work-result.completed.json \
+  --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json \
+  --format json
+```
+
+The script validators remain available for fixtures and low-level checks:
 
 ```sh
 node scripts/shirube/validate-work-order.mjs \
@@ -105,6 +125,8 @@ node scripts/shirube/validate-work-result.mjs \
 ```
 
 The validators do not require a database URL. They do not dispatch work, mutate target repositories, or synthesize owner approval.
+
+See `docs/contracts/shirube-aun-cli-integration-surface.md` for the stable Shirube ↔ AUN CLI boundary.
 
 ## Non-Scope
 

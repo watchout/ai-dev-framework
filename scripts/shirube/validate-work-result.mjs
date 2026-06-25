@@ -53,6 +53,7 @@ export function buildWorkResultValidationReport(options = {}) {
     work_order_ref: workOrderFile ?? null,
     work_result_id: document?.work_result_id ?? null,
     work_order_id: document?.work_order_id ?? null,
+    idempotency_key: document?.idempotency_key ?? null,
     status: document?.status ?? null,
     blockers,
     warnings,
@@ -70,6 +71,7 @@ export function validateWorkResultDocument(document, workOrder = null) {
   requireConst(findings, document?.schema_version, WORK_RESULT_SCHEMA, "schema_version", "WR-001", "schema_version must be shirube-work-result/v1.");
   requirePattern(findings, document?.work_result_id, /^WR-[A-Z0-9._:-]+$/, "work_result_id", "WR-002", "work_result_id must use WR-*.");
   requirePattern(findings, document?.work_order_id, /^WO-[A-Z0-9._:-]+$/, "work_order_id", "WR-003", "work_order_id must use WO-*.");
+  requireString(findings, document?.idempotency_key, "idempotency_key", "WR-023", "idempotency_key is required.");
   requireEnum(findings, document?.status, RESULT_STATUSES, "status", "WR-004", "status must be a known Work Result state.");
   requireResultRepo(findings, document?.repo, "repo");
   requireString(findings, document?.executor?.system, "executor.system", "WR-005", "executor.system is required.");
@@ -115,6 +117,9 @@ export function validateWorkResultDocument(document, workOrder = null) {
     if (document?.repo?.full_name !== workOrder.repo?.full_name) {
       findings.push(block("WR-019", "repo.full_name", "Work Result repo.full_name must match the Work Order repo."));
     }
+    if (document?.idempotency_key !== workOrder.idempotency_key) {
+      findings.push(block("WR-024", "idempotency_key", "Work Result idempotency_key must match the Work Order."));
+    }
   }
 
   return findings;
@@ -145,6 +150,7 @@ function failureReport({ file, code, message }) {
     work_order_ref: null,
     work_result_id: null,
     work_order_id: null,
+    idempotency_key: null,
     status: null,
     blockers: [{ item_id: "WR-FAILURE", code, message, path: file ?? "file" }],
     warnings: [],

@@ -1,0 +1,163 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-AUN-CLI-SURFACE-001
+parent: "#511"
+parent_inputs:
+  - "#511"
+  - "#512"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/511
+depends_on:
+  - https://github.com/watchout/ai-dev-framework/pull/512
+work_order: watchout/ai-dev-framework#511
+pr: watchout/ai-dev-framework#514
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/511
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@fa246de7ca5781030e07e3b5b6c8e46eae60c503
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Public Work Order export command for AUN-compatible orchestration.
+    - Public Work Order validation command.
+    - Public Work Result validation command.
+    - Public Work Result dry-run import command.
+    - Schema and validator extension needed for idempotency and target package/capability facts.
+  shirube_does_not_own:
+    - AUN queue mutation from Shirube.
+    - AUN runtime execution.
+    - Shared DB mandatory mode, migrations, or connection code.
+    - MCP implementation.
+    - Required check activation, branch protection, or ruleset mutation.
+    - Owner approval synthesis.
+cell:
+  CELL-ID: CELL-ADF-V3-AUN-CLI-SURFACE-001
+  cell_type: contract_cli
+  risk_class: R2
+  goal: Add the minimal public Shirube/AUN CLI integration surface before Rapid/Lite distribution.
+  non_scope:
+    - AUN queue mutation from Shirube
+    - AUN runtime execution
+    - mandatory shared DB runtime
+    - DB migrations or DB connection code
+    - MCP implementation
+    - distributed locks
+    - runtime restart/session recovery
+    - required check activation
+    - branch protection or ruleset mutation
+    - owner approval synthesis
+    - legacy migration
+    - full-overlay reconcile
+    - package or lockfile changes
+  allowed_paths:
+    - .shirube/work-orders/511/aun-cli-surface/**
+    - schemas/shirube/work-order.v1.schema.json
+    - schemas/shirube/work-result.v1.schema.json
+    - docs/contracts/**
+    - fixtures/orchestration/**
+    - scripts/shirube/validate-work-order.mjs
+    - scripts/shirube/validate-work-result.mjs
+    - src/cli/index.ts
+    - src/cli/commands/work-order.ts
+    - src/cli/commands/work-result.ts
+    - src/cli/commands/cli-smoke.test.ts
+    - src/cli/lib/orchestration-contract.ts
+    - test/shirube/aun-cli-surface.test.ts
+    - test/shirube/orchestration-contract.test.ts
+  forbidden_paths:
+    - app/**
+    - api/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/workflows/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - database_projection_contract
+      - permissions_contract
+      - evidence_contract
+      - aun_orchestration_contract
+    touched: false
+    reason: >
+      This PR exposes local CLI export/import commands over existing contract files.
+      It does not add DB runtime behavior, migrations, credentials, queue mutation,
+      required checks, branch protection, rulesets, target repository mutation, or
+      owner approval synthesis.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - AUN queue mutation added
+    - DB runtime or DB connection code added
+    - MCP implementation added
+    - package or lockfile change added
+    - required check, branch protection, or ruleset mutation added
+implementation_boundary:
+  summary: Add stable local CLI commands over the #512 orchestration contract so AUN can integrate without DB/runtime/MCP coupling.
+  expected_pr_count: 1
+  forbidden_operations:
+    - AUN runtime dispatch
+    - AUN queue mutation
+    - DB migration
+    - DB connection code
+    - target repo mutation
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - package or lockfile mutation
+validation:
+  required_commands:
+    - npm run test -- test/shirube/aun-cli-surface.test.ts test/shirube/orchestration-contract.test.ts
+    - npx tsx src/cli/index.ts work-order export sample command
+    - npx tsx src/cli/index.ts work-order validate --file .tmp/shirube-aun-cli-surface/work-order.json --format json
+    - npx tsx src/cli/index.ts work-result validate --file fixtures/orchestration/aun-work-result.completed.json --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json
+    - npx tsx src/cli/index.ts work-result import --file fixtures/orchestration/aun-work-result.completed.json --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - pr_head_sha
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+  acceptance_tests:
+    - export produces schema-valid Work Order
+    - exported Work Order validates
+    - completed AUN result validates against Work Order
+    - failed AUN result validates against Work Order
+    - mismatched work_order_id blocks
+    - missing idempotency_key blocks
+    - import dry-run returns PASS for valid result
+    - import dry-run blocks invalid result
+    - no DB URL required
+    - no AUN package required
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: .shirube/work-orders/511/aun-cli-surface/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/511

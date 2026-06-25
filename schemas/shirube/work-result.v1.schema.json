@@ -9,6 +9,7 @@
     "schema_version",
     "work_result_id",
     "work_order_id",
+    "idempotency_key",
     "status",
     "repo",
     "executor",
@@ -26,6 +27,7 @@
       "type": "string",
       "pattern": "^WO-[A-Z0-9._:-]+$"
     },
+    "idempotency_key": { "type": "string", "minLength": 1 },
     "status": {
       "enum": ["COMPLETED", "FAILED", "BLOCKED", "CANCELLED"]
     },

@@ -63,8 +63,11 @@ These tables are projections of Shirube facts. They are not AUN queues and they 
 | Column | Source |
 |---|---|
 | `work_order_id` | `work_order_id` |
+| `idempotency_key` | `idempotency_key` |
 | `status` | `status` |
 | `repo_full_name` | `repo.full_name` |
+| `target_package` | `target.package` |
+| `target_capability` | `target.capability` |
 | `head_sha` | `repo.head_sha` |
 | `cell_id` | `cell.cell_id` |
 | `spec_id` | `cell.spec_id` |
@@ -89,6 +92,7 @@ These tables are projections of Shirube facts. They are not AUN queues and they 
 |---|---|
 | `work_result_id` | `work_result_id` |
 | `work_order_id` | `work_order_id` |
+| `idempotency_key` | `idempotency_key` |
 | `status` | `status` |
 | `repo_full_name` | `repo.full_name` |
 | `head_sha` | `repo.head_sha` |
