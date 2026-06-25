@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -223,6 +223,71 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(readFileSync(path.join(result.resultDir, "gate-contract.json"), "utf8")).toContain("validation.external-head.yaml");
     } finally {
       rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("does not block report-only target repos when optional design rules are skipped", () => {
+    const temp = mkdtempSync(path.join(tmpdir(), "shirube-rapid-lite-no-design-rules-"));
+    const prBody = path.join(temp, "pr-body.md");
+    const changedFiles = path.join(temp, "changed-files.txt");
+    const resultDir = path.join(temp, "out");
+    mkdirSync(path.join(temp, ".shirube/gate-contracts"), { recursive: true });
+    writeFileSync(
+      path.join(temp, ".shirube/repo-spec.yaml"),
+      readFileSync(fixture("control-state-completeness/repo-spec.pass.yaml")),
+    );
+    writeFileSync(
+      path.join(temp, ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"),
+      readFileSync(path.join(root, ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml")),
+    );
+    writeFileSync(prBody, [
+      `execution_context_ref: ${fixture("execution-context/valid-dev.yaml")}`,
+      `adoption_plan_ref: ${fixture("adoption/greenfield.pass.yaml")}`,
+      `repo_spec_ref: ${fixture("control-state-completeness/repo-spec.pass.yaml")}`,
+      `source_mirror_ref: ${fixture("control-state-completeness/source-mirror.pass.yaml")}`,
+      `handoff_ref: ${fixture("gate-contract/rapid-lite.pass.yaml")}`,
+      `lifecycle_state_ref: ${fixture("lifecycle/pass.execution-ready.yaml")}`,
+      `validation_evidence_ref: ${fixture("rapid-lite-report/validation.external-head.yaml")}`,
+      `owner_decision_ref: ${fixture("lifecycle/owner-decision.ready.yaml")}`,
+      `enforcement_policy_ref: ${fixture("enforcement-policy/report-only.pass.yaml")}`,
+      "",
+    ].join("\n"));
+    writeFileSync(changedFiles, readFileSync(fixture("gate-contract/changed-files.pass.txt"), "utf8"));
+
+    try {
+      const stdout = execFileSync("node", [
+        path.join(root, script),
+        "--result-dir",
+        resultDir,
+        "--changed-files",
+        changedFiles,
+        "--pr-body",
+        prBody,
+        "--actual-repo",
+        "watchout/ai-dev-framework",
+        "--actual-branch",
+        "shirube/rapid-lite-adoption",
+        "--actual-head",
+        "0123456789abcdef0123456789abcdef01234567",
+        "--diff-root",
+        ".",
+        "--format",
+        "json",
+      ], {
+        cwd: temp,
+        encoding: "utf8",
+        stdio: ["pipe", "pipe", "pipe"],
+      });
+      const report = JSON.parse(stdout);
+      const designRules = report.gates.find((gate: { gate: string }) => gate.gate === "design-rules");
+      const controlState = report.gates.find((gate: { gate: string }) => gate.gate === "control-state-completeness");
+      expect(designRules.status).toBe("skipped");
+      expect(controlState.status).toBe("ran");
+      expect(controlState.would_block).toBe(false);
+      expect(report.would_block).toBe(false);
+      expect(readFileSync(path.join(resultDir, "design-rules.json"), "utf8")).toContain("shirube-skipped-gate-report/v1");
+    } finally {
+      rmSync(temp, { recursive: true, force: true });
     }
   }, 15000);
 

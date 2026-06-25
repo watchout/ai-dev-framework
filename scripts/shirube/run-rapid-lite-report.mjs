@@ -66,6 +66,12 @@ export function buildRapidLiteReport(options) {
   if (enforcementPolicy) records.push(enforcementPolicy);
 
   const preControlStateAggregatePath = writeInterimAggregate({ resultDir, refs, records, changedFiles, filename: "pre-control-state-aggregate.json" });
+  const designRuleReportPath = materializeSkippedReport({
+    record: designRules,
+    resultDir,
+    filename: "design-rules.json",
+  });
+
   const controlState = runControlStateCompleteness({
     resultDir,
     refs,
@@ -75,7 +81,7 @@ export function buildRapidLiteReport(options) {
     adoptionReportPath: adoption.status === "ran" ? adoption.output_path : refs.adoptionReport,
     lifecycleReportPath: lifecycle.status === "ran" ? lifecycle.output_path : refs.lifecycleReport,
     gateContractReportPath: gateContract.status === "ran" ? gateContract.output_path : refs.gateContractReport,
-    designRuleReportPath: designRules.status === "ran" ? designRules.output_path : refs.designRuleReport,
+    designRuleReportPath: designRuleReportPath ?? refs.designRuleReport,
     auditChecklistReportPath: auditChecklist.status === "ran" ? auditChecklist.output_path : refs.auditChecklistReport,
     enforcementPolicyReportPath: enforcementPolicy?.status === "ran" ? enforcementPolicy.output_path : refs.enforcementPolicyReport,
   });
@@ -373,6 +379,28 @@ function skipped(gate, reason) {
     warnings: [],
     required_next_actions: [],
   };
+}
+
+function materializeSkippedReport({ record, resultDir, filename }) {
+  if (!record) return null;
+  if (record.status === "ran") return record.output_path;
+  if (record.status !== "skipped") return null;
+
+  const outputPath = path.join(resultDir, filename);
+  const report = {
+    schema: "shirube-skipped-gate-report/v1",
+    gate: record.gate,
+    verdict: "SKIPPED",
+    report_failed: false,
+    would_block: false,
+    skipped: true,
+    reason: record.reason,
+    blockers: [],
+    warnings: [],
+    required_next_actions: [],
+  };
+  writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+  return outputPath;
 }
 
 function aggregateReport({ resultDir, refs, records, changedFiles }) {
