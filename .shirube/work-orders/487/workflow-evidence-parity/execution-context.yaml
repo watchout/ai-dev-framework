@@ -22,6 +22,6 @@ common_contract:
   primary_repo_required: true
   work_order_required: true
   active_role_required: true
-  exact_head_required_for_merge_ready: true
-  owner_decision_required_for_merge_ready: true
+  exact_head_required_for_final_owner_decision: true
+  owner_decision_required_before_merge: true
   llm_final_authority_forbidden: true

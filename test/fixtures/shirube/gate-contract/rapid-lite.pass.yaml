@@ -37,6 +37,8 @@ validation:
     - owner_decision
 owner_decision:
   required_before_merge: true
+  decision: APPROVED_EXACT_HEAD
+  approval_granted: true
   exact_head_sha: "0123456789abcdef0123456789abcdef01234567"
   decision_ref: https://github.com/watchout/ai-dev-framework/issues/470#issuecomment-rapid-lite-pass
 cell:

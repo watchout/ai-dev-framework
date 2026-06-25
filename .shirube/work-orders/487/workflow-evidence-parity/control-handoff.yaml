@@ -24,7 +24,7 @@ next_role: owner_review
 rps_scope:
   shirube_owns:
     - Runtime validation evidence generation for Rapid/Lite report runs.
-    - Owner-decision pending semantics before merge readiness.
+    - Owner-decision pending semantics in the pre-final-owner-decision state.
     - Reusable workflow evidence parity for generated overlay pilots.
   shirube_does_not_own:
     - Target repository mutation.
@@ -39,8 +39,8 @@ cell:
   goal: Align generated reusable workflow report execution with overlay pilot dry-run evidence semantics without synthesizing owner approval.
   acceptance_criteria:
     - Reusable workflow or report helper supplies current-head runtime validation evidence when no explicit validation evidence is provided.
-    - Missing owner final decision is a pre-merge warning before merge readiness, not a structural pilot blocker.
-    - Merge-ready owner decision absence and exact-head mismatch remain blocking.
+    - Missing owner final decision is a warning before final owner decision, not a structural pilot blocker.
+    - Final owner approval absence and exact-head mismatch remain blocking once a final owner/merge phase is claimed.
     - The agent-comms overlay workflow-equivalent path produces PASS or PASS_WITH_WARN with would_block=false before target PR creation.
   non_scope:
     - live GitHub fetch
@@ -58,10 +58,18 @@ cell:
     - docs/standards/shirube-overlay-pilot-readiness.md
     - docs/standards/shirube-rapid-lite-workflow-caller.md
     - scripts/shirube/check-gate-contract.mjs
+    - scripts/shirube/check-control-state-completeness.mjs
     - scripts/shirube/run-rapid-lite-report.mjs
+    - test/fixtures/shirube/execution-context/pr-body.pre-final-owner-decision.md
     - test/fixtures/shirube/gate-contract/missing-owner-decision.block.yaml
     - test/fixtures/shirube/gate-contract/missing-owner-decision.warn.yaml
+    - test/fixtures/shirube/gate-contract/rapid-lite.pass.yaml
+    - test/fixtures/shirube/gate-contract/owner-decision.approved.yaml
+    - test/fixtures/shirube/gate-contract/owner-decision.mismatch.yaml
+    - test/fixtures/shirube/gate-contract/owner-decision.pending.yaml
+    - test/shirube/execution-context.test.ts
     - test/shirube/gate-contract.test.ts
+    - test/shirube/rapid-lite-report.test.ts
     - test/shirube/workflow-caller.test.ts
   forbidden_paths:
     - src/**

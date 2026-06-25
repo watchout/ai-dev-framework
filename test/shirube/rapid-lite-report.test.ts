@@ -194,7 +194,7 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
     }
   }, 15000);
 
-  it("passes external validation evidence from the PR body to the gate contract", () => {
+  it("passes external validation evidence while preserving pending owner-decision warning", () => {
     const result = run([
       "--changed-files",
       fixture("gate-contract/changed-files.pass.txt"),
@@ -217,8 +217,9 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(result.json.discovered_inputs.validation).toBe("test/fixtures/shirube/rapid-lite-report/validation.external-head.yaml");
       const gateContract = result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract");
       expect(gateContract.status).toBe("ran");
-      expect(gateContract.verdict).toBe("PASS");
+      expect(gateContract.verdict).toBe("PASS_WITH_WARN");
       expect(gateContract.blockers.map((finding: { item_id: string }) => finding.item_id)).not.toContain("RL-PR-001");
+      expect(gateContract.warnings.map((finding: { item_id: string }) => finding.item_id)).toContain("RL-MERGE-W001");
       expect(readFileSync(path.join(result.resultDir, "gate-contract.json"), "utf8")).toContain("validation.external-head.yaml");
     } finally {
       rmSync(result.resultDir, { recursive: true, force: true });

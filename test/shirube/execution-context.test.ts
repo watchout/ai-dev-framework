@@ -147,6 +147,16 @@ describe("Shirube execution context check", () => {
     expect(blockerIds(result)).toContain("CTX-010");
   });
 
+  it("does not block pre-final owner decision wording", () => {
+    const result = check("valid-lead.yaml", ["--pr-body", fixture("pr-body.pre-final-owner-decision.md")]);
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.verdict).toBe("PASS");
+    expect(result.json.would_block).toBe(false);
+    expect(blockerIds(result)).not.toContain("CTX-010");
+  });
+
   it("blocks unknown role", () => {
     const result = check("unknown-role.yaml");
 

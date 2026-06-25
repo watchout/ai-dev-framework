@@ -71,7 +71,7 @@ When no explicit `validation_evidence_ref` is supplied, the reusable workflow cr
 
 Final owner exact-head evidence should be supplied outside the attested commit, for example through an owner-decision PR comment parser or workflow-provided evidence input. A committed pending owner-decision YAML file is policy only and must not be treated as approval.
 
-The reusable workflow must not synthesize owner approval. Missing owner final decision is a pre-merge warning until merge readiness is claimed; once merge readiness or a final owner decision is asserted, exact-head mismatch or missing approval is blocking.
+The reusable workflow must not synthesize owner approval. Missing owner final decision is a warning in the pre-final-owner-decision state; once a final owner/merge phase or a final owner decision is asserted, exact-head mismatch or missing approval is blocking.
 
 ## Report-Only Semantics
 

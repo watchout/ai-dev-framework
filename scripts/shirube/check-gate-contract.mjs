@@ -174,14 +174,13 @@ export function buildGateContractReport(input) {
   // 7. owner decision / head match
   const ownerDecisionRequired = isOwnerDecisionRequired({ matrix, profile: bootstrap.profile, handoff, ownerDecision });
   const ownerDecisionRequiredNow = isOwnerDecisionRequiredNow({ handoff, ownerDecision });
-  const ownerDecisionPresent = hasOwnerDecisionEvidence(ownerDecision, input.ownerDecisionPath);
-  if (ownerDecisionRequired && !ownerDecisionPresent && ownerDecisionRequiredNow) {
+  const finalOwnerApproval = hasFinalOwnerApproval(ownerDecision);
+  if (ownerDecisionRequired && !finalOwnerApproval && ownerDecisionRequiredNow) {
     hardBlocks.push(finding("RL-MERGE-001"));
-  } else if (ownerDecisionRequired && !ownerDecisionPresent) {
+  } else if (ownerDecisionRequired && !finalOwnerApproval) {
     warnings.push(finding("RL-MERGE-W001", {}, WARN_MESSAGES));
   }
-  const ownerHead = firstPresent(ownerDecision.exact_head_sha, ownerDecision.head_sha, ownerDecision.target_head);
-  if (ownerDecisionRequired && ownerDecisionRequiredNow && isPlaceholder(ownerHead)) hardBlocks.push(finding("RL-MERGE-001"));
+  const ownerHead = ownerDecisionHead(ownerDecision);
   if (!isPlaceholder(expectedHead) && !isPlaceholder(ownerHead) && String(expectedHead) !== String(ownerHead)) {
     hardBlocks.push(finding("RL-MERGE-002"));
   }
@@ -529,7 +528,37 @@ function isOwnerDecisionRequiredNow({ handoff, ownerDecision }) {
     ["MERGE_READY", "MERGED", "RELEASE_READY", "COMPLETE", "CONTROL_COMPLETE"].includes(phase);
 }
 
-function hasOwnerDecisionEvidence(ownerDecision, ownerDecisionPath) {
+function hasFinalOwnerApproval(ownerDecision) {
+  if (!isObject(ownerDecision)) return false;
+  if (ownerDecision.approval_granted === false) return false;
+  if (hasPendingOwnerDecision(ownerDecision)) return false;
+  const head = ownerDecisionHead(ownerDecision);
+  if (isPlaceholder(head)) return false;
+  const decision = decisionStatus(ownerDecision);
+  if (ownerDecision.approval_granted === true) return true;
+  return [
+    "APPROVED",
+    "APPROVED_EXACT_HEAD",
+    "APPROVED_PILOT_EXCEPTION",
+    "OWNER_EXCEPTION",
+    "APPROVED_EXCEPTION",
+  ].includes(decision);
+}
+
+function hasPendingOwnerDecision(ownerDecision) {
+  if (!isObject(ownerDecision)) return false;
+  if (ownerDecision.approval_granted === false) return true;
+  const decision = decisionStatus(ownerDecision);
+  if ([
+    "PENDING",
+    "PENDING_OWNER_FINAL_DECISION",
+    "PENDING_FINAL_OWNER_DECISION",
+    "OWNER_DECISION_PENDING",
+  ].includes(decision)) return true;
+  return hasOwnerDecisionReference(ownerDecision) && isPlaceholder(ownerDecisionHead(ownerDecision));
+}
+
+function hasOwnerDecisionReference(ownerDecision, ownerDecisionPath) {
   if (ownerDecisionPath) return true;
   return !isPlaceholder(ownerDecision.decision_ref) ||
     !isPlaceholder(ownerDecision.ref) ||
@@ -537,6 +566,14 @@ function hasOwnerDecisionEvidence(ownerDecision, ownerDecisionPath) {
     !isPlaceholder(ownerDecision.exact_head_sha) ||
     !isPlaceholder(ownerDecision.head_sha) ||
     !isPlaceholder(ownerDecision.target_head);
+}
+
+function ownerDecisionHead(ownerDecision) {
+  return firstPresent(ownerDecision?.exact_head_sha, ownerDecision?.head_sha, ownerDecision?.target_head);
+}
+
+function decisionStatus(ownerDecision) {
+  return String(firstPresent(ownerDecision?.decision, ownerDecision?.status, ownerDecision?.verdict) ?? "").trim().toUpperCase();
 }
 
 function surfacesFrom(value) {

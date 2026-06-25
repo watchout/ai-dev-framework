@@ -23,7 +23,7 @@ const FINDINGS = {
   "CSC-008": ["owner_head_mismatch", "Owner decision exact head must match PR/gate head.", "owner_decision.exact_head_sha"],
   "CSC-009": ["adoption_lifecycle_mismatch", "Adoption disposition/current phase is not compatible with lifecycle phase.", "adoption_lifecycle"],
   "CSC-010": ["gate_contract_blocked_but_lifecycle_allows_progress", "Gate-contract BLOCKED/FAILURE prevents lifecycle progress.", "gate_contract_report"],
-  "CSC-011": ["design_rule_blocked_but_owner_ready_claimed", "Design-rule BLOCKED/FAILURE prevents owner/merge readiness claims.", "design_rule_report"],
+  "CSC-011": ["design_rule_blocked_but_owner_ready_claimed", "Design-rule BLOCKED/FAILURE prevents owner/final decision progress claims.", "design_rule_report"],
   "CSC-012": ["audit_required_but_missing", "Formal audit/reviewer audit is required but missing.", "audit_record"],
   "CSC-013": ["audit_item_set_incomplete_or_duplicate", "Audit record must answer required item-set items exactly once.", "audit_record.items"],
   "CSC-014": ["post_merge_required_but_missing", "Post-merge evidence is required before COMPLETE.", "post_merge"],
@@ -484,6 +484,7 @@ function hasEvidenceByType({ key, input }) {
     validation_commands: asArray(input.validation?.commands).length > 0 || asArray(input.validation?.required_commands).length > 0 || asArray(input.handoff?.validation?.required_commands).length > 0,
     validation_results: asArray(input.validation?.results).length > 0 || asArray(input.validation?.validation_results).length > 0 || input.validation?.result === "PASS",
     owner_decision: isObject(input.ownerDecision) || isObject(input.handoff?.owner_decision),
+    control_state_completeness_report: isObject(input.aggregate) || !isPlaceholder(input.aggregatePath),
     audit_checklist_report: isObject(input.auditChecklistReport),
   };
   return typeMap[key] === true;
@@ -825,7 +826,7 @@ function actionFor(itemId) {
     "CSC-008": "Refresh owner exact-head decision evidence for the current PR/gate head.",
     "CSC-009": "Reconcile adoption disposition/current phase with lifecycle state.",
     "CSC-010": "Resolve gate-contract blockers before lifecycle/merge progression.",
-    "CSC-011": "Resolve design-rule blockers before owner/merge readiness.",
+    "CSC-011": "Resolve design-rule blockers before owner/final decision progress.",
     "CSC-012": "Provide formal audit/reviewer audit evidence.",
     "CSC-013": "Regenerate audit record so each required item is answered exactly once.",
     "CSC-014": "Provide post-merge evidence before claiming COMPLETE.",

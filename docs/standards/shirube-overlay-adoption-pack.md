@@ -127,7 +127,7 @@ Final owner exact-head approval is external to the committed overlay. It may com
 
 The report-only workflow caller may generate runtime validation evidence for the current PR head under `.shirube-rapid-lite/`. That artifact can satisfy machine head and validation evidence checks for the report run. It must not include or imply owner approval.
 
-Until merge readiness is claimed, missing owner final decision is a pre-merge required action. Exact-head owner approval is still required before merge, but the overlay adoption PR should not be structurally blocked merely because that final decision has not yet been posted.
+In the pre-final-owner-decision state, missing owner final decision is a required action. Exact-head owner approval is still required before merge, but the overlay adoption PR should not be structurally blocked merely because that final decision has not yet been posted.
 
 `report_only` is calibration and observation. It is not the final enforcement state. Promotion to `owner_block`, `ci_hard_block`, or `required_check` requires later owner-approved work.
 

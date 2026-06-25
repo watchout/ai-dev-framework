@@ -25,7 +25,7 @@ cell:
   CELL-ID: CELL-ADF-V3-RAPID-LITE-GATE-CHECK-MISSING-OWNER-WARN
   cell_type: docs_only
   risk_class: R2
-  goal: Verify owner decision remains pending before merge readiness.
+  goal: Verify owner decision remains pending before final owner decision.
   non_scope: [workflows, required checks, branch protection, AUN runtime]
   allowed_paths: [docs/**]
   forbidden_paths: [src/**, scripts/**, .github/workflows/**]

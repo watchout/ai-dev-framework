@@ -444,6 +444,8 @@ function ensureRuntimeValidationEvidence({ resultDir, refs, changedFiles, change
       "changed_files",
       "validation_commands",
       "validation_results",
+    ],
+    pending_required_evidence: [
       "owner_decision",
       "control_state_completeness_report",
     ],
