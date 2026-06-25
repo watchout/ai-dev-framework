@@ -38,6 +38,9 @@ validation_results:
     result: PASS
   - command: validate failed AUN Work Result
     result: PASS
+  - command: local Rapid/Lite report with PR-local refs
+    result: PASS_WITH_WARN
+    detail: report_failed=false / would_block=false / owner_must_not_merge=false
 evidence_refs:
   - schemas/shirube/work-order.v1.schema.json
   - schemas/shirube/work-result.v1.schema.json
