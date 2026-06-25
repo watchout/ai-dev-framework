@@ -1,0 +1,147 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-ORCHESTRATION-CONTRACT-001
+parent: "#511"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/511
+work_order: watchout/ai-dev-framework#511
+pr: watchout/ai-dev-framework#512
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/511
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@456f9169e05e9933b0c20b2f76751f30e6a98d99
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Local schemas, docs, fixtures, and validators for the Shirube/AUN orchestration contract.
+    - PR-local Shirube evidence artifacts for this contract-only slice.
+  shirube_does_not_own:
+    - Mandatory shared DB runtime.
+    - DB migrations or DB connection code.
+    - AUN runtime integration or queue mutation.
+    - Distributed lock ownership, restart/session recovery, MCP implementation, Lite CLI public surface, target repo mutation, required checks, branch protection, rulesets, package/lockfile changes, runtime/product behavior, or owner approval synthesis.
+cell:
+  CELL-ID: CELL-ADF-V3-ORCHESTRATION-CONTRACT-001
+  cell_type: scaffold
+  risk_class: R2
+  goal: Add a contract-only AUN-compatible Shirube orchestration envelope before publishing the Lite CLI surface.
+  non_scope:
+    - mandatory shared DB runtime
+    - DB migrations or DB connection code
+    - AUN runtime integration
+    - AUN queue mutation from Shirube
+    - distributed lock ownership in Shirube
+    - runtime restart/session recovery in Shirube
+    - MCP implementation
+    - Lite CLI public surface
+    - legacy migration
+    - full-overlay reconcile
+    - required check activation
+    - branch protection or ruleset mutation
+    - owner approval synthesis
+    - target repository mutation
+    - runtime/API/DB/product/package/lockfile changes
+  allowed_paths:
+    - schemas/shirube/**
+    - schemas/core/**
+    - docs/contracts/**
+    - fixtures/orchestration/**
+    - scripts/shirube/validate-work-order.mjs
+    - scripts/shirube/validate-work-result.mjs
+    - test/shirube/orchestration-contract.test.ts
+    - .shirube/work-orders/511/orchestration-contract/**
+  forbidden_paths:
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/workflows/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    - database
+    - permissions
+    - repo_spec_confirmation_evidence
+  protected_surface_declaration:
+    declared:
+      - database_projection_contract
+      - permissions_contract
+      - evidence_contract
+    touched: false
+    reason: >
+      This PR defines schema, docs, fixtures, and validators only. It does not add
+      DB runtime behavior, migrations, credentials, queue mutation, required checks,
+      branch protection, rulesets, or target repo mutation.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - mandatory DB runtime added
+    - DB migration or DB connection code added
+    - external or target repository mutation added
+    - package, lockfile, workflow, branch protection, ruleset, runtime, or product behavior change added
+    - owner exact-head decision missing before merge
+implementation_boundary:
+  summary: Add schema/docs/fixtures/validators for the orchestration contract while keeping DB runtime optional and future-scoped.
+  expected_pr_count: 1
+  forbidden_operations:
+    - mandatory DB runtime
+    - DB migration
+    - DB connection code
+    - AUN runtime dispatch
+    - target repo mutation
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - package or lockfile mutation
+validation:
+  required_commands:
+    - npm run test -- test/shirube/orchestration-contract.test.ts
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+    - node scripts/shirube/validate-work-order.mjs --file fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json
+    - node scripts/shirube/validate-work-result.mjs --file fixtures/orchestration/aun-work-result.completed.json --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json
+    - node scripts/shirube/validate-work-result.mjs --file fixtures/orchestration/aun-work-result.failed.json --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json
+  required_evidence:
+    - pr_head_sha
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+  acceptance_tests:
+    - ready-for-AUN Work Order fixture validates
+    - completed AUN Work Result fixture validates
+    - failed AUN Work Result fixture validates
+    - mandatory DB runtime is blocked by validator
+    - path-scope omissions are blocked by validator
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: external-owner-final-decision-required
+  decision_ref: .shirube/work-orders/511/orchestration-contract/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/511

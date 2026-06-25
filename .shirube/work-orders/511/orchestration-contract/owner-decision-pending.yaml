@@ -1,0 +1,11 @@
+schema_version: shirube-owner-decision-evidence/v1
+record_id: OWNER-DECISION-PENDING-ADF-V3-ORCHESTRATION-CONTRACT-001
+repo: watchout/ai-dev-framework
+pr: 512
+cell_id: CELL-ADF-V3-ORCHESTRATION-CONTRACT-001
+decision: PENDING_OWNER_FINAL_REVIEW
+approval_granted: false
+target_head: external-pr-runtime-head
+exact_head_sha: external-pr-runtime-head
+required_before_merge: true
+note: This committed file records the pending exact-head policy for machine gates. It is not owner approval, and final exact-head evidence must be supplied externally by owner final decision.
