@@ -1,0 +1,53 @@
+schema_version: shirube-validation-evidence/v1
+evidence_id: VALIDATION-ADF-V3-ORCHESTRATION-CONTRACT-001
+repo: watchout/ai-dev-framework
+pr: 512
+cell_id: CELL-ADF-V3-ORCHESTRATION-CONTRACT-001
+pr_head_sha: external-pr-runtime-head
+head_evidence_status: current_pr_validation_input_not_final_owner_exact_head
+result: PASS
+commands:
+  - npm run test -- test/shirube/orchestration-contract.test.ts
+  - npm run test -- test/shirube
+  - npm run type-check
+  - npm run build:cli
+  - npm run lint
+  - git diff --check origin/main...HEAD
+  - node scripts/shirube/validate-work-order.mjs --file fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json
+  - node scripts/shirube/validate-work-result.mjs --file fixtures/orchestration/aun-work-result.completed.json --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json
+  - node scripts/shirube/validate-work-result.mjs --file fixtures/orchestration/aun-work-result.failed.json --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json
+validation_results:
+  - command: npm run test -- test/shirube/orchestration-contract.test.ts
+    result: PASS
+    detail: 1 file / 7 tests
+  - command: npm run test -- test/shirube
+    result: PASS
+    detail: 20 files / 254 tests on rerun
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+    detail: existing Next pages-directory notice only
+  - command: git diff --check origin/main...HEAD
+    result: PASS
+  - command: validate ready-for-AUN Work Order
+    result: PASS
+  - command: validate completed AUN Work Result
+    result: PASS
+  - command: validate failed AUN Work Result
+    result: PASS
+  - command: local Rapid/Lite report with PR-local refs
+    result: PASS_WITH_WARN
+    detail: report_failed=false / would_block=false / owner_must_not_merge=false
+evidence_refs:
+  - schemas/shirube/work-order.v1.schema.json
+  - schemas/shirube/work-result.v1.schema.json
+  - schemas/core/event.v1.schema.json
+  - schemas/core/evidence-ref.v1.schema.json
+  - docs/contracts/shirube-aun-work-order-contract.md
+  - docs/contracts/orchestration-db-projection-contract.md
+  - scripts/shirube/validate-work-order.mjs
+  - scripts/shirube/validate-work-result.mjs
+  - test/shirube/orchestration-contract.test.ts

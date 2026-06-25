@@ -1,0 +1,114 @@
+{
+  "schema_version": "shirube-work-order/v1",
+  "work_order_id": "WO-ADF-511-ORCHESTRATION-CONTRACT-001",
+  "status": "READY_FOR_AUN",
+  "repo": {
+    "full_name": "watchout/ai-dev-framework",
+    "default_branch": "main",
+    "head_branch": "codex/511-orchestration-contract",
+    "head_sha": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "source": {
+    "type": "github_issue",
+    "url": "https://github.com/watchout/ai-dev-framework/issues/511",
+    "issue": "watchout/ai-dev-framework#511"
+  },
+  "cell": {
+    "cell_id": "CELL-ADF-ORCHESTRATION-CONTRACT-001",
+    "spec_id": "SPEC-ADF-ORCHESTRATION-CONTRACT-001",
+    "impl_id": "IMPL-ADF-ORCHESTRATION-CONTRACT-001",
+    "risk_tier": "R2",
+    "cell_type": "contract_only"
+  },
+  "task": {
+    "title": "Add AUN-compatible Shirube orchestration contract",
+    "goal": "Define shared Work Order, Work Result, Event, and Evidence Ref contracts before publishing the Rapid/Lite public CLI surface.",
+    "non_scope": [
+      "DB runtime",
+      "queue ownership",
+      "distributed locks",
+      "target repository mutation",
+      "required check activation",
+      "branch protection or ruleset mutation",
+      "owner approval synthesis"
+    ],
+    "allowed_paths": [
+      "schemas/shirube/**",
+      "schemas/core/**",
+      "docs/contracts/**",
+      "fixtures/orchestration/**",
+      "scripts/shirube/validate-work-order.mjs",
+      "scripts/shirube/validate-work-result.mjs",
+      "test/shirube/orchestration-contract.test.ts"
+    ],
+    "forbidden_paths": [
+      "src/**",
+      "package.json",
+      "package-lock.json",
+      ".github/workflows/**",
+      ".github/branch-protection/**",
+      ".github/rulesets/**"
+    ],
+    "required_commands": [
+      "node scripts/shirube/validate-work-order.mjs --file fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json",
+      "node scripts/shirube/validate-work-result.mjs --file fixtures/orchestration/aun-work-result.completed.json --work-order fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json",
+      "npm run test -- test/shirube/orchestration-contract.test.ts"
+    ],
+    "required_evidence": [
+      "validation_result",
+      "work_order_contract",
+      "work_result_contract",
+      "core_event_contract",
+      "evidence_ref_contract"
+    ],
+    "acceptance_criteria": [
+      "AUN can consume a Work Order without reading .framework internals.",
+      "Work Result records are evidence-bound and machine-readable.",
+      "DB projection remains optional and does not change local CLI behavior."
+    ],
+    "stop_conditions": [
+      "DB runtime becomes mandatory",
+      "target repository mutation is added",
+      "required checks or protected settings are changed"
+    ]
+  },
+  "authority": {
+    "owner_actor": "watchout",
+    "owner_decision_required": true,
+    "exact_head_required": true,
+    "llm_final_authority_allowed": false
+  },
+  "refs": {
+    "framework_ref": "watchout/ai-dev-framework@0123456789abcdef0123456789abcdef01234567",
+    "repo_spec_ref": ".shirube/repo-spec.yaml",
+    "handoff_ref": "fixtures/orchestration/shirube-work-order.ready-for-aun.json",
+    "validation_evidence_ref": "fixtures/orchestration/core-event.work-order-ready.json"
+  },
+  "evidence_refs": [
+    {
+      "schema_version": "core-evidence-ref/v1",
+      "evidence_ref_id": "EVIDENCE-REF-ADF-511-WORK-ORDER-001",
+      "evidence_type": "validation_result",
+      "subject": {
+        "type": "work_order",
+        "id": "WO-ADF-511-ORCHESTRATION-CONTRACT-001",
+        "repo": "watchout/ai-dev-framework"
+      },
+      "uri": "fixtures/orchestration/core-event.work-order-ready.json",
+      "producer": {
+        "package": "shirube",
+        "component": "validate-work-order"
+      },
+      "created_at": "2026-06-25T00:00:00Z",
+      "metadata": {
+        "contract_only": true
+      }
+    }
+  ],
+  "created_at": "2026-06-25T00:00:00Z",
+  "updated_at": "2026-06-25T00:00:00Z",
+  "metadata": {
+    "db_runtime_required": false,
+    "aun_consumable": true
+  }
+}

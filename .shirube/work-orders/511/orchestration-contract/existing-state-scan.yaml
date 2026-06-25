@@ -1,0 +1,30 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-STATE-ADF-V3-ORCHESTRATION-CONTRACT-001
+repo: watchout/ai-dev-framework
+observed_at: 2026-06-25T00:00:00Z
+source_control_ref: watchout/ai-dev-framework#511
+classification:
+  current_status: RAPID_LITE_REPORT_ONLY
+  target_status_after_merge: RAPID_LITE_REPORT_ONLY
+  disposition: retrofit_accelerate
+specs:
+  - path: https://github.com/watchout/ai-dev-framework/issues/511
+    status: parent_work_order
+    authority: github_issue
+implementation:
+  - path: schemas/shirube/work-order.v1.schema.json
+    status: contract_schema
+  - path: schemas/shirube/work-result.v1.schema.json
+    status: contract_schema
+  - path: schemas/core/event.v1.schema.json
+    status: projection_event_schema
+  - path: schemas/core/evidence-ref.v1.schema.json
+    status: evidence_ref_schema
+tests:
+  - path: test/shirube/orchestration-contract.test.ts
+    status: added
+legacy_sources: []
+known_drift: []
+unsafe_changes: []
+llm_truth_claims: []
+unknowns: []
