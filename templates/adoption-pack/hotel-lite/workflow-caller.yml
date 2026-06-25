@@ -39,4 +39,5 @@ jobs:
       enforcement_policy_ref: .shirube/enforcement-policy.yaml
       audit_checklist_ref: ""
       structured_audit_ref: ""
+      structured_audit_comment_ref: ""
       audit_machine_evidence_ref: ""

@@ -1,0 +1,16 @@
+schema_version: shirube-lifecycle-state/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+repo: watchout/ai-dev-framework
+current_phase: EXECUTION_READY
+framework_ref: watchout/ai-dev-framework@4f67db3ef6b0c3ccc193612ae04879d8e76c22c3
+work_order: watchout/ai-dev-framework#509
+pr: watchout/ai-dev-framework#513
+cell_id: CELL-ADF-V3-COMMENT-BACKED-AUDIT-001
+repo_spec_ref: .shirube/repo-spec.yaml
+handoff_ref: .shirube/work-orders/509/comment-backed-audit/control-handoff.yaml
+owner_decision_ref: .shirube/work-orders/509/comment-backed-audit/owner-decision-pending.yaml
+last_allowed_phase: EXECUTION_READY
+updated_at: 2026-06-25T06:30:00Z
+updated_by: codex-adf
+owner_must_not_merge_until_exact_head_decision: true

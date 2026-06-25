@@ -63,6 +63,10 @@ on:
         required: false
         default: ""
         type: string
+      structured_audit_comment_ref:
+        required: false
+        default: ""
+        type: string
       audit_machine_evidence_ref:
         required: false
         default: ""
@@ -139,6 +143,7 @@ jobs:
           ENFORCEMENT_POLICY_REF: ${{ inputs.enforcement_policy_ref }}
           AUDIT_CHECKLIST_REF: ${{ inputs.audit_checklist_ref }}
           STRUCTURED_AUDIT_REF: ${{ inputs.structured_audit_ref }}
+          STRUCTURED_AUDIT_COMMENT_REF: ${{ inputs.structured_audit_comment_ref }}
           AUDIT_MACHINE_EVIDENCE_REF: ${{ inputs.audit_machine_evidence_ref }}
         run: |
           mkdir -p "$RESULT_DIR"
@@ -162,7 +167,7 @@ jobs:
             owner_decision_ref: process.env.OWNER_DECISION_REF,
             enforcement_policy_ref: process.env.ENFORCEMENT_POLICY_REF,
             audit_checklist_ref: process.env.AUDIT_CHECKLIST_REF,
-            structured_audit_ref: process.env.STRUCTURED_AUDIT_REF,
+            structured_audit_ref: isCommentBackedRef(process.env.STRUCTURED_AUDIT_REF) ? "" : process.env.STRUCTURED_AUDIT_REF,
             audit_machine_evidence_ref: process.env.AUDIT_MACHINE_EVIDENCE_REF,
             matrix_ref: path.join(adfDir, ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"),
             rule_pack_ref: path.join(adfDir, ".shirube/design-rule-packs/shirube-default-design-rules.yaml"),
@@ -290,7 +295,91 @@ jobs:
             attempts: errors,
           });
           writePrBody();
+
+          function isCommentBackedRef(value) {
+            return /^github-comment:\/\//.test(value || "") ||
+              /^https:\/\/github\.com\/.+#issuecomment-\d+$/.test(value || "") ||
+              /^https:\/\/github\.com\/.+\/issues\/comments\/\d+$/.test(value || "");
+          }
           NODE
+
+      - name: Resolve comment-backed structured audit evidence
+        env:
+          STRUCTURED_AUDIT_REF: ${{ inputs.structured_audit_ref }}
+          STRUCTURED_AUDIT_COMMENT_REF: ${{ inputs.structured_audit_comment_ref }}
+          ACTUAL_REPO: ${{ github.repository }}
+          ACTUAL_PR: ${{ github.event.pull_request.number }}
+          ACTUAL_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          node "$ADF_DIR/scripts/shirube/resolve-structured-audit-ref.mjs" \
+            --structured-audit-ref "$STRUCTURED_AUDIT_REF" \
+            --structured-audit-comment-ref "$STRUCTURED_AUDIT_COMMENT_REF" \
+            --actual-repo "$ACTUAL_REPO" \
+            --actual-pr "$ACTUAL_PR" \
+            --actual-head "$ACTUAL_HEAD" \
+            --result-dir "$RESULT_DIR" \
+            --github-token-env GITHUB_TOKEN \
+            --format json > "$RESULT_DIR/structured-audit-ref-resolution.json"
+          resolver_status=$?
+          cat "$RESULT_DIR/structured-audit-ref-resolution.json"
+          node <<'NODE'
+          const fs = require("fs");
+          const reportPath = `${process.env.RESULT_DIR}/structured-audit-ref-resolution.json`;
+          const bodyPath = `${process.env.RESULT_DIR}/pr-body.md`;
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+          } catch (error) {
+            report = {
+              schema: "shirube-structured-audit-ref-resolution/v1",
+              verdict: "FAILURE",
+              would_block: true,
+              materialized_path: null,
+              source_metadata_path: null,
+              source_comment_url: null,
+              comment_id: null,
+              target_branch_mutated: false,
+              owner_approval_synthesized: false,
+              blockers: [
+                {
+                  item_id: "SAUDIT-REF-017",
+                  code: "resolver_output_invalid",
+                  message: `Structured audit resolver did not emit parseable JSON: ${error.message}`,
+                },
+              ],
+              warnings: [],
+              required_next_actions: [
+                {
+                  item_id: "SAUDIT-REF-017",
+                  action: "Fix structured audit resolver execution before accepting comment-backed audit evidence.",
+                },
+              ],
+            };
+            fs.writeFileSync(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+          }
+          const commentRef = process.env.STRUCTURED_AUDIT_COMMENT_REF || "";
+          const structuredRef = process.env.STRUCTURED_AUDIT_REF || "";
+          const commentBacked = Boolean(commentRef) ||
+            /^github-comment:\/\//.test(structuredRef) ||
+            /^https:\/\/github\.com\/.+#issuecomment-\d+$/.test(structuredRef) ||
+            /^https:\/\/github\.com\/.+\/issues\/comments\/\d+$/.test(structuredRef);
+          const lines = [];
+          if (report.materialized_path) {
+            lines.push(`structured_audit_ref: ${report.materialized_path}`);
+          }
+          if (report.source_metadata_path) {
+            lines.push(`structured_audit_source_ref: ${report.source_metadata_path}`);
+          }
+          if (commentBacked && !report.materialized_path) {
+            lines.push(`audit_checklist_report_ref: ${reportPath}`);
+          }
+          if (lines.length > 0) {
+            fs.appendFileSync(bodyPath, `\n<!-- shirube:structured-audit-resolution/v1 -->\n${lines.join("\n")}\n`);
+          }
+          NODE
+          exit 0
 
       - name: Run Rapid/Lite gates from pinned ADF
         env:

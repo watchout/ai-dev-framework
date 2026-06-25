@@ -1,0 +1,21 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-ADF-V3-COMMENT-BACKED-AUDIT-001
+lane: adoption_intake
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@4f67db3ef6b0c3ccc193612ae04879d8e76c22c3
+profile: hotel-lite
+current_status: RAPID_LITE_REPORT_ONLY
+target_status_after_merge: RAPID_LITE_REPORT_ONLY
+disposition: retrofit_accelerate
+source_control_ref: watchout/ai-dev-framework#509
+owner:
+  role: repo_owner
+  actor: watchout
+existing_state_scan_ref: .shirube/work-orders/509/comment-backed-audit/existing-state-scan.yaml
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+gap_fill_plan:
+  - Add comment-backed structured audit evidence support to the reusable Rapid/Lite workflow.
+  - Keep audit evidence separate from owner final approval.
+next_safe_cell_ref: .shirube/work-orders/509/comment-backed-audit/control-handoff.yaml
+control_handoff_ref: .shirube/work-orders/509/comment-backed-audit/control-handoff.yaml

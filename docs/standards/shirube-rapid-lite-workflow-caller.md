@@ -61,6 +61,7 @@ The reusable workflow accepts:
 - `enforcement_policy_ref`
 - `audit_checklist_ref`
 - `structured_audit_ref`
+- `structured_audit_comment_ref`
 - `audit_machine_evidence_ref`
 
 If `changed_files` is empty, the reusable workflow computes the PR diff from Git metadata and records the collection method. If `pr_body` is empty, it reads the PR body from the GitHub event payload.
@@ -68,6 +69,8 @@ If `changed_files` is empty, the reusable workflow computes the PR diff from Git
 The reusable workflow also injects ADF-local `matrix_ref` and `rule_pack_ref` paths into the effective PR-body evidence so target repositories do not need to copy the gate contract matrix or default design rule pack.
 
 When no explicit `validation_evidence_ref` is supplied, the reusable workflow creates `.shirube-rapid-lite/runtime-validation-evidence.json` during the run and injects that path into the effective PR-body evidence. This runtime artifact may provide the current PR head SHA, changed-file collection evidence, and validation command/result facts. It is external to the attested commit and is not copied into the target repository.
+
+`structured_audit_ref` remains the input for repo-local file paths. `structured_audit_comment_ref` may point to a same-PR GitHub comment containing fenced `shirube-structured-audit/v1` YAML. The reusable workflow resolves the comment from the trusted workflow context, verifies repo/PR/exact-head binding, writes `.shirube-rapid-lite/structured-audit.yaml`, and injects that materialized path into the report body. See `docs/standards/shirube-comment-backed-audit-evidence.md`.
 
 Final owner exact-head evidence should be supplied outside the attested commit, for example through an owner-decision PR comment parser or workflow-provided evidence input. A committed pending owner-decision YAML file is policy only and must not be treated as approval.
 

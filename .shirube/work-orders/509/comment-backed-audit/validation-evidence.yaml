@@ -1,0 +1,43 @@
+schema_version: shirube-validation-evidence/v1
+evidence_id: VALIDATION-ADF-V3-COMMENT-BACKED-AUDIT-001
+repo: watchout/ai-dev-framework
+pr: 513
+cell_id: CELL-ADF-V3-COMMENT-BACKED-AUDIT-001
+head_evidence_status: external_exact_head_required_before_owner_final_decision
+result: PASS
+commands:
+  - npm run test -- test/shirube/structured-audit-comment-ref.test.ts test/shirube/workflow-caller.test.ts test/shirube/rapid-lite-report.test.ts test/shirube/audit-checklist.test.ts
+  - npm run test -- test/shirube/structured-audit-comment-ref.test.ts test/shirube/workflow-caller.test.ts test/shirube/rapid-lite-report.test.ts
+  - npm run test -- test/shirube
+  - npm run type-check
+  - npm run build:cli
+  - npm run lint
+  - git diff --check
+  - git diff --cached --check
+  - node --check scripts/shirube/resolve-structured-audit-ref.mjs
+  - YAML parse for reusable workflow, caller template, and PR-local Shirube evidence
+  - sample resolve-structured-audit-ref for watchout/agent-comms-mcp#813 replay fixture
+validation_results:
+  - command: npm run test -- test/shirube/structured-audit-comment-ref.test.ts test/shirube/workflow-caller.test.ts test/shirube/rapid-lite-report.test.ts test/shirube/audit-checklist.test.ts
+    result: PASS
+    detail: 4 files / 40 tests
+  - command: npm run test -- test/shirube
+    result: PASS
+    detail: 20 files / 261 tests
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+    detail: existing pages-directory notice only
+  - command: git diff --check
+    result: PASS
+  - command: git diff --cached --check
+    result: PASS
+evidence_refs:
+  - scripts/shirube/resolve-structured-audit-ref.mjs
+  - .github/workflows/shirube-rapid-lite-reusable.yml
+  - test/shirube/structured-audit-comment-ref.test.ts
+  - test/fixtures/shirube/structured-audit-comment-ref/comment.agent-comms-813.json
+note: Final exact-head owner approval is external PR evidence and is not supplied by this committed validation record.
