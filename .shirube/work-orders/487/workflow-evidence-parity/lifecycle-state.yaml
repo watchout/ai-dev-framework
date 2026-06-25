@@ -1,0 +1,12 @@
+schema_version: shirube-lifecycle-state/rapid-lite/v1
+state_id: LIFECYCLE-ADF-V3-WORKFLOW-EVIDENCE-PARITY-001
+repo: watchout/ai-dev-framework
+work_order: watchout/ai-dev-framework#487
+cell_id: CELL-ADF-V3-WORKFLOW-EVIDENCE-PARITY-001
+framework_ref: watchout/ai-dev-framework@193d039fac61fc107315dd5504616996c7691b33
+current_phase: HANDOFF_READY
+allowed_next_phases:
+  - EXECUTION_READY
+owner_decision_ref: null
+post_merge_evidence_ref: null
+updated_at: 2026-06-25T00:00:00Z

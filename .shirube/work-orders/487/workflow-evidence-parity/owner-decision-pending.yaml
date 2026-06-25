@@ -1,0 +1,7 @@
+schema_version: shirube-owner-decision/v1
+decision: PENDING
+approval_granted: false
+exact_head_sha: null
+actor: watchout
+decision_ref: pending-owner-final-decision
+note: This committed file is pending policy only. Final exact-head approval must be external to the attested commit.

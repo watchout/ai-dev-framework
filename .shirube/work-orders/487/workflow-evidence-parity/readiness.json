@@ -1,0 +1,13 @@
+{
+  "schema": "shirube-readiness/v1",
+  "state": "RAPID_LITE_REPORT_ONLY_READY",
+  "repo": "watchout/ai-dev-framework",
+  "work_order": "watchout/ai-dev-framework#487",
+  "cell_id": "CELL-ADF-V3-WORKFLOW-EVIDENCE-PARITY-001",
+  "full_control_ready": false,
+  "report_only_ready": true,
+  "required_checks_enabled": false,
+  "branch_protection_changed": false,
+  "external_repo_mutation": false,
+  "note": "This readiness record only supports report-only Rapid/Lite control-state reconciliation for this PR. It does not claim V3 complete or required-check enforcement."
+}

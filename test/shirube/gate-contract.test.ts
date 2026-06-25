@@ -145,7 +145,18 @@ describe("Rapid/Lite gate contract check", () => {
     expect(hardBlockIds(result)).toContain("RL-PR-001");
   });
 
-  it("blocks missing owner decision when the profile requires owner merge evidence", () => {
+  it("warns missing owner decision before merge readiness", () => {
+    const result = check("missing-owner-decision.warn.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("PASS_WITH_WARN");
+    expect(result.json.would_block).toBe(false);
+    expect(hardBlockIds(result)).not.toContain("RL-MERGE-001");
+    expect(warningIds(result)).toContain("RL-MERGE-W001");
+  });
+
+  it("blocks missing owner decision when merge readiness is claimed", () => {
     const result = check("missing-owner-decision.block.yaml");
 
     expect(result.exitCode).toBe(0);
