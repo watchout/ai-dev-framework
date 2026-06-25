@@ -1,0 +1,43 @@
+{
+  "schema_version": "core-event/v1",
+  "event_id": "EVT-ADF-511-WORK-ORDER-READY-001",
+  "event_type": "work_order.ready",
+  "producer": {
+    "package": "shirube",
+    "component": "validate-work-order"
+  },
+  "aggregate": {
+    "type": "work_order",
+    "id": "WO-ADF-511-ORCHESTRATION-CONTRACT-001",
+    "repo": "watchout/ai-dev-framework"
+  },
+  "occurred_at": "2026-06-25T00:00:00Z",
+  "correlation_id": "WO-ADF-511-ORCHESTRATION-CONTRACT-001",
+  "payload": {
+    "status": "READY_FOR_AUN",
+    "cell_id": "CELL-ADF-ORCHESTRATION-CONTRACT-001",
+    "risk_tier": "R2",
+    "db_runtime_required": false
+  },
+  "evidence_refs": [
+    {
+      "schema_version": "core-evidence-ref/v1",
+      "evidence_ref_id": "EVIDENCE-REF-ADF-511-WORK-ORDER-001",
+      "evidence_type": "validation_result",
+      "subject": {
+        "type": "work_order",
+        "id": "WO-ADF-511-ORCHESTRATION-CONTRACT-001",
+        "repo": "watchout/ai-dev-framework"
+      },
+      "uri": "fixtures/orchestration/shirube-work-order.ready-for-aun.json",
+      "producer": {
+        "package": "shirube",
+        "component": "validate-work-order"
+      },
+      "created_at": "2026-06-25T00:00:00Z",
+      "metadata": {
+        "contract_only": true
+      }
+    }
+  ]
+}

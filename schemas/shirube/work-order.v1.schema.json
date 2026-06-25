@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/shirube/work-order.v1.schema.json",
+  "title": "Shirube Work Order v1",
+  "description": "AUN-compatible Shirube work-order envelope. Shirube owns governance facts; AUN may consume this without reading .framework internals.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "work_order_id",
+    "status",
+    "repo",
+    "cell",
+    "task",
+    "authority",
+    "refs",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "shirube-work-order/v1" },
+    "work_order_id": {
+      "type": "string",
+      "pattern": "^WO-[A-Z0-9._:-]+$"
+    },
+    "status": {
+      "enum": [
+        "DRAFT",
+        "READY_FOR_AUN",
+        "DISPATCHED",
+        "IN_PROGRESS",
+        "BLOCKED",
+        "COMPLETED",
+        "FAILED",
+        "CANCELLED"
+      ]
+    },
+    "repo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full_name", "default_branch"],
+      "properties": {
+        "full_name": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+        "default_branch": { "type": "string", "minLength": 1 },
+        "head_branch": { "type": "string", "minLength": 1 },
+        "head_sha": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["github_issue", "github_pr", "local_file", "manual"] },
+        "url": { "type": "string", "minLength": 1 },
+        "issue": { "type": "string", "minLength": 1 },
+        "comment_url": { "type": "string", "minLength": 1 }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cell_id", "risk_tier", "cell_type"],
+      "properties": {
+        "cell_id": { "type": "string", "pattern": "^CELL-[A-Z0-9._:-]+$" },
+        "spec_id": { "type": "string", "pattern": "^SPEC-[A-Z0-9._:-]+$" },
+        "impl_id": { "type": "string", "pattern": "^IMPL-[A-Z0-9._:-]+$" },
+        "risk_tier": { "enum": ["R0", "R1", "R2", "R3"] },
+        "cell_type": { "type": "string", "minLength": 1 }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "goal",
+        "non_scope",
+        "allowed_paths",
+        "forbidden_paths",
+        "required_commands",
+        "required_evidence"
+      ],
+      "properties": {
+        "title": { "type": "string", "minLength": 1 },
+        "goal": { "type": "string", "minLength": 1 },
+        "non_scope": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "allowed_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "forbidden_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "required_commands": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "required_evidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "acceptance_criteria": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "stop_conditions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner_actor", "owner_decision_required", "exact_head_required", "llm_final_authority_allowed"],
+      "properties": {
+        "owner_actor": { "type": "string", "minLength": 1 },
+        "owner_decision_required": { "type": "boolean" },
+        "exact_head_required": { "type": "boolean" },
+        "llm_final_authority_allowed": { "const": false },
+        "owner_decision_ref": { "type": "string", "minLength": 1 }
+      }
+    },
+    "refs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framework_ref", "repo_spec_ref", "handoff_ref"],
+      "properties": {
+        "framework_ref": { "type": "string", "minLength": 1 },
+        "repo_spec_ref": { "type": "string", "minLength": 1 },
+        "handoff_ref": { "type": "string", "minLength": 1 },
+        "source_mirror_ref": { "type": "string", "minLength": 1 },
+        "validation_evidence_ref": { "type": "string", "minLength": 1 }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "$ref": "https://shirube.dev/schemas/core/evidence-ref.v1.schema.json" }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "schema_version": "shirube-work-result/v1",
+  "work_result_id": "WR-ADF-511-COMPLETED-001",
+  "work_order_id": "WO-ADF-511-ORCHESTRATION-CONTRACT-001",
+  "status": "COMPLETED",
+  "repo": {
+    "full_name": "watchout/ai-dev-framework",
+    "base_ref": "main",
+    "head_ref": "codex/511-orchestration-contract",
+    "head_sha": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "executor": {
+    "system": "aun",
+    "actor": "codex-adf",
+    "run_id": "AUN-RUN-ADF-511-001"
+  },
+  "summary": "Contract-only orchestration artifacts were generated and validated.",
+  "changed_files": [
+    "schemas/shirube/work-order.v1.schema.json",
+    "schemas/shirube/work-result.v1.schema.json",
+    "schemas/core/event.v1.schema.json",
+    "schemas/core/evidence-ref.v1.schema.json"
+  ],
+  "commands": [
+    {
+      "command": "node scripts/shirube/validate-work-order.mjs --file fixtures/orchestration/shirube-work-order.ready-for-aun.json --format json",
+      "result": "PASS",
+      "evidence_ref_id": "EVIDENCE-REF-ADF-511-WORK-ORDER-001"
+    }
+  ],
+  "evidence_refs": [
+    {
+      "schema_version": "core-evidence-ref/v1",
+      "evidence_ref_id": "EVIDENCE-REF-ADF-511-WORK-RESULT-001",
+      "evidence_type": "work_result",
+      "subject": {
+        "type": "work_result",
+        "id": "WR-ADF-511-COMPLETED-001",
+        "repo": "watchout/ai-dev-framework"
+      },
+      "uri": "fixtures/orchestration/aun-work-result.completed.json",
+      "producer": {
+        "package": "aun",
+        "component": "work-result-adapter"
+      },
+      "created_at": "2026-06-25T00:00:00Z",
+      "metadata": {
+        "contract_only": true
+      }
+    }
+  ],
+  "started_at": "2026-06-25T00:00:00Z",
+  "finished_at": "2026-06-25T00:05:00Z",
+  "metadata": {
+    "db_runtime_required": false
+  }
+}

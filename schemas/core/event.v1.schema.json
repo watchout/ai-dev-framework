@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/core/event.v1.schema.json",
+  "title": "Core Event v1",
+  "description": "Small shared event envelope for orchestration visibility. Events are projections and do not transfer ownership of package runtime state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "producer",
+    "aggregate",
+    "occurred_at",
+    "payload"
+  ],
+  "properties": {
+    "schema_version": { "const": "core-event/v1" },
+    "event_id": {
+      "type": "string",
+      "pattern": "^EVT-[A-Z0-9._:-]+$"
+    },
+    "event_type": {
+      "enum": [
+        "ssot.generated",
+        "plan.generated",
+        "work_order.ready",
+        "gate.started",
+        "gate.passed",
+        "gate.blocked",
+        "task.completed",
+        "task.failed"
+      ]
+    },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "component"],
+      "properties": {
+        "package": { "type": "string", "minLength": 1 },
+        "component": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": {
+          "enum": [
+            "work_order",
+            "gate_run",
+            "acceptance_check",
+            "delivery_graph_node",
+            "ssot_ref",
+            "run_state_snapshot"
+          ]
+        },
+        "id": { "type": "string", "minLength": 1 },
+        "repo": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+      }
+    },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "correlation_id": { "type": "string", "minLength": 1 },
+    "causation_id": { "type": "string", "minLength": 1 },
+    "payload": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "$ref": "https://shirube.dev/schemas/core/evidence-ref.v1.schema.json" }
+    }
+  }
+}

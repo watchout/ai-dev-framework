@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/shirube/work-result.v1.schema.json",
+  "title": "Shirube Work Result v1",
+  "description": "Result envelope returned by AUN or another executor for a Shirube Work Order. The result references evidence rather than relying on prose.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "work_result_id",
+    "work_order_id",
+    "status",
+    "repo",
+    "executor",
+    "summary",
+    "started_at",
+    "finished_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "shirube-work-result/v1" },
+    "work_result_id": {
+      "type": "string",
+      "pattern": "^WR-[A-Z0-9._:-]+$"
+    },
+    "work_order_id": {
+      "type": "string",
+      "pattern": "^WO-[A-Z0-9._:-]+$"
+    },
+    "status": {
+      "enum": ["COMPLETED", "FAILED", "BLOCKED", "CANCELLED"]
+    },
+    "repo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["full_name"],
+      "properties": {
+        "full_name": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+        "base_ref": { "type": "string", "minLength": 1 },
+        "head_ref": { "type": "string", "minLength": 1 },
+        "head_sha": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" }
+      }
+    },
+    "executor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "actor"],
+      "properties": {
+        "system": { "type": "string", "minLength": 1 },
+        "actor": { "type": "string", "minLength": 1 },
+        "run_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "summary": { "type": "string", "minLength": 1 },
+    "changed_files": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["command", "result"],
+        "properties": {
+          "command": { "type": "string", "minLength": 1 },
+          "result": { "enum": ["PASS", "FAIL", "SKIPPED"] },
+          "evidence_ref_id": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "items": { "$ref": "https://shirube.dev/schemas/core/evidence-ref.v1.schema.json" }
+    },
+    "failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "message": { "type": "string", "minLength": 1 },
+        "retryable": { "type": "boolean" },
+        "required_next_actions": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

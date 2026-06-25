@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/core/evidence-ref.v1.schema.json",
+  "title": "Core Evidence Reference v1",
+  "description": "Shared evidence reference used by Shirube, AUN, future DB projections, and thin adapters. The referenced artifact remains the authority; this envelope only points to it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "evidence_ref_id",
+    "evidence_type",
+    "subject",
+    "uri",
+    "producer",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "core-evidence-ref/v1" },
+    "evidence_ref_id": {
+      "type": "string",
+      "pattern": "^EVIDENCE-REF-[A-Z0-9._:-]+$"
+    },
+    "evidence_type": {
+      "enum": [
+        "audit_result",
+        "acceptance_check_result",
+        "context_pack",
+        "restart_recovery",
+        "validation_result",
+        "gate_report",
+        "owner_decision",
+        "work_result",
+        "post_merge"
+      ]
+    },
+    "subject": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "id"],
+      "properties": {
+        "type": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "repo": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+      }
+    },
+    "uri": { "type": "string", "minLength": 1 },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "producer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "component"],
+      "properties": {
+        "package": { "type": "string", "minLength": 1 },
+        "component": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 }
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}
