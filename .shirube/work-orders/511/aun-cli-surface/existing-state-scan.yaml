@@ -1,0 +1,19 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: SCAN-ADF-V3-AUN-CLI-SURFACE-001
+repo: watchout/ai-dev-framework
+profile: hotel-lite
+observed:
+  repo_spec: present
+  rapid_lite_gates: present
+  orchestration_contract_schemas: present_via_parent_pr_512
+  public_aun_cli_surface: missing_before_this_slice
+classification:
+  disposition: retrofit_accelerate
+  material_drift: false
+  legacy_as_truth: false
+  llm_as_truth: false
+  unsafe_change: false
+  owner_direction_clear: true
+notes:
+  - This slice is stacked on #512 and uses its orchestration contract schemas.
+  - Existing special-repo migration and full-overlay reconcile are out of scope.

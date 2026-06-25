@@ -1,0 +1,21 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-ADF-V3-AUN-CLI-SURFACE-001
+lane: adoption_intake
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@fa246de7ca5781030e07e3b5b6c8e46eae60c503
+profile: hotel-lite
+current_status: RAPID_LITE_REPORT_ONLY
+target_status_after_merge: RAPID_LITE_REPORT_ONLY
+disposition: retrofit_accelerate
+source_control_ref: watchout/ai-dev-framework#511
+owner:
+  role: repo_owner
+  actor: watchout
+existing_state_scan_ref: .shirube/work-orders/511/aun-cli-surface/existing-state-scan.yaml
+repo_spec_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+gap_fill_plan:
+  - Add minimal public CLI commands for Shirube/AUN Work Order export and Work Result import.
+  - Keep the implementation local/report-only and independent of AUN runtime or DB runtime.
+next_safe_cell_ref: .shirube/work-orders/511/aun-cli-surface/control-handoff.yaml
+control_handoff_ref: .shirube/work-orders/511/aun-cli-surface/control-handoff.yaml

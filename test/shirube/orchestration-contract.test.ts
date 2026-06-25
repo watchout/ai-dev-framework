@@ -85,6 +85,7 @@ describe("Shirube AUN orchestration contract", () => {
     expect(result.json.would_block).toBe(false);
     expect(result.json.aun_consumable).toBe(true);
     expect(result.json.work_order_id).toBe("WO-ADF-511-ORCHESTRATION-CONTRACT-001");
+    expect(result.json.idempotency_key).toContain("WO-ADF-511-ORCHESTRATION-CONTRACT-001");
     expect(result.json.blockers).toEqual([]);
   });
 
@@ -109,7 +110,24 @@ describe("Shirube AUN orchestration contract", () => {
       expect(result.json.would_block).toBe(false);
       expect(result.json.status).toBe(expectedStatus);
       expect(result.json.work_order_id).toBe("WO-ADF-511-ORCHESTRATION-CONTRACT-001");
+      expect(result.json.idempotency_key).toBe(readJson(workOrder).idempotency_key);
       expect(result.json.blockers).toEqual([]);
+    }
+  });
+
+  it("blocks Work Results without an idempotency key", () => {
+    const document = readJson(fixture("aun-work-result.completed.json"));
+    delete document.idempotency_key;
+    const { dir, file } = writeTempJson(document);
+
+    try {
+      const result = run(workResultScript, ["--file", file, "--format", "json"]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      expect(blockerIds(result)).toContain("WR-023");
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
     }
   });
 

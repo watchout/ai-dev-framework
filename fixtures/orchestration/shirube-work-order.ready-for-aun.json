@@ -1,6 +1,7 @@
 {
   "schema_version": "shirube-work-order/v1",
   "work_order_id": "WO-ADF-511-ORCHESTRATION-CONTRACT-001",
+  "idempotency_key": "shirube:watchout/ai-dev-framework:WO-ADF-511-ORCHESTRATION-CONTRACT-001:0123456789abcdef0123456789abcdef01234567",
   "status": "READY_FOR_AUN",
   "repo": {
     "full_name": "watchout/ai-dev-framework",
@@ -10,8 +11,16 @@
   },
   "source": {
     "type": "github_issue",
+    "repo": "watchout/ai-dev-framework",
+    "ref": "refs/heads/codex/511-orchestration-contract",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "framework_ref": "watchout/ai-dev-framework@0123456789abcdef0123456789abcdef01234567",
     "url": "https://github.com/watchout/ai-dev-framework/issues/511",
     "issue": "watchout/ai-dev-framework#511"
+  },
+  "target": {
+    "package": "aun",
+    "capability": "orchestration_contract_validation"
   },
   "cell": {
     "cell_id": "CELL-ADF-ORCHESTRATION-CONTRACT-001",
@@ -23,6 +32,12 @@
   "task": {
     "title": "Add AUN-compatible Shirube orchestration contract",
     "goal": "Define shared Work Order, Work Result, Event, and Evidence Ref contracts before publishing the Rapid/Lite public CLI surface.",
+    "scope": [
+      "schemas",
+      "contract docs",
+      "fixtures",
+      "local validators"
+    ],
     "non_scope": [
       "DB runtime",
       "queue ownership",
@@ -83,6 +98,35 @@
     "repo_spec_ref": ".shirube/repo-spec.yaml",
     "handoff_ref": "fixtures/orchestration/shirube-work-order.ready-for-aun.json",
     "validation_evidence_ref": "fixtures/orchestration/core-event.work-order-ready.json"
+  },
+  "context_refs": [
+    "docs/contracts/shirube-aun-work-order-contract.md",
+    "docs/contracts/orchestration-db-projection-contract.md"
+  ],
+  "handoff_boundary": {
+    "allowed_paths": [
+      "schemas/shirube/**",
+      "schemas/core/**",
+      "docs/contracts/**",
+      "fixtures/orchestration/**",
+      "scripts/shirube/validate-work-order.mjs",
+      "scripts/shirube/validate-work-result.mjs",
+      "test/shirube/orchestration-contract.test.ts"
+    ],
+    "forbidden_paths": [
+      "src/**",
+      "package.json",
+      "package-lock.json",
+      ".github/workflows/**",
+      ".github/branch-protection/**",
+      ".github/rulesets/**"
+    ],
+    "protected_surfaces": [
+      "database_projection_contract",
+      "permissions_contract",
+      "evidence_contract"
+    ],
+    "owner_exact_head_required": true
   },
   "evidence_refs": [
     {

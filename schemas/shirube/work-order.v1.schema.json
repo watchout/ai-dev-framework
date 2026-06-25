@@ -8,8 +8,10 @@
   "required": [
     "schema_version",
     "work_order_id",
+    "idempotency_key",
     "status",
     "repo",
+    "target",
     "cell",
     "task",
     "authority",
@@ -22,6 +24,7 @@
       "type": "string",
       "pattern": "^WO-[A-Z0-9._:-]+$"
     },
+    "idempotency_key": { "type": "string", "minLength": 1 },
     "status": {
       "enum": [
         "DRAFT",
@@ -50,9 +53,22 @@
       "additionalProperties": false,
       "properties": {
         "type": { "enum": ["github_issue", "github_pr", "local_file", "manual"] },
+        "repo": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" },
+        "ref": { "type": "string", "minLength": 1 },
+        "commit": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" },
+        "framework_ref": { "type": "string", "minLength": 1 },
         "url": { "type": "string", "minLength": 1 },
         "issue": { "type": "string", "minLength": 1 },
         "comment_url": { "type": "string", "minLength": 1 }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["package", "capability"],
+      "properties": {
+        "package": { "type": "string", "minLength": 1 },
+        "capability": { "type": "string", "minLength": 1 }
       }
     },
     "cell": {
@@ -73,6 +89,7 @@
       "required": [
         "title",
         "goal",
+        "scope",
         "non_scope",
         "allowed_paths",
         "forbidden_paths",
@@ -82,6 +99,11 @@
       "properties": {
         "title": { "type": "string", "minLength": 1 },
         "goal": { "type": "string", "minLength": 1 },
+        "scope": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
         "non_scope": {
           "type": "array",
           "minItems": 1,
@@ -114,6 +136,29 @@
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
         }
+      }
+    },
+    "context_refs": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "handoff_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "allowed_paths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "forbidden_paths": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "protected_surfaces": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "owner_exact_head_required": { "type": "boolean" }
       }
     },
     "authority": {

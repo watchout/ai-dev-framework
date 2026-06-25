@@ -1,0 +1,8 @@
+schema_version: shirube-owner-decision/v1
+decision: PENDING
+approval_granted: false
+exact_head_sha: null
+decision_ref: pending-owner-final-decision
+notes:
+  - This file is policy only.
+  - Final exact-head owner approval must be external and current.
