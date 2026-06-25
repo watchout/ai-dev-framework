@@ -152,6 +152,7 @@ jobs:
           const event = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, "utf8"));
           const inputBody = process.env.PR_BODY_INPUT || "";
           const eventBody = event.pull_request?.body || "";
+          const baseBody = inputBody || eventBody;
           const refs = {
             execution_context_ref: process.env.EXECUTION_CONTEXT_REF,
             adoption_plan_ref: process.env.ADOPTION_PLAN_REF,
@@ -166,27 +167,86 @@ jobs:
             matrix_ref: path.join(adfDir, ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml"),
             rule_pack_ref: path.join(adfDir, ".shirube/design-rule-packs/shirube-default-design-rules.yaml"),
           };
-          const refLines = Object.entries(refs)
-            .filter(([, value]) => value && String(value).trim())
-            .map(([key, value]) => `${key}: ${value}`);
-          const body = [
-            inputBody || eventBody,
-            "",
-            "<!-- shirube:reusable-workflow-inputs/v1 -->",
-            ...refLines,
-            "",
-          ].join("\n");
-          fs.writeFileSync(`${resultDir}/pr-body.md`, body);
+
+          function writeJson(file, value) {
+            fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+          }
+
+          function changedFilesFromText(text) {
+            return text.split(/\r?\n/)
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .sort((a, b) => a.localeCompare(b));
+          }
+
+          function writePrBody() {
+            const refLines = Object.entries(refs)
+              .filter(([, value]) => value && String(value).trim())
+              .map(([key, value]) => `${key}: ${value}`);
+            const body = [
+              baseBody,
+              "",
+              "<!-- shirube:reusable-workflow-inputs/v1 -->",
+              ...refLines,
+              "",
+            ].join("\n");
+            fs.writeFileSync(`${resultDir}/pr-body.md`, body);
+          }
+
+          function writeRuntimeValidationEvidence({ method, changedFiles }) {
+            const validationPath = `${resultDir}/runtime-validation-evidence.json`;
+            writeJson(validationPath, {
+              schema_version: "shirube-validation-evidence/v1",
+              evidence_id: "SHIRUBE-RAPID-LITE-WORKFLOW-VALIDATION",
+              target_repo: event.repository?.full_name || process.env.GITHUB_REPOSITORY || null,
+              pr_number: event.pull_request?.number || null,
+              pr_head_sha: process.env.HEAD_SHA || event.pull_request?.head?.sha || null,
+              commands: [
+                "collect changed files",
+                "run-rapid-lite-report",
+              ],
+              results: [
+                { command: "collect changed files", result: "PASS", method },
+                { command: "run-rapid-lite-report", result: "PENDING_UNTIL_REPORT_STEP" },
+              ],
+              validation_results: ["PASS"],
+              required_evidence: [
+                "PR_head_SHA",
+                "changed_files",
+                "validation_commands",
+                "validation_results",
+              ],
+              pending_required_evidence: [
+                "owner_decision",
+                "control_state_completeness_report",
+              ],
+              evidence_refs: [
+                `${resultDir}/changed-files.txt`,
+                `${resultDir}/input-collection.json`,
+              ],
+              changed_files_count: changedFiles.length,
+              generated_by: "shirube-rapid-lite-reusable workflow",
+              external_only: true,
+              not_committed_to_attested_head: true,
+            });
+            if (!refs.validation_evidence_ref) refs.validation_evidence_ref = validationPath;
+          }
+
+          function finishSuccess({ method, stdout }) {
+            fs.writeFileSync(`${resultDir}/changed-files.txt`, stdout.trimEnd() ? `${stdout.trimEnd()}\n` : "");
+            writeJson(`${resultDir}/input-collection.json`, {
+              schema: "shirube-rapid-lite-input-collection/v1",
+              status: "PASS",
+              method,
+            });
+            writeRuntimeValidationEvidence({ method, changedFiles: changedFilesFromText(stdout) });
+            writePrBody();
+            process.exit(0);
+          }
 
           const changedFilesInput = process.env.CHANGED_FILES_INPUT || "";
           if (changedFilesInput.trim()) {
-            fs.writeFileSync(`${resultDir}/changed-files.txt`, changedFilesInput.trimEnd() + "\n");
-            fs.writeFileSync(`${resultDir}/input-collection.json`, JSON.stringify({
-              schema: "shirube-rapid-lite-input-collection/v1",
-              status: "PASS",
-              method: "workflow_call.changed_files_input",
-            }, null, 2) + "\n");
-            process.exit(0);
+            finishSuccess({ method: "workflow_call.changed_files_input", stdout: changedFilesInput });
           }
 
           const attempts = [
@@ -213,13 +273,7 @@ jobs:
             try {
               if (attempt.before) execFileSync("git", attempt.before, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
               const stdout = execFileSync("git", attempt.args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
-              fs.writeFileSync(`${resultDir}/changed-files.txt`, stdout);
-              fs.writeFileSync(`${resultDir}/input-collection.json`, JSON.stringify({
-                schema: "shirube-rapid-lite-input-collection/v1",
-                status: "PASS",
-                method: attempt.label,
-              }, null, 2) + "\n");
-              process.exit(0);
+              finishSuccess({ method: attempt.label, stdout });
             } catch (error) {
               errors.push({
                 method: attempt.label,
@@ -228,13 +282,14 @@ jobs:
             }
           }
           fs.writeFileSync(`${resultDir}/changed-files.txt`, "");
-          fs.writeFileSync(`${resultDir}/input-failure.json`, JSON.stringify({
+          writeJson(`${resultDir}/input-failure.json`, {
             schema: "shirube-rapid-lite-input-collection/v1",
             status: "FAILURE",
             code: "changed_files_collection_failed",
             message: "Unable to collect PR changed files from available merge-base strategies.",
             attempts: errors,
-          }, null, 2) + "\n");
+          });
+          writePrBody();
           NODE
 
       - name: Run Rapid/Lite gates from pinned ADF

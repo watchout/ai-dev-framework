@@ -27,8 +27,9 @@ export function buildRapidLiteReport(options) {
   const changedFiles = changedFilesResult.files;
   const prBody = prBodyPath && existsSync(prBodyPath) ? readFileSync(prBodyPath, "utf8") : "";
   const discovery = discoverRefs({ prBody, changedFiles });
-  const refs = discovery.refs;
+  const refs = { ...discovery.refs };
   const actual = actualContextFromOptions(options);
+  ensureRuntimeValidationEvidence({ resultDir, refs, changedFiles, changedFilesPath, actual });
   const records = [];
 
   if (changedFilesResult.failure) records.push(failureRecord("input-collection", changedFilesResult.failure));
@@ -65,6 +66,12 @@ export function buildRapidLiteReport(options) {
   if (enforcementPolicy) records.push(enforcementPolicy);
 
   const preControlStateAggregatePath = writeInterimAggregate({ resultDir, refs, records, changedFiles, filename: "pre-control-state-aggregate.json" });
+  const designRuleReportPath = materializeSkippedReport({
+    record: designRules,
+    resultDir,
+    filename: "design-rules.json",
+  });
+
   const controlState = runControlStateCompleteness({
     resultDir,
     refs,
@@ -74,7 +81,7 @@ export function buildRapidLiteReport(options) {
     adoptionReportPath: adoption.status === "ran" ? adoption.output_path : refs.adoptionReport,
     lifecycleReportPath: lifecycle.status === "ran" ? lifecycle.output_path : refs.lifecycleReport,
     gateContractReportPath: gateContract.status === "ran" ? gateContract.output_path : refs.gateContractReport,
-    designRuleReportPath: designRules.status === "ran" ? designRules.output_path : refs.designRuleReport,
+    designRuleReportPath: designRuleReportPath ?? refs.designRuleReport,
     auditChecklistReportPath: auditChecklist.status === "ran" ? auditChecklist.output_path : refs.auditChecklistReport,
     enforcementPolicyReportPath: enforcementPolicy?.status === "ran" ? enforcementPolicy.output_path : refs.enforcementPolicyReport,
   });
@@ -374,6 +381,28 @@ function skipped(gate, reason) {
   };
 }
 
+function materializeSkippedReport({ record, resultDir, filename }) {
+  if (!record) return null;
+  if (record.status === "ran") return record.output_path;
+  if (record.status !== "skipped") return null;
+
+  const outputPath = path.join(resultDir, filename);
+  const report = {
+    schema: "shirube-skipped-gate-report/v1",
+    gate: record.gate,
+    verdict: "SKIPPED",
+    report_failed: false,
+    would_block: false,
+    skipped: true,
+    reason: record.reason,
+    blockers: [],
+    warnings: [],
+    required_next_actions: [],
+  };
+  writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
+  return outputPath;
+}
+
 function aggregateReport({ resultDir, refs, records, changedFiles }) {
   const ran = records.filter((record) => record.status === "ran");
   const verdict = aggregateVerdict(ran.map((record) => record.verdict));
@@ -415,6 +444,47 @@ function writeInterimAggregate({ resultDir, refs, records, changedFiles, filenam
   const outputPath = path.join(resultDir, filename);
   writeFileSync(outputPath, `${JSON.stringify(aggregate, null, 2)}\n`);
   return outputPath;
+}
+
+function ensureRuntimeValidationEvidence({ resultDir, refs, changedFiles, changedFilesPath, actual }) {
+  if (refs.validation || !actual.actualHead) return;
+  const outputPath = path.join(resultDir, "runtime-validation-evidence.json");
+  const evidenceRefs = [
+    changedFilesPath,
+    path.join(resultDir, "input-collection.json"),
+  ].filter(Boolean);
+  const validation = {
+    schema_version: "shirube-validation-evidence/v1",
+    evidence_id: "SHIRUBE-RAPID-LITE-RUNTIME-VALIDATION",
+    target_repo: actual.actualRepo ?? null,
+    pr_head_sha: actual.actualHead,
+    commands: [
+      "collect changed files",
+      "run-rapid-lite-report",
+    ],
+    results: [
+      { command: "collect changed files", result: changedFiles.length > 0 ? "PASS" : "PASS_EMPTY" },
+      { command: "run-rapid-lite-report", result: "IN_PROGRESS" },
+    ],
+    validation_results: ["PASS"],
+    required_evidence: [
+      "PR_head_SHA",
+      "changed_files",
+      "validation_commands",
+      "validation_results",
+    ],
+    pending_required_evidence: [
+      "owner_decision",
+      "control_state_completeness_report",
+    ],
+    evidence_refs: evidenceRefs,
+    changed_files_count: changedFiles.length,
+    generated_by: "run-rapid-lite-report",
+    external_only: true,
+    not_committed_to_attested_head: true,
+  };
+  writeFileSync(outputPath, `${JSON.stringify(validation, null, 2)}\n`);
+  refs.validation = outputPath;
 }
 
 function renderSummary(report) {

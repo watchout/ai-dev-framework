@@ -53,6 +53,8 @@ describe("Shirube Rapid/Lite reusable workflow caller", () => {
     expect(workflow).toContain("Checkout target repository");
     expect(workflow).toContain("Checkout pinned ADF");
     expect(workflow).toContain('node "$ADF_DIR/scripts/shirube/run-rapid-lite-report.mjs"');
+    expect(workflow).toContain("runtime-validation-evidence.json");
+    expect(workflow).toContain("SHIRUBE-RAPID-LITE-WORKFLOW-VALIDATION");
     expect(workflow).toContain("matrix_ref:");
     expect(workflow).toContain("rule_pack_ref:");
     expect(workflow).toContain("actions/upload-artifact@v4");
@@ -83,13 +85,13 @@ describe("Shirube Rapid/Lite reusable workflow caller", () => {
         "--product",
         "Example",
         "--source-control",
-        "watchout/control#1",
+        "watchout/example#1",
         "--framework-ref",
         frameworkRef(),
         "--owner-actor",
         "watchout",
         "--owner-confirmation-ref",
-        "https://github.com/watchout/control/issues/1#issuecomment-owner-confirmed",
+        "https://github.com/watchout/example/issues/1#issuecomment-owner-confirmed",
         "--cell-id",
         "CELL-EXAMPLE-ADOPTION-001",
         "--mode",
@@ -133,13 +135,13 @@ describe("Shirube Rapid/Lite reusable workflow caller", () => {
         "--product",
         "Example",
         "--source-control",
-        "watchout/control#1",
+        "watchout/example#1",
         "--framework-ref",
         frameworkRef(),
         "--owner-actor",
         "watchout",
         "--owner-confirmation-ref",
-        "https://github.com/watchout/control/issues/1#issuecomment-owner-confirmed",
+        "https://github.com/watchout/example/issues/1#issuecomment-owner-confirmed",
         "--cell-id",
         "CELL-EXAMPLE-ADOPTION-001",
         "--mode",
@@ -153,15 +155,62 @@ describe("Shirube Rapid/Lite reusable workflow caller", () => {
       expect(render.exitCode).toBe(0);
 
       mkdirSync(path.join(out, ".shirube-rapid-lite"), { recursive: true });
-      writeFileSync(path.join(out, "changed-files.txt"), ".github/workflows/shirube-rapid-lite-gates-report.yml\n");
+      writeFileSync(path.join(out, "changed-files.txt"), [
+        ".github/workflows/shirube-rapid-lite-gates-report.yml",
+        ".shirube/adoption-intake.yaml",
+        ".shirube/control-handoffs/CH-001.yaml",
+        ".shirube/control-state-completeness.yaml",
+        ".shirube/enforcement-policy.yaml",
+        ".shirube/execution-context.yaml",
+        ".shirube/existing-state-scan.yaml",
+        ".shirube/lifecycle-state.yaml",
+        ".shirube/repo-spec.yaml",
+        ".shirube/source-mirrors/control-issue.yaml",
+        "docs/shirube/README.md",
+        "",
+      ].join("\n"));
+      writeFileSync(path.join(out, ".shirube-rapid-lite/runtime-validation-evidence.json"), `${JSON.stringify({
+        schema_version: "shirube-validation-evidence/v1",
+        evidence_id: "SHIRUBE-RAPID-LITE-WORKFLOW-VALIDATION",
+        target_repo: "watchout/example",
+        pr_number: 1,
+        pr_head_sha: "0123456789abcdef0123456789abcdef01234567",
+        commands: ["collect changed files", "run-rapid-lite-report"],
+        results: [
+          { command: "collect changed files", result: "PASS", method: "workflow_call.changed_files_input" },
+          { command: "run-rapid-lite-report", result: "PENDING_UNTIL_REPORT_STEP" },
+        ],
+        validation_results: ["PASS"],
+        required_evidence: [
+          "PR_head_SHA",
+          "changed_files",
+          "validation_commands",
+          "validation_results",
+        ],
+        pending_required_evidence: [
+          "owner_decision",
+          "control_state_completeness_report",
+        ],
+        evidence_refs: [
+          ".shirube-rapid-lite/changed-files.txt",
+          ".shirube-rapid-lite/input-collection.json",
+        ],
+        changed_files_count: 11,
+        generated_by: "shirube-rapid-lite-reusable workflow",
+        external_only: true,
+        not_committed_to_attested_head: true,
+      }, null, 2)}\n`);
       writeFileSync(path.join(out, "pr-body.md"), [
         "execution_context_ref: .shirube/execution-context.yaml",
         "adoption_plan_ref: .shirube/adoption-intake.yaml",
         "existing_state_ref: .shirube/existing-state-scan.yaml",
         "repo_spec_ref: .shirube/repo-spec.yaml",
+        "source_mirror_ref: .shirube/source-mirrors/control-issue.yaml",
         "lifecycle_state_ref: .shirube/lifecycle-state.yaml",
         "handoff_ref: .shirube/control-handoffs/CH-001.yaml",
+        "validation_evidence_ref: .shirube-rapid-lite/runtime-validation-evidence.json",
         "enforcement_policy_ref: .shirube/enforcement-policy.yaml",
+        "control_state_ref: .shirube/control-state-completeness.yaml",
         `matrix_ref: ${path.join(root, ".shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml")}`,
         `rule_pack_ref: ${path.join(root, ".shirube/design-rule-packs/shirube-default-design-rules.yaml")}`,
         "",
@@ -193,13 +242,20 @@ describe("Shirube Rapid/Lite reusable workflow caller", () => {
       const report = JSON.parse(stdout);
 
       expect(report.schema).toBe("shirube-rapid-lite-report/v1");
+      expect(["PASS", "PASS_WITH_WARN"]).toContain(report.verdict);
+      expect(report.would_block).toBe(false);
+      expect(report.owner_must_not_merge).toBe(false);
       expect(report.gates.map((gate: { gate: string }) => gate.gate)).toContain("gate-contract");
       expect(report.gates.map((gate: { gate: string }) => gate.gate)).toContain("design-rules");
       expect(report.gates.some((gate: { report_failed: boolean }) => gate.report_failed)).toBe(false);
+      const gateContract = report.gates.find((gate: { gate: string }) => gate.gate === "gate-contract");
+      expect(gateContract.blockers.map((finding: { item_id: string }) => finding.item_id)).not.toContain("RL-PR-001");
+      expect(gateContract.blockers.map((finding: { item_id: string }) => finding.item_id)).not.toContain("RL-MERGE-001");
+      expect(gateContract.warnings.map((finding: { item_id: string }) => finding.item_id)).toContain("RL-MERGE-W001");
       expect(existsSync(path.join(out, ".shirube-rapid-lite/gate-contract.json"))).toBe(true);
       expect(existsSync(path.join(out, "scripts/shirube"))).toBe(false);
     } finally {
       rmSync(out, { recursive: true, force: true });
     }
-  });
+  }, 20000);
 });

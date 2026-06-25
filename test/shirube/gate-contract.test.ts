@@ -145,7 +145,45 @@ describe("Rapid/Lite gate contract check", () => {
     expect(hardBlockIds(result)).toContain("RL-PR-001");
   });
 
-  it("blocks missing owner decision when the profile requires owner merge evidence", () => {
+  it("warns missing owner decision before final owner phase", () => {
+    const result = check("missing-owner-decision.warn.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("PASS_WITH_WARN");
+    expect(result.json.would_block).toBe(false);
+    expect(hardBlockIds(result)).not.toContain("RL-MERGE-001");
+    expect(warningIds(result)).toContain("RL-MERGE-W001");
+  });
+
+  it("warns pending owner decision before final owner phase", () => {
+    const result = check("missing-owner-decision.warn.yaml", "changed-files.pass.txt", [
+      "--owner-decision",
+      fixture("owner-decision.pending.yaml"),
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("PASS_WITH_WARN");
+    expect(result.json.would_block).toBe(false);
+    expect(hardBlockIds(result)).not.toContain("RL-MERGE-001");
+    expect(warningIds(result)).toContain("RL-MERGE-W001");
+  });
+
+  it("blocks pending owner decision when MERGE_READY phase is claimed", () => {
+    const result = check("missing-owner-decision.block.yaml", "changed-files.pass.txt", [
+      "--owner-decision",
+      fixture("owner-decision.pending.yaml"),
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(result.json.would_block).toBe(true);
+    expect(hardBlockIds(result)).toContain("RL-MERGE-001");
+  });
+
+  it("blocks missing owner decision when MERGE_READY phase is claimed", () => {
     const result = check("missing-owner-decision.block.yaml");
 
     expect(result.exitCode).toBe(0);
@@ -154,8 +192,34 @@ describe("Rapid/Lite gate contract check", () => {
     expect(hardBlockIds(result)).toContain("RL-MERGE-001");
   });
 
+  it("accepts owner exact-head approval when the head matches", () => {
+    const result = check("missing-owner-decision.warn.yaml", "changed-files.pass.txt", [
+      "--owner-decision",
+      fixture("owner-decision.approved.yaml"),
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("PASS");
+    expect(hardBlockIds(result)).not.toContain("RL-MERGE-001");
+    expect(hardBlockIds(result)).not.toContain("RL-MERGE-002");
+    expect(warningIds(result)).not.toContain("RL-MERGE-W001");
+  });
+
   it("blocks owner decision exact-head mismatch", () => {
     const result = check("owner-head-mismatch.block.yaml");
+
+    expect(result.exitCode).toBe(0);
+    expectContractShape(result);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(hardBlockIds(result)).toContain("RL-MERGE-002");
+  });
+
+  it("blocks external owner exact-head mismatch", () => {
+    const result = check("missing-owner-decision.warn.yaml", "changed-files.pass.txt", [
+      "--owner-decision",
+      fixture("owner-decision.mismatch.yaml"),
+    ]);
 
     expect(result.exitCode).toBe(0);
     expectContractShape(result);

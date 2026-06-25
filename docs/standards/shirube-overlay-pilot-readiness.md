@@ -50,6 +50,10 @@ Allowed target-repo evidence paths are:
 
 Committed owner-decision YAML is policy only unless a later approved parser explicitly validates it against the current PR head. Pending owner-decision YAML must not be treated as approval.
 
+The generated workflow caller path must be able to provide runtime validation evidence for the current PR head without committing that evidence into the overlay. This keeps `PR_head_SHA`, changed-file, and validation-result checks deterministic while preserving the authority boundary for owner final decision.
+
+Owner final decision remains a merge authority artifact, not a workflow-generated fact. Before final owner decision, missing owner final decision should be reported as a required next action or warning rather than making the overlay pilot dry-run appear structurally impossible.
+
 ## Output
 
 The command emits `shirube-overlay-pilot-readiness/v1` JSON with:

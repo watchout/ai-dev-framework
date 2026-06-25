@@ -1,0 +1,132 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-WORKFLOW-EVIDENCE-PARITY-001
+parent: "#487"
+parent_inputs:
+  - "#487"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/487
+work_order: watchout/ai-dev-framework#487
+pr: "watchout/ai-dev-framework#<PR_NUMBER_PENDING>"
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@193d039fac61fc107315dd5504616996c7691b33
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Runtime validation evidence generation for Rapid/Lite report runs.
+    - Owner-decision pending semantics in the pre-final-owner-decision state.
+    - Reusable workflow evidence parity for generated overlay pilots.
+  shirube_does_not_own:
+    - Target repository mutation.
+    - Owner approval synthesis.
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - Runtime/API/DB/product/package/lockfile behavior.
+cell:
+  CELL-ID: CELL-ADF-V3-WORKFLOW-EVIDENCE-PARITY-001
+  cell_type: integration_lite
+  risk_class: R2
+  goal: Align generated reusable workflow report execution with overlay pilot dry-run evidence semantics without synthesizing owner approval.
+  acceptance_criteria:
+    - Reusable workflow or report helper supplies current-head runtime validation evidence when no explicit validation evidence is provided.
+    - Missing owner final decision is a warning before final owner decision, not a structural pilot blocker.
+    - Final owner approval absence and exact-head mismatch remain blocking once a final owner/merge phase is claimed.
+    - The agent-comms overlay workflow-equivalent path produces PASS or PASS_WITH_WARN with would_block=false before target PR creation.
+  non_scope:
+    - live GitHub fetch
+    - external repository mutation
+    - target repo PR creation
+    - required check activation
+    - branch protection or ruleset mutation
+    - runtime/API/DB/product/package/lockfile changes
+    - V3 complete claim
+    - heavy #505 features
+  allowed_paths:
+    - .shirube/work-orders/487/workflow-evidence-parity/**
+    - .github/workflows/shirube-rapid-lite-reusable.yml
+    - docs/standards/shirube-overlay-adoption-pack.md
+    - docs/standards/shirube-overlay-pilot-readiness.md
+    - docs/standards/shirube-rapid-lite-workflow-caller.md
+    - scripts/shirube/check-gate-contract.mjs
+    - scripts/shirube/check-control-state-completeness.mjs
+    - scripts/shirube/run-rapid-lite-report.mjs
+    - test/fixtures/shirube/execution-context/pr-body.pre-final-owner-decision.md
+    - test/fixtures/shirube/gate-contract/missing-owner-decision.block.yaml
+    - test/fixtures/shirube/gate-contract/missing-owner-decision.warn.yaml
+    - test/fixtures/shirube/gate-contract/rapid-lite.pass.yaml
+    - test/fixtures/shirube/gate-contract/owner-decision.approved.yaml
+    - test/fixtures/shirube/gate-contract/owner-decision.mismatch.yaml
+    - test/fixtures/shirube/gate-contract/owner-decision.pending.yaml
+    - test/shirube/execution-context.test.ts
+    - test/shirube/gate-contract.test.ts
+    - test/shirube/rapid-lite-report.test.ts
+    - test/shirube/workflow-caller.test.ts
+  forbidden_paths:
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - active workflows
+    touched: true
+    reason: This slice adjusts report-only reusable workflow input evidence generation. It does not enable required checks or CI hard-blocking.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - owner approval synthesized by workflow
+    - required check activation added
+    - branch protection or ruleset mutation added
+    - runtime/API/DB/product/package/lockfile change added
+    - external repo mutation added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/gate-contract.test.ts test/shirube/workflow-caller.test.ts test/shirube/overlay-pilot-readiness.test.ts test/shirube/rapid-lite-report.test.ts
+    - workflow-equivalent agent-comms overlay report reproduction
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - PR_head_SHA
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+    - control_state_completeness_report
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: .shirube/work-orders/487/workflow-evidence-parity/owner-decision-pending.yaml
+post_merge_policy:
+  evidence_required_before_complete: true
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/487

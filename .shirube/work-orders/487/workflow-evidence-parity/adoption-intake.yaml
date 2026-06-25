@@ -1,0 +1,30 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPTION-ADF-V3-WORKFLOW-EVIDENCE-PARITY-001
+repo: watchout/ai-dev-framework
+product: Shirube Rapid/Lite
+lane: adoption_intake
+status: RAPID_LITE_REPORT_ONLY
+current_phase: ADOPTION_READY
+disposition: retrofit_accelerate
+source_control:
+  type: github_issue
+  ref: watchout/ai-dev-framework#487
+classification:
+  existing_state_scan: present
+  material_drift: false
+  legacy_as_truth: false
+  llm_as_truth: false
+  unsafe_change: false
+owner:
+  role: repo_owner
+  actor: watchout
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+gap_fill_or_reconciliation_plan:
+  required: false
+next_safe_cell:
+  CELL-ID: CELL-ADF-V3-WORKFLOW-EVIDENCE-PARITY-001
+non_scope:
+  - target repository mutation
+  - required check activation
+  - branch protection or ruleset mutation
+  - runtime/API/DB/product/package/lockfile behavior

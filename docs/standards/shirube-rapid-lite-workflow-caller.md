@@ -67,7 +67,11 @@ If `changed_files` is empty, the reusable workflow computes the PR diff from Git
 
 The reusable workflow also injects ADF-local `matrix_ref` and `rule_pack_ref` paths into the effective PR-body evidence so target repositories do not need to copy the gate contract matrix or default design rule pack.
 
+When no explicit `validation_evidence_ref` is supplied, the reusable workflow creates `.shirube-rapid-lite/runtime-validation-evidence.json` during the run and injects that path into the effective PR-body evidence. This runtime artifact may provide the current PR head SHA, changed-file collection evidence, and validation command/result facts. It is external to the attested commit and is not copied into the target repository.
+
 Final owner exact-head evidence should be supplied outside the attested commit, for example through an owner-decision PR comment parser or workflow-provided evidence input. A committed pending owner-decision YAML file is policy only and must not be treated as approval.
+
+The reusable workflow must not synthesize owner approval. Missing owner final decision is a warning in the pre-final-owner-decision state; once a final owner/merge phase or a final owner decision is asserted, exact-head mismatch or missing approval is blocking.
 
 ## Report-Only Semantics
 

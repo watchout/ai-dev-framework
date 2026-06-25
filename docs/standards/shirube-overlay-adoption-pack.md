@@ -125,6 +125,10 @@ LLM output is not authority.
 
 Final owner exact-head approval is external to the committed overlay. It may come from a PR owner-decision comment parser, workflow input, or external validation/owner-decision evidence file outside the attested commit. Pending owner-decision YAML inside the overlay is policy only and must not be treated as approval.
 
+The report-only workflow caller may generate runtime validation evidence for the current PR head under `.shirube-rapid-lite/`. That artifact can satisfy machine head and validation evidence checks for the report run. It must not include or imply owner approval.
+
+In the pre-final-owner-decision state, missing owner final decision is a required action. Exact-head owner approval is still required before merge, but the overlay adoption PR should not be structurally blocked merely because that final decision has not yet been posted.
+
 `report_only` is calibration and observation. It is not the final enforcement state. Promotion to `owner_block`, `ci_hard_block`, or `required_check` requires later owner-approved work.
 
 Full control requires Control State Completeness. A target repo must not claim V3 complete, enforced, fully controlled, or required-check protected status until machine evidence supports that claim.

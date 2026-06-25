@@ -1,0 +1,15 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: ESS-ADF-V3-WORKFLOW-EVIDENCE-PARITY-001
+repo: watchout/ai-dev-framework
+status: present
+summary: ADF already runs Rapid/Lite report-only gates and provides reusable workflow support. This slice fixes evidence parity between overlay dry-run and generated reusable workflow execution.
+observed_control_state:
+  rapid_lite_kernel: present
+  reusable_workflow: present
+  overlay_pilot_readiness: present
+  target_repo_mutation: absent
+findings:
+  material_drift: false
+  legacy_as_truth: false
+  llm_as_truth: false
+  unsafe_change: false
