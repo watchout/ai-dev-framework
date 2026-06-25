@@ -1,0 +1,137 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-COMMENT-BACKED-AUDIT-001
+parent: "#509"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/509
+work_order: watchout/ai-dev-framework#509
+pr: watchout/ai-dev-framework#513
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/509
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@4f67db3ef6b0c3ccc193612ae04879d8e76c22c3
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Comment-backed structured audit evidence resolver in ai-dev-framework.
+    - Reusable Rapid/Lite workflow wiring that materializes structured audit comments into report artifacts.
+    - Documentation and fixtures for same-PR comment-backed audit evidence.
+  shirube_does_not_own:
+    - Owner final approval synthesis.
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - Target repository mutation.
+    - DB runtime, MCP, AUN runtime, queue mutation, legacy migration, or full-overlay reconcile.
+cell:
+  CELL-ID: CELL-ADF-V3-COMMENT-BACKED-AUDIT-001
+  cell_type: integration_lite
+  risk_class: R2
+  goal: Add comment-backed structured audit evidence support for Rapid/Lite reusable workflow reports.
+  acceptance_criteria:
+    - Existing repo-local structured_audit_ref file paths remain compatible.
+    - Same-PR GitHub comment refs can be fetched, exact-head checked, and materialized into report artifacts.
+    - check-audit-checklist consumes the materialized structured audit file without target branch mutation.
+    - Owner approval is not synthesized from structured audit evidence.
+  non_scope:
+    - owner approval synthesis
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - target repo mutation
+    - DB runtime
+    - MCP implementation
+    - AUN runtime integration
+    - legacy migration
+    - full-overlay reconcile
+    - package or lockfile changes
+  allowed_paths:
+    - .shirube/work-orders/509/comment-backed-audit/**
+    - .github/workflows/shirube-rapid-lite-reusable.yml
+    - docs/standards/shirube-comment-backed-audit-evidence.md
+    - docs/standards/shirube-rapid-lite-workflow-caller.md
+    - scripts/shirube/resolve-structured-audit-ref.mjs
+    - templates/adoption-pack/hotel-lite/workflow-caller.yml
+    - test/fixtures/shirube/structured-audit-comment-ref/**
+    - test/fixtures/shirube/workflow-caller/required-inputs.txt
+    - test/shirube/structured-audit-comment-ref.test.ts
+  forbidden_paths:
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - active workflows
+      - permissions
+    touched: true
+    reason: This slice updates the existing report-only reusable workflow to read same-PR issue comments through the workflow token and materialize structured audit evidence as workflow artifacts only. It does not mutate target branches or enable enforcement settings.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - owner approval synthesis added
+    - required check activation added
+    - branch protection or ruleset mutation added
+    - target repo mutation added
+    - runtime/API/DB/product/package/lockfile change added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/structured-audit-comment-ref.test.ts test/shirube/workflow-caller.test.ts test/shirube/rapid-lite-report.test.ts test/shirube/audit-checklist.test.ts
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+    - node --check scripts/shirube/resolve-structured-audit-ref.mjs
+    - YAML parse for reusable workflow and caller template
+    - sample resolve-structured-audit-ref for watchout/agent-comms-mcp#813 replay fixture
+  required_evidence:
+    - PR_head_SHA
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+  acceptance_tests:
+    - local structured_audit_ref file path still works
+    - GitHub PR comment URL materializes to structured-audit.yaml
+    - github-comment URI materializes to structured-audit.yaml
+    - missing audit block blocks
+    - wrong schema blocks
+    - target repo mismatch blocks
+    - target PR mismatch blocks
+    - exact head mismatch blocks
+    - missing exact head blocks
+    - maker/checker violation blocks
+    - owner approval embedded in audit blocks
+    - materialized audit passes check-audit-checklist
+    - Rapid/Lite consumes materialized audit with would_block=false when other gates pass
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: pending-owner-final-decision
+  decision_ref: .shirube/work-orders/509/comment-backed-audit/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/509

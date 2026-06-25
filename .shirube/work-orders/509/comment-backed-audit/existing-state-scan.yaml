@@ -1,0 +1,26 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-STATE-ADF-V3-COMMENT-BACKED-AUDIT-001
+repo: watchout/ai-dev-framework
+observed_at: 2026-06-25T06:30:00Z
+source_control_ref: watchout/ai-dev-framework#509
+classification:
+  current_status: RAPID_LITE_REPORT_ONLY
+  target_status_after_merge: RAPID_LITE_REPORT_ONLY
+  disposition: retrofit_accelerate
+specs:
+  - path: https://github.com/watchout/ai-dev-framework/issues/509
+    status: parent_work_order
+    authority: github_issue
+implementation:
+  - path: scripts/shirube/resolve-structured-audit-ref.mjs
+    status: added
+  - path: .github/workflows/shirube-rapid-lite-reusable.yml
+    status: updated_report_only_reusable_workflow
+tests:
+  - path: test/shirube/structured-audit-comment-ref.test.ts
+    status: added
+legacy_sources: []
+known_drift: []
+unsafe_changes: []
+llm_truth_claims: []
+unknowns: []
