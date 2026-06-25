@@ -134,10 +134,10 @@ describe("Shirube overlay pilot readiness dry-run gate", () => {
       expect(result.json.rapid_lite_dry_run.gates.map((gate: { gate: string }) => gate.gate)).toEqual([
         "execution-context",
         "adoption",
-        "lifecycle",
         "gate-contract",
         "design-rules",
         "audit-checklist",
+        "lifecycle",
         "enforcement-policy",
         "control-state-completeness",
       ]);

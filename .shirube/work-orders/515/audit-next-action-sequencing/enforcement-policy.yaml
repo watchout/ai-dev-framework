@@ -1,0 +1,32 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-ADF-V3-AUDIT-NEXT-ACTION-SEQUENCE-001
+repo: watchout/ai-dev-framework
+mode: report_only
+profile: hotel-lite
+framework_ref: watchout/ai-dev-framework@c514001b4ca36619f05f0fb4210a28dd4ddc8849
+updated_at: 2026-06-25T18:20:00+09:00
+owner_observed: true
+owner:
+  role: repo_owner
+  actor: watchout
+required_checks:
+  enabled: false
+branch_protection:
+  unchanged: true
+rulesets:
+  unchanged: true
+report_only_semantics:
+  aggregate_would_block_sets_owner_must_not_merge: true
+  ci_should_fail: false
+  owner_must_not_merge_without_exception: true
+non_scope:
+  - owner approval synthesis
+  - automatic audit approval
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - target repo mutation
+  - DB runtime
+  - MCP implementation
+  - AUN runtime integration
+  - package or lockfile changes

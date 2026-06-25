@@ -1,6 +1,38 @@
 {
   "schema": "shirube-audit-checklist-check/v1",
   "verdict": "PASS",
+  "current_phase": "OWNER_DECISION_REQUIRED",
+  "next_action": {
+    "action": "request_owner_exact_head_decision",
+    "responsible_role": "owner",
+    "allowed_actor_role": "repo_owner",
+    "reason": "Independent audit prerequisites are satisfied; owner exact-head decision is required for aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa."
+  },
+  "owner_approval_allowed": true,
+  "merge_ready_allowed": false,
+  "forbidden_next_actions": [
+    "mark_merge_ready",
+    "merge"
+  ],
+  "audit_required": true,
+  "audit_completion": {
+    "exists": true,
+    "machine_readable": true,
+    "independent": true,
+    "exact_head_matches": true,
+    "target_repo_matches": true,
+    "target_pr_matches": true,
+    "verdict_accepted": true,
+    "required_items_answered": true,
+    "complete": true,
+    "expected_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "observed_head": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "target_repo": "watchout/ai-dev-framework",
+    "target_pr": "490",
+    "warnings_count": 0
+  },
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": "490",
   "would_block": false,
   "owner_must_not_merge": false,
   "audit_checklist_ref": "test/fixtures/shirube/audit-checklist/checklist.pass.yaml",

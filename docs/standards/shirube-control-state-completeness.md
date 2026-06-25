@@ -67,10 +67,14 @@ The gate reconciles:
 - required evidence names against concrete evidence refs;
 - owner exact-head decision against PR/gate head;
 - audit item records against required audit item sets;
-- checklist-required audit responses against `shirube-audit-checklist/v1` via `check-audit-checklist`;
+- checklist-required audit responses against `shirube-audit-checklist/v1` via `check-audit-checklist`, including independent source provenance and exact-head/repo/PR binding;
 - post-merge evidence before `COMPLETE`;
 - full-control claims against full-readiness evidence;
 - report failures so they cannot be ignored.
+
+It also emits sequencing fields: `current_phase`, `next_action`, `owner_approval_allowed`, `merge_ready_allowed`, and `forbidden_next_actions`. When audit is required but incomplete, Control State Completeness must make `request_independent_audit` the next action instead of surfacing owner approval as the operator's next step.
+An audit checklist report that only self-asserts `audit_completion.complete` or related match booleans is incomplete until the observable audit/report fields and trusted source provenance reconcile.
+If an audit source artifact exists but targets a different head, repo, PR, or materialized audit path, the audit remains incomplete and Control State Completeness must block with `CSC-012`.
 
 ## Hard Block IDs
 
@@ -94,16 +98,18 @@ The gate reconciles:
 
 For P0 audit checklist hardening, use the `AUDIT-LIST-*` findings from `check-audit-checklist` as the authoritative itemized audit readiness result. Missing, duplicate, unanswered, or unsupported executable audit items must block full operational audit acceptance even when freeform audit prose says PASS. Control State Completeness consumes `audit-checklist.json` when provided and propagates `AUDIT-LIST-*` blockers instead of converting them into freeform prose.
 
+Owner exact-head approval before required independent audit completion is invalid and blocks with `OWNER-SEQ-001`. The correct next action is independent audit completion for the current exact head. See [Shirube Next-Action Sequencing](shirube-next-action-sequencing.md).
+
 ## Runner Integration
 
 `run-rapid-lite-report` runs gates in this visible order:
 
 1. execution-context
 2. adoption
-3. lifecycle
-4. gate-contract
-5. design-rules
-6. audit-checklist, when checklist or structured audit refs are present
+3. gate-contract
+4. design-rules
+5. audit-checklist, when checklist or structured audit refs are present
+6. lifecycle, after gate/audit reports are available
 7. enforcement-policy, when a policy is present
 8. control-state-completeness
 

@@ -1,0 +1,132 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-AUDIT-NEXT-ACTION-SEQUENCE-001
+parent: "#515"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/515
+work_order: watchout/ai-dev-framework#515
+pr: pending-pr
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/515
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@c514001b4ca36619f05f0fb4210a28dd4ddc8849
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+audit_required: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: independent_audit
+rps_scope:
+  shirube_owns:
+    - Rapid/Lite gate next-action sequencing.
+    - Audit completion precedence before owner exact-head approval.
+    - Report-only aggregate next_action fields and documentation.
+  shirube_does_not_own:
+    - Owner approval synthesis.
+    - Automatic audit approval.
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - Target repository mutation.
+    - DB runtime, MCP, AUN runtime, or package release behavior.
+cell:
+  CELL-ID: CELL-ADF-V3-AUDIT-NEXT-ACTION-SEQUENCE-001
+  cell_type: governance_gate
+  risk_class: R3
+  goal: Add machine-controlled next-action sequencing so independent audit completion precedes owner exact-head approval when audit is required.
+  acceptance_criteria:
+    - Gate reports include current_phase, next_action, owner_approval_allowed, merge_ready_allowed, and forbidden_next_actions.
+    - Audit required and incomplete yields request_independent_audit and forbids owner exact-head approval.
+    - Audit complete and owner missing yields request_owner_exact_head_decision.
+    - Owner approval before required audit completion blocks with OWNER-SEQ-001.
+    - Rapid/Lite aggregate surfaces audit as the top next action before owner approval.
+  non_scope:
+    - owner approval synthesis
+    - automatic audit approval
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - target repo mutation
+    - DB runtime
+    - MCP implementation
+    - AUN runtime integration
+    - package or lockfile changes
+  allowed_paths:
+    - .shirube/work-orders/515/audit-next-action-sequencing/**
+    - docs/standards/shirube-next-action-sequencing.md
+    - docs/standards/shirube-control-state-completeness.md
+    - docs/standards/shirube-gate-pack-bridge.md
+    - scripts/shirube/next-action-sequencing.mjs
+    - scripts/shirube/check-audit-checklist.mjs
+    - scripts/shirube/check-control-state-completeness.mjs
+    - scripts/shirube/check-lifecycle.mjs
+    - scripts/shirube/run-rapid-lite-report.mjs
+    - test/fixtures/shirube/next-action-sequencing/**
+    - test/fixtures/shirube/rapid-lite-report/pr-body.audit-required-no-audit.md
+    - test/fixtures/shirube/control-state-completeness/audit-checklist.pass.json
+    - test/shirube/next-action-sequencing.test.ts
+    - test/shirube/audit-checklist.test.ts
+    - test/shirube/control-state-completeness.test.ts
+    - test/shirube/overlay-pilot-readiness.test.ts
+    - test/shirube/rapid-lite-report.test.ts
+  forbidden_paths:
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/workflows/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - permissions
+      - repo_spec_confirmation_evidence
+    touched: true
+    reason: This slice changes local/report-only Shirube gate sequencing and docs. It does not synthesize approval, enable enforcement, mutate branch protection, or mutate target repositories.
+  stop_conditions:
+    - owner approval is synthesized
+    - required checks are activated
+    - branch protection or rulesets are mutated
+    - target repository mutation is added
+    - runtime/API/DB/product/package/lockfile change is added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/next-action-sequencing.test.ts test/shirube/rapid-lite-report.test.ts test/shirube/control-state-completeness.test.ts
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+    - sample run-rapid-lite-report audit-required-no-audit path
+  required_evidence:
+    - PR_head_SHA
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  blocked_until:
+    - independent_audit_complete
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: .shirube/work-orders/515/audit-next-action-sequencing/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/515

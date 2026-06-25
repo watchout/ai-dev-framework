@@ -6,6 +6,10 @@ import {
   parseArgs,
   readStructuredFile,
 } from "./lib.mjs";
+import {
+  auditCompletionFrom,
+  buildNextActionSequencing,
+} from "./next-action-sequencing.mjs";
 
 const SCHEMA = "shirube-audit-checklist-check/v1";
 const CHECKLIST_SCHEMA = "shirube-audit-checklist/v1";
@@ -109,9 +113,14 @@ export function buildAuditChecklistCheck(input) {
     }
   }
 
-  if (!isPlaceholder(expectedHead) && !isPlaceholder(input.audit.pr_head_sha) && String(expectedHead) !== String(input.audit.pr_head_sha)) {
+  const auditHeadValue = auditHead(input.audit);
+  if (!isPlaceholder(expectedHead) && isPlaceholder(auditHeadValue)) {
     blockers.push(finding("AUDIT-LIST-008", {
-      message: `Audit head ${input.audit.pr_head_sha} does not match expected head ${expectedHead}.`,
+      message: `Audit head is missing; expected ${expectedHead}.`,
+    }));
+  } else if (!isPlaceholder(expectedHead) && !isPlaceholder(auditHeadValue) && String(expectedHead) !== String(auditHeadValue)) {
+    blockers.push(finding("AUDIT-LIST-008", {
+      message: `Audit head ${auditHeadValue} does not match expected head ${expectedHead}.`,
     }));
   }
 
@@ -198,14 +207,16 @@ function scopeOnly(audit, checklist) {
 
 function report({ input, blockers, warnings }) {
   const verdict = blockers.length > 0 ? "BLOCKED" : warnings.length > 0 ? "PASS_WITH_WARN" : "PASS";
-  return {
+  const baseReport = {
     schema: SCHEMA,
     verdict,
     would_block: verdict === "BLOCKED",
     owner_must_not_merge: verdict === "BLOCKED",
     audit_checklist_ref: input.checklistPath ?? null,
     structured_audit_ref: input.auditPath ?? null,
-    pr_head_sha: input.audit?.pr_head_sha ?? null,
+    pr_head_sha: auditHead(input.audit) ?? null,
+    target_repo: auditTargetRepo(input.audit) ?? null,
+    target_pr: auditTargetPr(input.audit) ?? null,
     inventory: {
       checklist_items: asArray(input.checklist?.items).length,
       audit_items: asArray(input.audit?.items).length,
@@ -215,6 +226,37 @@ function report({ input, blockers, warnings }) {
     blockers,
     warnings,
     required_next_actions: requiredNextActions(blockers, warnings),
+  };
+  const auditCompletion = auditCompletionFrom({
+    auditChecklistReport: baseReport,
+    structuredAudit: input.audit,
+    structuredAuditPath: input.auditPath,
+    auditSource: input.auditSource,
+    actualHead: input.expectedHead,
+    actualRepo: input.expectedRepo,
+    actualPr: input.expectedPr,
+  });
+  const sequencing = buildNextActionSequencing({
+    auditRequired: true,
+    auditChecklistReport: { ...baseReport, audit_completion: auditCompletion },
+    structuredAudit: input.audit,
+    structuredAuditPath: input.auditPath,
+    auditSource: input.auditSource,
+    actualHead: input.expectedHead,
+    actualRepo: input.expectedRepo,
+    actualPr: input.expectedPr,
+    blockingFindings: blockers,
+  });
+  return {
+    ...baseReport,
+    current_phase: sequencing.current_phase,
+    next_action: sequencing.next_action,
+    owner_approval_allowed: sequencing.owner_approval_allowed,
+    merge_ready_allowed: sequencing.merge_ready_allowed,
+    forbidden_next_actions: sequencing.forbidden_next_actions,
+    audit_required: sequencing.audit_required,
+    audit_completion: auditCompletion,
+    owner_decision_status: sequencing.owner_decision_status,
   };
 }
 
@@ -235,6 +277,35 @@ function failure({ message, path }) {
     required_next_actions: [
       { item_id: "AUDIT-LIST-001", action: "Fix malformed audit checklist input and rerun." },
     ],
+    current_phase: "AUDIT_REQUIRED",
+    next_action: {
+      action: "request_independent_audit",
+      responsible_role: "auditor",
+      allowed_actor_role: "independent_reviewer",
+      reason: "Malformed audit checklist input must be fixed before owner approval.",
+    },
+    owner_approval_allowed: false,
+    merge_ready_allowed: false,
+    forbidden_next_actions: ["owner_exact_head_approval", "mark_merge_ready", "merge"],
+    audit_required: true,
+    audit_completion: {
+      exists: false,
+      machine_readable: false,
+      independent: false,
+      exact_head_matches: false,
+      target_repo_matches: false,
+      target_pr_matches: false,
+      verdict_accepted: false,
+      required_items_answered: false,
+      complete: false,
+    },
+    owner_decision_status: {
+      present: false,
+      pending: false,
+      final_approval_present: false,
+      exact_head_sha: null,
+      head_mismatch: false,
+    },
   };
 }
 
@@ -276,8 +347,11 @@ function readInput(options) {
   const checklistPath = stringOption(options.checklist);
   const auditPath = stringOption(options.audit) ?? stringOption(options["structured-audit"]);
   const machineEvidencePath = stringOption(options["machine-evidence"]);
+  const auditSourcePath = stringOption(options["audit-source"]) ?? stringOption(options["structured-audit-source"]);
   const operationalMode = stringOption(options["operational-mode"]) ?? "full_operational";
   const expectedHead = stringOption(options["expected-head"]);
+  const expectedRepo = stringOption(options["expected-repo"]);
+  const expectedPr = stringOption(options["expected-pr"]);
   const implementationActor = stringOption(options["implementation-actor"]);
 
   if (!checklistPath || !existsSync(checklistPath)) {
@@ -292,10 +366,13 @@ function readInput(options) {
         machineEvidencePath,
         operationalMode,
         expectedHead,
+        expectedRepo,
+        expectedPr,
         implementationActor,
         checklist: readStructuredFile(checklistPath),
         audit: auditPath && existsSync(auditPath) ? readStructuredFile(auditPath) : null,
         machineEvidence: machineEvidencePath && existsSync(machineEvidencePath) ? readStructuredFile(machineEvidencePath) : null,
+        auditSource: auditSourcePath && existsSync(auditSourcePath) ? readStructuredFile(auditSourcePath) : null,
       },
     };
   } catch (error) {
@@ -331,6 +408,18 @@ function countBy(values) {
 
 function firstPresent(...values) {
   return values.find((value) => !isPlaceholder(value));
+}
+
+function auditHead(audit) {
+  return firstPresent(audit?.exact_head_sha, audit?.pr_head_sha, audit?.head_sha, audit?.target_head, audit?.target?.head_sha);
+}
+
+function auditTargetRepo(audit) {
+  return firstPresent(audit?.target_repo, audit?.repo, audit?.target?.repo);
+}
+
+function auditTargetPr(audit) {
+  return firstPresent(audit?.target_pr, audit?.pr, audit?.pull_request, audit?.target?.pr);
 }
 
 function isPlaceholder(value) {

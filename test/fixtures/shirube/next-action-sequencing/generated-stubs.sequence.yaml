@@ -1,0 +1,11 @@
+schema_version: shirube-next-action-stub-sequence/v1
+source_issue: "#515"
+sequence:
+  - stub: structured_audit
+    phase: AUDIT_REQUIRED
+    allowed_before_owner_decision: true
+  - stub: owner_exact_head_decision
+    phase: OWNER_DECISION_REQUIRED
+    allowed_before_owner_decision: false
+    requires:
+      - independent_audit_complete

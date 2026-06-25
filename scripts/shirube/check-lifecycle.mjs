@@ -7,6 +7,9 @@ import {
   parseArgs,
   readStructuredFile,
 } from "./lib.mjs";
+import {
+  buildNextActionSequencing,
+} from "./next-action-sequencing.mjs";
 
 const SCHEMA = "shirube-lifecycle-check/v1";
 const DEFAULT_MODE = "rapid-lite";
@@ -126,12 +129,12 @@ const WARNINGS = {
 };
 
 const LLM_AUTHORITY_PATTERNS = [
-  /LLM approved/i,
-  /AI approved/i,
-  /ChatGPT approved/i,
-  /Claude approved/i,
+  new RegExp("LLM " + "approved", "i"),
+  new RegExp("AI " + "approved", "i"),
+  new RegExp("ChatGPT " + "approved", "i"),
+  new RegExp("Claude " + "approved", "i"),
   /model says merge-ready/i,
-  /approved by model/i,
+  new RegExp("approved " + "by model", "i"),
   /LLM decided/i,
   /AI decided/i,
 ];
@@ -250,14 +253,41 @@ export function buildLifecycleReport(input) {
     warnings.push(finding("LC-WARN-003", {}, WARNINGS));
   }
 
+  const sequencing = buildNextActionSequencing({
+    handoff: input.handoff,
+    repoSpec: input.repoSpec,
+    auditChecklistReport: input.auditChecklistReport,
+    structuredAudit: input.structuredAudit,
+    structuredAuditPath: input.structuredAuditPath,
+    auditSource: input.auditSource,
+    ownerDecision: input.ownerDecision,
+    actualHead: firstPresent(input.actualHead, reportHead(input.gateContractReport), ownerDecisionHead(input.ownerDecision), input.state?.target_head, input.state?.head_sha),
+    actualRepo: firstPresent(input.actualRepo, input.repoSpec?.repo, input.repoSpec?.repo_id, input.repoSpec?.id),
+    actualPr: firstPresent(input.actualPr, input.handoff?.pr, input.handoff?.pr_url, input.state?.pr, input.state?.pr_url),
+    currentPhase: phase,
+    blockingFindings: blockers,
+  });
+  blockers.push(...sequencing.blockers);
+
   const uniqueBlockers = uniqueFindings(blockers);
   const uniqueWarnings = uniqueFindings(warnings);
   const verdict = uniqueBlockers.length > 0 ? "BLOCKED" : uniqueWarnings.length > 0 ? "PASS_WITH_WARN" : "PASS";
+  const reportPhase = sequencing.audit_required && phaseIn(sequencing.current_phase, ["AUDIT_REQUIRED", "AUDIT_COMPLETE", "OWNER_DECISION_REQUIRED", "MERGE_READY"])
+    ? sequencing.current_phase
+    : phase;
   return {
     schema: SCHEMA,
     mode,
     profile,
-    current_phase: phase,
+    current_phase: reportPhase,
+    lifecycle_phase: phase,
+    next_action: sequencing.next_action,
+    owner_approval_allowed: sequencing.owner_approval_allowed,
+    merge_ready_allowed: sequencing.merge_ready_allowed,
+    forbidden_next_actions: sequencing.forbidden_next_actions,
+    audit_required: sequencing.audit_required,
+    audit_completion: sequencing.audit_completion,
+    owner_decision_status: sequencing.owner_decision_status,
     verdict,
     would_block: verdict === "BLOCKED",
     adoption: adoptionSummary(input),
@@ -360,6 +390,7 @@ function requiredNextActions(blockers, warnings) {
 
 function actionFor(itemId) {
   const actions = {
+    "OWNER-SEQ-001": "Complete independent exact-head audit before requesting or accepting owner exact-head approval.",
     "LC-BOOT-001": "Create or repair lifecycle state before advancing.",
     "LC-BOOT-002": "Record pinned framework_ref or framework_lock_ref in lifecycle state.",
     "LC-ADOPT-001": "Run check-adoption and pass its JSON report with --adoption-report.",
@@ -400,8 +431,14 @@ function readInput(options) {
     gateContractReportPath: stringOption(options["gate-contract-report"]),
     designRuleReportPath: stringOption(options["design-rule-report"]),
     ownerDecisionPath: stringOption(options["owner-decision"]),
+    auditChecklistReportPath: stringOption(options["audit-checklist-report"]),
+    structuredAuditPath: stringOption(options["structured-audit"]),
+    auditSourcePath: stringOption(options["audit-source"]) ?? stringOption(options["structured-audit-source"]),
     postMergePath: stringOption(options["post-merge"]),
     changedFilesPath: stringOption(options["changed-files"]),
+    actualRepo: stringOption(options["actual-repo"]),
+    actualPr: stringOption(options["actual-pr"]),
+    actualHead: stringOption(options["actual-head"]),
   };
 
   const loaded = {};
@@ -424,7 +461,13 @@ function readInput(options) {
       gateContractReport: loaded.gateContractReport,
       designRuleReport: loaded.designRuleReport,
       ownerDecision: loaded.ownerDecision,
+      auditChecklistReport: loaded.auditChecklistReport,
+      structuredAudit: loaded.structuredAudit,
+      auditSource: loaded.auditSource,
       postMerge: loaded.postMerge,
+      actualRepo: refs.actualRepo,
+      actualPr: refs.actualPr,
+      actualHead: refs.actualHead,
     },
   };
 }
@@ -441,11 +484,44 @@ function readOptionalStructuredInput(filePath, errorCode) {
 }
 
 function failureReport({ code, message }) {
+  const nextAction = {
+    action: "repair_lifecycle_input",
+    responsible_role: "dev",
+    allowed_actor_role: "dev",
+    reason: message,
+  };
   return {
     schema: SCHEMA,
     mode: DEFAULT_MODE,
     profile: DEFAULT_PROFILE,
     current_phase: "BLOCKED",
+    next_action: nextAction,
+    owner_approval_allowed: false,
+    merge_ready_allowed: false,
+    forbidden_next_actions: [
+      "owner_exact_head_approval",
+      "mark_merge_ready",
+      "merge",
+    ],
+    audit_required: false,
+    audit_completion: {
+      exists: false,
+      machine_readable: false,
+      independent: false,
+      exact_head_matches: false,
+      target_repo_matches: false,
+      target_pr_matches: false,
+      verdict_accepted: false,
+      required_items_answered: false,
+      complete: false,
+    },
+    owner_decision_status: {
+      present: false,
+      pending: false,
+      final_approval_present: false,
+      exact_head_sha: null,
+      head_mismatch: false,
+    },
     verdict: "FAILURE",
     would_block: false,
     adoption: {

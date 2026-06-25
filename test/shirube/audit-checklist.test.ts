@@ -94,6 +94,11 @@ describe("Shirube audit checklist P0", () => {
     expect(result.exitCode).toBe(0);
     expect(result.json.schema).toBe("shirube-audit-checklist-check/v1");
     expect(result.json.verdict).toBe("PASS");
+    expect(result.json.current_phase).toBe("AUDIT_REQUIRED");
+    expect(result.json.next_action.action).toBe("request_independent_audit");
+    expect(result.json.owner_approval_allowed).toBe(false);
+    expect(result.json.audit_completion.machine_readable).toBe(true);
+    expect(result.json.audit_completion.complete).toBe(false);
     expect(result.json.would_block).toBe(false);
     expect(result.json.owner_must_not_merge).toBe(false);
     expect(result.json.blockers).toEqual([]);
