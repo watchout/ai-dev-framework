@@ -49,3 +49,4 @@ evidence_refs:
   - src/cli/commands/work-result.ts
   - src/cli/lib/orchestration-contract.ts
   - test/shirube/aun-cli-surface.test.ts
+  - .shirube/work-orders/511/aun-cli-surface/control-state-completeness.yaml
