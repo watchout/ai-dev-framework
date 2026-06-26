@@ -9,6 +9,9 @@ import {
   parseArgs,
   readStructuredFile,
 } from "./lib.mjs";
+import {
+  buildNextActionSequencing,
+} from "./next-action-sequencing.mjs";
 
 const SCHEMA = "shirube-rapid-lite-report/v1";
 const MARKER = "<!-- shirube-rapid-lite-gates-report/v1 -->";
@@ -42,16 +45,6 @@ export function buildRapidLiteReport(options) {
   const adoption = runAdoption({ resultDir, refs, changedFilesPath });
   records.push(adoption);
 
-  const lifecycle = runLifecycle({
-    resultDir,
-    refs,
-    changedFilesPath,
-    adoptionReportPath: adoption.status === "ran" ? adoption.output_path : refs.adoptionReport,
-    gateContractReportPath: refs.gateContractReport,
-    designRuleReportPath: refs.designRuleReport,
-  });
-  records.push(lifecycle);
-
   const gateContract = runGateContract({ resultDir, refs, changedFilesPath });
   records.push(gateContract);
 
@@ -60,6 +53,18 @@ export function buildRapidLiteReport(options) {
 
   const auditChecklist = runAuditChecklist({ resultDir, refs, actual });
   records.push(auditChecklist);
+
+  const lifecycle = runLifecycle({
+    resultDir,
+    refs,
+    changedFilesPath,
+    adoptionReportPath: adoption.status === "ran" ? adoption.output_path : refs.adoptionReport,
+    gateContractReportPath: gateContract.status === "ran" ? gateContract.output_path : refs.gateContractReport,
+    designRuleReportPath: designRules.status === "ran" ? designRules.output_path : refs.designRuleReport,
+    auditChecklistReportPath: auditChecklist.status === "ran" ? auditChecklist.output_path : refs.auditChecklistReport,
+    actual,
+  });
+  records.push(lifecycle);
 
   const preEnforcementAggregatePath = writeInterimAggregate({ resultDir, refs, records, changedFiles, filename: "pre-enforcement-aggregate.json" });
   const enforcementPolicy = runEnforcementPolicy({ resultDir, refs, aggregatePath: preEnforcementAggregatePath });
@@ -84,6 +89,7 @@ export function buildRapidLiteReport(options) {
     designRuleReportPath: designRuleReportPath ?? refs.designRuleReport,
     auditChecklistReportPath: auditChecklist.status === "ran" ? auditChecklist.output_path : refs.auditChecklistReport,
     enforcementPolicyReportPath: enforcementPolicy?.status === "ran" ? enforcementPolicy.output_path : refs.enforcementPolicyReport,
+    actual,
   });
   records.push(controlState);
 
@@ -164,8 +170,11 @@ function runAuditChecklist({ resultDir, refs, actual }) {
       refs.auditChecklist,
     ];
     addArg(args, "--audit", refs.structuredAudit);
+    addArg(args, "--audit-source", refs.structuredAuditSource);
     addArg(args, "--machine-evidence", refs.auditMachineEvidence);
     addArg(args, "--expected-head", actual.actualHead);
+    addArg(args, "--expected-repo", actual.actualRepo);
+    addArg(args, "--expected-pr", actual.actualPr);
     args.push("--format", "json");
     return runGate({ gate: "audit-checklist", args, outputPath });
   }
@@ -174,8 +183,11 @@ function runAuditChecklist({ resultDir, refs, actual }) {
       gateScript("check-audit-checklist.mjs"),
     ];
     addArg(args, "--audit", refs.structuredAudit);
+    addArg(args, "--audit-source", refs.structuredAuditSource);
     addArg(args, "--machine-evidence", refs.auditMachineEvidence);
     addArg(args, "--expected-head", actual.actualHead);
+    addArg(args, "--expected-repo", actual.actualRepo);
+    addArg(args, "--expected-pr", actual.actualPr);
     args.push("--format", "json");
     return runGate({ gate: "audit-checklist", args, outputPath });
   }
@@ -211,6 +223,7 @@ function runControlStateCompleteness({
   designRuleReportPath,
   auditChecklistReportPath,
   enforcementPolicyReportPath,
+  actual,
 }) {
   const args = [
     gateScript("check-control-state-completeness.mjs"),
@@ -233,15 +246,22 @@ function runControlStateCompleteness({
   addArg(args, "--owner-decision", refs.ownerDecision);
   addArg(args, "--audit-checklist", refs.auditChecklist);
   addArg(args, "--structured-audit", refs.structuredAudit);
+  addArg(args, "--audit-source", refs.structuredAuditSource);
   addArg(args, "--audit-record", refs.auditRecord);
   addArg(args, "--audit-item-set", refs.auditItemSet);
   addArg(args, "--post-merge", refs.postMerge);
   addArg(args, "--aggregate", aggregatePath);
+  addArg(args, "--actual-repo", actual.actualRepo);
+  addArg(args, "--actual-pr", actual.actualPr);
+  addArg(args, "--actual-head", actual.actualHead);
   args.push("--format", "json");
   return runGate({ gate: "control-state-completeness", args, outputPath: path.join(resultDir, "control-state-completeness.json") });
 }
 
 function runLifecycle({ resultDir, refs, changedFilesPath, adoptionReportPath, gateContractReportPath, designRuleReportPath }) {
+  const options = arguments[0] ?? {};
+  const auditChecklistReportPath = options.auditChecklistReportPath;
+  const actual = options.actual ?? {};
   if (!refs.lifecycleState) return skipped("lifecycle", "No lifecycle state was found.");
   const args = [
     gateScript("check-lifecycle.mjs"),
@@ -254,9 +274,15 @@ function runLifecycle({ resultDir, refs, changedFilesPath, adoptionReportPath, g
   addArg(args, "--handoff", refs.handoff);
   addArg(args, "--gate-contract-report", gateContractReportPath);
   addArg(args, "--design-rule-report", designRuleReportPath);
+  addArg(args, "--audit-checklist-report", auditChecklistReportPath);
+  addArg(args, "--structured-audit", refs.structuredAudit);
+  addArg(args, "--audit-source", refs.structuredAuditSource);
   addArg(args, "--owner-decision", refs.ownerDecision);
   addArg(args, "--post-merge", refs.postMerge);
   addArg(args, "--changed-files", changedFilesPath);
+  addArg(args, "--actual-repo", actual.actualRepo);
+  addArg(args, "--actual-pr", actual.actualPr);
+  addArg(args, "--actual-head", actual.actualHead);
   args.push("--format", "json");
   return runGate({ gate: "lifecycle", args, outputPath: path.join(resultDir, "lifecycle.json") });
 }
@@ -354,11 +380,19 @@ function gateRecordFromReport({ gate, command, outputPath, exitCode, report }) {
     verdict: report.verdict ?? "UNKNOWN",
     report_failed: reportFailed,
     current_phase: report.current_phase ?? null,
+    next_action: report.next_action ?? null,
+    owner_approval_allowed: report.owner_approval_allowed ?? null,
+    merge_ready_allowed: report.merge_ready_allowed ?? null,
+    forbidden_next_actions: Array.isArray(report.forbidden_next_actions) ? report.forbidden_next_actions : [],
+    audit_required: report.audit_required ?? null,
+    audit_completion: report.audit_completion ?? null,
+    owner_decision_status: report.owner_decision_status ?? null,
     disposition: report.disposition ?? report.adoption?.disposition ?? null,
     would_block: reportFailed || report.would_block === true || report.verdict === "BLOCKED",
     blockers: findings(report, "blockers"),
     warnings: findings(report, "warnings"),
     required_next_actions: Array.isArray(report.required_next_actions) ? report.required_next_actions : [],
+    deferred_next_actions: Array.isArray(report.deferred_next_actions) ? report.deferred_next_actions : [],
     report,
   };
 }
@@ -373,11 +407,19 @@ function skipped(gate, reason) {
     verdict: "SKIPPED",
     report_failed: false,
     current_phase: null,
+    next_action: null,
+    owner_approval_allowed: null,
+    merge_ready_allowed: null,
+    forbidden_next_actions: [],
+    audit_required: null,
+    audit_completion: null,
+    owner_decision_status: null,
     disposition: null,
     would_block: false,
     blockers: [],
     warnings: [],
     required_next_actions: [],
+    deferred_next_actions: [],
   };
 }
 
@@ -398,6 +440,7 @@ function materializeSkippedReport({ record, resultDir, filename }) {
     blockers: [],
     warnings: [],
     required_next_actions: [],
+    deferred_next_actions: [],
   };
   writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
   return outputPath;
@@ -408,16 +451,28 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
   const verdict = aggregateVerdict(ran.map((record) => record.verdict));
   const reportFailed = ran.some((record) => record.report_failed || record.verdict === "FAILURE");
   const wouldBlock = reportFailed || ran.some((record) => record.would_block || record.verdict === "BLOCKED");
+  const sequencing = aggregateSequencing(records);
+  const outputRecords = outputGateRecords({ records, sequencing });
   return {
     schema: SCHEMA,
     report_only: true,
     generated_at: new Date().toISOString(),
     result_dir: resultDir,
     verdict,
+    current_phase: sequencing.current_phase,
+    next_action: sequencing.next_action,
+    owner_approval_allowed: sequencing.owner_approval_allowed,
+    merge_ready_allowed: sequencing.merge_ready_allowed,
+    forbidden_next_actions: sequencing.forbidden_next_actions,
+    audit_required: sequencing.audit_required,
+    audit_completion: sequencing.audit_completion,
+    owner_decision_status: sequencing.owner_decision_status,
     report_failed: reportFailed,
     would_block: wouldBlock,
     owner_must_not_merge: wouldBlock,
-    gates: records.map((record) => ({
+    required_next_actions: aggregateRequiredActions(sequencing, outputRecords),
+    deferred_next_actions: outputRecords.flatMap((record) => record.deferred_next_actions ?? []),
+    gates: outputRecords.map((record) => ({
       gate: record.gate,
       status: record.status,
       reason: record.reason ?? null,
@@ -427,16 +482,141 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
       verdict: record.verdict,
       report_failed: record.report_failed,
       current_phase: record.current_phase,
+      next_action: record.next_action,
+      owner_approval_allowed: record.owner_approval_allowed,
+      merge_ready_allowed: record.merge_ready_allowed,
+      forbidden_next_actions: record.forbidden_next_actions,
+      audit_required: record.audit_required,
+      audit_completion: record.audit_completion,
+      owner_decision_status: record.owner_decision_status,
       disposition: record.disposition,
       would_block: record.would_block,
       blockers: record.blockers,
       warnings: record.warnings,
       required_next_actions: record.required_next_actions,
+      deferred_next_actions: record.deferred_next_actions,
     })),
     discovered_inputs: refs,
     changed_files_count: changedFiles.length,
     changed_files: changedFiles,
   };
+}
+
+function aggregateSequencing(records) {
+  const preferred = [
+    "control-state-completeness",
+    "lifecycle",
+    "audit-checklist",
+    "gate-contract",
+  ]
+    .map((gate) => records.find((record) => record.gate === gate && record.next_action))
+    .find(Boolean);
+
+  if (preferred) {
+    return {
+      current_phase: preferred.current_phase,
+      next_action: preferred.next_action,
+      owner_approval_allowed: preferred.owner_approval_allowed,
+      merge_ready_allowed: preferred.merge_ready_allowed,
+      forbidden_next_actions: preferred.forbidden_next_actions,
+      audit_required: preferred.audit_required,
+      audit_completion: preferred.audit_completion,
+      owner_decision_status: preferred.owner_decision_status,
+    };
+  }
+
+  const blockers = records.flatMap((record) => record.would_block ? record.blockers : []).filter(Boolean);
+  if (blockers.length > 0) {
+    const sequencing = buildNextActionSequencing({
+      auditRequired: false,
+      blockingFindings: blockers,
+    });
+    return {
+      current_phase: "BLOCKED",
+      next_action: sequencing.next_action,
+      owner_approval_allowed: sequencing.owner_approval_allowed,
+      merge_ready_allowed: sequencing.merge_ready_allowed,
+      forbidden_next_actions: sequencing.forbidden_next_actions,
+      audit_required: false,
+      audit_completion: null,
+      owner_decision_status: null,
+    };
+  }
+
+  return {
+    current_phase: "IMPLEMENTED",
+    next_action: {
+      action: "review_gate_report",
+      responsible_role: "lead",
+      allowed_actor_role: "lead",
+      reason: "No blocking machine next action was produced by the gate pack.",
+    },
+    owner_approval_allowed: null,
+    merge_ready_allowed: null,
+    forbidden_next_actions: [],
+    audit_required: null,
+    audit_completion: null,
+    owner_decision_status: null,
+  };
+}
+
+function outputGateRecords({ records, sequencing }) {
+  if (!ownerDecisionDeferred(sequencing)) return records;
+  return records.map((record) => deferOwnerDecisionActions(record));
+}
+
+function ownerDecisionDeferred(sequencing) {
+  return sequencing?.owner_approval_allowed === false ||
+    asArray(sequencing?.forbidden_next_actions).includes("owner_exact_head_approval") ||
+    asArray(sequencing?.forbidden_next_actions).includes("request_owner_exact_head_decision");
+}
+
+function deferOwnerDecisionActions(record) {
+  const actions = asArray(record.required_next_actions);
+  const deferred = actions.filter(isOwnerDecisionAction).map((action) => ({
+    ...action,
+    actionable: false,
+    deferred_until: "independent_audit_complete",
+    message: "Owner exact-head decision remains required before merge, but it is not actionable until independent audit completion.",
+  }));
+  if (deferred.length === 0) return record;
+  return {
+    ...record,
+    required_next_actions: actions.filter((action) => !isOwnerDecisionAction(action)),
+    deferred_next_actions: [
+      ...asArray(record.deferred_next_actions),
+      ...deferred,
+    ],
+  };
+}
+
+function isOwnerDecisionAction(action) {
+  if (!action) return false;
+  const text = typeof action === "string"
+    ? action
+    : [
+        action.item_id,
+        action.code,
+        action.action,
+        action.message,
+        action.path,
+      ].filter(Boolean).join(" ");
+  return /\bRL-MERGE-\w+/i.test(text) ||
+    /owner[_ -]?decision|owner exact-head|owner_exact_head|request_owner_exact_head/i.test(text);
+}
+
+function aggregateRequiredActions(sequencing, records) {
+  if (sequencing?.next_action?.action) {
+    return [
+      {
+        action: sequencing.next_action.action,
+        responsible_role: sequencing.next_action.responsible_role,
+        allowed_actor_role: sequencing.next_action.allowed_actor_role,
+        message: sequencing.next_action.reason,
+      },
+    ];
+  }
+  return records.flatMap((record) => Array.isArray(record.required_next_actions) ? record.required_next_actions : []);
 }
 
 function writeInterimAggregate({ resultDir, refs, records, changedFiles, filename }) {
@@ -497,6 +677,10 @@ function renderSummary(report) {
     `- Report failed: \`${String(report.report_failed)}\``,
     `- Would block: \`${String(report.would_block)}\``,
     `- Owner must not merge: \`${String(report.owner_must_not_merge)}\``,
+    `- Current phase: \`${report.current_phase ?? ""}\``,
+    `- Next action: \`${report.next_action?.action ?? ""}\``,
+    `- Owner approval allowed: \`${String(report.owner_approval_allowed)}\``,
+    `- Merge ready allowed: \`${String(report.merge_ready_allowed)}\``,
     `- Report-only: \`${String(report.report_only)}\``,
     `- Changed files: \`${report.changed_files_count}\``,
     "",
@@ -515,9 +699,14 @@ function renderSummary(report) {
   for (const gate of report.gates) {
     lines.push(`#### ${gate.gate}`);
     lines.push("");
+    if (gate.next_action?.action) {
+      lines.push(`Next action: \`${gate.next_action.action}\` - ${gate.next_action.reason ?? ""}`);
+      lines.push("");
+    }
     appendFindingList(lines, "Blockers", gate.blockers);
     appendFindingList(lines, "Warnings", gate.warnings);
     appendActions(lines, gate.required_next_actions);
+    appendDeferredActions(lines, gate.deferred_next_actions);
   }
 
   lines.push("### Artifact Outputs");
@@ -567,6 +756,23 @@ function appendActions(lines, actions) {
   lines.push("");
 }
 
+function appendDeferredActions(lines, actions) {
+  if (!Array.isArray(actions) || actions.length === 0) return;
+  lines.push("**Deferred next actions**");
+  lines.push("");
+  for (const action of actions.slice(0, 20)) {
+    if (typeof action === "string") {
+      lines.push(`- ${action}`);
+    } else {
+      const id = action.item_id ?? action.code ?? "action";
+      const deferredUntil = action.deferred_until ? ` deferred until \`${action.deferred_until}\`` : "";
+      lines.push(`- \`${id}\`${deferredUntil}: ${action.message ?? action.action ?? ""}`);
+    }
+  }
+  if (actions.length > 20) lines.push(`- ... ${actions.length - 20} more`);
+  lines.push("");
+}
+
 function discoverRefs({ prBody, changedFiles }) {
   const explicit = {
     executionContext: refFromBody(prBody, ["execution_context_ref", "execution_context", "context_ref", "context"]),
@@ -593,6 +799,7 @@ function discoverRefs({ prBody, changedFiles }) {
     readinessReport: refFromBody(prBody, ["readiness_report_ref", "readiness_report", "full_adoption_report_ref", "full_adoption_report"]),
     auditChecklist: refFromBody(prBody, ["audit_checklist_ref", "audit_checklist", "audit-checklist"]),
     structuredAudit: refFromBody(prBody, ["structured_audit_ref", "structured_audit", "structured-audit"]),
+    structuredAuditSource: refFromBody(prBody, ["structured_audit_source_ref", "structured_audit_source", "audit_source_ref", "audit_source"]),
     auditMachineEvidence: refFromBody(prBody, ["audit_machine_evidence_ref", "audit_machine_evidence", "audit-machine-evidence", "machine_evidence_ref", "machine_evidence"]),
     auditChecklistReport: refFromBody(prBody, ["audit_checklist_report_ref", "audit_checklist_report", "audit-checklist-report"]),
     auditRecord: refFromBody(prBody, ["audit_record_ref", "audit_record", "audit-ref", "reviewer_audit_ref"]),
@@ -627,6 +834,7 @@ function discoverRefs({ prBody, changedFiles }) {
     readinessReport: resolveRef({ name: "readiness_report", explicit: explicit.readinessReport, defaults: [".shirube/reports/readiness.json", ".shirube/readiness.yaml"], records }),
     auditChecklist: resolveRef({ name: "audit_checklist", explicit: explicit.auditChecklist, candidates: bySchema(schemaMatches, "shirube-audit-checklist/v1"), defaults: [], records }),
     structuredAudit: resolveRef({ name: "structured_audit", explicit: explicit.structuredAudit, candidates: bySchema(schemaMatches, "shirube-structured-audit/v1"), defaults: [], records }),
+    structuredAuditSource: resolveRef({ name: "structured_audit_source", explicit: explicit.structuredAuditSource, candidates: bySchema(schemaMatches, "shirube-comment-backed-audit-source/v1"), defaults: [], records }),
     auditMachineEvidence: resolveRef({ name: "audit_machine_evidence", explicit: explicit.auditMachineEvidence, candidates: bySchema(schemaMatches, "shirube-machine-evidence/v1"), defaults: [], records }),
     auditChecklistReport: resolveRef({ name: "audit_checklist_report", explicit: explicit.auditChecklistReport, candidates: bySchema(schemaMatches, "shirube-audit-checklist-check/v1"), defaults: [], records }),
     auditRecord: resolveRef({ name: "audit_record", explicit: explicit.auditRecord, candidates: [...bySchema(schemaMatches, "shirube-audit/v1"), ...bySchema(schemaMatches, "shirube-audit-record/v1")], defaults: [], records }),
@@ -710,6 +918,22 @@ function discoveryAmbiguityRecord(name, candidates) {
     verdict: "BLOCKED",
     report_failed: false,
     current_phase: null,
+    next_action: {
+      action: "add_explicit_artifact_reference",
+      responsible_role: "dev",
+      allowed_actor_role: "dev",
+      reason: finding.message,
+    },
+    owner_approval_allowed: false,
+    merge_ready_allowed: false,
+    forbidden_next_actions: [
+      "owner_exact_head_approval",
+      "mark_merge_ready",
+      "merge",
+    ],
+    audit_required: null,
+    audit_completion: null,
+    owner_decision_status: null,
     disposition: null,
     would_block: true,
     blockers: [finding],
@@ -720,6 +944,7 @@ function discoveryAmbiguityRecord(name, candidates) {
         action: finding.message,
       },
     ],
+    deferred_next_actions: [],
   };
 }
 
@@ -780,6 +1005,13 @@ function failureRecord(gate, finding) {
     verdict: "FAILURE",
     report_failed: true,
     current_phase: null,
+    next_action: null,
+    owner_approval_allowed: null,
+    merge_ready_allowed: null,
+    forbidden_next_actions: [],
+    audit_required: null,
+    audit_completion: null,
+    owner_decision_status: null,
     disposition: null,
     would_block: true,
     blockers: [finding],
@@ -790,6 +1022,7 @@ function failureRecord(gate, finding) {
         message: finding.message,
       },
     ],
+    deferred_next_actions: [],
   };
 }
 
@@ -821,6 +1054,7 @@ function actualContextFromOptions(options) {
   const fromEvent = actualFromGithubEvent();
   return {
     actualRepo: stringOption(options["actual-repo"]) ?? process.env.GITHUB_REPOSITORY ?? fromEvent.actualRepo ?? null,
+    actualPr: stringOption(options["actual-pr"]) ?? fromEvent.actualPr ?? null,
     actualBranch: stringOption(options["actual-branch"]) ?? process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? fromEvent.actualBranch ?? null,
     actualHead: stringOption(options["actual-head"]) ?? fromEvent.actualHead ?? process.env.GITHUB_SHA ?? null,
   };
@@ -833,6 +1067,7 @@ function actualFromGithubEvent() {
     const event = JSON.parse(readFileSync(eventPath, "utf8"));
     return {
       actualRepo: event.repository?.full_name ?? null,
+      actualPr: event.pull_request?.number ? String(event.pull_request.number) : null,
       actualBranch: event.pull_request?.head?.ref ?? event.ref_name ?? null,
       actualHead: event.pull_request?.head?.sha ?? event.after ?? null,
     };
@@ -859,6 +1094,12 @@ function escapeRegExp(value) {
 
 function escapeTable(value) {
   return String(value).replace(/\|/g, "\\|");
+}
+
+function asArray(value) {
+  if (Array.isArray(value)) return value;
+  if (value === undefined || value === null) return [];
+  return [value];
 }
 
 function main() {

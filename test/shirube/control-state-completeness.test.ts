@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 const root = process.cwd();
 const script = "scripts/shirube/check-control-state-completeness.mjs";
 const fixtures = path.join(root, "test/fixtures/shirube/control-state-completeness");
+const sequencingFixtures = path.join(root, "test/fixtures/shirube/next-action-sequencing");
 
 function fixture(name: string): string {
   return path.join(fixtures, name);
@@ -58,6 +59,14 @@ function blockerIds(result: { json: any }): string[] {
 function expectShape(result: { json: any }): void {
   expect(result.json.schema).toBe("shirube-control-state-completeness/v1");
   expect(["CONTROL_COMPLETE", "CONTROL_COMPLETE_WITH_WARNINGS", "CONTROL_PARTIAL", "CONTROL_BLOCKED", "CONTROL_FAILURE"]).toContain(result.json.state);
+  expect(result.json).toHaveProperty("current_phase");
+  expect(result.json).toHaveProperty("next_action");
+  expect(result.json).toHaveProperty("owner_approval_allowed");
+  expect(result.json).toHaveProperty("merge_ready_allowed");
+  expect(Array.isArray(result.json.forbidden_next_actions)).toBe(true);
+  expect(result.json).toHaveProperty("audit_required");
+  expect(result.json).toHaveProperty("audit_completion");
+  expect(result.json).toHaveProperty("owner_decision_status");
   expect(result.json).toHaveProperty("would_block");
   expect(result.json).toHaveProperty("owner_must_not_merge");
   expect(result.json).toHaveProperty("inventory");
@@ -183,17 +192,34 @@ describe("Shirube control state completeness check", () => {
   });
 
   it("blocks missing audit when audit is required", () => {
-    const result = check({ "--handoff": fixture("handoff.audit-required.yaml") });
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--owner-decision": null,
+    });
 
     expect(result.exitCode).toBe(0);
     expectShape(result);
     expect(blockerIds(result)).toContain("CSC-012");
+    expect(result.json.current_phase).toBe("AUDIT_REQUIRED");
+    expect(result.json.next_action.action).toBe("request_independent_audit");
+    expect(result.json.owner_approval_allowed).toBe(false);
+  });
+
+  it("blocks owner approval before independent audit completion", () => {
+    const result = check({ "--handoff": fixture("handoff.audit-required.yaml") });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(blockerIds(result)).toContain("OWNER-SEQ-001");
+    expect(result.json.next_action.action).toBe("request_independent_audit");
+    expect(result.json.owner_approval_allowed).toBe(false);
   });
 
   it("accepts an audit checklist report as required audit evidence", () => {
     const result = check({
       "--handoff": fixture("handoff.audit-required.yaml"),
       "--audit-checklist-report": fixture("audit-checklist.pass.json"),
+      "--audit-source": path.join(sequencingFixtures, "audit-source.pass.json"),
     });
 
     expect(result.exitCode).toBe(0);
@@ -201,6 +227,23 @@ describe("Shirube control state completeness check", () => {
     expect(result.json.state).toBe("CONTROL_COMPLETE");
     expect(blockerIds(result)).not.toContain("CSC-012");
     expect(result.json.inventory.audit_checklist_report.present).toBe(true);
+    expect(result.json.merge_ready_allowed).toBe(true);
+  });
+
+  it("requests owner decision after independent audit completion when owner is missing", () => {
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--audit-checklist-report": fixture("audit-checklist.pass.json"),
+      "--audit-source": path.join(sequencingFixtures, "audit-source.pass.json"),
+      "--owner-decision": null,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.current_phase).toBe("OWNER_DECISION_REQUIRED");
+    expect(result.json.next_action.action).toBe("request_owner_exact_head_decision");
+    expect(result.json.owner_approval_allowed).toBe(true);
+    expect(result.json.merge_ready_allowed).toBe(false);
   });
 
   it("propagates audit checklist blockers into control-state completeness", () => {

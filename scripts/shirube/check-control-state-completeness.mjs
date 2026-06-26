@@ -6,6 +6,9 @@ import {
   parseArgs,
   readStructuredFile,
 } from "./lib.mjs";
+import {
+  buildNextActionSequencing,
+} from "./next-action-sequencing.mjs";
 
 const SCHEMA = "shirube-control-state-completeness/v1";
 const CONTROL_STATES = ["CONTROL_COMPLETE", "CONTROL_COMPLETE_WITH_WARNINGS", "CONTROL_PARTIAL", "CONTROL_BLOCKED", "CONTROL_FAILURE"];
@@ -214,6 +217,28 @@ export function buildControlStateCompletenessReport(input) {
     }
   }
 
+  const sequencing = buildNextActionSequencing({
+    handoff: input.handoff,
+    repoSpec: input.repoSpec,
+    auditChecklistReport: input.auditChecklistReport,
+    structuredAudit: input.structuredAudit,
+    structuredAuditPath: input.structuredAuditPath,
+    auditSource: input.auditSource,
+    ownerDecision: input.ownerDecision,
+    actualHead: expectedHead(input),
+    actualRepo: expectedRepo(input),
+    actualPr: expectedPr(input),
+    currentPhase: input.lifecycleReport?.current_phase,
+    blockingFindings: blockers,
+  });
+  if (auditRequired && isObject(input.auditChecklistReport) && sequencing.audit_completion?.complete !== true) {
+    blockers.push(finding("CSC-012", {
+      path: input.auditChecklistReportPath ?? "audit_checklist_report",
+      message: "Formal audit/reviewer audit is required but is not independently exact-head verified.",
+    }));
+  }
+  blockers.push(...sequencing.blockers);
+
   const uniqueBlockers = uniqueFindings(blockers);
   const uniqueWarnings = uniqueFindings(warnings);
   const state = controlState({ blockers: uniqueBlockers, warnings: uniqueWarnings, missingStates });
@@ -221,6 +246,14 @@ export function buildControlStateCompletenessReport(input) {
     schema: SCHEMA,
     state,
     verdict: verdictForState(state),
+    current_phase: sequencing.current_phase,
+    next_action: sequencing.next_action,
+    owner_approval_allowed: sequencing.owner_approval_allowed,
+    merge_ready_allowed: sequencing.merge_ready_allowed,
+    forbidden_next_actions: sequencing.forbidden_next_actions,
+    audit_required: sequencing.audit_required,
+    audit_completion: sequencing.audit_completion,
+    owner_decision_status: sequencing.owner_decision_status,
     would_block: state === "CONTROL_BLOCKED" || state === "CONTROL_FAILURE" || state === "CONTROL_PARTIAL",
     owner_must_not_merge: state !== "CONTROL_COMPLETE" && state !== "CONTROL_COMPLETE_WITH_WARNINGS",
     inventory,
@@ -479,7 +512,7 @@ function evidenceRefSet(input) {
 
 function hasEvidenceByType({ key, input }) {
   const typeMap = {
-    pr_head_sha: !isPlaceholder(firstPresent(input.validation?.pr_head_sha, input.gateContractReport?.head_sha, input.gateContractReport?.exact_head_sha)),
+    pr_head_sha: !isPlaceholder(firstPresent(input.actualHead, input.validation?.pr_head_sha, input.gateContractReport?.head_sha, input.gateContractReport?.exact_head_sha)),
     changed_files: (input.changedFiles ?? []).length > 0,
     validation_commands: asArray(input.validation?.commands).length > 0 || asArray(input.validation?.required_commands).length > 0 || asArray(input.handoff?.validation?.required_commands).length > 0,
     validation_results: asArray(input.validation?.results).length > 0 || asArray(input.validation?.validation_results).length > 0 || input.validation?.result === "PASS",
@@ -494,6 +527,7 @@ function ownerHeadMismatch(input) {
   const ownerHead = ownerDecisionHead(input.ownerDecision) ?? ownerDecisionHead(input.handoff?.owner_decision);
   if (isPlaceholder(ownerHead)) return null;
   const expected = firstPresent(
+    input.actualHead,
     reportHead(input.gateContractReport),
     input.validation?.pr_head_sha,
     input.validation?.exact_head_sha,
@@ -507,6 +541,40 @@ function ownerHeadMismatch(input) {
     observed: ownerHead,
     message: `Owner exact head ${ownerHead} does not match expected head ${expected}.`,
   };
+}
+
+function expectedHead(input) {
+  return firstPresent(
+    input.actualHead,
+    reportHead(input.gateContractReport),
+    input.validation?.pr_head_sha,
+    input.validation?.exact_head_sha,
+    input.handoff?.pr_head_sha,
+    input.executionContextReport?.evidence?.find?.((entry) => entry.code === "actual_head")?.detail,
+  );
+}
+
+function expectedRepo(input) {
+  return firstPresent(
+    input.actualRepo,
+    input.executionContextReport?.primary_repo,
+    input.executionContextReport?.primary?.repo,
+    input.repoSpec?.repo,
+    input.repoSpec?.repo_id,
+    input.repoSpec?.id,
+  );
+}
+
+function expectedPr(input) {
+  return firstPresent(
+    input.actualPr,
+    contextPrRef(input.executionContextReport),
+    handoffPrRef(input.handoff),
+    input.gateContractReport?.pr,
+    input.gateContractReport?.pr_url,
+    input.lifecycleReport?.pr,
+    input.lifecycleReport?.pr_url,
+  );
 }
 
 function adoptionLifecycleMismatch(input) {
@@ -834,6 +902,7 @@ function actionFor(itemId) {
     "CSC-016": "Refresh stale artifact references to existing machine-readable artifacts.",
     "CSC-017": "Treat failed reports as blocking evidence and rerun/fix the failed gate.",
     "CSC-W001": "Review enforcement policy warnings before merge or graduation.",
+    "OWNER-SEQ-001": "Complete independent exact-head audit before requesting or accepting owner exact-head approval.",
   };
   return actions[itemId] ?? "Resolve control-state completeness finding.";
 }
@@ -857,10 +926,15 @@ function readInput(options) {
     ownerDecisionPath: stringOption(options["owner-decision"]),
     auditChecklistPath: stringOption(options["audit-checklist"]),
     auditChecklistReportPath: stringOption(options["audit-checklist-report"]),
+    structuredAuditPath: stringOption(options["structured-audit"]),
+    auditSourcePath: stringOption(options["audit-source"]) ?? stringOption(options["structured-audit-source"]),
     auditRecordPath: stringOption(options["audit-record"]) ?? stringOption(options["structured-audit"]),
     auditItemSetPath: stringOption(options["audit-item-set"]),
     postMergePath: stringOption(options["post-merge"]),
     aggregatePath: stringOption(options.aggregate),
+    actualRepo: stringOption(options["actual-repo"]),
+    actualPr: stringOption(options["actual-pr"]),
+    actualHead: stringOption(options["actual-head"]),
   };
 
   const parseErrors = [];

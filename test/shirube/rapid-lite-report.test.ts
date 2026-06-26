@@ -55,10 +55,10 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(result.json.gates.map((gate: { gate: string }) => gate.gate)).toEqual([
         "execution-context",
         "adoption",
-        "lifecycle",
         "gate-contract",
         "design-rules",
         "audit-checklist",
+        "lifecycle",
         "enforcement-policy",
         "control-state-completeness",
       ]);
@@ -149,6 +149,183 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(auditChecklist.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("AUDIT-LIST-005");
     } finally {
       rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("surfaces independent audit as the top next action before owner approval", () => {
+    const result = run([
+      "--changed-files",
+      fixture("gate-contract/changed-files.pass.txt"),
+      "--pr-body",
+      fixture("rapid-lite-report/pr-body.audit-required-no-audit.md"),
+      "--actual-repo",
+      "watchout/ai-dev-framework",
+      "--actual-pr",
+      "490",
+      "--actual-branch",
+      "codex/audit-next-action-sequencing",
+      "--actual-head",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      expect(result.json.current_phase).toBe("AUDIT_REQUIRED");
+      expect(result.json.next_action.action).toBe("request_independent_audit");
+      expect(result.json.owner_approval_allowed).toBe(false);
+      expect(result.json.merge_ready_allowed).toBe(false);
+      expect(result.json.forbidden_next_actions).toContain("owner_exact_head_approval");
+      expect(result.json.required_next_actions.map((action: { item_id?: string; code?: string }) => action.item_id ?? action.code)).not.toContain("LC-MERGE-001");
+      const lifecycle = result.json.gates.find((gate: { gate: string }) => gate.gate === "lifecycle");
+      expect(lifecycle.next_action.reason).toContain("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+      expect(lifecycle.next_action.reason).not.toContain("<unknown>");
+      const gateContract = result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract");
+      expect(gateContract.required_next_actions.map((action: { item_id?: string; code?: string }) => action.item_id ?? action.code)).not.toContain("RL-MERGE-W001");
+      expect(gateContract.deferred_next_actions.map((action: { item_id?: string; code?: string }) => action.item_id ?? action.code)).toContain("RL-MERGE-W001");
+      expect(gateContract.deferred_next_actions[0].deferred_until).toBe("independent_audit_complete");
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("blocks self-reported audit completion without independent exact-head evidence", () => {
+    const temp = mkdtempSync(path.join(tmpdir(), "shirube-fake-audit-report-"));
+    const fakeReport = path.join(temp, "fake-audit-checklist-report.json");
+    const prBody = path.join(temp, "pr-body.md");
+    writeFileSync(fakeReport, `${JSON.stringify({
+      schema: "shirube-audit-checklist-check/v1",
+      verdict: "PASS",
+      blockers: [],
+      warnings: [],
+      audit_completion: {
+        machine_readable: true,
+        independent: true,
+        exact_head_matches: true,
+        target_repo_matches: true,
+        target_pr_matches: true,
+        required_items_answered: true,
+        complete: true,
+      },
+    }, null, 2)}\n`);
+    writeFileSync(prBody, `${readFileSync(fixture("rapid-lite-report/pr-body.audit-required-no-audit.md"), "utf8")}\naudit_checklist_report_ref: ${fakeReport}\n`);
+
+    const result = run([
+      "--changed-files",
+      fixture("gate-contract/changed-files.pass.txt"),
+      "--pr-body",
+      prBody,
+      "--actual-repo",
+      "watchout/ai-dev-framework",
+      "--actual-pr",
+      "490",
+      "--actual-branch",
+      "codex/audit-next-action-sequencing",
+      "--actual-head",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      expect(result.json.would_block).toBe(true);
+      expect(result.json.owner_must_not_merge).toBe(true);
+      expect(result.json.current_phase).toBe("AUDIT_REQUIRED");
+      expect(result.json.next_action.action).toBe("request_independent_audit");
+      expect(result.json.owner_approval_allowed).toBe(false);
+      expect(result.json.merge_ready_allowed).toBe(false);
+      const controlState = result.json.gates.find((gate: { gate: string }) => gate.gate === "control-state-completeness");
+      expect(controlState.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("CSC-012");
+      expect(controlState.audit_completion.complete).toBe(false);
+      expect(controlState.audit_completion.observed_head).toBeNull();
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+      rmSync(temp, { recursive: true, force: true });
+    }
+  }, 15000);
+
+  it("blocks exact current-head audit reports when trusted source provenance is mismatched", () => {
+    const temp = mkdtempSync(path.join(tmpdir(), "shirube-mismatched-audit-source-"));
+    const fakeReport = path.join(temp, "fake-audit-checklist-report.json");
+    const fakeSource = path.join(temp, "fake-audit-source.json");
+    const prBody = path.join(temp, "pr-body.md");
+    const structuredAuditPath = "test/fixtures/shirube/audit-checklist/audit.pass.yaml";
+    writeFileSync(fakeReport, `${JSON.stringify({
+      schema: "shirube-audit-checklist-check/v1",
+      verdict: "PASS",
+      exact_head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      target_repo: "watchout/ai-dev-framework",
+      target_pr: "490",
+      structured_audit_ref: structuredAuditPath,
+      inventory: {
+        checklist_items: 11,
+        audit_items: 11,
+      },
+      blockers: [],
+      warnings: [],
+    }, null, 2)}\n`);
+    writeFileSync(fakeSource, `${JSON.stringify({
+      schema_version: "shirube-comment-backed-audit-source/v1",
+      source_type: "github_pr_comment",
+      source_comment_url: "https://github.com/watchout/ai-dev-framework/pull/489#issuecomment-1",
+      comment_id: "1",
+      target_repo: "watchout/ai-dev-framework",
+      target_pr: "489",
+      exact_head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      materialized_path: structuredAuditPath,
+      trusted_base_workflow: true,
+      target_branch_mutated: false,
+      owner_approval_synthesized: false,
+    }, null, 2)}\n`);
+    writeFileSync(
+      prBody,
+      `${readFileSync(fixture("rapid-lite-report/pr-body.audit-required-no-audit.md"), "utf8")}\naudit_checklist_report_ref: ${fakeReport}\naudit_source_ref: ${fakeSource}\n`,
+    );
+
+    const result = run([
+      "--changed-files",
+      fixture("gate-contract/changed-files.pass.txt"),
+      "--pr-body",
+      prBody,
+      "--actual-repo",
+      "watchout/ai-dev-framework",
+      "--actual-pr",
+      "490",
+      "--actual-branch",
+      "codex/audit-next-action-sequencing",
+      "--actual-head",
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "--diff-root",
+      ".",
+      "--format",
+      "json",
+    ]);
+
+    try {
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("BLOCKED");
+      expect(result.json.would_block).toBe(true);
+      expect(result.json.owner_must_not_merge).toBe(true);
+      expect(result.json.current_phase).toBe("AUDIT_REQUIRED");
+      expect(result.json.next_action.action).toBe("request_independent_audit");
+      expect(result.json.owner_approval_allowed).toBe(false);
+      expect(result.json.merge_ready_allowed).toBe(false);
+      const controlState = result.json.gates.find((gate: { gate: string }) => gate.gate === "control-state-completeness");
+      expect(controlState.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("CSC-012");
+      expect(controlState.audit_completion.target_pr_matches).toBe(true);
+      expect(controlState.audit_completion.source_pr_matches).toBe(false);
+      expect(controlState.audit_completion.complete).toBe(false);
+    } finally {
+      rmSync(result.resultDir, { recursive: true, force: true });
+      rmSync(temp, { recursive: true, force: true });
     }
   }, 15000);
 

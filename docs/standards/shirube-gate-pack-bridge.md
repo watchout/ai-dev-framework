@@ -52,6 +52,8 @@ owner_decision_ref: .shirube/evidence/owner-decision.yaml
 
 When `audit_checklist_ref` and structured audit evidence are present, `run-rapid-lite-report` runs `check-audit-checklist` and writes `audit-checklist.json`. The audit checklist gate is conditional: it is skipped for lightweight report-only PRs unless audit refs are present or the handoff/profile requires audit evidence.
 
+When audit is required, the bridge follows machine-controlled next-action sequencing. Independent structured audit completion must happen before owner exact-head approval. If audit is missing or incomplete, the report next action is `request_independent_audit`, `owner_approval_allowed=false`, and owner approval must not be requested yet. If owner approval is posted before required audit completion, the report blocks with `OWNER-SEQ-001`.
+
 The report runner also emits a Control State Completeness report after the gate pack evidence is collected. A Gate Pack Bridge PR must not claim full Shirube control unless that report reaches full readiness; otherwise it remains partial pilot or report-only evidence.
 
 ## Audit Checklist P0

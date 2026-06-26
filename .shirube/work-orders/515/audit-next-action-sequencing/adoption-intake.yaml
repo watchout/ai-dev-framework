@@ -1,0 +1,40 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-ADF-V3-AUDIT-NEXT-ACTION-SEQUENCE-001
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@c514001b4ca36619f05f0fb4210a28dd4ddc8849
+profile: hotel-lite
+lane: adoption_intake
+disposition: retrofit_accelerate
+current_phase: ADOPTION_READY
+status: RAPID_LITE_REPORT_ONLY
+work_order: watchout/ai-dev-framework#515
+summary: ai-dev-framework already runs Shirube Rapid/Lite report-only gates; this slice extends control-plane sequencing.
+owner:
+  role: repo_owner
+  actor: watchout
+existing_state_scan:
+  specs:
+    - status: present
+      path: .shirube/repo-spec.yaml
+  implementation:
+    - status: present
+      path: scripts/shirube
+  tests:
+    - status: present
+      path: test/shirube
+  legacy_sources: []
+  known_drift: []
+  unsafe_changes: []
+  llm_truth_claims: []
+  unknowns: []
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+repo_spec_ref: .shirube/repo-spec.yaml
+control_handoff_ref: .shirube/work-orders/515/audit-next-action-sequencing/control-handoff.yaml
+owner_confirmation:
+  required: true
+  status: existing_repo_self_development
+non_scope:
+  - external repository mutation
+  - required check activation
+  - branch protection or ruleset mutation
+  - runtime/AUN/DB/MCP behavior
