@@ -1,0 +1,6 @@
+{
+  "schema_version": "shirube-owner-decision/v1",
+  "decision": "APPROVED_EXACT_HEAD",
+  "approval_granted": true,
+  "exact_head_sha": "1111111111111111111111111111111111111111"
+}

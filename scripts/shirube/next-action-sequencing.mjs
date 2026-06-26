@@ -2,6 +2,8 @@ const SEQUENCING_PHASES = [
   "IMPLEMENTED",
   "AUDIT_REQUIRED",
   "AUDIT_COMPLETE",
+  "ADDITIONAL_REVIEW_REQUIRED",
+  "ADDITIONAL_REVIEW_COMPLETE",
   "OWNER_DECISION_REQUIRED",
   "OWNER_APPROVED",
   "MERGE_READY",
@@ -12,6 +14,13 @@ export const OWNER_SEQUENCE_BLOCKER = {
   item_id: "OWNER-SEQ-001",
   code: "owner_decision_before_audit_complete",
   message: "Owner exact-head decision cannot be accepted before independent audit completion.",
+  path: "owner_decision",
+};
+
+export const REVIEW_SEQUENCE_BLOCKER = {
+  item_id: "REVIEW-SEQ-001",
+  code: "owner_decision_before_additional_review_complete",
+  message: "Owner exact-head decision cannot be accepted before required additional reviews complete.",
   path: "owner_decision",
 };
 
@@ -30,12 +39,16 @@ const FORBID_MERGE = [
 export function buildNextActionSequencing(input = {}) {
   const auditRequired = input.auditRequired ?? auditRequiredFrom(input);
   const auditCompletion = auditCompletionFrom(input);
+  const additionalReviewCompletion = additionalReviewCompletionFrom(input);
   const ownerDecision = ownerDecisionStatus(input.ownerDecision, input.actualHead);
   const blockingFindings = asArray(input.blockingFindings).filter(Boolean);
   const ownerSequenceBlockers = [];
 
   if (auditRequired && !auditCompletion.complete && ownerDecision.final_approval_present) {
     ownerSequenceBlockers.push({ ...OWNER_SEQUENCE_BLOCKER });
+  }
+  if (additionalReviewCompletion.required && !additionalReviewCompletion.complete && ownerDecision.final_approval_present) {
+    ownerSequenceBlockers.push({ ...REVIEW_SEQUENCE_BLOCKER });
   }
 
   if (auditRequired && !auditCompletion.complete) {
@@ -52,6 +65,27 @@ export function buildNextActionSequencing(input = {}) {
       forbidden_next_actions: FORBID_OWNER_AND_MERGE,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
+      owner_decision_status: ownerDecision,
+      blockers: ownerSequenceBlockers,
+    });
+  }
+
+  if (additionalReviewCompletion.required && !additionalReviewCompletion.complete) {
+    return sequencingResult({
+      current_phase: "ADDITIONAL_REVIEW_REQUIRED",
+      next_action: {
+        action: "request_required_additional_review",
+        responsible_role: "review_owner",
+        allowed_actor_role: "required_additional_reviewer",
+        reason: `Required additional review is missing for exact head ${input.actualHead ?? auditCompletion.expected_head ?? "<unknown>"}.`,
+      },
+      owner_approval_allowed: false,
+      merge_ready_allowed: false,
+      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+      audit_required: auditRequired,
+      audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
       owner_decision_status: ownerDecision,
       blockers: ownerSequenceBlockers,
     });
@@ -60,7 +94,7 @@ export function buildNextActionSequencing(input = {}) {
   const nonOwnerSequenceBlockers = blockingFindings.filter((finding) => finding?.item_id !== "OWNER-SEQ-001");
   if (nonOwnerSequenceBlockers.length > 0) {
     return sequencingResult({
-      current_phase: auditRequired ? "AUDIT_COMPLETE" : normalizePhase(input.currentPhase) ?? "IMPLEMENTED",
+      current_phase: additionalReviewCompletion.required ? "ADDITIONAL_REVIEW_COMPLETE" : auditRequired ? "AUDIT_COMPLETE" : normalizePhase(input.currentPhase) ?? "IMPLEMENTED",
       next_action: {
         action: "resolve_gate_blockers",
         responsible_role: "dev",
@@ -72,6 +106,7 @@ export function buildNextActionSequencing(input = {}) {
       forbidden_next_actions: FORBID_OWNER_AND_MERGE.filter((action) => action !== "request_owner_exact_head_decision"),
       audit_required: auditRequired,
       audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
       owner_decision_status: ownerDecision,
       blockers: ownerSequenceBlockers,
     });
@@ -91,6 +126,7 @@ export function buildNextActionSequencing(input = {}) {
       forbidden_next_actions: FORBID_MERGE,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
       owner_decision_status: ownerDecision,
       blockers: ownerSequenceBlockers,
     });
@@ -110,6 +146,7 @@ export function buildNextActionSequencing(input = {}) {
       forbidden_next_actions: FORBID_MERGE,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
       owner_decision_status: ownerDecision,
       blockers: ownerSequenceBlockers,
     });
@@ -128,6 +165,7 @@ export function buildNextActionSequencing(input = {}) {
     forbidden_next_actions: [],
     audit_required: auditRequired,
     audit_completion: auditCompletion,
+    additional_review_completion: additionalReviewCompletion,
     owner_decision_status: ownerDecision,
     blockers: ownerSequenceBlockers,
   });
@@ -142,6 +180,8 @@ function sequencingResult(fields) {
 
 export function auditRequiredFrom(input = {}) {
   const handoff = input.handoff ?? {};
+  if (input.reviewPlan?.base_audit?.required === true) return true;
+  if (input.reviewPlan?.base_audit?.required === false) return false;
   const risk = String(firstPresent(handoff?.cell?.risk_class, handoff?.risk_tier, input.repoSpec?.risk_tier) ?? "").toUpperCase();
   return handoff.audit_required === true ||
     handoff.formal_audit_required === true ||
@@ -150,6 +190,46 @@ export function auditRequiredFrom(input = {}) {
     handoff?.reviewer_audit?.required === true ||
     asArray(handoff.required_audits).length > 0 ||
     ["R3", "R4"].includes(risk);
+}
+
+export function additionalReviewCompletionFrom(input = {}) {
+  const required = asArray(input.reviewPlan?.additional_reviews).filter((review) => review?.required === true);
+  const reports = asArray(input.additionalReviewReports).filter(isObject);
+  const actualHead = input.actualHead;
+  const actualRepo = normalizeRepo(input.actualRepo);
+  const actualPr = normalizePr(input.actualPr);
+  const completeReviews = [];
+  const missingReviews = [];
+
+  for (const review of required) {
+    const report = reports.find((entry) => normalizeText(entry.review_type ?? entry.type) === normalizeText(review.review_type));
+    if (!additionalReviewReportComplete({ report, actualHead, actualRepo, actualPr })) {
+      missingReviews.push(review.review_type);
+      continue;
+    }
+    completeReviews.push(review.review_type);
+  }
+
+  return {
+    required: required.length > 0,
+    complete: required.length === 0 || missingReviews.length === 0,
+    required_reviews: required.map((review) => review.review_type),
+    complete_reviews: completeReviews,
+    missing_reviews: missingReviews,
+  };
+}
+
+function additionalReviewReportComplete({ report, actualHead, actualRepo, actualPr }) {
+  if (!isObject(report)) return false;
+  const verdict = String(firstPresent(report.verdict, report.decision, report.status) ?? "").toUpperCase();
+  const accepted = ["PASS", "PASS_WITH_WARN", "APPROVED", "CONDITIONAL_GO"].includes(verdict);
+  const observedHead = firstPresent(report.exact_head_sha, report.pr_head_sha, report.head_sha, report.target_head);
+  const observedRepo = normalizeRepo(firstPresent(report.target_repo, report.repo));
+  const observedPr = normalizePr(firstPresent(report.target_pr, report.pr, report.pull_request));
+  const headMatches = isPlaceholder(actualHead) || !isPlaceholder(observedHead) && String(observedHead) === String(actualHead);
+  const repoMatches = !actualRepo || !observedRepo || observedRepo === actualRepo;
+  const prMatches = !actualPr || !observedPr || observedPr === actualPr;
+  return accepted && headMatches && repoMatches && prMatches;
 }
 
 export function auditCompletionFrom(input = {}) {
@@ -351,6 +431,14 @@ function normalizePr(value) {
   const text = String(value).trim();
   const match = text.match(/#(\d+)|\/pull\/(\d+)|\/issues\/(\d+)|^(\d+)$/);
   return match ? (match[1] ?? match[2] ?? match[3] ?? match[4]) : text;
+}
+
+function normalizeText(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
 }
 
 function firstPresent(...values) {

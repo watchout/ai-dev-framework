@@ -1,0 +1,32 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+flow: full_operational
+repo: watchout/ai-dev-framework
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/517
+spec_review_state: ready_for_implementation
+cto_review_question: Should CTO look at this docs-only wording?
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: independent_audit
+owner_decision:
+  required_before_merge: true
+cell:
+  CELL-ID: CELL-ADF-REVIEW-R1-DOCS-002
+  risk_class: R1
+  cell_type: docs_only
+  goal: Update docs source ledger.
+  non_scope:
+    - protected surfaces
+  allowed_paths:
+    - docs/**
+  forbidden_paths:
+    - src/**
+    - .github/workflows/**
+  stop_conditions:
+    - runtime path touched
+validation:
+  required_evidence:
+    - PR_head_SHA
+    - changed_files

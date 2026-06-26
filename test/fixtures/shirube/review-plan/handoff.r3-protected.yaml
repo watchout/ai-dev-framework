@@ -1,0 +1,37 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+flow: full_operational
+repo: watchout/ai-dev-framework
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/517
+spec_review_state: ready_for_implementation
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: independent_audit
+owner_decision:
+  required_before_merge: true
+protected_surfaces:
+  declared:
+    - security
+    - privacy
+  touched: true
+cell:
+  CELL-ID: CELL-ADF-REVIEW-R3-PROTECTED-001
+  risk_class: R3
+  cell_type: protected_governance
+  goal: Update protected governance policy.
+  non_scope:
+    - branch protection mutation
+  allowed_paths:
+    - docs/**
+    - scripts/**
+  forbidden_paths:
+    - .github/rulesets/**
+    - package.json
+  stop_conditions:
+    - owner approval synthesized
+validation:
+  required_evidence:
+    - PR_head_SHA
+    - changed_files

@@ -54,6 +54,15 @@ export function buildRapidLiteReport(options) {
   const auditChecklist = runAuditChecklist({ resultDir, refs, actual });
   records.push(auditChecklist);
 
+  const reviewPlan = runReviewPlan({
+    resultDir,
+    refs,
+    changedFilesPath,
+    auditChecklistReportPath: auditChecklist.status === "ran" ? auditChecklist.output_path : refs.auditChecklistReport,
+    actual,
+  });
+  records.push(reviewPlan);
+
   const lifecycle = runLifecycle({
     resultDir,
     refs,
@@ -62,6 +71,7 @@ export function buildRapidLiteReport(options) {
     gateContractReportPath: gateContract.status === "ran" ? gateContract.output_path : refs.gateContractReport,
     designRuleReportPath: designRules.status === "ran" ? designRules.output_path : refs.designRuleReport,
     auditChecklistReportPath: auditChecklist.status === "ran" ? auditChecklist.output_path : refs.auditChecklistReport,
+    reviewPlanReportPath: reviewPlan.status === "ran" ? reviewPlan.output_path : refs.reviewPlanReport,
     actual,
   });
   records.push(lifecycle);
@@ -88,6 +98,7 @@ export function buildRapidLiteReport(options) {
     gateContractReportPath: gateContract.status === "ran" ? gateContract.output_path : refs.gateContractReport,
     designRuleReportPath: designRuleReportPath ?? refs.designRuleReport,
     auditChecklistReportPath: auditChecklist.status === "ran" ? auditChecklist.output_path : refs.auditChecklistReport,
+    reviewPlanReportPath: reviewPlan.status === "ran" ? reviewPlan.output_path : refs.reviewPlanReport,
     enforcementPolicyReportPath: enforcementPolicy?.status === "ran" ? enforcementPolicy.output_path : refs.enforcementPolicyReport,
     actual,
   });
@@ -197,6 +208,30 @@ function runAuditChecklist({ resultDir, refs, actual }) {
   return skipped("audit-checklist", "No audit checklist refs were found; audit checklist is conditional unless required by handoff/profile.");
 }
 
+function runReviewPlan({ resultDir, refs, changedFilesPath, auditChecklistReportPath, actual }) {
+  if (!refs.handoff && !refs.reviewPlan) return skipped("review-plan", "No handoff or review plan was found.");
+  if (!refs.reviewPlan && !reviewPlanRuntimeRelevant(refs.handoff)) {
+    return skipped("review-plan", "Review plan is not required for this non-operational report-only handoff.");
+  }
+  const args = [
+    gateScript("check-review-plan.mjs"),
+  ];
+  addArg(args, "--handoff", refs.handoff);
+  addArg(args, "--repo-spec", refs.repoSpec);
+  addArg(args, "--review-plan", refs.reviewPlan);
+  addArg(args, "--changed-files", changedFilesPath);
+  addArg(args, "--audit-checklist-report", auditChecklistReportPath);
+  addArg(args, "--structured-audit", refs.structuredAudit);
+  addArg(args, "--audit-source", refs.structuredAuditSource);
+  addArg(args, "--owner-decision", refs.ownerDecision);
+  addArg(args, "--additional-review", refs.additionalReview);
+  addArg(args, "--actual-repo", actual.actualRepo);
+  addArg(args, "--actual-pr", actual.actualPr);
+  addArg(args, "--actual-head", actual.actualHead);
+  args.push("--format", "json");
+  return runGate({ gate: "review-plan", args, outputPath: path.join(resultDir, "review-plan.json") });
+}
+
 function runEnforcementPolicy({ resultDir, refs, aggregatePath }) {
   if (!refs.enforcementPolicy) return null;
   const args = [
@@ -211,6 +246,25 @@ function runEnforcementPolicy({ resultDir, refs, aggregatePath }) {
   return runGate({ gate: "enforcement-policy", args, outputPath: path.join(resultDir, "enforcement-policy.json") });
 }
 
+function reviewPlanRuntimeRelevant(handoffPath) {
+  if (!handoffPath || !existsSync(handoffPath)) return false;
+  try {
+    const handoff = readStructuredFile(handoffPath);
+    const cell = isObject(handoff.cell) ? handoff.cell : {};
+    const risk = String(cell.risk_class ?? cell.risk_tier ?? handoff.risk_class ?? handoff.risk_tier ?? "").toUpperCase();
+    const flow = String(handoff.flow ?? handoff.merge_flow ?? handoff.development_flow ?? "").toLowerCase();
+    return handoff.audit_required === true ||
+      handoff.formal_audit_required === true ||
+      handoff.independent_audit_required === true ||
+      handoff.review_plan_required === true ||
+      isObject(handoff.review_plan) ||
+      /full_operational|operational/.test(flow) ||
+      ["R3", "R4"].includes(risk);
+  } catch {
+    return true;
+  }
+}
+
 function runControlStateCompleteness({
   resultDir,
   refs,
@@ -222,6 +276,7 @@ function runControlStateCompleteness({
   gateContractReportPath,
   designRuleReportPath,
   auditChecklistReportPath,
+  reviewPlanReportPath,
   enforcementPolicyReportPath,
   actual,
 }) {
@@ -237,6 +292,7 @@ function runControlStateCompleteness({
   addArg(args, "--gate-contract-report", gateContractReportPath);
   addArg(args, "--design-rule-report", designRuleReportPath);
   addArg(args, "--audit-checklist-report", auditChecklistReportPath);
+  addArg(args, "--review-plan-report", reviewPlanReportPath);
   addArg(args, "--enforcement-policy-report", enforcementPolicyReportPath);
   addArg(args, "--readiness-report", refs.readinessReport);
   addArg(args, "--handoff", refs.handoff);
@@ -247,6 +303,7 @@ function runControlStateCompleteness({
   addArg(args, "--audit-checklist", refs.auditChecklist);
   addArg(args, "--structured-audit", refs.structuredAudit);
   addArg(args, "--audit-source", refs.structuredAuditSource);
+  addArg(args, "--additional-review", refs.additionalReview);
   addArg(args, "--audit-record", refs.auditRecord);
   addArg(args, "--audit-item-set", refs.auditItemSet);
   addArg(args, "--post-merge", refs.postMerge);
@@ -261,6 +318,7 @@ function runControlStateCompleteness({
 function runLifecycle({ resultDir, refs, changedFilesPath, adoptionReportPath, gateContractReportPath, designRuleReportPath }) {
   const options = arguments[0] ?? {};
   const auditChecklistReportPath = options.auditChecklistReportPath;
+  const reviewPlanReportPath = options.reviewPlanReportPath;
   const actual = options.actual ?? {};
   if (!refs.lifecycleState) return skipped("lifecycle", "No lifecycle state was found.");
   const args = [
@@ -275,8 +333,10 @@ function runLifecycle({ resultDir, refs, changedFilesPath, adoptionReportPath, g
   addArg(args, "--gate-contract-report", gateContractReportPath);
   addArg(args, "--design-rule-report", designRuleReportPath);
   addArg(args, "--audit-checklist-report", auditChecklistReportPath);
+  addArg(args, "--review-plan-report", reviewPlanReportPath);
   addArg(args, "--structured-audit", refs.structuredAudit);
   addArg(args, "--audit-source", refs.structuredAuditSource);
+  addArg(args, "--additional-review", refs.additionalReview);
   addArg(args, "--owner-decision", refs.ownerDecision);
   addArg(args, "--post-merge", refs.postMerge);
   addArg(args, "--changed-files", changedFilesPath);
@@ -386,6 +446,7 @@ function gateRecordFromReport({ gate, command, outputPath, exitCode, report }) {
     forbidden_next_actions: Array.isArray(report.forbidden_next_actions) ? report.forbidden_next_actions : [],
     audit_required: report.audit_required ?? null,
     audit_completion: report.audit_completion ?? null,
+    additional_review_completion: report.additional_review_completion ?? null,
     owner_decision_status: report.owner_decision_status ?? null,
     disposition: report.disposition ?? report.adoption?.disposition ?? null,
     would_block: reportFailed || report.would_block === true || report.verdict === "BLOCKED",
@@ -413,6 +474,7 @@ function skipped(gate, reason) {
     forbidden_next_actions: [],
     audit_required: null,
     audit_completion: null,
+    additional_review_completion: null,
     owner_decision_status: null,
     disposition: null,
     would_block: false,
@@ -466,6 +528,7 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
     forbidden_next_actions: sequencing.forbidden_next_actions,
     audit_required: sequencing.audit_required,
     audit_completion: sequencing.audit_completion,
+    additional_review_completion: sequencing.additional_review_completion,
     owner_decision_status: sequencing.owner_decision_status,
     report_failed: reportFailed,
     would_block: wouldBlock,
@@ -488,6 +551,7 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
       forbidden_next_actions: record.forbidden_next_actions,
       audit_required: record.audit_required,
       audit_completion: record.audit_completion,
+      additional_review_completion: record.additional_review_completion,
       owner_decision_status: record.owner_decision_status,
       disposition: record.disposition,
       would_block: record.would_block,
@@ -506,6 +570,7 @@ function aggregateSequencing(records) {
   const preferred = [
     "control-state-completeness",
     "lifecycle",
+    "review-plan",
     "audit-checklist",
     "gate-contract",
   ]
@@ -521,6 +586,7 @@ function aggregateSequencing(records) {
       forbidden_next_actions: preferred.forbidden_next_actions,
       audit_required: preferred.audit_required,
       audit_completion: preferred.audit_completion,
+      additional_review_completion: preferred.additional_review_completion ?? null,
       owner_decision_status: preferred.owner_decision_status,
     };
   }
@@ -539,6 +605,7 @@ function aggregateSequencing(records) {
       forbidden_next_actions: sequencing.forbidden_next_actions,
       audit_required: false,
       audit_completion: null,
+      additional_review_completion: null,
       owner_decision_status: null,
     };
   }
@@ -556,13 +623,14 @@ function aggregateSequencing(records) {
     forbidden_next_actions: [],
     audit_required: null,
     audit_completion: null,
+    additional_review_completion: null,
     owner_decision_status: null,
   };
 }
 
 function outputGateRecords({ records, sequencing }) {
   if (!ownerDecisionDeferred(sequencing)) return records;
-  return records.map((record) => deferOwnerDecisionActions(record));
+  return records.map((record) => deferOwnerDecisionActions(record, sequencing));
 }
 
 function ownerDecisionDeferred(sequencing) {
@@ -571,13 +639,19 @@ function ownerDecisionDeferred(sequencing) {
     asArray(sequencing?.forbidden_next_actions).includes("request_owner_exact_head_decision");
 }
 
-function deferOwnerDecisionActions(record) {
+function deferOwnerDecisionActions(record, sequencing) {
+  const deferredUntil = sequencing?.current_phase === "ADDITIONAL_REVIEW_REQUIRED"
+    ? "required_additional_reviews_complete"
+    : "independent_audit_complete";
+  const message = deferredUntil === "required_additional_reviews_complete"
+    ? "Owner exact-head decision remains required before merge, but it is not actionable until required additional reviews complete."
+    : "Owner exact-head decision remains required before merge, but it is not actionable until independent audit completion.";
   const actions = asArray(record.required_next_actions);
   const deferred = actions.filter(isOwnerDecisionAction).map((action) => ({
     ...action,
     actionable: false,
-    deferred_until: "independent_audit_complete",
-    message: "Owner exact-head decision remains required before merge, but it is not actionable until independent audit completion.",
+    deferred_until: deferredUntil,
+    message,
   }));
   if (deferred.length === 0) return record;
   return {
@@ -802,6 +876,9 @@ function discoverRefs({ prBody, changedFiles }) {
     structuredAuditSource: refFromBody(prBody, ["structured_audit_source_ref", "structured_audit_source", "audit_source_ref", "audit_source"]),
     auditMachineEvidence: refFromBody(prBody, ["audit_machine_evidence_ref", "audit_machine_evidence", "audit-machine-evidence", "machine_evidence_ref", "machine_evidence"]),
     auditChecklistReport: refFromBody(prBody, ["audit_checklist_report_ref", "audit_checklist_report", "audit-checklist-report"]),
+    reviewPlan: refFromBody(prBody, ["review_plan_ref", "review_plan", "review-plan"]),
+    reviewPlanReport: refFromBody(prBody, ["review_plan_report_ref", "review_plan_report", "review-plan-report"]),
+    additionalReview: refFromBody(prBody, ["additional_review_ref", "additional_review", "additional-review", "protected_review_ref", "protected_review"]),
     auditRecord: refFromBody(prBody, ["audit_record_ref", "audit_record", "audit-ref", "reviewer_audit_ref"]),
     auditItemSet: refFromBody(prBody, ["audit_item_set_ref", "audit_item_set", "audit-item-set"]),
     controlState: refFromBody(prBody, ["control_state_ref", "control_state", "control-state", "control_state_completeness_ref"]),
@@ -837,6 +914,9 @@ function discoverRefs({ prBody, changedFiles }) {
     structuredAuditSource: resolveRef({ name: "structured_audit_source", explicit: explicit.structuredAuditSource, candidates: bySchema(schemaMatches, "shirube-comment-backed-audit-source/v1"), defaults: [], records }),
     auditMachineEvidence: resolveRef({ name: "audit_machine_evidence", explicit: explicit.auditMachineEvidence, candidates: bySchema(schemaMatches, "shirube-machine-evidence/v1"), defaults: [], records }),
     auditChecklistReport: resolveRef({ name: "audit_checklist_report", explicit: explicit.auditChecklistReport, candidates: bySchema(schemaMatches, "shirube-audit-checklist-check/v1"), defaults: [], records }),
+    reviewPlan: resolveRef({ name: "review_plan", explicit: explicit.reviewPlan, candidates: bySchema(schemaMatches, "shirube-review-plan/v1"), defaults: [], records }),
+    reviewPlanReport: resolveRef({ name: "review_plan_report", explicit: explicit.reviewPlanReport, candidates: bySchema(schemaMatches, "shirube-review-plan-check/v1"), defaults: [], records }),
+    additionalReview: resolveRef({ name: "additional_review", explicit: explicit.additionalReview, candidates: bySchema(schemaMatches, "shirube-additional-review/v1"), defaults: [], records }),
     auditRecord: resolveRef({ name: "audit_record", explicit: explicit.auditRecord, candidates: [...bySchema(schemaMatches, "shirube-audit/v1"), ...bySchema(schemaMatches, "shirube-audit-record/v1")], defaults: [], records }),
     auditItemSet: resolveRef({ name: "audit_item_set", explicit: explicit.auditItemSet, candidates: bySchema(schemaMatches, "shirube-audit-item-set/v1"), defaults: [], records }),
     controlState: resolveRef({ name: "control_state", explicit: explicit.controlState, candidates: bySchema(schemaMatches, "shirube-control-state-completeness-config/v1"), defaults: [".shirube/control-state-completeness.yaml"], records }),

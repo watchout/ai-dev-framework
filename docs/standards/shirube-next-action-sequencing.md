@@ -22,6 +22,7 @@ forbidden_next_actions:
 ## Audit Before Owner
 
 When audit is required, independent audit completion precedes owner exact-head approval.
+When the machine-derived review plan requires additional protected review, that review also precedes owner exact-head approval.
 
 Audit completion requires all of:
 
@@ -54,13 +55,27 @@ If audit is complete and owner decision is missing:
 - `owner_approval_allowed: true`
 - `merge_ready_allowed: false`
 
+If audit is complete but required additional review is missing:
+
+- `current_phase: ADDITIONAL_REVIEW_REQUIRED`
+- `next_action.action: request_required_additional_review`
+- `owner_approval_allowed: false`
+- `merge_ready_allowed: false`
+- `forbidden_next_actions` includes `owner_exact_head_approval`
+
 If owner exact-head approval appears before required audit completion:
 
 - the report must block with `OWNER-SEQ-001`
 - owner approval is not accepted
 - merge readiness is not accepted
 
-If audit is complete and owner exact-head approval matches the current head:
+If owner exact-head approval appears before required additional review completion:
+
+- the report must block with `REVIEW-SEQ-001`
+- owner approval is not accepted
+- merge readiness is not accepted
+
+If audit, required additional reviews, and owner exact-head approval match the current head:
 
 - `current_phase: MERGE_READY`
 - `merge_ready_allowed: true`
@@ -71,7 +86,8 @@ For Full Operational YAML stub UX, generate or present the audit stub before the
 
 1. structured audit response
 2. audit source / machine evidence references
-3. owner exact-head decision
+3. required additional review evidence, when the review plan requires it
+4. owner exact-head decision
 
 The owner decision stub is policy-only until independent audit completion exists. Pending owner files must not synthesize approval.
 

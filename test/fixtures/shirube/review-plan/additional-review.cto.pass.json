@@ -1,0 +1,10 @@
+{
+  "schema_version": "shirube-additional-review/v1",
+  "review_type": "cto_review",
+  "responsible_role": "cto",
+  "verdict": "PASS",
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": 517,
+  "exact_head_sha": "1111111111111111111111111111111111111111",
+  "reviewer_actor": "cto"
+}

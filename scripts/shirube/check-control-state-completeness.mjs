@@ -33,6 +33,7 @@ const FINDINGS = {
   "CSC-015": ["full_control_claim_without_full_readiness", "Full-control claims require FULL_CONTROL_READY readiness.", "readiness"],
   "CSC-016": ["stale_artifact_reference", "Artifact reference is stale, missing, placeholder, or points outside current evidence.", "artifact_ref"],
   "CSC-017": ["report_failure_ignored", "Report FAILURE or report_failed=true must not be ignored.", "reports"],
+  "CSC-018": ["required_additional_review_missing", "Required additional review is missing or incomplete.", "review_plan_report"],
 };
 
 const DEFAULT_TAXONOMY = [
@@ -164,6 +165,10 @@ export function buildControlStateCompletenessReport(input) {
     blockers.push(finding("CSC-011"));
   }
 
+  if (isBlockingReport(input.reviewPlanReport)) {
+    blockers.push(...reviewPlanReportBlockers(input.reviewPlanReport));
+  }
+
   const auditRequired = auditIsRequired(input);
   if (auditRequired && !isObject(input.auditChecklistReport)) {
     missingStates.push(missingState("audit_checklist_report", input.auditChecklistReportPath));
@@ -224,6 +229,8 @@ export function buildControlStateCompletenessReport(input) {
     structuredAudit: input.structuredAudit,
     structuredAuditPath: input.structuredAuditPath,
     auditSource: input.auditSource,
+    reviewPlan: input.reviewPlanReport?.review_plan,
+    additionalReviewReports: input.additionalReviewReports,
     ownerDecision: input.ownerDecision,
     actualHead: expectedHead(input),
     actualRepo: expectedRepo(input),
@@ -253,6 +260,7 @@ export function buildControlStateCompletenessReport(input) {
     forbidden_next_actions: sequencing.forbidden_next_actions,
     audit_required: sequencing.audit_required,
     audit_completion: sequencing.audit_completion,
+    additional_review_completion: sequencing.additional_review_completion,
     owner_decision_status: sequencing.owner_decision_status,
     would_block: state === "CONTROL_BLOCKED" || state === "CONTROL_FAILURE" || state === "CONTROL_PARTIAL",
     owner_must_not_merge: state !== "CONTROL_COMPLETE" && state !== "CONTROL_COMPLETE_WITH_WARNINGS",
@@ -286,6 +294,7 @@ function buildInventory(input) {
     lifecycle_report: inventoryRecord(input.lifecycleReportPath, lifecycle),
     gate_contract_report: inventoryRecord(input.gateContractReportPath, gate),
     design_rule_report: inventoryRecord(input.designRuleReportPath, input.designRuleReport),
+    review_plan_report: inventoryRecord(input.reviewPlanReportPath, input.reviewPlanReport),
     audit_checklist_report: inventoryRecord(input.auditChecklistReportPath, input.auditChecklistReport),
     enforcement_policy_report: inventoryRecord(input.enforcementPolicyReportPath, enforcement),
     readiness_report: inventoryRecord(input.readinessReportPath, input.readinessReport),
@@ -298,6 +307,11 @@ function buildInventory(input) {
     owner_decision: inventoryRecord(input.ownerDecisionPath, input.ownerDecision),
     audit_checklist: inventoryRecord(input.auditChecklistPath, input.auditChecklist),
     audit_record: inventoryRecord(input.auditRecordPath, input.auditRecord),
+    additional_reviews: asArray(input.additionalReviewReports).map((report) => ({
+      review_type: report?.review_type ?? report?.type ?? null,
+      verdict: report?.verdict ?? report?.decision ?? report?.status ?? null,
+      exact_head_sha: firstPresent(report?.exact_head_sha, report?.pr_head_sha, report?.head_sha, report?.target_head) ?? null,
+    })),
     audit_item_set: inventoryRecord(input.auditItemSetPath, input.auditItemSet),
     post_merge: inventoryRecord(input.postMergePath, input.postMerge),
     open_blockers: openBlockers(input),
@@ -615,6 +629,8 @@ function ownerReadyClaimed(input) {
 }
 
 function auditIsRequired(input) {
+  if (input.reviewPlanReport?.review_plan?.base_audit?.required === true) return true;
+  if (input.reviewPlanReport?.review_plan?.base_audit?.required === false) return false;
   const risk = String(firstPresent(input.handoff?.cell?.risk_class, input.handoff?.risk_tier, input.repoSpec?.risk_tier) ?? "").toUpperCase();
   return input.handoff?.audit_required === true ||
     input.handoff?.formal_audit_required === true ||
@@ -656,6 +672,26 @@ function auditChecklistReportWarnings(report) {
       message: item.message ?? "Audit checklist report warning.",
       path: item.path ?? "audit_checklist_report",
     }));
+}
+
+function reviewPlanReportBlockers(report) {
+  if (!isObject(report)) return [];
+  const blockers = asArray(report.blockers)
+    .filter((item) => isObject(item))
+    .map((item) => ({
+      item_id: item.item_id ?? "CSC-018",
+      code: item.code ?? "review_plan_blocker",
+      message: item.message ?? "Review plan report blocked.",
+      path: item.path ?? "review_plan_report",
+    }));
+  if (blockers.length > 0) return blockers;
+  if (report.verdict === "BLOCKED" || report.would_block === true) {
+    return [finding("CSC-018", {
+      path: "review_plan_report",
+      message: "Review plan report blocks owner/merge progression.",
+    })];
+  }
+  return [];
 }
 
 function auditItemSetFinding(input) {
@@ -901,8 +937,10 @@ function actionFor(itemId) {
     "CSC-015": "Remove full-control claims or provide FULL_CONTROL_READY readiness evidence.",
     "CSC-016": "Refresh stale artifact references to existing machine-readable artifacts.",
     "CSC-017": "Treat failed reports as blocking evidence and rerun/fix the failed gate.",
+    "CSC-018": "Provide required additional review evidence before owner decision.",
     "CSC-W001": "Review enforcement policy warnings before merge or graduation.",
     "OWNER-SEQ-001": "Complete independent exact-head audit before requesting or accepting owner exact-head approval.",
+    "REVIEW-SEQ-001": "Complete required additional reviews before requesting or accepting owner exact-head approval.",
   };
   return actions[itemId] ?? "Resolve control-state completeness finding.";
 }
@@ -917,6 +955,7 @@ function readInput(options) {
     lifecycleReportPath: stringOption(options["lifecycle-report"]),
     gateContractReportPath: stringOption(options["gate-contract-report"]),
     designRuleReportPath: stringOption(options["design-rule-report"]),
+    reviewPlanReportPath: stringOption(options["review-plan-report"]),
     enforcementPolicyReportPath: stringOption(options["enforcement-policy-report"]),
     readinessReportPath: stringOption(options["readiness-report"]),
     handoffPath: stringOption(options.handoff),
@@ -928,6 +967,7 @@ function readInput(options) {
     auditChecklistReportPath: stringOption(options["audit-checklist-report"]),
     structuredAuditPath: stringOption(options["structured-audit"]),
     auditSourcePath: stringOption(options["audit-source"]) ?? stringOption(options["structured-audit-source"]),
+    additionalReviewPath: stringOption(options["additional-review"]),
     auditRecordPath: stringOption(options["audit-record"]) ?? stringOption(options["structured-audit"]),
     auditItemSetPath: stringOption(options["audit-item-set"]),
     postMergePath: stringOption(options["post-merge"]),
@@ -939,13 +979,14 @@ function readInput(options) {
 
   const parseErrors = [];
   for (const [key, path] of Object.entries(input)) {
-    if (!key.endsWith("Path") || !path || key === "changedFilesPath") continue;
+    if (!key.endsWith("Path") || !path || key === "changedFilesPath" || key === "additionalReviewPath") continue;
     const valueKey = key.replace(/Path$/, "");
     const { value, error } = readOptionalStructured(path);
     input[valueKey] = value;
     if (error) parseErrors.push({ path, message: error });
   }
   input.changedFiles = readChangedFiles(input.changedFilesPath);
+  input.additionalReviewReports = readAdditionalReviews(input.additionalReviewPath);
 
   if (parseErrors.length > 0) {
     return {
@@ -975,6 +1016,16 @@ function readInput(options) {
   }
 
   return { input };
+}
+
+function readAdditionalReviews(value) {
+  if (!value) return [];
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((filePath) => readOptionalStructured(filePath).value)
+    .filter(Boolean);
 }
 
 function readOptionalStructured(filePath) {

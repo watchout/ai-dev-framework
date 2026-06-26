@@ -1,0 +1,13 @@
+{
+  "schema_version": "shirube-comment-backed-audit-source/v1",
+  "source_type": "github_pr_comment",
+  "source_comment_url": "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-1",
+  "comment_id": "1",
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": 517,
+  "exact_head_sha": "1111111111111111111111111111111111111111",
+  "materialized_path": "test/fixtures/shirube/review-plan/structured-audit.pass.json",
+  "trusted_base_workflow": true,
+  "target_branch_mutated": false,
+  "owner_approval_synthesized": false
+}

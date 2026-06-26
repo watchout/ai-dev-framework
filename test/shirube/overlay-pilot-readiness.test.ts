@@ -137,6 +137,7 @@ describe("Shirube overlay pilot readiness dry-run gate", () => {
         "gate-contract",
         "design-rules",
         "audit-checklist",
+        "review-plan",
         "lifecycle",
         "enforcement-policy",
         "control-state-completeness",

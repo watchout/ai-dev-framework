@@ -16,6 +16,7 @@ node scripts/shirube/check-control-state-completeness.mjs \
   --gate-contract-report .shirube-rapid-lite/gate-contract.json \
   --design-rule-report .shirube-rapid-lite/design-rules.json \
   --audit-checklist-report .shirube-rapid-lite/audit-checklist.json \
+  --review-plan-report .shirube-rapid-lite/review-plan.json \
   --enforcement-policy-report .shirube-rapid-lite/enforcement-policy.json \
   --handoff .shirube/control-handoffs/CH-001.yaml \
   --matrix .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml \
@@ -47,7 +48,7 @@ The gate inventories:
 - execution context report, active role, and repo relations;
 - RPS / PRS;
 - source mirrors;
-- adoption, lifecycle, gate-contract, design-rule, audit-checklist, enforcement-policy, and readiness reports;
+- adoption, lifecycle, gate-contract, design-rule, audit-checklist, review-plan, enforcement-policy, and readiness reports;
 - handoff, allowed paths, forbidden paths, protected surfaces, and required evidence;
 - validation evidence, owner exact-head decision, formal audit/reviewer audit when required, post-merge evidence, and open blockers.
 - audit checklist report and structured per-item audit response when full operational audit acceptance is requested.
@@ -68,6 +69,7 @@ The gate reconciles:
 - owner exact-head decision against PR/gate head;
 - audit item records against required audit item sets;
 - checklist-required audit responses against `shirube-audit-checklist/v1` via `check-audit-checklist`, including independent source provenance and exact-head/repo/PR binding;
+- machine-derived `shirube-review-plan/v1` requirements for base audit, additional reviews, and owner-decision prerequisites;
 - post-merge evidence before `COMPLETE`;
 - full-control claims against full-readiness evidence;
 - report failures so they cannot be ignored.
@@ -75,6 +77,7 @@ The gate reconciles:
 It also emits sequencing fields: `current_phase`, `next_action`, `owner_approval_allowed`, `merge_ready_allowed`, and `forbidden_next_actions`. When audit is required but incomplete, Control State Completeness must make `request_independent_audit` the next action instead of surfacing owner approval as the operator's next step.
 An audit checklist report that only self-asserts `audit_completion.complete` or related match booleans is incomplete until the observable audit/report fields and trusted source provenance reconcile.
 If an audit source artifact exists but targets a different head, repo, PR, or materialized audit path, the audit remains incomplete and Control State Completeness must block with `CSC-012`.
+If a review-plan report requires additional review, Control State Completeness consumes that report and blocks missing or stale additional review evidence with `CSC-018`. It must not infer CTO/security/legal/privacy review requirements from prose; those requirements come from `shirube-review-plan/v1`.
 
 ## Hard Block IDs
 
@@ -95,10 +98,12 @@ If an audit source artifact exists but targets a different head, repo, PR, or ma
 - `CSC-015 full_control_claim_without_full_readiness`
 - `CSC-016 stale_artifact_reference`
 - `CSC-017 report_failure_ignored`
+- `CSC-018 required_additional_review_missing`
 
 For P0 audit checklist hardening, use the `AUDIT-LIST-*` findings from `check-audit-checklist` as the authoritative itemized audit readiness result. Missing, duplicate, unanswered, or unsupported executable audit items must block full operational audit acceptance even when freeform audit prose says PASS. Control State Completeness consumes `audit-checklist.json` when provided and propagates `AUDIT-LIST-*` blockers instead of converting them into freeform prose.
 
 Owner exact-head approval before required independent audit completion is invalid and blocks with `OWNER-SEQ-001`. The correct next action is independent audit completion for the current exact head. See [Shirube Next-Action Sequencing](shirube-next-action-sequencing.md).
+Owner exact-head approval before required additional review completion is invalid and blocks with `REVIEW-SEQ-001`. The correct next action is the review plan's required additional review.
 
 ## Runner Integration
 
@@ -109,10 +114,11 @@ Owner exact-head approval before required independent audit completion is invali
 3. gate-contract
 4. design-rules
 5. audit-checklist, when checklist or structured audit refs are present
-6. lifecycle, after gate/audit reports are available
-7. enforcement-policy, when a policy is present
-8. control-state-completeness
+6. review-plan, when explicit refs or handoff policy require it
+7. lifecycle, after gate/audit/review reports are available
+8. enforcement-policy, when a policy is present
+9. control-state-completeness
 
-Control-state completeness consumes the earlier gate reports and writes `.shirube-rapid-lite/control-state-completeness.json`. Audit checklist evidence is conditional for Rapid/Lite: missing checklist evidence is only a hard blocker when the handoff, profile, or risk class requires audit acceptance.
+Control-state completeness consumes the earlier gate reports and writes `.shirube-rapid-lite/control-state-completeness.json`. Audit checklist and review-plan evidence are conditional for Rapid/Lite: missing checklist/review-plan evidence is only a hard blocker when the handoff, profile, or risk/surface policy requires it.
 
 This gate does not enable required checks, mutate branch protection/rulesets, change runtime behavior, alter package files, change B3 or `shirube-audit/v1`, or mutate external repositories.
