@@ -234,6 +234,7 @@ function report({ input, blockers, warnings }) {
     structuredAudit: input.audit,
     structuredAuditPath: input.auditPath,
     auditSource: input.auditSource,
+    auditSourceTrusted: input.auditSourceTrusted,
     actualHead: input.expectedHead,
     actualRepo: input.expectedRepo,
     actualPr: input.expectedPr,
@@ -244,6 +245,7 @@ function report({ input, blockers, warnings }) {
     structuredAudit: input.audit,
     structuredAuditPath: input.auditPath,
     auditSource: input.auditSource,
+    auditSourceTrusted: input.auditSourceTrusted,
     actualHead: input.expectedHead,
     actualRepo: input.expectedRepo,
     actualPr: input.expectedPr,
@@ -352,6 +354,7 @@ function readInput(options) {
   const auditPath = stringOption(options.audit) ?? stringOption(options["structured-audit"]);
   const machineEvidencePath = stringOption(options["machine-evidence"]);
   const auditSourcePath = stringOption(options["audit-source"]) ?? stringOption(options["structured-audit-source"]);
+  const auditSourceTrusted = options["trusted-audit-source"] === true;
   const operationalMode = stringOption(options["operational-mode"]) ?? "full_operational";
   const expectedHead = stringOption(options["expected-head"]);
   const expectedRepo = stringOption(options["expected-repo"]);
@@ -384,6 +387,7 @@ function readInput(options) {
         expectedRepo,
         expectedPr,
         implementationActor,
+        auditSourceTrusted,
         checklist: readStructuredFile(checklistPath),
         audit: auditPath && existsSync(auditPath) ? readStructuredFile(auditPath) : null,
         machineEvidence: machineEvidencePath && existsSync(machineEvidencePath) ? readStructuredFile(machineEvidencePath) : null,

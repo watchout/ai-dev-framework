@@ -33,6 +33,7 @@ export function buildRapidLiteReport(options) {
   const refs = { ...discovery.refs };
   const actual = actualContextFromOptions(options);
   ensureRuntimeValidationEvidence({ resultDir, refs, changedFiles, changedFilesPath, actual });
+  refs.structuredAuditSourceTrusted = isCurrentRunAuditSource(refs.structuredAuditSource, resultDir);
   const records = [];
 
   if (changedFilesResult.failure) records.push(failureRecord("input-collection", changedFilesResult.failure));
@@ -182,6 +183,7 @@ function runAuditChecklist({ resultDir, refs, actual }) {
     ];
     addArg(args, "--audit", refs.structuredAudit);
     addArg(args, "--audit-source", refs.structuredAuditSource);
+    addFlag(args, "--trusted-audit-source", refs.structuredAuditSourceTrusted);
     addArg(args, "--machine-evidence", refs.auditMachineEvidence);
     addArg(args, "--expected-head", actual.actualHead);
     addArg(args, "--expected-repo", actual.actualRepo);
@@ -195,6 +197,7 @@ function runAuditChecklist({ resultDir, refs, actual }) {
     ];
     addArg(args, "--audit", refs.structuredAudit);
     addArg(args, "--audit-source", refs.structuredAuditSource);
+    addFlag(args, "--trusted-audit-source", refs.structuredAuditSourceTrusted);
     addArg(args, "--machine-evidence", refs.auditMachineEvidence);
     addArg(args, "--expected-head", actual.actualHead);
     addArg(args, "--expected-repo", actual.actualRepo);
@@ -223,6 +226,7 @@ function runReviewPlan({ resultDir, refs, changedFilesPath, auditChecklistReport
   addArg(args, "--audit-checklist-report", auditChecklistReportPath);
   addArg(args, "--structured-audit", refs.structuredAudit);
   addArg(args, "--audit-source", refs.structuredAuditSource);
+  addFlag(args, "--trusted-audit-source", refs.structuredAuditSourceTrusted);
   addArg(args, "--owner-decision", refs.ownerDecision);
   addArg(args, "--additional-review", refs.additionalReview);
   addArg(args, "--actual-repo", actual.actualRepo);
@@ -303,6 +307,7 @@ function runControlStateCompleteness({
   addArg(args, "--audit-checklist", refs.auditChecklist);
   addArg(args, "--structured-audit", refs.structuredAudit);
   addArg(args, "--audit-source", refs.structuredAuditSource);
+  addFlag(args, "--trusted-audit-source", refs.structuredAuditSourceTrusted);
   addArg(args, "--additional-review", refs.additionalReview);
   addArg(args, "--audit-record", refs.auditRecord);
   addArg(args, "--audit-item-set", refs.auditItemSet);
@@ -336,6 +341,7 @@ function runLifecycle({ resultDir, refs, changedFilesPath, adoptionReportPath, g
   addArg(args, "--review-plan-report", reviewPlanReportPath);
   addArg(args, "--structured-audit", refs.structuredAudit);
   addArg(args, "--audit-source", refs.structuredAuditSource);
+  addFlag(args, "--trusted-audit-source", refs.structuredAuditSourceTrusted);
   addArg(args, "--additional-review", refs.additionalReview);
   addArg(args, "--owner-decision", refs.ownerDecision);
   addArg(args, "--post-merge", refs.postMerge);
@@ -1167,6 +1173,16 @@ function actualFromGithubEvent() {
 
 function addArg(args, key, value) {
   if (value) args.push(key, value);
+}
+
+function addFlag(args, key, enabled) {
+  if (enabled) args.push(key);
+}
+
+function isCurrentRunAuditSource(sourcePath, resultDir) {
+  if (!sourcePath || !resultDir) return false;
+  const expectedPath = path.resolve(resultDir, "structured-audit-source.json");
+  return path.resolve(sourcePath) === expectedPath && existsSync(sourcePath);
 }
 
 function gateScript(filename) {

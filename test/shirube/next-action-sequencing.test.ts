@@ -223,12 +223,29 @@ describe("Shirube audit/owner next-action sequencing", () => {
     expect(result.owner_approval_allowed).toBe(false);
   });
 
+  it("does not trust resolver-looking source metadata without current runner trust", () => {
+    const result = sequence({
+      auditChecklistReport: auditReport(),
+      structuredAudit: structuredAudit(),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+      auditSource: source(),
+    });
+
+    expect(result.audit_completion.source_runtime_trusted).toBe(false);
+    expect(result.audit_completion.trusted_source).toBe(false);
+    expect(result.audit_completion.complete).toBe(false);
+    expect(result.current_phase).toBe("AUDIT_REQUIRED");
+    expect(result.owner_approval_allowed).toBe(false);
+    expect(result.merge_ready_allowed).toBe(false);
+  });
+
   it("does not complete audit when structured audit violates maker checker separation", () => {
     const result = sequence({
       auditChecklistReport: auditReport(),
       structuredAudit: structuredAudit({ reviewer_actor: "codex-adf", implementation_actor: "codex-adf" }),
       structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       auditSource: source(),
+      auditSourceTrusted: true,
     });
 
     expect(result.audit_completion.maker_checker_separated).toBe(false);
@@ -244,6 +261,7 @@ describe("Shirube audit/owner next-action sequencing", () => {
       structuredAudit: structuredAudit(),
       structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       auditSource: source(),
+      auditSourceTrusted: true,
     });
 
     expect(result.current_phase).toBe("OWNER_DECISION_REQUIRED");
@@ -270,6 +288,7 @@ describe("Shirube audit/owner next-action sequencing", () => {
       structuredAudit: structuredAudit(),
       structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       auditSource: source(),
+      auditSourceTrusted: true,
       ownerDecision: owner(),
     });
 
@@ -285,6 +304,7 @@ describe("Shirube audit/owner next-action sequencing", () => {
       structuredAudit: structuredAudit(),
       structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       auditSource: source(),
+      auditSourceTrusted: true,
       ownerDecision: owner({ exact_head_sha: "2222222222222222222222222222222222222222" }),
     });
 

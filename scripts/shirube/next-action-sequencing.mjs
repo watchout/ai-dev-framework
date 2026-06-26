@@ -274,7 +274,8 @@ export function auditCompletionFrom(input = {}) {
   const sourcePrMatches = !isPlaceholder(sourcePr) &&
     (actualPr ? sourcePr === actualPr : true);
   const sourceMaterializedPathMatches = sourceMaterializedPathMatchesReport({ source, report, auditPath: input.structuredAuditPath });
-  const sourceTrusted = sourceIsTrusted(source);
+  const sourceRuntimeTrusted = input.auditSourceTrusted === true;
+  const sourceTrusted = sourceIsTrusted(source, sourceRuntimeTrusted);
   const independent = sourceTrusted &&
     sourceHeadMatches &&
     sourceRepoMatches &&
@@ -315,6 +316,7 @@ export function auditCompletionFrom(input = {}) {
     verdict_accepted: Boolean(verdictAccepted),
     required_items_answered: Boolean(requiredItemsAnswered),
     complete,
+    source_runtime_trusted: Boolean(sourceRuntimeTrusted),
     trusted_checker: Boolean(checkerTrusted),
     trusted_source: Boolean(sourceTrusted),
     maker_checker_separated: Boolean(makerCheckerSeparated),
@@ -362,11 +364,12 @@ function passWithWarnAccepted(report) {
 }
 
 function sourceIsIndependent(source) {
-  return sourceIsTrusted(source);
+  return sourceIsTrusted(source, false);
 }
 
-function sourceIsTrusted(source) {
+function sourceIsTrusted(source, runtimeTrusted) {
   if (!isObject(source)) return false;
+  if (runtimeTrusted !== true) return false;
   if (source.target_branch_mutated === true || source.owner_approval_synthesized === true) return false;
   if (source.trusted_base_workflow !== true) return false;
   if (String(firstPresent(source.generated_by, source.resolver, source.tool) ?? "") !== TRUSTED_AUDIT_RESOLVER) return false;

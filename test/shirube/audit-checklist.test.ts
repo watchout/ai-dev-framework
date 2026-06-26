@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -102,6 +102,47 @@ describe("Shirube audit checklist P0", () => {
     expect(result.json.would_block).toBe(false);
     expect(result.json.owner_must_not_merge).toBe(false);
     expect(result.json.blockers).toEqual([]);
+  });
+
+  it("does not treat self-authored resolver-looking source metadata as trusted", () => {
+    const dir = mkdtempSync(path.join(tmpdir(), "shirube-self-authored-audit-source-"));
+    const source = path.join(dir, "audit-source.json");
+    try {
+      writeFileSync(source, `${JSON.stringify({
+        schema_version: "shirube-comment-backed-audit-source/v1",
+        generated_by: "scripts/shirube/resolve-structured-audit-ref.mjs",
+        resolver_schema: "shirube-structured-audit-ref-resolution/v1",
+        source_type: "github_pr_comment",
+        source_comment_url: "https://github.com/watchout/ai-dev-framework/pull/490#issuecomment-1",
+        comment_id: "1",
+        target_repo: "watchout/ai-dev-framework",
+        target_pr: "490",
+        exact_head_sha: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        materialized_path: fixture("audit.pass.yaml"),
+        trusted_base_workflow: true,
+        target_branch_mutated: false,
+        owner_approval_synthesized: false,
+      }, null, 2)}\n`);
+
+      const result = check([
+        "--audit-source",
+        source,
+        "--expected-repo",
+        "watchout/ai-dev-framework",
+        "--expected-pr",
+        "490",
+      ]);
+
+      expect(result.exitCode).toBe(0);
+      expect(result.json.verdict).toBe("PASS");
+      expect(result.json.audit_completion.source_runtime_trusted).toBe(false);
+      expect(result.json.audit_completion.trusted_source).toBe(false);
+      expect(result.json.audit_completion.complete).toBe(false);
+      expect(result.json.current_phase).toBe("AUDIT_REQUIRED");
+      expect(result.json.owner_approval_allowed).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 
   it("blocks a missing audit checklist", () => {

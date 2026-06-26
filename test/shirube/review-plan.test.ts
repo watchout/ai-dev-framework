@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -118,6 +118,7 @@ describe("Shirube machine-derived review plan", () => {
       fixture("structured-audit.pass.json"),
       "--audit-source",
       fixture("audit-source.pass.json"),
+      "--trusted-audit-source",
       "--owner-decision",
       fixture("owner-decision.pass.json"),
     ]);
@@ -141,6 +142,7 @@ describe("Shirube machine-derived review plan", () => {
       fixture("structured-audit.pass.json"),
       "--audit-source",
       fixture("audit-source.pass.json"),
+      "--trusted-audit-source",
       "--additional-review",
       fixture("additional-review.technical.pass.json"),
     ]);
@@ -164,6 +166,7 @@ describe("Shirube machine-derived review plan", () => {
       fixture("structured-audit.pass.json"),
       "--audit-source",
       fixture("audit-source.pass.json"),
+      "--trusted-audit-source",
       "--additional-review",
       fixture("additional-review.technical.pass.json"),
       "--owner-decision",
@@ -177,8 +180,11 @@ describe("Shirube machine-derived review plan", () => {
 
   it("surfaces additional review as top Rapid/Lite next action before owner approval", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "shirube-review-plan-report-"));
+    const resultDir = path.join(dir, "out");
     const prBody = path.join(dir, "pr-body.md");
     const checklist = path.join(dir, "audit-checklist.yaml");
+    const auditSource = path.join(resultDir, "structured-audit-source.json");
+    mkdirSync(resultDir, { recursive: true });
     writeFileSync(checklist, [
       "schema_version: shirube-audit-checklist/v1",
       "audit_checklist_id: AUDIT-CHECKLIST-REVIEW-PLAN-TEST",
@@ -197,6 +203,21 @@ describe("Shirube machine-derived review plan", () => {
       "      - structured_reviewer_rationale",
       "",
     ].join("\n"));
+    writeFileSync(auditSource, `${JSON.stringify({
+      schema_version: "shirube-comment-backed-audit-source/v1",
+      generated_by: "scripts/shirube/resolve-structured-audit-ref.mjs",
+      resolver_schema: "shirube-structured-audit-ref-resolution/v1",
+      source_type: "github_pr_comment",
+      source_comment_url: "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-1",
+      comment_id: "1",
+      target_repo: "watchout/ai-dev-framework",
+      target_pr: 517,
+      exact_head_sha: head,
+      materialized_path: fixture("structured-audit.pass.json"),
+      trusted_base_workflow: true,
+      target_branch_mutated: false,
+      owner_approval_synthesized: false,
+    }, null, 2)}\n`);
     writeFileSync(prBody, [
       "execution_context_ref: test/fixtures/shirube/execution-context/valid-dev.yaml",
       "adoption_plan_ref: test/fixtures/shirube/adoption/greenfield.pass.yaml",
@@ -207,7 +228,7 @@ describe("Shirube machine-derived review plan", () => {
       "enforcement_policy_ref: test/fixtures/shirube/enforcement-policy/report-only.pass.yaml",
       `audit_checklist_ref: ${checklist}`,
       `structured_audit_ref: ${fixture("structured-audit.pass.json")}`,
-      `audit_source_ref: ${fixture("audit-source.pass.json")}`,
+      `audit_source_ref: ${auditSource}`,
       "",
     ].join("\n"));
 
@@ -215,7 +236,7 @@ describe("Shirube machine-derived review plan", () => {
       const stdout = execFileSync("node", [
         reportScript,
         "--result-dir",
-        path.join(dir, "out"),
+        resultDir,
         "--changed-files",
         fixture("changed-files.runtime.txt"),
         "--pr-body",

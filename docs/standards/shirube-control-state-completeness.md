@@ -78,6 +78,7 @@ It also emits sequencing fields: `current_phase`, `next_action`, `owner_approval
 An audit checklist report that only self-asserts `audit_completion.complete` or related match booleans is incomplete until the observable audit/report fields and trusted source provenance reconcile.
 If an audit source artifact exists but targets a different head, repo, PR, or materialized audit path, the audit remains incomplete and Control State Completeness must block with `CSC-012`.
 If an audit source artifact is branch-authored or PR-body-referenced without trusted resolver/base-workflow provenance, it is not independent audit source evidence.
+Self-authored source metadata fields such as `trusted_base_workflow`, `generated_by`, or `resolver_schema` do not create trust by themselves; trust must come from the current runner's resolver/checker context.
 If an audit checklist report is supplied as an existing report ref instead of being recomputed by the trusted checker path for the current run, it can be displayed and can propagate blockers, but it does not satisfy audit completion.
 Control State Completeness must treat structured audit maker/checker violations as incomplete audit evidence even if a supplied report says PASS.
 If a review-plan report requires additional review, Control State Completeness consumes that report and blocks missing or stale additional review evidence with `CSC-018`. It must not infer CTO/security/legal/privacy review requirements from prose; those requirements come from `shirube-review-plan/v1`.
