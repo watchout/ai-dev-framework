@@ -74,6 +74,7 @@ cell:
     - scripts/shirube/check-lifecycle.mjs
     - scripts/shirube/run-rapid-lite-report.mjs
     - test/fixtures/shirube/review-plan/**
+    - test/shirube/overlay-pilot-readiness.test.ts
     - test/shirube/review-plan.test.ts
     - test/shirube/control-state-completeness.test.ts
     - test/shirube/rapid-lite-report.test.ts

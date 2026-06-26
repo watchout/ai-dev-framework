@@ -193,7 +193,11 @@ function changedSurfaceSummaryFrom(files) {
   const surfaces = [];
   for (const file of files) {
     const normalized = file.replace(/\\/g, "/");
-    if (/^docs\//.test(normalized)) surfaces.push("docs");
+    if (/^docs\//.test(normalized)) {
+      surfaces.push("docs");
+      continue;
+    }
+    if (/^test\/fixtures\//.test(normalized)) continue;
     if (/^(src|app|api|lib)\//.test(normalized)) surfaces.push("runtime");
     if (/^(db|migrations)\//.test(normalized)) surfaces.push("database");
     if (/^\.github\/workflows\//.test(normalized)) surfaces.push("workflow");
