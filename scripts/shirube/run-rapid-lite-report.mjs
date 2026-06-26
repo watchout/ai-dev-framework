@@ -916,7 +916,7 @@ function discoverRefs({ prBody, changedFiles }) {
     auditChecklistReport: resolveRef({ name: "audit_checklist_report", explicit: explicit.auditChecklistReport, candidates: bySchema(schemaMatches, "shirube-audit-checklist-check/v1"), defaults: [], records }),
     reviewPlan: resolveRef({ name: "review_plan", explicit: explicit.reviewPlan, candidates: bySchema(schemaMatches, "shirube-review-plan/v1"), defaults: [], records }),
     reviewPlanReport: resolveRef({ name: "review_plan_report", explicit: explicit.reviewPlanReport, candidates: bySchema(schemaMatches, "shirube-review-plan-check/v1"), defaults: [], records }),
-    additionalReview: resolveRef({ name: "additional_review", explicit: explicit.additionalReview, candidates: bySchema(schemaMatches, "shirube-additional-review/v1"), defaults: [], records }),
+    additionalReview: resolveRef({ name: "additional_review", explicit: explicit.additionalReview, candidates: bySchema(schemaMatches, "shirube-additional-review/v1").filter(notFixturePath), defaults: [], records }),
     auditRecord: resolveRef({ name: "audit_record", explicit: explicit.auditRecord, candidates: [...bySchema(schemaMatches, "shirube-audit/v1"), ...bySchema(schemaMatches, "shirube-audit-record/v1")], defaults: [], records }),
     auditItemSet: resolveRef({ name: "audit_item_set", explicit: explicit.auditItemSet, candidates: bySchema(schemaMatches, "shirube-audit-item-set/v1"), defaults: [], records }),
     controlState: resolveRef({ name: "control_state", explicit: explicit.controlState, candidates: bySchema(schemaMatches, "shirube-control-state-completeness-config/v1"), defaults: [".shirube/control-state-completeness.yaml"], records }),
@@ -959,6 +959,10 @@ function schemasFromFiles(files) {
 
 function bySchema(matches, schema) {
   return matches.filter((entry) => entry.schema === schema).map((entry) => entry.file);
+}
+
+function notFixturePath(file) {
+  return !/^test\/fixtures\//.test(String(file ?? "").replace(/\\/g, "/"));
 }
 
 function firstExisting(...values) {
