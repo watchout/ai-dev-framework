@@ -7,7 +7,7 @@ lane: adoption_intake
 disposition: retrofit_accelerate
 current_phase: ADOPTION_READY
 status: RAPID_LITE_REPORT_ONLY
-work_order: watchout/ai-dev-framework#517
+work_order: watchout/ai-dev-framework#519
 summary: ai-dev-framework already runs Shirube Rapid/Lite report-only gates; this slice adds machine-derived review-plan policy.
 owner:
   role: repo_owner
@@ -29,7 +29,7 @@ existing_state_scan:
   unknowns: []
 owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
 repo_spec_ref: .shirube/repo-spec.yaml
-control_handoff_ref: .shirube/work-orders/517/review-plan-policy/control-handoff.yaml
+control_handoff_ref: .shirube/work-orders/519/review-plan-policy/control-handoff.yaml
 owner_confirmation:
   required: true
   status: existing_repo_self_development

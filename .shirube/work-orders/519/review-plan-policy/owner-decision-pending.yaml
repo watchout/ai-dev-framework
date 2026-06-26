@@ -1,7 +1,7 @@
 schema_version: shirube-owner-decision-evidence/v1
 record_id: OWNER-DECISION-PENDING-ADF-V3-REVIEW-PLAN-POLICY-001
 repo: watchout/ai-dev-framework
-pr: pending-pr
+pr: watchout/ai-dev-framework#519
 cell_id: CELL-ADF-V3-REVIEW-PLAN-POLICY-001
 decision: PENDING_OWNER_FINAL_REVIEW
 approval_granted: false

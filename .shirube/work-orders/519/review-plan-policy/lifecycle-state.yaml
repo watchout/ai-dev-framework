@@ -4,12 +4,12 @@ profile: hotel-lite
 repo: watchout/ai-dev-framework
 current_phase: IMPLEMENTED
 framework_ref: watchout/ai-dev-framework@04c99e6ea0ea3154f55254d8e2bf794926fd4964
-work_order: watchout/ai-dev-framework#517
-pr: pending-pr
+work_order: watchout/ai-dev-framework#519
+pr: watchout/ai-dev-framework#519
 cell_id: CELL-ADF-V3-REVIEW-PLAN-POLICY-001
 repo_spec_ref: .shirube/repo-spec.yaml
-handoff_ref: .shirube/work-orders/517/review-plan-policy/control-handoff.yaml
-owner_decision_ref: .shirube/work-orders/517/review-plan-policy/owner-decision-pending.yaml
+handoff_ref: .shirube/work-orders/519/review-plan-policy/control-handoff.yaml
+owner_decision_ref: .shirube/work-orders/519/review-plan-policy/owner-decision-pending.yaml
 last_allowed_phase: IMPLEMENTED
 updated_at: 2026-06-26T06:51:24Z
 updated_by: codex-adf

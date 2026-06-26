@@ -5,8 +5,8 @@ flow: full_operational
 control_handoff_id: CH-ADF-V3-REVIEW-PLAN-POLICY-001
 parent: "#516"
 parent_ssot: https://github.com/watchout/ai-dev-framework/pull/516
-work_order: watchout/ai-dev-framework#517
-pr: pending-pr
+work_order: watchout/ai-dev-framework#519
+pr: watchout/ai-dev-framework#519
 repo_local_issue: https://github.com/watchout/ai-dev-framework/pull/516
 matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
 framework_ref: watchout/ai-dev-framework@04c99e6ea0ea3154f55254d8e2bf794926fd4964
@@ -61,7 +61,7 @@ cell:
     - package or lockfile changes
     - runtime/product behavior changes
   allowed_paths:
-    - .shirube/work-orders/517/review-plan-policy/**
+    - .shirube/work-orders/519/review-plan-policy/**
     - docs/standards/shirube-review-plan.md
     - docs/standards/shirube-next-action-sequencing.md
     - docs/standards/shirube-control-state-completeness.md
@@ -134,7 +134,7 @@ owner_decision:
     - CHANGES_REQUIRED
     - BLOCKED
   exact_head_sha: null
-  decision_ref: .shirube/work-orders/517/review-plan-policy/owner-decision-pending.yaml
+  decision_ref: .shirube/work-orders/519/review-plan-policy/owner-decision-pending.yaml
 legacy_source_boundary:
   legacy_sources_may_inform: true
   legacy_sources_are_truth: false
