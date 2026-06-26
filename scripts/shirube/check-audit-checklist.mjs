@@ -355,7 +355,18 @@ function readInput(options) {
   const implementationActor = stringOption(options["implementation-actor"]);
 
   if (!checklistPath || !existsSync(checklistPath)) {
-    return { input: { checklistPath, auditPath, operationalMode }, missingChecklist: true };
+    return {
+      input: {
+        checklistPath,
+        auditPath,
+        operationalMode,
+        expectedHead,
+        expectedRepo,
+        expectedPr,
+        implementationActor,
+      },
+      missingChecklist: true,
+    };
   }
 
   try {

@@ -110,6 +110,7 @@ describe("Shirube audit checklist P0", () => {
     expect(result.exitCode).toBe(0);
     expect(result.json.verdict).toBe("BLOCKED");
     expect(blockerIds(result)).toContain("AUDIT-LIST-001");
+    expect(result.json.next_action.reason).toContain("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
   });
 
   it("blocks malformed required checklist items", () => {
