@@ -68,12 +68,14 @@ cell:
     - docs/standards/shirube-gate-pack-bridge.md
     - schemas/shirube/review-plan.v1.schema.json
     - scripts/shirube/build-review-plan.mjs
+    - scripts/shirube/check-audit-checklist.mjs
     - scripts/shirube/check-review-plan.mjs
     - scripts/shirube/next-action-sequencing.mjs
     - scripts/shirube/check-control-state-completeness.mjs
     - scripts/shirube/check-lifecycle.mjs
     - scripts/shirube/run-rapid-lite-report.mjs
     - test/fixtures/shirube/review-plan/**
+    - test/shirube/audit-checklist.test.ts
     - test/shirube/overlay-pilot-readiness.test.ts
     - test/shirube/review-plan.test.ts
     - test/shirube/control-state-completeness.test.ts
