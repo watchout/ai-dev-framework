@@ -114,6 +114,8 @@ describe("Shirube machine-derived review plan", () => {
       fixture("changed-files.runtime.txt"),
       "--audit-checklist-report",
       fixture("audit-checklist.pass.json"),
+      "--structured-audit",
+      fixture("structured-audit.pass.json"),
       "--audit-source",
       fixture("audit-source.pass.json"),
       "--owner-decision",
@@ -135,6 +137,8 @@ describe("Shirube machine-derived review plan", () => {
       fixture("changed-files.runtime.txt"),
       "--audit-checklist-report",
       fixture("audit-checklist.pass.json"),
+      "--structured-audit",
+      fixture("structured-audit.pass.json"),
       "--audit-source",
       fixture("audit-source.pass.json"),
       "--additional-review",
@@ -156,6 +160,8 @@ describe("Shirube machine-derived review plan", () => {
       fixture("changed-files.runtime.txt"),
       "--audit-checklist-report",
       fixture("audit-checklist.pass.json"),
+      "--structured-audit",
+      fixture("structured-audit.pass.json"),
       "--audit-source",
       fixture("audit-source.pass.json"),
       "--additional-review",
@@ -172,6 +178,25 @@ describe("Shirube machine-derived review plan", () => {
   it("surfaces additional review as top Rapid/Lite next action before owner approval", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "shirube-review-plan-report-"));
     const prBody = path.join(dir, "pr-body.md");
+    const checklist = path.join(dir, "audit-checklist.yaml");
+    writeFileSync(checklist, [
+      "schema_version: shirube-audit-checklist/v1",
+      "audit_checklist_id: AUDIT-CHECKLIST-REVIEW-PLAN-TEST",
+      "source:",
+      "  handoff_ref: test/fixtures/shirube/review-plan/handoff.r2-runtime-policy.yaml",
+      "  cell_id: CELL-ADF-V3-REVIEW-PLAN-TEST",
+      "  pr: watchout/ai-dev-framework#517",
+      "  implementation_actor: codex-adf",
+      "items:",
+      "  - item_id: AUDIT-001",
+      "    source: acceptance_criteria",
+      "    verification_method: semantic",
+      "    required: true",
+      "    prompt: Verify review-plan behavior.",
+      "    expected_evidence:",
+      "      - structured_reviewer_rationale",
+      "",
+    ].join("\n"));
     writeFileSync(prBody, [
       "execution_context_ref: test/fixtures/shirube/execution-context/valid-dev.yaml",
       "adoption_plan_ref: test/fixtures/shirube/adoption/greenfield.pass.yaml",
@@ -180,7 +205,8 @@ describe("Shirube machine-derived review plan", () => {
       "lifecycle_state_ref: test/fixtures/shirube/lifecycle/pass.execution-ready.yaml",
       "validation_evidence_ref: test/fixtures/shirube/rapid-lite-report/validation.external-head.yaml",
       "enforcement_policy_ref: test/fixtures/shirube/enforcement-policy/report-only.pass.yaml",
-      `audit_checklist_report_ref: ${fixture("audit-checklist.pass.json")}`,
+      `audit_checklist_ref: ${checklist}`,
+      `structured_audit_ref: ${fixture("structured-audit.pass.json")}`,
       `audit_source_ref: ${fixture("audit-source.pass.json")}`,
       "",
     ].join("\n"));

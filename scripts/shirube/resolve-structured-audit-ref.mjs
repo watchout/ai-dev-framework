@@ -285,6 +285,9 @@ function report({ verdict, resultDir, ref = null, comment = null, audit = null, 
 function sourceMetadata({ parsedRef, comment, audit, actualRepo, actualPr, actualHead, materializedPath }) {
   return {
     schema_version: SOURCE_SCHEMA,
+    generated_by: "scripts/shirube/resolve-structured-audit-ref.mjs",
+    resolver_schema: SCHEMA,
+    source_type: "github_pr_comment",
     source_comment_url: comment?.html_url ?? parsedRef.sourceCommentUrl,
     comment_id: comment?.id ? String(comment.id) : parsedRef.commentId,
     comment_author: comment?.user?.login ?? null,

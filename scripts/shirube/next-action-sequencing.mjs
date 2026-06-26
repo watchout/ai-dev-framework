@@ -24,6 +24,9 @@ export const REVIEW_SEQUENCE_BLOCKER = {
   path: "owner_decision",
 };
 
+const TRUSTED_AUDIT_CHECKER = "scripts/shirube/check-audit-checklist.mjs";
+const TRUSTED_AUDIT_RESOLVER = "scripts/shirube/resolve-structured-audit-ref.mjs";
+
 const FORBID_OWNER_AND_MERGE = [
   "owner_exact_head_approval",
   "request_owner_exact_head_decision",
@@ -271,11 +274,14 @@ export function auditCompletionFrom(input = {}) {
   const sourcePrMatches = !isPlaceholder(sourcePr) &&
     (actualPr ? sourcePr === actualPr : true);
   const sourceMaterializedPathMatches = sourceMaterializedPathMatchesReport({ source, report, auditPath: input.structuredAuditPath });
-  const independent = sourceIsIndependent(source) &&
+  const sourceTrusted = sourceIsTrusted(source);
+  const independent = sourceTrusted &&
     sourceHeadMatches &&
     sourceRepoMatches &&
     sourcePrMatches &&
     sourceMaterializedPathMatches;
+  const checkerTrusted = reportIsTrustedChecker(report);
+  const makerCheckerSeparated = auditMakerCheckerSeparated(audit);
   const checklistItemCount = numberValue(report?.inventory?.checklist_items);
   const auditItemCount = Math.max(numberValue(report?.inventory?.audit_items), asArray(audit?.items).length);
   const requiredItemsAnswered = isObject(report) &&
@@ -286,11 +292,14 @@ export function auditCompletionFrom(input = {}) {
     auditItemCount > 0;
   const complete = Boolean(
     isObject(report) &&
+    isObject(audit) &&
     machineReadable &&
+    checkerTrusted &&
     exactHeadMatches &&
     targetRepoMatches &&
     targetPrMatches &&
     independent &&
+    makerCheckerSeparated &&
     verdictAccepted &&
     requiredItemsAnswered &&
     reportBlockers.length === 0,
@@ -306,6 +315,9 @@ export function auditCompletionFrom(input = {}) {
     verdict_accepted: Boolean(verdictAccepted),
     required_items_answered: Boolean(requiredItemsAnswered),
     complete,
+    trusted_checker: Boolean(checkerTrusted),
+    trusted_source: Boolean(sourceTrusted),
+    maker_checker_separated: Boolean(makerCheckerSeparated),
     expected_head: actualHead ?? null,
     observed_head: reportHead ?? null,
     target_repo: reportRepo ?? null,
@@ -350,8 +362,16 @@ function passWithWarnAccepted(report) {
 }
 
 function sourceIsIndependent(source) {
+  return sourceIsTrusted(source);
+}
+
+function sourceIsTrusted(source) {
   if (!isObject(source)) return false;
   if (source.target_branch_mutated === true || source.owner_approval_synthesized === true) return false;
+  if (source.trusted_base_workflow !== true) return false;
+  if (String(firstPresent(source.generated_by, source.resolver, source.tool) ?? "") !== TRUSTED_AUDIT_RESOLVER) return false;
+  const resolverSchema = firstPresent(source.resolver_schema, source.resolution_schema);
+  if (!isPlaceholder(resolverSchema) && resolverSchema !== "shirube-structured-audit-ref-resolution/v1") return false;
   const hasSourceLocator = !isPlaceholder(firstPresent(
     source.source_comment_url,
     source.comment_url,
@@ -361,10 +381,24 @@ function sourceIsIndependent(source) {
     source.evidence_ref,
   ));
   if (!hasSourceLocator) return false;
-  if (source.trusted_base_workflow === true) return true;
   const type = String(firstPresent(source.source_type, source.type) ?? "").toLowerCase();
   if (["github_comment", "github_pr_comment", "github_review", "external_audit_ref", "owner_accepted_external_audit_ref"].includes(type)) return true;
   return false;
+}
+
+function reportIsTrustedChecker(report) {
+  if (!isObject(report)) return false;
+  if (report.trusted_checker !== true) return false;
+  if (String(firstPresent(report.generated_by, report.checker, report.tool) ?? "") !== TRUSTED_AUDIT_CHECKER) return false;
+  return true;
+}
+
+function auditMakerCheckerSeparated(audit) {
+  if (!isObject(audit)) return false;
+  const reviewerActor = firstPresent(audit.reviewer_actor, audit.auditor_actor);
+  const implementationActor = firstPresent(audit.implementation_actor, audit.implementer_actor);
+  if (isPlaceholder(reviewerActor) || isPlaceholder(implementationActor)) return false;
+  return String(reviewerActor) !== String(implementationActor);
 }
 
 function auditHead(audit) {
@@ -411,7 +445,10 @@ function numberValue(value) {
 
 function normalizePath(value) {
   if (isPlaceholder(value)) return null;
-  return String(value).trim().replace(/\\/g, "/").replace(/^\.\//, "");
+  let text = String(value).trim().replace(/\\/g, "/").replace(/^\.\//, "");
+  const cwd = process.cwd().replace(/\\/g, "/").replace(/\/+$/, "");
+  if (text.startsWith(`${cwd}/`)) text = text.slice(cwd.length + 1);
+  return text;
 }
 
 function normalizePhase(value) {

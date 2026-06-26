@@ -1,5 +1,7 @@
 {
   "schema": "shirube-audit-checklist-check/v1",
+  "generated_by": "scripts/shirube/check-audit-checklist.mjs",
+  "trusted_checker": true,
   "verdict": "PASS",
   "pr_head_sha": "1111111111111111111111111111111111111111",
   "target_repo": "watchout/ai-dev-framework",

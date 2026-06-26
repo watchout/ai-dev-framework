@@ -37,6 +37,9 @@ Audit completion requires all of:
 Useful audit prose is not enough unless it is structured and machine-readable. Machine-readable audit is not enough unless it is independent and exact-head bound.
 Audit completion is recomputed from observable report fields, structured audit fields, and trusted source provenance. A report's self-asserted `audit_completion.*_matches`, `audit_completion.independent`, or `audit_completion.complete` booleans are not authority.
 The trusted source provenance must itself match the active exact head, repo, and PR, and it must bind to the same materialized structured audit path referenced by the audit checklist report. Shirube must not combine independence from one artifact with head/repo/PR claims from an unrelated report.
+The audit checklist report must come from the current trusted `check-audit-checklist` execution path. A repo-local or PR-body-referenced `audit_checklist_report_ref` may be displayed and may propagate blockers, but it is not by itself audit-completion evidence.
+Comment-backed audit source metadata must come from the trusted structured-audit resolver/base workflow path. A branch-authored `shirube-comment-backed-audit-source/v1` file that only claims `source_type: github_pr_comment` is not independent provenance.
+Sequencing also recomputes maker/checker separation from the structured audit artifact itself; a checklist report that says PASS cannot override a reviewer/implementation actor match.
 
 ## Sequencing Rules
 

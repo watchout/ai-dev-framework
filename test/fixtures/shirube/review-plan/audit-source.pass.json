@@ -1,5 +1,7 @@
 {
   "schema_version": "shirube-comment-backed-audit-source/v1",
+  "generated_by": "scripts/shirube/resolve-structured-audit-ref.mjs",
+  "resolver_schema": "shirube-structured-audit-ref-resolution/v1",
   "source_type": "github_pr_comment",
   "source_comment_url": "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-1",
   "comment_id": "1",

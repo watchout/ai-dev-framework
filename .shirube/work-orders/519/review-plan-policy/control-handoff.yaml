@@ -71,11 +71,17 @@ cell:
     - scripts/shirube/check-audit-checklist.mjs
     - scripts/shirube/check-review-plan.mjs
     - scripts/shirube/next-action-sequencing.mjs
+    - scripts/shirube/resolve-structured-audit-ref.mjs
     - scripts/shirube/check-control-state-completeness.mjs
     - scripts/shirube/check-lifecycle.mjs
     - scripts/shirube/run-rapid-lite-report.mjs
+    - test/fixtures/shirube/audit-checklist/**
+    - test/fixtures/shirube/control-state-completeness/**
+    - test/fixtures/shirube/next-action-sequencing/**
+    - test/fixtures/shirube/rapid-lite-report/**
     - test/fixtures/shirube/review-plan/**
     - test/shirube/audit-checklist.test.ts
+    - test/shirube/next-action-sequencing.test.ts
     - test/shirube/overlay-pilot-readiness.test.ts
     - test/shirube/review-plan.test.ts
     - test/shirube/control-state-completeness.test.ts

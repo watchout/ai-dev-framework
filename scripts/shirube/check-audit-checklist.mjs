@@ -209,6 +209,8 @@ function report({ input, blockers, warnings }) {
   const verdict = blockers.length > 0 ? "BLOCKED" : warnings.length > 0 ? "PASS_WITH_WARN" : "PASS";
   const baseReport = {
     schema: SCHEMA,
+    generated_by: "scripts/shirube/check-audit-checklist.mjs",
+    trusted_checker: true,
     verdict,
     would_block: verdict === "BLOCKED",
     owner_must_not_merge: verdict === "BLOCKED",
@@ -263,6 +265,8 @@ function report({ input, blockers, warnings }) {
 function failure({ message, path }) {
   return {
     schema: SCHEMA,
+    generated_by: "scripts/shirube/check-audit-checklist.mjs",
+    trusted_checker: true,
     verdict: "FAILURE",
     would_block: true,
     owner_must_not_merge: true,

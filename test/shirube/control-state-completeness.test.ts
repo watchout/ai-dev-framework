@@ -219,6 +219,7 @@ describe("Shirube control state completeness check", () => {
     const result = check({
       "--handoff": fixture("handoff.audit-required.yaml"),
       "--audit-checklist-report": fixture("audit-checklist.pass.json"),
+      "--structured-audit": "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       "--audit-source": path.join(sequencingFixtures, "audit-source.pass.json"),
     });
 
@@ -234,6 +235,7 @@ describe("Shirube control state completeness check", () => {
     const result = check({
       "--handoff": fixture("handoff.audit-required.yaml"),
       "--audit-checklist-report": fixture("audit-checklist.pass.json"),
+      "--structured-audit": "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       "--audit-source": path.join(sequencingFixtures, "audit-source.pass.json"),
       "--owner-decision": null,
     });

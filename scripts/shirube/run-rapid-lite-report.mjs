@@ -395,6 +395,11 @@ function runGate({ gate, args, outputPath }) {
 function readExistingGateReport({ gate, reportPath, outputPath }) {
   try {
     const report = JSON.parse(readFileSync(reportPath, "utf8"));
+    if (gate === "audit-checklist") {
+      report.trusted_checker = false;
+      report.trust_downgraded = true;
+      report.trust_downgrade_reason = "Existing audit checklist reports are display evidence only; run check-audit-checklist in the current report path for audit completion.";
+    }
     writeFileSync(outputPath, `${JSON.stringify(report, null, 2)}\n`);
     return gateRecordFromReport({
       gate,

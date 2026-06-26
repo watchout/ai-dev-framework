@@ -8,6 +8,8 @@ const head = "1111111111111111111111111111111111111111";
 function auditReport(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     schema: "shirube-audit-checklist-check/v1",
+    generated_by: "scripts/shirube/check-audit-checklist.mjs",
+    trusted_checker: true,
     verdict: "PASS",
     pr_head_sha: head,
     target_repo: "watchout/agent-memory",
@@ -26,6 +28,8 @@ function auditReport(overrides: Record<string, unknown> = {}): Record<string, un
 function source(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     schema_version: "shirube-comment-backed-audit-source/v1",
+    generated_by: "scripts/shirube/resolve-structured-audit-ref.mjs",
+    resolver_schema: "shirube-structured-audit-ref-resolution/v1",
     source_type: "github_pr_comment",
     source_comment_url: "https://github.com/watchout/agent-memory/pull/213#issuecomment-1",
     materialized_path: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
@@ -35,6 +39,25 @@ function source(overrides: Record<string, unknown> = {}): Record<string, unknown
     trusted_base_workflow: true,
     target_branch_mutated: false,
     owner_approval_synthesized: false,
+    ...overrides,
+  };
+}
+
+function structuredAudit(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schema_version: "shirube-structured-audit/v1",
+    target_repo: "watchout/agent-memory",
+    target_pr: 213,
+    exact_head_sha: head,
+    reviewer_actor: "codex-audit",
+    implementation_actor: "codex-adf",
+    items: Array.from({ length: 11 }, (_, index) => ({
+      item_id: `AUDIT-${String(index + 1).padStart(3, "0")}`,
+      result: "PASS",
+      evidence_refs: ["machine-evidence"],
+      confidence: "high",
+      notes: "Verified.",
+    })),
     ...overrides,
   };
 }
@@ -167,6 +190,8 @@ describe("Shirube audit/owner next-action sequencing", () => {
   it("does not combine current-head report fields with unbound source materialized path", () => {
     const result = sequence({
       auditChecklistReport: auditReport(),
+      structuredAudit: structuredAudit(),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       auditSource: source({
         materialized_path: "test/fixtures/shirube/audit-checklist/other-audit.yaml",
       }),
@@ -179,9 +204,45 @@ describe("Shirube audit/owner next-action sequencing", () => {
     expect(result.owner_approval_allowed).toBe(false);
   });
 
+  it("does not trust self-asserted github comment source metadata without resolver provenance", () => {
+    const result = sequence({
+      auditChecklistReport: auditReport(),
+      structuredAudit: structuredAudit(),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+      auditSource: source({
+        generated_by: undefined,
+        resolver_schema: undefined,
+      }),
+    });
+
+    expect(result.audit_completion.trusted_source).toBe(false);
+    expect(result.audit_completion.independent).toBe(false);
+    expect(result.audit_completion.complete).toBe(false);
+    expect(result.current_phase).toBe("AUDIT_REQUIRED");
+    expect(result.next_action.action).toBe("request_independent_audit");
+    expect(result.owner_approval_allowed).toBe(false);
+  });
+
+  it("does not complete audit when structured audit violates maker checker separation", () => {
+    const result = sequence({
+      auditChecklistReport: auditReport(),
+      structuredAudit: structuredAudit({ reviewer_actor: "codex-adf", implementation_actor: "codex-adf" }),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+      auditSource: source(),
+    });
+
+    expect(result.audit_completion.maker_checker_separated).toBe(false);
+    expect(result.audit_completion.complete).toBe(false);
+    expect(result.current_phase).toBe("AUDIT_REQUIRED");
+    expect(result.next_action.action).toBe("request_independent_audit");
+    expect(result.owner_approval_allowed).toBe(false);
+  });
+
   it("requests owner exact-head decision only after independent audit completion", () => {
     const result = sequence({
       auditChecklistReport: auditReport(),
+      structuredAudit: structuredAudit(),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       auditSource: source(),
     });
 
@@ -206,6 +267,8 @@ describe("Shirube audit/owner next-action sequencing", () => {
   it("allows merge readiness after independent audit and exact-head owner approval", () => {
     const result = sequence({
       auditChecklistReport: auditReport(),
+      structuredAudit: structuredAudit(),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       auditSource: source(),
       ownerDecision: owner(),
     });
@@ -219,6 +282,8 @@ describe("Shirube audit/owner next-action sequencing", () => {
   it("keeps owner decision blocked on exact-head mismatch", () => {
     const result = sequence({
       auditChecklistReport: auditReport(),
+      structuredAudit: structuredAudit(),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       auditSource: source(),
       ownerDecision: owner({ exact_head_sha: "2222222222222222222222222222222222222222" }),
     });

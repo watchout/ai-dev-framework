@@ -1,8 +1,12 @@
 schema_version: shirube-structured-audit/v1
 audit_checklist_ref: test/fixtures/shirube/audit-checklist/checklist.pass.yaml
+target_repo: watchout/ai-dev-framework
+target_pr: 490
+exact_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 pr_head_sha: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 reviewer_actor: codex-audit
 reviewer_model: gpt-5-audit
+implementation_actor: codex-adf
 items:
   - item_id: AUDIT-001
     result: PASS
