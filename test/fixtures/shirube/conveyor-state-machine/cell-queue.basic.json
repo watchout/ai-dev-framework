@@ -1,0 +1,42 @@
+{
+  "schema_version": "shirube-cell-queue/v1",
+  "parent_ssot": "watchout/misell#197",
+  "repo": "watchout/misell",
+  "cells": [
+    {
+      "cell_id": "CELL-MISELL-205",
+      "status": "merge_ready",
+      "risk_class": "R1",
+      "cell_type": "docs_contract",
+      "allowed_paths": ["docs/misell/**"],
+      "forbidden_paths": ["src/**", "db/**", ".github/workflows/**"],
+      "expected_outputs": ["post_merge_evidence"],
+      "pr_number": 205,
+      "merge_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "merged_at": "2026-06-27T00:00:00Z"
+    },
+    {
+      "cell_id": "CELL-MISELL-206",
+      "status": "ready_for_implementation",
+      "depends_on": ["CELL-MISELL-205"],
+      "priority": 10,
+      "risk_class": "R2",
+      "cell_type": "runtime_foundation",
+      "protected_surfaces": ["runtime", "policy"],
+      "allowed_paths": ["src/misell/runtime/**", "test/misell/runtime/**"],
+      "forbidden_paths": ["db/**", ".github/workflows/**", "package.json", "package-lock.json"],
+      "expected_outputs": ["local runtime helper", "focused tests"],
+      "title": "Misell runtime helper",
+      "goal": "Implement the next Rapid/Lite runtime helper safely.",
+      "scope": ["local runtime helper", "focused tests"],
+      "non_scope": ["DB migrations", "required checks", "branch protection"],
+      "validation": {
+        "required_commands": ["npm run test -- test/misell/runtime.test.ts", "npm run type-check"],
+        "required_evidence": ["validation_result", "audit_checklist_report", "owner_decision", "post_merge_evidence"]
+      },
+      "owner_actor": "watchout",
+      "target_capability": "cell_implementation",
+      "framework_ref": "watchout/ai-dev-framework@1111111111111111111111111111111111111111"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "schema_version": "shirube-cell-queue/v1",
+  "parent_ssot": "watchout/misell#197",
+  "repo": "watchout/misell",
+  "cells": [
+    {
+      "cell_id": "CELL-MISELL-205",
+      "status": "merge_ready",
+      "risk_class": "R1",
+      "cell_type": "docs_contract",
+      "allowed_paths": ["docs/misell/**"],
+      "forbidden_paths": ["src/**"],
+      "expected_outputs": ["post_merge_evidence"],
+      "pr_number": 205,
+      "merge_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "cell_id": "CELL-MISELL-206",
+      "status": "ready_for_implementation",
+      "depends_on": ["CELL-MISELL-205"],
+      "priority": 20,
+      "risk_class": "R1",
+      "cell_type": "docs_contract",
+      "allowed_paths": ["docs/misell/206/**"],
+      "forbidden_paths": ["src/**"],
+      "expected_outputs": ["docs update"]
+    },
+    {
+      "cell_id": "CELL-MISELL-207",
+      "status": "ready_for_implementation",
+      "depends_on": ["CELL-MISELL-205"],
+      "priority": 5,
+      "risk_class": "R1",
+      "cell_type": "docs_contract",
+      "allowed_paths": ["docs/misell/207/**"],
+      "forbidden_paths": ["src/**"],
+      "expected_outputs": ["docs update"]
+    }
+  ]
+}
