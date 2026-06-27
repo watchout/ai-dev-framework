@@ -89,9 +89,9 @@ cell:
     - .github/rulesets/**
   protected_surfaces:
     declared:
-      - conveyor_control_plane
-      - review_plan_sequencing
-      - aun_work_order_contract
+      - permissions
+      - runtime
+      - aun activation
     touched: true
     reason: This slice adds local/report-only Shirube Conveyor control-plane logic and AUN Work Order export preview. It does not synthesize audit or owner approval, mutate AUN queues, enable enforcement, mutate branch protection, or mutate target repositories.
   stop_conditions:
