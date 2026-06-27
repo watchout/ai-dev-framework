@@ -1,0 +1,134 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+flow: full_operational
+control_handoff_id: CH-ADF-V3-CONVEYOR-STATE-MACHINE-001
+parent: "#487 / #519"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/487
+work_order: watchout/ai-dev-framework#522
+pr: watchout/ai-dev-framework#522
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@bb48fdd8a00e43862272fe4911ad2a5603071e43
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+audit_required: true
+review_plan_required: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: independent_audit
+rps_scope:
+  shirube_owns:
+    - Post-merge Conveyor state-machine selection.
+    - Cell queue schema and deterministic next-action output.
+    - Handoff, audit checklist, review plan, and Work Order preview generation.
+    - Local/report-only CLI commands for Conveyor continuation.
+  shirube_does_not_own:
+    - Independent audit synthesis.
+    - Owner approval synthesis.
+    - Merge execution.
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - AUN queue mutation.
+    - Target repository mutation.
+    - DB runtime, MCP, AUN runtime, or runtime/product behavior.
+cell:
+  CELL-ID: CELL-ADF-V3-CONVEYOR-STATE-MACHINE-001
+  cell_type: governance_gate
+  risk_class: R3
+  goal: Add a script-controlled Shirube Conveyor state machine so post-merge evidence and a delivery graph can mechanically identify or emit the next Cell without bypassing audit, review, owner approval, or merge gates.
+  acceptance_criteria:
+    - Conveyor next verifies post-merge evidence and selects the next ready Cell from shirube-cell-queue/v1.
+    - Multiple ready Cells without priority block with request_owner_planning_decision.
+    - Blocked dependencies prevent next Cell selection.
+    - Conveyor plan emits handoff, audit checklist, review plan, validation commands, and Work Order preview.
+    - Conveyor open-pr remains draft-plan-only and performs no GitHub mutation.
+    - Conveyor export-work-order emits AUN-compatible Work Order JSON.
+    - Conveyor record-post-merge records post-merge evidence without owner approval or merge synthesis.
+  non_scope:
+    - independent audit synthesis
+    - owner approval synthesis
+    - merge execution
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - AUN queue mutation
+    - target repository mutation
+    - DB runtime
+    - MCP implementation
+    - AUN runtime integration
+    - package or lockfile changes
+    - runtime/product behavior changes
+  allowed_paths:
+    - .shirube/work-orders/487/conveyor-state-machine/**
+    - docs/standards/shirube-conveyor-state-machine.md
+    - schemas/shirube/cell-queue.v1.schema.json
+    - src/cli/commands/conveyor.ts
+    - src/cli/lib/conveyor-state-machine.ts
+    - test/fixtures/shirube/conveyor-state-machine/**
+    - test/shirube/conveyor-state-machine.test.ts
+  forbidden_paths:
+    - app/**
+    - api/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/workflows/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - conveyor_control_plane
+      - review_plan_sequencing
+      - aun_work_order_contract
+    touched: true
+    reason: This slice adds local/report-only Shirube Conveyor control-plane logic and AUN Work Order export preview. It does not synthesize audit or owner approval, mutate AUN queues, enable enforcement, mutate branch protection, or mutate target repositories.
+  stop_conditions:
+    - independent audit is synthesized
+    - owner approval is synthesized
+    - merge execution is added
+    - required checks are activated
+    - branch protection or rulesets are mutated
+    - AUN queue mutation is added
+    - target repository mutation is added
+    - runtime/API/DB/product/package/lockfile change is added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/conveyor-state-machine.test.ts
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - PR_head_SHA
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  blocked_until:
+    - independent_audit_complete
+    - required_additional_reviews_complete
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: .shirube/work-orders/487/conveyor-state-machine/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/487

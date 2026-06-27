@@ -1,0 +1,46 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADOPT-ADF-V3-CONVEYOR-STATE-MACHINE-001
+repo: watchout/ai-dev-framework
+framework_ref: watchout/ai-dev-framework@bb48fdd8a00e43862272fe4911ad2a5603071e43
+profile: hotel-lite
+lane: adoption_intake
+disposition: retrofit_accelerate
+current_phase: ADOPTION_READY
+status: RAPID_LITE_REPORT_ONLY
+work_order: watchout/ai-dev-framework#522
+summary: ai-dev-framework already runs Shirube Rapid/Lite report-only gates; this slice adds a script-controlled post-merge Conveyor state machine.
+owner:
+  role: repo_owner
+  actor: watchout
+existing_state_scan:
+  specs:
+    - status: present
+      path: .shirube/repo-spec.yaml
+  implementation:
+    - status: present
+      path: src/cli/commands/conveyor.ts
+    - status: present
+      path: src/cli/lib
+  tests:
+    - status: present
+      path: test/shirube
+  legacy_sources: []
+  known_drift: []
+  unsafe_changes: []
+  llm_truth_claims: []
+  unknowns: []
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+repo_spec_ref: .shirube/repo-spec.yaml
+control_handoff_ref: .shirube/work-orders/487/conveyor-state-machine/control-handoff.yaml
+owner_confirmation:
+  required: true
+  status: existing_repo_self_development
+non_scope:
+  - independent audit synthesis
+  - owner approval synthesis
+  - merge execution
+  - required check activation
+  - branch protection or ruleset mutation
+  - AUN queue mutation
+  - target repository mutation
+  - runtime/API/DB/product behavior
