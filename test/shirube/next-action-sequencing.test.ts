@@ -417,6 +417,88 @@ describe("Shirube audit/owner next-action sequencing", () => {
     expect(trusted.owner_approval_allowed).toBe(true);
   });
 
+  it("does not complete required additional review when report repo or PR binding is missing", () => {
+    const missingRepo = sequence({
+      ...completedAuditInput(),
+      reviewPlan: reviewPlan(),
+      additionalReviewReports: [additionalReview({ target_repo: undefined })],
+      additionalReviewSource: additionalReviewSource(),
+      additionalReviewSourceTrusted: true,
+      ownerDecision: owner(),
+    });
+    const missingPr = sequence({
+      ...completedAuditInput(),
+      reviewPlan: reviewPlan(),
+      additionalReviewReports: [additionalReview({ target_pr: undefined })],
+      additionalReviewSource: additionalReviewSource(),
+      additionalReviewSourceTrusted: true,
+      ownerDecision: owner(),
+    });
+
+    for (const result of [missingRepo, missingPr]) {
+      expect(result.current_phase).toBe("ADDITIONAL_REVIEW_REQUIRED");
+      expect(result.additional_review_completion.complete).toBe(false);
+      expect(result.additional_review_completion.missing_reviews).toContain("technical_owner_review");
+      expect(result.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("REVIEW-SEQ-001");
+      expect(result.owner_approval_allowed).toBe(false);
+      expect(result.merge_ready_allowed).toBe(false);
+    }
+  });
+
+  it("does not complete required additional review when source repo or PR binding is missing", () => {
+    const sourceWithoutRepo = additionalReviewSource({
+      target_repo: undefined,
+      sources: [
+        {
+          source_comment_url: "https://github.com/watchout/agent-memory/pull/213#issuecomment-2",
+          comment_id: "2",
+          review_type: "technical_owner_review",
+          reviewer_actor: "technical-owner",
+          target_pr: 213,
+          exact_head_sha: head,
+        },
+      ],
+    });
+    const sourceWithoutPr = additionalReviewSource({
+      target_pr: undefined,
+      sources: [
+        {
+          source_comment_url: "https://github.com/watchout/agent-memory/pull/213#issuecomment-2",
+          comment_id: "2",
+          review_type: "technical_owner_review",
+          reviewer_actor: "technical-owner",
+          target_repo: "watchout/agent-memory",
+          exact_head_sha: head,
+        },
+      ],
+    });
+    const missingRepo = sequence({
+      ...completedAuditInput(),
+      reviewPlan: reviewPlan(),
+      additionalReviewReports: [additionalReview()],
+      additionalReviewSource: sourceWithoutRepo,
+      additionalReviewSourceTrusted: true,
+      ownerDecision: owner(),
+    });
+    const missingPr = sequence({
+      ...completedAuditInput(),
+      reviewPlan: reviewPlan(),
+      additionalReviewReports: [additionalReview()],
+      additionalReviewSource: sourceWithoutPr,
+      additionalReviewSourceTrusted: true,
+      ownerDecision: owner(),
+    });
+
+    for (const result of [missingRepo, missingPr]) {
+      expect(result.current_phase).toBe("ADDITIONAL_REVIEW_REQUIRED");
+      expect(result.additional_review_completion.complete).toBe(false);
+      expect(result.additional_review_completion.provenance_missing).toContain("technical_owner_review");
+      expect(result.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("REVIEW-SEQ-001");
+      expect(result.owner_approval_allowed).toBe(false);
+      expect(result.merge_ready_allowed).toBe(false);
+    }
+  });
+
   it("keeps owner decision blocked on exact-head mismatch", () => {
     const result = sequence({
       auditChecklistReport: auditReport(),

@@ -10,7 +10,7 @@ Standard independent structured audit is the base Shirube operational audit. It 
 
 Additional protected review is required only when machine policy derives it from `risk_class`, `cell_type`, `protected_surfaces`, changed paths, and repo policy. Free text such as `cto_review_question` is explanatory only and is not authority.
 
-Required additional review completion is evidence-bound. A branch-supplied `shirube-additional-review/v1` file is not sufficient by itself, even when it contains PASS. The review must reconcile with trusted resolver provenance from the current runner, exact head, repo, PR, materialized path, and maker/checker separation.
+Required additional review completion is evidence-bound. A branch-supplied `shirube-additional-review/v1` file is not sufficient by itself, even when it contains PASS. The review must reconcile with trusted resolver provenance from the current runner, exact head, repo, PR, materialized path, and maker/checker separation. Missing `target_repo` or `target_pr` in either the review report or resolver source metadata is not a match and must not advance the sequence.
 
 ## Sequencing
 

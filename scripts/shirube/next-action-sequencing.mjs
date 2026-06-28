@@ -246,8 +246,8 @@ function additionalReviewReportStatus({ report, source, sourceTrusted, actualHea
   const observedRepo = normalizeRepo(firstPresent(report.target_repo, report.repo));
   const observedPr = normalizePr(firstPresent(report.target_pr, report.pr, report.pull_request));
   const headMatches = isPlaceholder(actualHead) || !isPlaceholder(observedHead) && String(observedHead) === String(actualHead);
-  const repoMatches = !actualRepo || !observedRepo || observedRepo === actualRepo;
-  const prMatches = !actualPr || !observedPr || observedPr === actualPr;
+  const repoMatches = !isPlaceholder(observedRepo) && (!actualRepo || observedRepo === actualRepo);
+  const prMatches = !isPlaceholder(observedPr) && (!actualPr || observedPr === actualPr);
   const provenance = additionalReviewProvenanceStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr });
   const makerCheckerSeparated = additionalReviewMakerCheckerSeparated(report);
   return {
@@ -272,8 +272,8 @@ function additionalReviewProvenanceStatus({ report, source, sourceTrusted, actua
   const sourceRepo = normalizeRepo(firstPresent(entry.target_repo, source.target_repo, source.repo));
   const sourcePr = normalizePr(firstPresent(entry.target_pr, source.target_pr, source.pr));
   const sourceHeadMatches = !isPlaceholder(sourceHead) && (isPlaceholder(actualHead) || String(sourceHead) === String(actualHead));
-  const sourceRepoMatches = !actualRepo || !sourceRepo || sourceRepo === actualRepo;
-  const sourcePrMatches = !actualPr || !sourcePr || sourcePr === actualPr;
+  const sourceRepoMatches = !isPlaceholder(sourceRepo) && (!actualRepo || sourceRepo === actualRepo);
+  const sourcePrMatches = !isPlaceholder(sourcePr) && (!actualPr || sourcePr === actualPr);
   const sourceMaterializedPathMatches = additionalReviewSourceMaterializedPathMatches({ source, report });
   return {
     complete: sourceHeadMatches && sourceRepoMatches && sourcePrMatches && sourceMaterializedPathMatches,
