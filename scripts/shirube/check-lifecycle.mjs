@@ -268,6 +268,8 @@ export function buildLifecycleReport(input) {
     auditSourceTrusted: input.auditSourceTrusted,
     reviewPlan: input.reviewPlanReport?.review_plan,
     additionalReviewReports: input.additionalReviewReports,
+    additionalReviewSource: input.additionalReviewSource,
+    additionalReviewSourceTrusted: input.additionalReviewSourceTrusted,
     ownerDecision: input.ownerDecision,
     actualHead: firstPresent(input.actualHead, reportHead(input.gateContractReport), ownerDecisionHead(input.ownerDecision), input.state?.target_head, input.state?.head_sha),
     actualRepo: firstPresent(input.actualRepo, input.repoSpec?.repo, input.repoSpec?.repo_id, input.repoSpec?.id),
@@ -449,6 +451,8 @@ function readInput(options) {
     auditSourceTrusted: options["trusted-audit-source"] === true,
     reviewPlanReportPath: stringOption(options["review-plan-report"]),
     additionalReviewPath: stringOption(options["additional-review"]),
+    additionalReviewSourcePath: stringOption(options["additional-review-source"]),
+    additionalReviewSourceTrusted: options["trusted-additional-review-source"] === true,
     postMergePath: stringOption(options["post-merge"]),
     changedFilesPath: stringOption(options["changed-files"]),
     actualRepo: stringOption(options["actual-repo"]),
@@ -482,6 +486,8 @@ function readInput(options) {
       auditSourceTrusted: refs.auditSourceTrusted,
       reviewPlanReport: loaded.reviewPlanReport,
       additionalReviewReports: readAdditionalReviews(refs.additionalReviewPath),
+      additionalReviewSource: loaded.additionalReviewSource,
+      additionalReviewSourceTrusted: refs.additionalReviewSourceTrusted,
       postMerge: loaded.postMerge,
       actualRepo: refs.actualRepo,
       actualPr: refs.actualPr,
@@ -492,7 +498,10 @@ function readInput(options) {
 
 function readAdditionalReviews(value) {
   if (!value) return [];
-  return value.split(",").map((entry) => entry.trim()).filter(Boolean).map((filePath) => readOptionalStructuredInput(filePath, "additional_review_parse_error").value).filter(Boolean);
+  return value.split(",").map((entry) => entry.trim()).filter(Boolean).map((filePath) => {
+    const value = readOptionalStructuredInput(filePath, "additional_review_parse_error").value;
+    return isObject(value) ? { ...value, __file_path: filePath } : value;
+  }).filter(Boolean);
 }
 
 function readOptionalStructuredInput(filePath, errorCode) {

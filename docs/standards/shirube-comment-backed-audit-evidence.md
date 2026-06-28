@@ -74,6 +74,8 @@ Required additional reviews use the same evidence pattern. `scripts/shirube/reso
 
 The reusable workflow then injects the generated path list as `additional_review_ref`, so `check-review-plan` consumes normal local files. The comment evidence is never owner approval and never changes the target branch.
 
+Additional review files only satisfy required review completion when they are paired with the resolver-generated `.shirube-rapid-lite/additional-review-source.json` from the same run. The source metadata must bind the review type, source comment, exact head, repo, PR, and materialized file path. Branch-authored source metadata or a locally committed review file can be displayed as evidence, but it must not advance the sequence to owner approval without trusted current-run provenance.
+
 ## Security Rules
 
 The resolver must:
@@ -87,6 +89,7 @@ The resolver must:
 - reject reviewer/implementation actor equality when both are present;
 - reject audit comments that include owner final approval;
 - reject additional review comments that include owner final approval;
+- require additional review source metadata before treating additional review as complete;
 - keep audit evidence and owner decision evidence separate.
 
 The resolver must not:

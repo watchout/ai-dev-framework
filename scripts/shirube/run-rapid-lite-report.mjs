@@ -34,6 +34,7 @@ export function buildRapidLiteReport(options) {
   const actual = actualContextFromOptions(options);
   ensureRuntimeValidationEvidence({ resultDir, refs, changedFiles, changedFilesPath, actual });
   refs.structuredAuditSourceTrusted = isCurrentRunAuditSource(refs.structuredAuditSource, resultDir);
+  refs.additionalReviewSourceTrusted = isCurrentRunAdditionalReviewSource(refs.additionalReviewSource, resultDir);
   const records = [];
 
   if (changedFilesResult.failure) records.push(failureRecord("input-collection", changedFilesResult.failure));
@@ -229,6 +230,8 @@ function runReviewPlan({ resultDir, refs, changedFilesPath, auditChecklistReport
   addFlag(args, "--trusted-audit-source", refs.structuredAuditSourceTrusted);
   addArg(args, "--owner-decision", refs.ownerDecision);
   addArg(args, "--additional-review", refs.additionalReview);
+  addArg(args, "--additional-review-source", refs.additionalReviewSource);
+  addFlag(args, "--trusted-additional-review-source", refs.additionalReviewSourceTrusted);
   addArg(args, "--actual-repo", actual.actualRepo);
   addArg(args, "--actual-pr", actual.actualPr);
   addArg(args, "--actual-head", actual.actualHead);
@@ -309,6 +312,8 @@ function runControlStateCompleteness({
   addArg(args, "--audit-source", refs.structuredAuditSource);
   addFlag(args, "--trusted-audit-source", refs.structuredAuditSourceTrusted);
   addArg(args, "--additional-review", refs.additionalReview);
+  addArg(args, "--additional-review-source", refs.additionalReviewSource);
+  addFlag(args, "--trusted-additional-review-source", refs.additionalReviewSourceTrusted);
   addArg(args, "--audit-record", refs.auditRecord);
   addArg(args, "--audit-item-set", refs.auditItemSet);
   addArg(args, "--post-merge", refs.postMerge);
@@ -343,6 +348,8 @@ function runLifecycle({ resultDir, refs, changedFilesPath, adoptionReportPath, g
   addArg(args, "--audit-source", refs.structuredAuditSource);
   addFlag(args, "--trusted-audit-source", refs.structuredAuditSourceTrusted);
   addArg(args, "--additional-review", refs.additionalReview);
+  addArg(args, "--additional-review-source", refs.additionalReviewSource);
+  addFlag(args, "--trusted-additional-review-source", refs.additionalReviewSourceTrusted);
   addArg(args, "--owner-decision", refs.ownerDecision);
   addArg(args, "--post-merge", refs.postMerge);
   addArg(args, "--changed-files", changedFilesPath);
@@ -890,6 +897,7 @@ function discoverRefs({ prBody, changedFiles }) {
     reviewPlan: refFromBody(prBody, ["review_plan_ref", "review_plan", "review-plan"]),
     reviewPlanReport: refFromBody(prBody, ["review_plan_report_ref", "review_plan_report", "review-plan-report"]),
     additionalReview: refFromBody(prBody, ["additional_review_ref", "additional_review", "additional-review", "protected_review_ref", "protected_review"]),
+    additionalReviewSource: refFromBody(prBody, ["additional_review_source_ref", "additional_review_source", "additional-review-source", "protected_review_source_ref", "protected_review_source"]),
     auditRecord: refFromBody(prBody, ["audit_record_ref", "audit_record", "audit-ref", "reviewer_audit_ref"]),
     auditItemSet: refFromBody(prBody, ["audit_item_set_ref", "audit_item_set", "audit-item-set"]),
     controlState: refFromBody(prBody, ["control_state_ref", "control_state", "control-state", "control_state_completeness_ref"]),
@@ -928,6 +936,7 @@ function discoverRefs({ prBody, changedFiles }) {
     reviewPlan: resolveRef({ name: "review_plan", explicit: explicit.reviewPlan, candidates: bySchema(schemaMatches, "shirube-review-plan/v1"), defaults: [], records }),
     reviewPlanReport: resolveRef({ name: "review_plan_report", explicit: explicit.reviewPlanReport, candidates: bySchema(schemaMatches, "shirube-review-plan-check/v1"), defaults: [], records }),
     additionalReview: resolveRef({ name: "additional_review", explicit: explicit.additionalReview, candidates: bySchema(schemaMatches, "shirube-additional-review/v1").filter(notFixturePath), defaults: [], records }),
+    additionalReviewSource: resolveRef({ name: "additional_review_source", explicit: explicit.additionalReviewSource, candidates: bySchema(schemaMatches, "shirube-comment-backed-additional-review-source/v1").filter(notFixturePath), defaults: [], records }),
     auditRecord: resolveRef({ name: "audit_record", explicit: explicit.auditRecord, candidates: [...bySchema(schemaMatches, "shirube-audit/v1"), ...bySchema(schemaMatches, "shirube-audit-record/v1")], defaults: [], records }),
     auditItemSet: resolveRef({ name: "audit_item_set", explicit: explicit.auditItemSet, candidates: bySchema(schemaMatches, "shirube-audit-item-set/v1"), defaults: [], records }),
     controlState: resolveRef({ name: "control_state", explicit: explicit.controlState, candidates: bySchema(schemaMatches, "shirube-control-state-completeness-config/v1"), defaults: [".shirube/control-state-completeness.yaml"], records }),
@@ -1182,6 +1191,12 @@ function addFlag(args, key, enabled) {
 function isCurrentRunAuditSource(sourcePath, resultDir) {
   if (!sourcePath || !resultDir) return false;
   const expectedPath = path.resolve(resultDir, "structured-audit-source.json");
+  return path.resolve(sourcePath) === expectedPath && existsSync(sourcePath);
+}
+
+function isCurrentRunAdditionalReviewSource(sourcePath, resultDir) {
+  if (!sourcePath || !resultDir) return false;
+  const expectedPath = path.resolve(resultDir, "additional-review-source.json");
   return path.resolve(sourcePath) === expectedPath && existsSync(sourcePath);
 }
 

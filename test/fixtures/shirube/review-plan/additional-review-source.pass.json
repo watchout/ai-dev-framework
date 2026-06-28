@@ -1,0 +1,56 @@
+{
+  "schema_version": "shirube-comment-backed-additional-review-source/v1",
+  "generated_by": "scripts/shirube/resolve-additional-review-ref.mjs",
+  "resolver_schema": "shirube-additional-review-ref-resolution/v1",
+  "source_type": "github_pr_comment",
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": 517,
+  "exact_head_sha": "1111111111111111111111111111111111111111",
+  "materialized_paths": [
+    "test/fixtures/shirube/review-plan/additional-review.cto.pass.json",
+    "test/fixtures/shirube/review-plan/additional-review.technical.pass.json",
+    "test/fixtures/shirube/review-plan/additional-review.security.pass.json",
+    "test/fixtures/shirube/review-plan/additional-review.privacy.pass.json"
+  ],
+  "trusted_base_workflow": true,
+  "target_branch_mutated": false,
+  "owner_approval_synthesized": false,
+  "sources": [
+    {
+      "source_comment_url": "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-technical",
+      "comment_id": "technical",
+      "review_type": "technical_owner_review",
+      "reviewer_actor": "technical-owner",
+      "target_repo": "watchout/ai-dev-framework",
+      "target_pr": 517,
+      "exact_head_sha": "1111111111111111111111111111111111111111"
+    },
+    {
+      "source_comment_url": "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-cto",
+      "comment_id": "cto",
+      "review_type": "cto_review",
+      "reviewer_actor": "cto",
+      "target_repo": "watchout/ai-dev-framework",
+      "target_pr": 517,
+      "exact_head_sha": "1111111111111111111111111111111111111111"
+    },
+    {
+      "source_comment_url": "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-security",
+      "comment_id": "security",
+      "review_type": "security_review",
+      "reviewer_actor": "security-owner",
+      "target_repo": "watchout/ai-dev-framework",
+      "target_pr": 517,
+      "exact_head_sha": "1111111111111111111111111111111111111111"
+    },
+    {
+      "source_comment_url": "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-privacy",
+      "comment_id": "privacy",
+      "review_type": "privacy_review",
+      "reviewer_actor": "privacy-owner",
+      "target_repo": "watchout/ai-dev-framework",
+      "target_pr": 517,
+      "exact_head_sha": "1111111111111111111111111111111111111111"
+    }
+  ]
+}

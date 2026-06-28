@@ -145,6 +145,9 @@ describe("Shirube machine-derived review plan", () => {
       "--trusted-audit-source",
       "--additional-review",
       fixture("additional-review.technical.pass.json"),
+      "--additional-review-source",
+      fixture("additional-review-source.pass.json"),
+      "--trusted-additional-review-source",
     ]);
 
     expect(result.verdict).toBe("PASS");
@@ -169,6 +172,9 @@ describe("Shirube machine-derived review plan", () => {
       "--trusted-audit-source",
       "--additional-review",
       fixture("additional-review.technical.pass.json"),
+      "--additional-review-source",
+      fixture("additional-review-source.pass.json"),
+      "--trusted-additional-review-source",
       "--owner-decision",
       fixture("owner-decision.pass.json"),
     ]);
@@ -176,6 +182,33 @@ describe("Shirube machine-derived review plan", () => {
     expect(result.verdict).toBe("PASS");
     expect(result.current_phase).toBe("MERGE_READY");
     expect(result.merge_ready_allowed).toBe(true);
+  });
+
+  it("does not accept branch-supplied additional review files without trusted resolver provenance", () => {
+    const result = check([
+      "--handoff",
+      fixture("handoff.r2-runtime-policy.yaml"),
+      "--changed-files",
+      fixture("changed-files.runtime.txt"),
+      "--audit-checklist-report",
+      fixture("audit-checklist.pass.json"),
+      "--structured-audit",
+      fixture("structured-audit.pass.json"),
+      "--audit-source",
+      fixture("audit-source.pass.json"),
+      "--trusted-audit-source",
+      "--additional-review",
+      fixture("additional-review.technical.pass.json"),
+      "--owner-decision",
+      fixture("owner-decision.pass.json"),
+    ]);
+
+    expect(result.verdict).toBe("BLOCKED");
+    expect(result.current_phase).toBe("ADDITIONAL_REVIEW_REQUIRED");
+    expect(result.next_action.action).toBe("request_required_additional_review");
+    expect(result.owner_approval_allowed).toBe(false);
+    expect(result.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("REVIEW-SEQ-001");
+    expect(result.additional_review_completion.provenance_missing).toContain("technical_owner_review");
   });
 
   it("surfaces additional review as top Rapid/Lite next action before owner approval", () => {

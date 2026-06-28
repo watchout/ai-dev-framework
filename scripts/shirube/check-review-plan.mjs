@@ -13,6 +13,7 @@ import {
 } from "./build-review-plan.mjs";
 import {
   buildNextActionSequencing,
+  additionalReviewCompletionFrom as sequencingAdditionalReviewCompletionFrom,
 } from "./next-action-sequencing.mjs";
 
 const SCHEMA = "shirube-review-plan-check/v1";
@@ -43,6 +44,8 @@ export function buildReviewPlanCheck(input = {}) {
   const additionalCompletion = additionalReviewCompletionFrom({
     reviewPlan,
     additionalReviewReports: input.additionalReviewReports,
+    additionalReviewSource: input.additionalReviewSource,
+    additionalReviewSourceTrusted: input.additionalReviewSourceTrusted,
     actualHead: input.actualHead,
     actualRepo: input.actualRepo,
     actualPr: input.actualPr,
@@ -66,6 +69,8 @@ export function buildReviewPlanCheck(input = {}) {
     repoSpec: input.repoSpec,
     reviewPlan,
     additionalReviewReports: input.additionalReviewReports,
+    additionalReviewSource: input.additionalReviewSource,
+    additionalReviewSourceTrusted: input.additionalReviewSourceTrusted,
     auditChecklistReport: input.auditChecklistReport,
     structuredAudit: input.structuredAudit,
     structuredAuditPath: input.structuredAuditPath,
@@ -117,48 +122,7 @@ function validReviewPlan(plan) {
 }
 
 export function additionalReviewCompletionFrom(input = {}) {
-  const required = asArray(input.reviewPlan?.additional_reviews).filter((review) => review?.required === true);
-  const reports = asArray(input.additionalReviewReports).filter(isObject);
-  const completeReviews = [];
-  const missingReviews = [];
-  const headMismatches = [];
-  const expectedHead = input.actualHead;
-  const expectedRepo = normalizeRepo(input.actualRepo);
-  const expectedPr = normalizePr(input.actualPr);
-
-  for (const review of required) {
-    const report = reports.find((entry) => normalizeText(entry.review_type ?? entry.type) === normalizeText(review.review_type));
-    if (!report) {
-      missingReviews.push(review.review_type);
-      continue;
-    }
-    const observedHead = firstPresent(report.exact_head_sha, report.pr_head_sha, report.head_sha, report.target_head);
-    const observedRepo = normalizeRepo(firstPresent(report.target_repo, report.repo));
-    const observedPr = normalizePr(firstPresent(report.target_pr, report.pr, report.pull_request));
-    const verdict = String(firstPresent(report.verdict, report.decision, report.status) ?? "").toUpperCase();
-    const headMatches = isPlaceholder(expectedHead) || String(observedHead) === String(expectedHead);
-    const repoMatches = !expectedRepo || !observedRepo || observedRepo === expectedRepo;
-    const prMatches = !expectedPr || !observedPr || observedPr === expectedPr;
-    const verdictAccepted = ["PASS", "PASS_WITH_WARN", "APPROVED", "CONDITIONAL_GO"].includes(verdict);
-
-    if (!isPlaceholder(expectedHead) && !isPlaceholder(observedHead) && !headMatches) {
-      headMismatches.push({ review_type: review.review_type, expected: expectedHead, observed: observedHead });
-    }
-    if (!headMatches || !repoMatches || !prMatches || !verdictAccepted) {
-      missingReviews.push(review.review_type);
-      continue;
-    }
-    completeReviews.push(review.review_type);
-  }
-
-  return {
-    required: required.length > 0,
-    complete: required.length === 0 || missingReviews.length === 0 && headMismatches.length === 0,
-    required_reviews: required.map((review) => review.review_type),
-    complete_reviews: uniqueStrings(completeReviews),
-    missing_reviews: uniqueStrings(missingReviews),
-    head_mismatches: headMismatches,
-  };
+  return sequencingAdditionalReviewCompletionFrom(input);
 }
 
 function finding(itemId, overrides = {}) {
@@ -210,6 +174,8 @@ function readInput(options) {
     auditSourceTrusted: options["trusted-audit-source"] === true,
     ownerDecisionPath: stringOption(options["owner-decision"]),
     additionalReviewPath: stringOption(options["additional-review"]),
+    additionalReviewSourcePath: stringOption(options["additional-review-source"]),
+    additionalReviewSourceTrusted: options["trusted-additional-review-source"] === true,
     actualRepo: stringOption(options["actual-repo"]),
     actualPr: stringOption(options["actual-pr"]),
     actualHead: stringOption(options["actual-head"]),
@@ -225,6 +191,8 @@ function readInput(options) {
     auditSource: readOptional(refs.auditSourcePath),
     ownerDecision: readOptional(refs.ownerDecisionPath),
     additionalReviewReports: readAdditionalReviews(refs.additionalReviewPath),
+    additionalReviewSource: readOptional(refs.additionalReviewSourcePath),
+    additionalReviewSourceTrusted: refs.additionalReviewSourceTrusted,
     changedFiles: readChangedFiles(refs.changedFilesPath),
   };
   return input;
@@ -232,7 +200,10 @@ function readInput(options) {
 
 function readAdditionalReviews(value) {
   if (!value) return [];
-  return value.split(",").map((entry) => entry.trim()).filter(Boolean).map(readOptional).filter(Boolean);
+  return value.split(",").map((entry) => entry.trim()).filter(Boolean).map((filePath) => {
+    const report = readOptional(filePath);
+    return isObject(report) ? { ...report, __file_path: filePath } : report;
+  }).filter(Boolean);
 }
 
 function readOptional(filePath) {

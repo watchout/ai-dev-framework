@@ -6,5 +6,9 @@
   "target_repo": "watchout/ai-dev-framework",
   "target_pr": 517,
   "exact_head_sha": "1111111111111111111111111111111111111111",
-  "reviewer_actor": "technical-owner"
+  "reviewer_actor": "technical-owner",
+  "implementation_actor": "codex-adf",
+  "evidence_refs": [
+    "technical-owner-review-comment"
+  ]
 }

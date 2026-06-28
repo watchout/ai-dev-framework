@@ -26,6 +26,7 @@ export const REVIEW_SEQUENCE_BLOCKER = {
 
 const TRUSTED_AUDIT_CHECKER = "scripts/shirube/check-audit-checklist.mjs";
 const TRUSTED_AUDIT_RESOLVER = "scripts/shirube/resolve-structured-audit-ref.mjs";
+const TRUSTED_ADDITIONAL_REVIEW_RESOLVER = "scripts/shirube/resolve-additional-review-ref.mjs";
 
 const FORBID_OWNER_AND_MERGE = [
   "owner_exact_head_approval",
@@ -198,16 +199,26 @@ export function auditRequiredFrom(input = {}) {
 export function additionalReviewCompletionFrom(input = {}) {
   const required = asArray(input.reviewPlan?.additional_reviews).filter((review) => review?.required === true);
   const reports = asArray(input.additionalReviewReports).filter(isObject);
+  const source = input.additionalReviewSource;
+  const sourceRuntimeTrusted = input.additionalReviewSourceTrusted === true;
+  const sourceTrusted = additionalReviewSourceIsTrusted(source, sourceRuntimeTrusted);
   const actualHead = input.actualHead;
   const actualRepo = normalizeRepo(input.actualRepo);
   const actualPr = normalizePr(input.actualPr);
   const completeReviews = [];
   const missingReviews = [];
+  const headMismatches = [];
+  const provenanceMissing = [];
+  const makerCheckerViolations = [];
 
   for (const review of required) {
     const report = reports.find((entry) => normalizeText(entry.review_type ?? entry.type) === normalizeText(review.review_type));
-    if (!additionalReviewReportComplete({ report, actualHead, actualRepo, actualPr })) {
+    const status = additionalReviewReportStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr });
+    if (!status.complete) {
       missingReviews.push(review.review_type);
+      if (status.head_mismatch) headMismatches.push({ review_type: review.review_type, expected: actualHead, observed: status.observed_head ?? null });
+      if (!status.provenance_complete) provenanceMissing.push(review.review_type);
+      if (!status.maker_checker_separated) makerCheckerViolations.push(review.review_type);
       continue;
     }
     completeReviews.push(review.review_type);
@@ -219,11 +230,16 @@ export function additionalReviewCompletionFrom(input = {}) {
     required_reviews: required.map((review) => review.review_type),
     complete_reviews: completeReviews,
     missing_reviews: missingReviews,
+    head_mismatches: headMismatches,
+    provenance_missing: uniqueStrings(provenanceMissing),
+    maker_checker_violations: uniqueStrings(makerCheckerViolations),
+    source_runtime_trusted: Boolean(sourceRuntimeTrusted),
+    trusted_source: Boolean(sourceTrusted),
   };
 }
 
-function additionalReviewReportComplete({ report, actualHead, actualRepo, actualPr }) {
-  if (!isObject(report)) return false;
+function additionalReviewReportStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr }) {
+  if (!isObject(report)) return { complete: false };
   const verdict = String(firstPresent(report.verdict, report.decision, report.status) ?? "").toUpperCase();
   const accepted = ["PASS", "PASS_WITH_WARN", "APPROVED", "CONDITIONAL_GO"].includes(verdict);
   const observedHead = firstPresent(report.exact_head_sha, report.pr_head_sha, report.head_sha, report.target_head);
@@ -232,7 +248,82 @@ function additionalReviewReportComplete({ report, actualHead, actualRepo, actual
   const headMatches = isPlaceholder(actualHead) || !isPlaceholder(observedHead) && String(observedHead) === String(actualHead);
   const repoMatches = !actualRepo || !observedRepo || observedRepo === actualRepo;
   const prMatches = !actualPr || !observedPr || observedPr === actualPr;
-  return accepted && headMatches && repoMatches && prMatches;
+  const provenance = additionalReviewProvenanceStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr });
+  const makerCheckerSeparated = additionalReviewMakerCheckerSeparated(report);
+  return {
+    complete: accepted && headMatches && repoMatches && prMatches && provenance.complete && makerCheckerSeparated,
+    accepted,
+    head_matches: Boolean(headMatches),
+    head_mismatch: !isPlaceholder(actualHead) && !isPlaceholder(observedHead) && !headMatches,
+    repo_matches: Boolean(repoMatches),
+    pr_matches: Boolean(prMatches),
+    observed_head: observedHead ?? null,
+    provenance_complete: Boolean(provenance.complete),
+    maker_checker_separated: Boolean(makerCheckerSeparated),
+  };
+}
+
+function additionalReviewProvenanceStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr }) {
+  if (!sourceTrusted || !isObject(source)) return { complete: false };
+  const reviewType = normalizeText(firstPresent(report.review_type, report.type));
+  const entry = additionalReviewSourceEntries(source).find((candidate) => normalizeText(candidate.review_type) === reviewType);
+  if (!entry) return { complete: false };
+  const sourceHead = firstPresent(entry.exact_head_sha, entry.pr_head_sha, source.exact_head_sha, source.pr_head_sha, source.head_sha, source.target_head);
+  const sourceRepo = normalizeRepo(firstPresent(entry.target_repo, source.target_repo, source.repo));
+  const sourcePr = normalizePr(firstPresent(entry.target_pr, source.target_pr, source.pr));
+  const sourceHeadMatches = !isPlaceholder(sourceHead) && (isPlaceholder(actualHead) || String(sourceHead) === String(actualHead));
+  const sourceRepoMatches = !actualRepo || !sourceRepo || sourceRepo === actualRepo;
+  const sourcePrMatches = !actualPr || !sourcePr || sourcePr === actualPr;
+  const sourceMaterializedPathMatches = additionalReviewSourceMaterializedPathMatches({ source, report });
+  return {
+    complete: sourceHeadMatches && sourceRepoMatches && sourcePrMatches && sourceMaterializedPathMatches,
+  };
+}
+
+function additionalReviewSourceIsTrusted(source, runtimeTrusted) {
+  if (!isObject(source)) return false;
+  if (runtimeTrusted !== true) return false;
+  if (source.target_branch_mutated === true || source.owner_approval_synthesized === true) return false;
+  if (source.trusted_base_workflow !== true) return false;
+  if (String(firstPresent(source.generated_by, source.resolver, source.tool) ?? "") !== TRUSTED_ADDITIONAL_REVIEW_RESOLVER) return false;
+  const resolverSchema = firstPresent(source.resolver_schema, source.resolution_schema);
+  if (!isPlaceholder(resolverSchema) && resolverSchema !== "shirube-additional-review-ref-resolution/v1") return false;
+  const hasSourceLocator = additionalReviewSourceEntries(source).some((entry) => !isPlaceholder(firstPresent(
+    entry.source_comment_url,
+    entry.comment_url,
+    entry.review_url,
+    entry.source_ref,
+    entry.comment_id,
+    entry.evidence_ref,
+  )));
+  if (!hasSourceLocator) return false;
+  const type = String(firstPresent(source.source_type, source.type) ?? "").toLowerCase();
+  return ["github_comment", "github_pr_comment", "github_review", "external_review_ref", "owner_accepted_external_review_ref"].includes(type);
+}
+
+function additionalReviewSourceEntries(source) {
+  if (Array.isArray(source?.sources)) return source.sources.filter(isObject);
+  if (isObject(source)) return [source];
+  return [];
+}
+
+function additionalReviewSourceMaterializedPathMatches({ source, report }) {
+  const reportPath = normalizePath(firstPresent(report?.__file_path, report?.file_path, report?.path));
+  if (isPlaceholder(reportPath)) return false;
+  const sourcePaths = [
+    ...asArray(source?.materialized_paths),
+    ...asArray(source?.materialized_path),
+    ...asArray(source?.additional_review_paths),
+  ].map(normalizePath).filter(Boolean);
+  return sourcePaths.includes(reportPath);
+}
+
+function additionalReviewMakerCheckerSeparated(report) {
+  if (!isObject(report)) return false;
+  const reviewerActor = firstPresent(report.reviewer_actor, report.review_actor, report.actor);
+  const implementationActor = firstPresent(report.implementation_actor, report.implementer_actor);
+  if (isPlaceholder(reviewerActor) || isPlaceholder(implementationActor)) return false;
+  return String(reviewerActor) !== String(implementationActor);
 }
 
 export function auditCompletionFrom(input = {}) {
@@ -498,6 +589,11 @@ function asArray(value) {
   if (Array.isArray(value)) return value;
   if (value === undefined || value === null) return [];
   return [value];
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function isObject(value) {

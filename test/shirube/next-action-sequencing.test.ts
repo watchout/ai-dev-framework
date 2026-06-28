@@ -72,6 +72,85 @@ function owner(overrides: Record<string, unknown> = {}): Record<string, unknown>
   };
 }
 
+function additionalReview(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schema_version: "shirube-additional-review/v1",
+    review_type: "technical_owner_review",
+    responsible_role: "technical_owner",
+    verdict: "PASS",
+    target_repo: "watchout/agent-memory",
+    target_pr: 213,
+    exact_head_sha: head,
+    reviewer_actor: "technical-owner",
+    implementation_actor: "codex-adf",
+    evidence_refs: ["technical-owner-review-comment"],
+    __file_path: "test/fixtures/shirube/review-plan/additional-review.technical.pass.json",
+    ...overrides,
+  };
+}
+
+function additionalReviewSource(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schema_version: "shirube-comment-backed-additional-review-source/v1",
+    generated_by: "scripts/shirube/resolve-additional-review-ref.mjs",
+    resolver_schema: "shirube-additional-review-ref-resolution/v1",
+    source_type: "github_pr_comment",
+    sources: [
+      {
+        source_comment_url: "https://github.com/watchout/agent-memory/pull/213#issuecomment-2",
+        comment_id: "2",
+        review_type: "technical_owner_review",
+        reviewer_actor: "technical-owner",
+        target_repo: "watchout/agent-memory",
+        target_pr: 213,
+        exact_head_sha: head,
+      },
+    ],
+    target_repo: "watchout/agent-memory",
+    target_pr: 213,
+    exact_head_sha: head,
+    materialized_paths: ["test/fixtures/shirube/review-plan/additional-review.technical.pass.json"],
+    trusted_base_workflow: true,
+    target_branch_mutated: false,
+    owner_approval_synthesized: false,
+    ...overrides,
+  };
+}
+
+function reviewPlan(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schema_version: "shirube-review-plan/v1",
+    base_audit: {
+      required: true,
+      type: "independent_structured_audit",
+      checklist_profile: "runtime_policy_standard",
+    },
+    additional_reviews: [
+      {
+        review_type: "technical_owner_review",
+        responsible_role: "technical_owner",
+        required: true,
+        reason_codes: ["POLICY_SURFACE_TOUCHED"],
+      },
+    ],
+    owner_decision: {
+      required: true,
+      allowed_after: ["base_audit_complete", "all_additional_reviews_complete"],
+    },
+    ...overrides,
+  };
+}
+
+function completedAuditInput(): Record<string, unknown> {
+  return {
+    auditChecklistReport: auditReport(),
+    structuredAudit: structuredAudit(),
+    structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+    auditSource: source(),
+    auditSourceTrusted: true,
+  };
+}
+
 const requiredHandoff = {
   audit_required: true,
   cell: {
@@ -296,6 +375,46 @@ describe("Shirube audit/owner next-action sequencing", () => {
     expect(result.owner_approval_allowed).toBe(true);
     expect(result.merge_ready_allowed).toBe(true);
     expect(result.forbidden_next_actions).toEqual([]);
+  });
+
+  it("does not complete required additional review from a branch-supplied report alone", () => {
+    const result = sequence({
+      ...completedAuditInput(),
+      reviewPlan: reviewPlan(),
+      additionalReviewReports: [additionalReview()],
+      ownerDecision: owner(),
+    });
+
+    expect(result.current_phase).toBe("ADDITIONAL_REVIEW_REQUIRED");
+    expect(result.additional_review_completion.complete).toBe(false);
+    expect(result.additional_review_completion.provenance_missing).toContain("technical_owner_review");
+    expect(result.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("REVIEW-SEQ-001");
+    expect(result.owner_approval_allowed).toBe(false);
+    expect(result.merge_ready_allowed).toBe(false);
+  });
+
+  it("requires trusted resolver provenance for additional review completion", () => {
+    const untrusted = sequence({
+      ...completedAuditInput(),
+      reviewPlan: reviewPlan(),
+      additionalReviewReports: [additionalReview()],
+      additionalReviewSource: additionalReviewSource(),
+    });
+    const trusted = sequence({
+      ...completedAuditInput(),
+      reviewPlan: reviewPlan(),
+      additionalReviewReports: [additionalReview()],
+      additionalReviewSource: additionalReviewSource(),
+      additionalReviewSourceTrusted: true,
+    });
+
+    expect(untrusted.additional_review_completion.complete).toBe(false);
+    expect(untrusted.additional_review_completion.trusted_source).toBe(false);
+    expect(untrusted.current_phase).toBe("ADDITIONAL_REVIEW_REQUIRED");
+    expect(trusted.additional_review_completion.complete).toBe(true);
+    expect(trusted.additional_review_completion.trusted_source).toBe(true);
+    expect(trusted.current_phase).toBe("OWNER_DECISION_REQUIRED");
+    expect(trusted.owner_approval_allowed).toBe(true);
   });
 
   it("keeps owner decision blocked on exact-head mismatch", () => {

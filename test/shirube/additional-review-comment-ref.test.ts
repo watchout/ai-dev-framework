@@ -100,7 +100,12 @@ function writeComment(dir: string, payload: any): string {
   return file;
 }
 
-function resolveWithComment(dir: string, comment: any, ref = "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-4810000001"): { exitCode: number; json: any; stdout: string } {
+function resolveWithComment(
+  dir: string,
+  comment: any,
+  ref = "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-4810000001",
+  resultDir = path.join(dir, ".shirube-rapid-lite"),
+): { exitCode: number; json: any; stdout: string } {
   return run(resolverScript, [
     "--additional-review-comment-ref",
     ref,
@@ -111,7 +116,7 @@ function resolveWithComment(dir: string, comment: any, ref = "https://github.com
     "--actual-head",
     head,
     "--result-dir",
-    path.join(dir, ".shirube-rapid-lite"),
+    resultDir,
     "--comment-fixture",
     writeComment(dir, comment),
     "--format",
@@ -271,6 +276,9 @@ describe("comment-backed additional review refs", () => {
         "--trusted-audit-source",
         "--additional-review",
         resolved.json.materialized_path,
+        "--additional-review-source",
+        resolved.json.source_metadata_path,
+        "--trusted-additional-review-source",
         "--actual-repo",
         "watchout/ai-dev-framework",
         "--actual-pr",
@@ -293,7 +301,13 @@ describe("comment-backed additional review refs", () => {
   it("lets Rapid/Lite consume materialized additional reviews without reporting them missing", () => {
     const dir = mkdtempSync(path.join(tmpdir(), "shirube-additional-review-report-"));
     try {
-      const resolved = resolveWithComment(dir, commentPayload(commentBody({ language: "yaml", body: additionalReviewYaml() })));
+      const resultDir = path.join(dir, ".shirube-rapid-lite-report");
+      const resolved = resolveWithComment(
+        dir,
+        commentPayload(commentBody({ language: "yaml", body: additionalReviewYaml() })),
+        "https://github.com/watchout/ai-dev-framework/pull/517#issuecomment-4810000001",
+        resultDir,
+      );
       const prBody = path.join(dir, "pr-body.md");
       writeFileSync(prBody, [
         "execution_context_ref: test/fixtures/shirube/execution-context/valid-dev.yaml",
@@ -308,12 +322,13 @@ describe("comment-backed additional review refs", () => {
         "audit_source_ref: test/fixtures/shirube/review-plan/audit-source.pass.json",
         "audit_machine_evidence_ref: test/fixtures/shirube/audit-checklist/machine-evidence.pass.yaml",
         `additional_review_ref: ${resolved.json.materialized_path}`,
+        `additional_review_source_ref: ${resolved.json.source_metadata_path}`,
         "",
       ].join("\n"));
 
       const result = run(reportScript, [
         "--result-dir",
-        path.join(dir, ".shirube-rapid-lite-report"),
+        resultDir,
         "--changed-files",
         fixture("changed-files.runtime.txt"),
         "--pr-body",

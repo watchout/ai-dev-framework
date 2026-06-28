@@ -232,6 +232,8 @@ export function buildControlStateCompletenessReport(input) {
     auditSourceTrusted: input.auditSourceTrusted,
     reviewPlan: input.reviewPlanReport?.review_plan,
     additionalReviewReports: input.additionalReviewReports,
+    additionalReviewSource: input.additionalReviewSource,
+    additionalReviewSourceTrusted: input.additionalReviewSourceTrusted,
     ownerDecision: input.ownerDecision,
     actualHead: expectedHead(input),
     actualRepo: expectedRepo(input),
@@ -970,6 +972,8 @@ function readInput(options) {
     auditSourcePath: stringOption(options["audit-source"]) ?? stringOption(options["structured-audit-source"]),
     auditSourceTrusted: options["trusted-audit-source"] === true,
     additionalReviewPath: stringOption(options["additional-review"]),
+    additionalReviewSourcePath: stringOption(options["additional-review-source"]),
+    additionalReviewSourceTrusted: options["trusted-additional-review-source"] === true,
     auditRecordPath: stringOption(options["audit-record"]) ?? stringOption(options["structured-audit"]),
     auditItemSetPath: stringOption(options["audit-item-set"]),
     postMergePath: stringOption(options["post-merge"]),
@@ -1026,7 +1030,10 @@ function readAdditionalReviews(value) {
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean)
-    .map((filePath) => readOptionalStructured(filePath).value)
+    .map((filePath) => {
+      const value = readOptionalStructured(filePath).value;
+      return isObject(value) ? { ...value, __file_path: filePath } : value;
+    })
     .filter(Boolean);
 }
 

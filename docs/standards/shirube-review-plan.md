@@ -10,6 +10,8 @@ Standard independent structured audit is the base Shirube operational audit. It 
 
 Additional protected review is required only when machine policy derives it from `risk_class`, `cell_type`, `protected_surfaces`, changed paths, and repo policy. Free text such as `cto_review_question` is explanatory only and is not authority.
 
+Required additional review completion is evidence-bound. A branch-supplied `shirube-additional-review/v1` file is not sufficient by itself, even when it contains PASS. The review must reconcile with trusted resolver provenance from the current runner, exact head, repo, PR, materialized path, and maker/checker separation.
+
 ## Sequencing
 
 When `base_audit.required=true` and audit is incomplete:
@@ -64,7 +66,9 @@ node scripts/shirube/check-review-plan.mjs \
   --handoff .shirube/control-handoff.yaml \
   --review-plan .shirube/review-plan.json \
   --audit-checklist-report .shirube-rapid-lite/audit-checklist.json \
-  --additional-review .shirube/reviews/technical-owner.json \
+  --additional-review .shirube-rapid-lite/additional-reviews/01-technical-owner-review.yaml \
+  --additional-review-source .shirube-rapid-lite/additional-review-source.json \
+  --trusted-additional-review-source \
   --owner-decision .shirube/evidence/owner-decision.json \
   --actual-head "$HEAD_SHA" \
   --format json
