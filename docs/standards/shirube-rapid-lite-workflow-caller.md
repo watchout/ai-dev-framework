@@ -62,6 +62,8 @@ The reusable workflow accepts:
 - `audit_checklist_ref`
 - `structured_audit_ref`
 - `structured_audit_comment_ref`
+- `additional_review_ref`
+- `additional_review_comment_ref`
 - `audit_machine_evidence_ref`
 
 If `changed_files` is empty, the reusable workflow computes the PR diff from Git metadata and records the collection method. If `pr_body` is empty, it reads the PR body from the GitHub event payload.
@@ -71,6 +73,8 @@ The reusable workflow also injects ADF-local `matrix_ref` and `rule_pack_ref` pa
 When no explicit `validation_evidence_ref` is supplied, the reusable workflow creates `.shirube-rapid-lite/runtime-validation-evidence.json` during the run and injects that path into the effective PR-body evidence. This runtime artifact may provide the current PR head SHA, changed-file collection evidence, and validation command/result facts. It is external to the attested commit and is not copied into the target repository.
 
 `structured_audit_ref` remains the input for repo-local file paths. `structured_audit_comment_ref` may point to a same-PR GitHub comment containing fenced `shirube-structured-audit/v1` YAML. The reusable workflow resolves the comment from the trusted workflow context, verifies repo/PR/exact-head binding, writes `.shirube-rapid-lite/structured-audit.yaml`, and injects that materialized path into the report body. See `docs/standards/shirube-comment-backed-audit-evidence.md`.
+
+`additional_review_ref` remains the input for repo-local `shirube-additional-review/v1` files. `additional_review_comment_ref` may point to a same-PR GitHub comment containing fenced `shirube-additional-review/v1` YAML or JSON. The reusable workflow resolves the comment from the trusted workflow context, verifies repo/PR/exact-head binding, writes `.shirube-rapid-lite/additional-reviews/*`, and injects the materialized path list into the report body as `additional_review_ref`. Additional review evidence does not synthesize owner approval.
 
 Final owner exact-head evidence should be supplied outside the attested commit, for example through an owner-decision PR comment parser or workflow-provided evidence input. A committed pending owner-decision YAML file is policy only and must not be treated as approval.
 

@@ -40,4 +40,6 @@ jobs:
       audit_checklist_ref: ""
       structured_audit_ref: ""
       structured_audit_comment_ref: ""
+      additional_review_ref: ""
+      additional_review_comment_ref: ""
       audit_machine_evidence_ref: ""
