@@ -1,6 +1,6 @@
 # Shirube Comment-Backed Audit Evidence
 
-This standard defines how Shirube Rapid/Lite can consume a structured audit posted as a GitHub PR comment without committing the audit artifact into the target branch.
+This standard defines how Shirube Rapid/Lite can consume structured audit and required additional review evidence posted as GitHub PR comments without committing those artifacts into the target branch.
 
 The purpose is exact-head preservation. If an audit is committed after review, the commit changes the PR head and invalidates the original audit binding. A comment-backed audit can remain external evidence for the reviewed head while the workflow materializes it only into the report artifact directory.
 
@@ -48,7 +48,7 @@ Freeform prose is not audit evidence. Markdown summaries are ignored unless they
 
 ## Materialization
 
-`scripts/shirube/resolve-structured-audit-ref.mjs` fetches the comment and writes:
+`scripts/shirube/resolve-structured-audit-ref.mjs` fetches the structured audit comment and writes:
 
 - `.shirube-rapid-lite/structured-audit.yaml`
 - `.shirube-rapid-lite/structured-audit-source.json`
@@ -67,6 +67,15 @@ The source metadata records:
 
 The materialized file is a workflow artifact only. It is not committed to the target branch.
 
+Required additional reviews use the same evidence pattern. `scripts/shirube/resolve-additional-review-ref.mjs` fetches comments containing fenced `shirube-additional-review/v1` YAML or JSON, verifies same-repo/same-PR/exact-head binding, and writes:
+
+- `.shirube-rapid-lite/additional-reviews/*.yaml` or `.json`
+- `.shirube-rapid-lite/additional-review-source.json`
+
+The reusable workflow then injects the generated path list as `additional_review_ref`, so `check-review-plan` consumes normal local files. The comment evidence is never owner approval and never changes the target branch.
+
+Additional review files only satisfy required review completion when they are paired with the resolver-generated `.shirube-rapid-lite/additional-review-source.json` from the same run. The source metadata must bind the review type, source comment, exact head, repo, PR, and materialized file path. Branch-authored source metadata or a locally committed review file can be displayed as evidence, but it must not advance the sequence to owner approval without trusted current-run provenance.
+
 ## Security Rules
 
 The resolver must:
@@ -79,6 +88,8 @@ The resolver must:
 - reject multiple conflicting structured audit blocks;
 - reject reviewer/implementation actor equality when both are present;
 - reject audit comments that include owner final approval;
+- reject additional review comments that include owner final approval;
+- require additional review source metadata before treating additional review as complete;
 - keep audit evidence and owner decision evidence separate.
 
 The resolver must not:
@@ -99,7 +110,11 @@ Recommended flow:
 3. Resolver verifies repo, PR, and exact head.
 4. Resolver materializes `structured-audit.yaml` in the result directory.
 5. `check-audit-checklist` consumes the materialized file.
-6. Owner final decision remains a separate exact-head decision.
+6. If the review plan requires additional CTO/security/legal/privacy/technical-owner review, each reviewer posts `shirube-additional-review/v1` evidence or one comment containing multiple additional review blocks.
+7. Workflow receives `additional_review_comment_ref`.
+8. Resolver verifies repo, PR, exact head, and review type.
+9. Resolver materializes additional review files in the result directory.
+10. Owner final decision remains a separate exact-head decision after audit and required additional reviews complete.
 
 If comment-backed audit resolution is not available, use one of these paths:
 

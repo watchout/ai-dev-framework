@@ -1,0 +1,16 @@
+{
+  "schema_version": "shirube-structured-audit/v1",
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": 517,
+  "exact_head_sha": "1111111111111111111111111111111111111111",
+  "reviewer_actor": "codex-audit",
+  "implementation_actor": "codex-adf",
+  "items": [
+    {
+      "item_id": "AUDIT-001",
+      "result": "PASS",
+      "evidence_refs": ["structured_reviewer_rationale"],
+      "confidence": "high"
+    }
+  ]
+}

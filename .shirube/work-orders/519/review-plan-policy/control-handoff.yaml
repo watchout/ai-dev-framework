@@ -1,0 +1,159 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+flow: full_operational
+control_handoff_id: CH-ADF-V3-REVIEW-PLAN-POLICY-001
+parent: "#516"
+parent_ssot: https://github.com/watchout/ai-dev-framework/pull/516
+work_order: watchout/ai-dev-framework#519
+pr: watchout/ai-dev-framework#519
+repo_local_issue: https://github.com/watchout/ai-dev-framework/pull/516
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@04c99e6ea0ea3154f55254d8e2bf794926fd4964
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+audit_required: true
+review_plan_required: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: independent_audit
+rps_scope:
+  shirube_owns:
+    - Machine-derived review-plan policy.
+    - Review-plan generation and checking CLI.
+    - Additional-review sequencing in local/report-only Rapid/Lite gates.
+    - Documentation that standard audit differs from CTO/security/legal/privacy review.
+  shirube_does_not_own:
+    - Owner approval synthesis.
+    - Automatic audit approval.
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - Target repository mutation.
+    - DB runtime, MCP, AUN runtime, package release, or runtime/product behavior.
+cell:
+  CELL-ID: CELL-ADF-V3-REVIEW-PLAN-POLICY-001
+  cell_type: governance_gate
+  risk_class: R3
+  goal: Add machine-derived review-plan policy so audit, additional protected reviews, and owner approval sequencing are controlled by Shirube policy rather than LLM prose.
+  acceptance_criteria:
+    - Review plan emits base_audit, additional_reviews, owner_decision, decision_basis, and reason_codes.
+    - R1 docs-only/docs-contract work requires standard audit but no additional protected review by default.
+    - cto_review_question prose does not create a CTO review requirement.
+    - R2 runtime/policy surfaces derive technical-owner review requirements from risk and surface facts.
+    - R3/protected/security/legal/privacy surfaces derive additional protected review requirements.
+    - Owner approval before base audit or required additional review completion is blocked.
+    - Rapid/Lite aggregate exposes one next_action from the machine review plan.
+  non_scope:
+    - owner approval synthesis
+    - automatic audit approval
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - target repo mutation
+    - DB runtime
+    - MCP implementation
+    - AUN runtime integration
+    - package or lockfile changes
+    - runtime/product behavior changes
+  allowed_paths:
+    - .shirube/work-orders/519/review-plan-policy/**
+    - .github/workflows/shirube-rapid-lite-gates-report.yml
+    - .github/workflows/shirube-rapid-lite-reusable.yml
+    - docs/standards/shirube-review-plan.md
+    - docs/standards/shirube-comment-backed-audit-evidence.md
+    - docs/standards/shirube-rapid-lite-workflow-caller.md
+    - docs/standards/shirube-next-action-sequencing.md
+    - docs/standards/shirube-control-state-completeness.md
+    - docs/standards/shirube-gate-pack-bridge.md
+    - schemas/shirube/review-plan.v1.schema.json
+    - scripts/shirube/build-review-plan.mjs
+    - scripts/shirube/check-audit-checklist.mjs
+    - scripts/shirube/check-review-plan.mjs
+    - scripts/shirube/next-action-sequencing.mjs
+    - scripts/shirube/resolve-additional-review-ref.mjs
+    - scripts/shirube/resolve-structured-audit-ref.mjs
+    - scripts/shirube/check-control-state-completeness.mjs
+    - scripts/shirube/check-lifecycle.mjs
+    - scripts/shirube/run-rapid-lite-report.mjs
+    - templates/adoption-pack/hotel-lite/workflow-caller.yml
+    - test/fixtures/shirube/audit-checklist/**
+    - test/fixtures/shirube/control-state-completeness/**
+    - test/fixtures/shirube/next-action-sequencing/**
+    - test/fixtures/shirube/rapid-lite-report/**
+    - test/fixtures/shirube/review-plan/**
+    - test/fixtures/shirube/workflow-caller/**
+    - test/shirube/additional-review-comment-ref.test.ts
+    - test/shirube/audit-checklist.test.ts
+    - test/shirube/next-action-sequencing.test.ts
+    - test/shirube/overlay-pilot-readiness.test.ts
+    - test/shirube/review-plan.test.ts
+    - test/shirube/control-state-completeness.test.ts
+    - test/shirube/rapid-lite-report.test.ts
+    - test/shirube/workflow-caller.test.ts
+  forbidden_paths:
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - permissions
+      - repo_spec_confirmation_evidence
+      - active workflows
+    touched: true
+    reason: This slice changes local/report-only Shirube governance gate policy, sequencing, docs, and the report-only reusable workflow evidence input path. It does not synthesize approval, enable enforcement, mutate branch protection, or mutate target repositories.
+  stop_conditions:
+    - owner approval is synthesized
+    - automatic audit approval is added
+    - required checks are activated
+    - branch protection or rulesets are mutated
+    - target repository mutation is added
+    - runtime/API/DB/product/package/lockfile change is added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/review-plan.test.ts
+    - npm run test -- test/shirube/review-plan.test.ts test/shirube/next-action-sequencing.test.ts test/shirube/rapid-lite-report.test.ts test/shirube/control-state-completeness.test.ts
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+    - node scripts/shirube/build-review-plan.mjs sample command
+    - node scripts/shirube/check-review-plan.mjs sample command
+  required_evidence:
+    - PR_head_SHA
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  blocked_until:
+    - independent_audit_complete
+    - required_additional_reviews_complete
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: .shirube/work-orders/519/review-plan-policy/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/pull/516

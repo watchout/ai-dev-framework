@@ -22,6 +22,7 @@ forbidden_next_actions:
 ## Audit Before Owner
 
 When audit is required, independent audit completion precedes owner exact-head approval.
+When the machine-derived review plan requires additional protected review, that review also precedes owner exact-head approval.
 
 Audit completion requires all of:
 
@@ -36,6 +37,10 @@ Audit completion requires all of:
 Useful audit prose is not enough unless it is structured and machine-readable. Machine-readable audit is not enough unless it is independent and exact-head bound.
 Audit completion is recomputed from observable report fields, structured audit fields, and trusted source provenance. A report's self-asserted `audit_completion.*_matches`, `audit_completion.independent`, or `audit_completion.complete` booleans are not authority.
 The trusted source provenance must itself match the active exact head, repo, and PR, and it must bind to the same materialized structured audit path referenced by the audit checklist report. Shirube must not combine independence from one artifact with head/repo/PR claims from an unrelated report.
+The audit checklist report must come from the current trusted `check-audit-checklist` execution path. A repo-local or PR-body-referenced `audit_checklist_report_ref` may be displayed and may propagate blockers, but it is not by itself audit-completion evidence.
+Comment-backed audit source metadata must come from the trusted structured-audit resolver/base workflow path. A branch-authored `shirube-comment-backed-audit-source/v1` file that only claims `source_type: github_pr_comment` is not independent provenance.
+Fields such as `trusted_base_workflow`, `generated_by`, or `resolver_schema` are not authority when they are merely read from a target-branch or PR-body referenced file. The current runner must attach trusted-source context after resolving/fetching the audit source in the report result directory.
+Sequencing also recomputes maker/checker separation from the structured audit artifact itself; a checklist report that says PASS cannot override a reviewer/implementation actor match.
 
 ## Sequencing Rules
 
@@ -54,13 +59,27 @@ If audit is complete and owner decision is missing:
 - `owner_approval_allowed: true`
 - `merge_ready_allowed: false`
 
+If audit is complete but required additional review is missing:
+
+- `current_phase: ADDITIONAL_REVIEW_REQUIRED`
+- `next_action.action: request_required_additional_review`
+- `owner_approval_allowed: false`
+- `merge_ready_allowed: false`
+- `forbidden_next_actions` includes `owner_exact_head_approval`
+
 If owner exact-head approval appears before required audit completion:
 
 - the report must block with `OWNER-SEQ-001`
 - owner approval is not accepted
 - merge readiness is not accepted
 
-If audit is complete and owner exact-head approval matches the current head:
+If owner exact-head approval appears before required additional review completion:
+
+- the report must block with `REVIEW-SEQ-001`
+- owner approval is not accepted
+- merge readiness is not accepted
+
+If audit, required additional reviews, and owner exact-head approval match the current head:
 
 - `current_phase: MERGE_READY`
 - `merge_ready_allowed: true`
@@ -71,7 +90,8 @@ For Full Operational YAML stub UX, generate or present the audit stub before the
 
 1. structured audit response
 2. audit source / machine evidence references
-3. owner exact-head decision
+3. required additional review evidence, when the review plan requires it
+4. owner exact-head decision
 
 The owner decision stub is policy-only until independent audit completion exists. Pending owner files must not synthesize approval.
 

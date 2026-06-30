@@ -209,6 +209,8 @@ function report({ input, blockers, warnings }) {
   const verdict = blockers.length > 0 ? "BLOCKED" : warnings.length > 0 ? "PASS_WITH_WARN" : "PASS";
   const baseReport = {
     schema: SCHEMA,
+    generated_by: "scripts/shirube/check-audit-checklist.mjs",
+    trusted_checker: true,
     verdict,
     would_block: verdict === "BLOCKED",
     owner_must_not_merge: verdict === "BLOCKED",
@@ -232,6 +234,7 @@ function report({ input, blockers, warnings }) {
     structuredAudit: input.audit,
     structuredAuditPath: input.auditPath,
     auditSource: input.auditSource,
+    auditSourceTrusted: input.auditSourceTrusted,
     actualHead: input.expectedHead,
     actualRepo: input.expectedRepo,
     actualPr: input.expectedPr,
@@ -242,6 +245,7 @@ function report({ input, blockers, warnings }) {
     structuredAudit: input.audit,
     structuredAuditPath: input.auditPath,
     auditSource: input.auditSource,
+    auditSourceTrusted: input.auditSourceTrusted,
     actualHead: input.expectedHead,
     actualRepo: input.expectedRepo,
     actualPr: input.expectedPr,
@@ -263,6 +267,8 @@ function report({ input, blockers, warnings }) {
 function failure({ message, path }) {
   return {
     schema: SCHEMA,
+    generated_by: "scripts/shirube/check-audit-checklist.mjs",
+    trusted_checker: true,
     verdict: "FAILURE",
     would_block: true,
     owner_must_not_merge: true,
@@ -348,6 +354,7 @@ function readInput(options) {
   const auditPath = stringOption(options.audit) ?? stringOption(options["structured-audit"]);
   const machineEvidencePath = stringOption(options["machine-evidence"]);
   const auditSourcePath = stringOption(options["audit-source"]) ?? stringOption(options["structured-audit-source"]);
+  const auditSourceTrusted = options["trusted-audit-source"] === true;
   const operationalMode = stringOption(options["operational-mode"]) ?? "full_operational";
   const expectedHead = stringOption(options["expected-head"]);
   const expectedRepo = stringOption(options["expected-repo"]);
@@ -355,7 +362,18 @@ function readInput(options) {
   const implementationActor = stringOption(options["implementation-actor"]);
 
   if (!checklistPath || !existsSync(checklistPath)) {
-    return { input: { checklistPath, auditPath, operationalMode }, missingChecklist: true };
+    return {
+      input: {
+        checklistPath,
+        auditPath,
+        operationalMode,
+        expectedHead,
+        expectedRepo,
+        expectedPr,
+        implementationActor,
+      },
+      missingChecklist: true,
+    };
   }
 
   try {
@@ -369,6 +387,7 @@ function readInput(options) {
         expectedRepo,
         expectedPr,
         implementationActor,
+        auditSourceTrusted,
         checklist: readStructuredFile(checklistPath),
         audit: auditPath && existsSync(auditPath) ? readStructuredFile(auditPath) : null,
         machineEvidence: machineEvidencePath && existsSync(machineEvidencePath) ? readStructuredFile(machineEvidencePath) : null,

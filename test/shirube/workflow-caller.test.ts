@@ -6,6 +6,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 const root = process.cwd();
+const activeWorkflow = path.join(root, ".github/workflows/shirube-rapid-lite-gates-report.yml");
 const reusableWorkflow = path.join(root, ".github/workflows/shirube-rapid-lite-reusable.yml");
 const callerTemplate = path.join(root, "templates/adoption-pack/hotel-lite/workflow-caller.yml");
 const renderScript = "scripts/shirube/render-adoption-pack.mjs";
@@ -57,8 +58,20 @@ describe("Shirube Rapid/Lite reusable workflow caller", () => {
     expect(workflow).toContain("SHIRUBE-RAPID-LITE-WORKFLOW-VALIDATION");
     expect(workflow).toContain("matrix_ref:");
     expect(workflow).toContain("rule_pack_ref:");
+    expect(workflow).toContain("resolve-additional-review-ref.mjs");
+    expect(workflow).toContain("additional_review_comment_ref");
     expect(workflow).toContain("actions/upload-artifact@v4");
     expect(workflow).toContain("exit 0");
+  });
+
+  it("keeps the active self-report workflow able to resolve comment-backed review evidence", () => {
+    const workflow = readFileSync(activeWorkflow, "utf8");
+
+    expect(workflow).toContain("resolve-structured-audit-ref.mjs");
+    expect(workflow).toContain("resolve-additional-review-ref.mjs");
+    expect(workflow).toContain("structured_audit_comment_ref");
+    expect(workflow).toContain("additional_review_comment_ref");
+    expect(workflow).toContain("additional_review_ref:");
   });
 
   it("defines a thin target caller with the required PR triggers", () => {

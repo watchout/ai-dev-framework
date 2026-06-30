@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/shirube/review-plan.v1.schema.json",
+  "title": "Shirube Review Plan v1",
+  "description": "Machine-derived audit and additional-review plan for Shirube owner/merge sequencing.",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema_version",
+    "base_audit",
+    "additional_reviews",
+    "owner_decision",
+    "decision_basis"
+  ],
+  "properties": {
+    "schema_version": { "const": "shirube-review-plan/v1" },
+    "base_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "type", "checklist_profile"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "type": { "const": "independent_structured_audit" },
+        "checklist_profile": {
+          "enum": ["docs_light", "standard", "runtime_policy_standard", "protected"]
+        }
+      }
+    },
+    "additional_reviews": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["review_type", "responsible_role", "required", "reason_codes"],
+        "properties": {
+          "review_type": {
+            "enum": [
+              "cto_review",
+              "security_review",
+              "legal_review",
+              "privacy_review",
+              "technical_owner_review"
+            ]
+          },
+          "responsible_role": { "type": "string", "minLength": 1 },
+          "required": { "type": "boolean" },
+          "reason_codes": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "owner_decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "allowed_after"],
+      "properties": {
+        "required": { "type": "boolean" },
+        "allowed_after": {
+          "type": "array",
+          "items": {
+            "enum": ["base_audit_complete", "all_additional_reviews_complete"]
+          }
+        }
+      }
+    },
+    "decision_basis": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["risk_class", "cell_type", "protected_surfaces", "changed_surface_summary", "reason_codes"],
+      "properties": {
+        "risk_class": { "enum": ["R0", "R1", "R2", "R3", "R4", "UNKNOWN"] },
+        "cell_type": { "type": "string", "minLength": 1 },
+        "protected_surfaces": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "changed_surface_summary": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "reason_codes": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": "shirube-additional-review/v1",
+  "review_type": "privacy_review",
+  "responsible_role": "privacy_owner",
+  "verdict": "PASS",
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": 517,
+  "exact_head_sha": "1111111111111111111111111111111111111111",
+  "reviewer_actor": "privacy-owner",
+  "implementation_actor": "codex-adf",
+  "evidence_refs": [
+    "privacy-review-comment"
+  ]
+}

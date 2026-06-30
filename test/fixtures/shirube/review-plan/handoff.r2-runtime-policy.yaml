@@ -1,0 +1,37 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+flow: full_operational
+repo: watchout/ai-dev-framework
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/517
+spec_review_state: ready_for_implementation
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: independent_audit
+owner_decision:
+  required_before_merge: true
+protected_surfaces:
+  declared:
+    - runtime
+    - policy
+  touched: true
+cell:
+  CELL-ID: CELL-ADF-REVIEW-R2-RUNTIME-001
+  risk_class: R2
+  cell_type: runtime_foundation
+  goal: Add runtime policy helper.
+  non_scope:
+    - production activation
+  allowed_paths:
+    - scripts/**
+    - src/**
+  forbidden_paths:
+    - .github/workflows/**
+    - package.json
+  stop_conditions:
+    - required checks activated
+validation:
+  required_evidence:
+    - PR_head_SHA
+    - changed_files

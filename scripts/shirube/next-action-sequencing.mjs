@@ -2,6 +2,8 @@ const SEQUENCING_PHASES = [
   "IMPLEMENTED",
   "AUDIT_REQUIRED",
   "AUDIT_COMPLETE",
+  "ADDITIONAL_REVIEW_REQUIRED",
+  "ADDITIONAL_REVIEW_COMPLETE",
   "OWNER_DECISION_REQUIRED",
   "OWNER_APPROVED",
   "MERGE_READY",
@@ -14,6 +16,17 @@ export const OWNER_SEQUENCE_BLOCKER = {
   message: "Owner exact-head decision cannot be accepted before independent audit completion.",
   path: "owner_decision",
 };
+
+export const REVIEW_SEQUENCE_BLOCKER = {
+  item_id: "REVIEW-SEQ-001",
+  code: "owner_decision_before_additional_review_complete",
+  message: "Owner exact-head decision cannot be accepted before required additional reviews complete.",
+  path: "owner_decision",
+};
+
+const TRUSTED_AUDIT_CHECKER = "scripts/shirube/check-audit-checklist.mjs";
+const TRUSTED_AUDIT_RESOLVER = "scripts/shirube/resolve-structured-audit-ref.mjs";
+const TRUSTED_ADDITIONAL_REVIEW_RESOLVER = "scripts/shirube/resolve-additional-review-ref.mjs";
 
 const FORBID_OWNER_AND_MERGE = [
   "owner_exact_head_approval",
@@ -30,12 +43,16 @@ const FORBID_MERGE = [
 export function buildNextActionSequencing(input = {}) {
   const auditRequired = input.auditRequired ?? auditRequiredFrom(input);
   const auditCompletion = auditCompletionFrom(input);
+  const additionalReviewCompletion = additionalReviewCompletionFrom(input);
   const ownerDecision = ownerDecisionStatus(input.ownerDecision, input.actualHead);
   const blockingFindings = asArray(input.blockingFindings).filter(Boolean);
   const ownerSequenceBlockers = [];
 
   if (auditRequired && !auditCompletion.complete && ownerDecision.final_approval_present) {
     ownerSequenceBlockers.push({ ...OWNER_SEQUENCE_BLOCKER });
+  }
+  if (additionalReviewCompletion.required && !additionalReviewCompletion.complete && ownerDecision.final_approval_present) {
+    ownerSequenceBlockers.push({ ...REVIEW_SEQUENCE_BLOCKER });
   }
 
   if (auditRequired && !auditCompletion.complete) {
@@ -52,6 +69,27 @@ export function buildNextActionSequencing(input = {}) {
       forbidden_next_actions: FORBID_OWNER_AND_MERGE,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
+      owner_decision_status: ownerDecision,
+      blockers: ownerSequenceBlockers,
+    });
+  }
+
+  if (additionalReviewCompletion.required && !additionalReviewCompletion.complete) {
+    return sequencingResult({
+      current_phase: "ADDITIONAL_REVIEW_REQUIRED",
+      next_action: {
+        action: "request_required_additional_review",
+        responsible_role: "review_owner",
+        allowed_actor_role: "required_additional_reviewer",
+        reason: `Required additional review is missing for exact head ${input.actualHead ?? auditCompletion.expected_head ?? "<unknown>"}.`,
+      },
+      owner_approval_allowed: false,
+      merge_ready_allowed: false,
+      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+      audit_required: auditRequired,
+      audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
       owner_decision_status: ownerDecision,
       blockers: ownerSequenceBlockers,
     });
@@ -60,7 +98,7 @@ export function buildNextActionSequencing(input = {}) {
   const nonOwnerSequenceBlockers = blockingFindings.filter((finding) => finding?.item_id !== "OWNER-SEQ-001");
   if (nonOwnerSequenceBlockers.length > 0) {
     return sequencingResult({
-      current_phase: auditRequired ? "AUDIT_COMPLETE" : normalizePhase(input.currentPhase) ?? "IMPLEMENTED",
+      current_phase: additionalReviewCompletion.required ? "ADDITIONAL_REVIEW_COMPLETE" : auditRequired ? "AUDIT_COMPLETE" : normalizePhase(input.currentPhase) ?? "IMPLEMENTED",
       next_action: {
         action: "resolve_gate_blockers",
         responsible_role: "dev",
@@ -72,6 +110,7 @@ export function buildNextActionSequencing(input = {}) {
       forbidden_next_actions: FORBID_OWNER_AND_MERGE.filter((action) => action !== "request_owner_exact_head_decision"),
       audit_required: auditRequired,
       audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
       owner_decision_status: ownerDecision,
       blockers: ownerSequenceBlockers,
     });
@@ -91,6 +130,7 @@ export function buildNextActionSequencing(input = {}) {
       forbidden_next_actions: FORBID_MERGE,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
       owner_decision_status: ownerDecision,
       blockers: ownerSequenceBlockers,
     });
@@ -110,6 +150,7 @@ export function buildNextActionSequencing(input = {}) {
       forbidden_next_actions: FORBID_MERGE,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
       owner_decision_status: ownerDecision,
       blockers: ownerSequenceBlockers,
     });
@@ -128,6 +169,7 @@ export function buildNextActionSequencing(input = {}) {
     forbidden_next_actions: [],
     audit_required: auditRequired,
     audit_completion: auditCompletion,
+    additional_review_completion: additionalReviewCompletion,
     owner_decision_status: ownerDecision,
     blockers: ownerSequenceBlockers,
   });
@@ -142,6 +184,8 @@ function sequencingResult(fields) {
 
 export function auditRequiredFrom(input = {}) {
   const handoff = input.handoff ?? {};
+  if (input.reviewPlan?.base_audit?.required === true) return true;
+  if (input.reviewPlan?.base_audit?.required === false) return false;
   const risk = String(firstPresent(handoff?.cell?.risk_class, handoff?.risk_tier, input.repoSpec?.risk_tier) ?? "").toUpperCase();
   return handoff.audit_required === true ||
     handoff.formal_audit_required === true ||
@@ -150,6 +194,136 @@ export function auditRequiredFrom(input = {}) {
     handoff?.reviewer_audit?.required === true ||
     asArray(handoff.required_audits).length > 0 ||
     ["R3", "R4"].includes(risk);
+}
+
+export function additionalReviewCompletionFrom(input = {}) {
+  const required = asArray(input.reviewPlan?.additional_reviews).filter((review) => review?.required === true);
+  const reports = asArray(input.additionalReviewReports).filter(isObject);
+  const source = input.additionalReviewSource;
+  const sourceRuntimeTrusted = input.additionalReviewSourceTrusted === true;
+  const sourceTrusted = additionalReviewSourceIsTrusted(source, sourceRuntimeTrusted);
+  const actualHead = input.actualHead;
+  const actualRepo = normalizeRepo(input.actualRepo);
+  const actualPr = normalizePr(input.actualPr);
+  const completeReviews = [];
+  const missingReviews = [];
+  const headMismatches = [];
+  const provenanceMissing = [];
+  const makerCheckerViolations = [];
+
+  for (const review of required) {
+    const report = reports.find((entry) => normalizeText(entry.review_type ?? entry.type) === normalizeText(review.review_type));
+    const status = additionalReviewReportStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr });
+    if (!status.complete) {
+      missingReviews.push(review.review_type);
+      if (status.head_mismatch) headMismatches.push({ review_type: review.review_type, expected: actualHead, observed: status.observed_head ?? null });
+      if (!status.provenance_complete) provenanceMissing.push(review.review_type);
+      if (!status.maker_checker_separated) makerCheckerViolations.push(review.review_type);
+      continue;
+    }
+    completeReviews.push(review.review_type);
+  }
+
+  return {
+    required: required.length > 0,
+    complete: required.length === 0 || missingReviews.length === 0,
+    required_reviews: required.map((review) => review.review_type),
+    complete_reviews: completeReviews,
+    missing_reviews: missingReviews,
+    head_mismatches: headMismatches,
+    provenance_missing: uniqueStrings(provenanceMissing),
+    maker_checker_violations: uniqueStrings(makerCheckerViolations),
+    source_runtime_trusted: Boolean(sourceRuntimeTrusted),
+    trusted_source: Boolean(sourceTrusted),
+  };
+}
+
+function additionalReviewReportStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr }) {
+  if (!isObject(report)) return { complete: false };
+  const verdict = String(firstPresent(report.verdict, report.decision, report.status) ?? "").toUpperCase();
+  const accepted = ["PASS", "PASS_WITH_WARN", "APPROVED", "CONDITIONAL_GO"].includes(verdict);
+  const observedHead = firstPresent(report.exact_head_sha, report.pr_head_sha, report.head_sha, report.target_head);
+  const observedRepo = normalizeRepo(firstPresent(report.target_repo, report.repo));
+  const observedPr = normalizePr(firstPresent(report.target_pr, report.pr, report.pull_request));
+  const headMatches = isPlaceholder(actualHead) || !isPlaceholder(observedHead) && String(observedHead) === String(actualHead);
+  const repoMatches = !isPlaceholder(observedRepo) && (!actualRepo || observedRepo === actualRepo);
+  const prMatches = !isPlaceholder(observedPr) && (!actualPr || observedPr === actualPr);
+  const provenance = additionalReviewProvenanceStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr });
+  const makerCheckerSeparated = additionalReviewMakerCheckerSeparated(report);
+  return {
+    complete: accepted && headMatches && repoMatches && prMatches && provenance.complete && makerCheckerSeparated,
+    accepted,
+    head_matches: Boolean(headMatches),
+    head_mismatch: !isPlaceholder(actualHead) && !isPlaceholder(observedHead) && !headMatches,
+    repo_matches: Boolean(repoMatches),
+    pr_matches: Boolean(prMatches),
+    observed_head: observedHead ?? null,
+    provenance_complete: Boolean(provenance.complete),
+    maker_checker_separated: Boolean(makerCheckerSeparated),
+  };
+}
+
+function additionalReviewProvenanceStatus({ report, source, sourceTrusted, actualHead, actualRepo, actualPr }) {
+  if (!sourceTrusted || !isObject(source)) return { complete: false };
+  const reviewType = normalizeText(firstPresent(report.review_type, report.type));
+  const entry = additionalReviewSourceEntries(source).find((candidate) => normalizeText(candidate.review_type) === reviewType);
+  if (!entry) return { complete: false };
+  const sourceHead = firstPresent(entry.exact_head_sha, entry.pr_head_sha, source.exact_head_sha, source.pr_head_sha, source.head_sha, source.target_head);
+  const sourceRepo = normalizeRepo(firstPresent(entry.target_repo, source.target_repo, source.repo));
+  const sourcePr = normalizePr(firstPresent(entry.target_pr, source.target_pr, source.pr));
+  const sourceHeadMatches = !isPlaceholder(sourceHead) && (isPlaceholder(actualHead) || String(sourceHead) === String(actualHead));
+  const sourceRepoMatches = !isPlaceholder(sourceRepo) && (!actualRepo || sourceRepo === actualRepo);
+  const sourcePrMatches = !isPlaceholder(sourcePr) && (!actualPr || sourcePr === actualPr);
+  const sourceMaterializedPathMatches = additionalReviewSourceMaterializedPathMatches({ source, report });
+  return {
+    complete: sourceHeadMatches && sourceRepoMatches && sourcePrMatches && sourceMaterializedPathMatches,
+  };
+}
+
+function additionalReviewSourceIsTrusted(source, runtimeTrusted) {
+  if (!isObject(source)) return false;
+  if (runtimeTrusted !== true) return false;
+  if (source.target_branch_mutated === true || source.owner_approval_synthesized === true) return false;
+  if (source.trusted_base_workflow !== true) return false;
+  if (String(firstPresent(source.generated_by, source.resolver, source.tool) ?? "") !== TRUSTED_ADDITIONAL_REVIEW_RESOLVER) return false;
+  const resolverSchema = firstPresent(source.resolver_schema, source.resolution_schema);
+  if (!isPlaceholder(resolverSchema) && resolverSchema !== "shirube-additional-review-ref-resolution/v1") return false;
+  const hasSourceLocator = additionalReviewSourceEntries(source).some((entry) => !isPlaceholder(firstPresent(
+    entry.source_comment_url,
+    entry.comment_url,
+    entry.review_url,
+    entry.source_ref,
+    entry.comment_id,
+    entry.evidence_ref,
+  )));
+  if (!hasSourceLocator) return false;
+  const type = String(firstPresent(source.source_type, source.type) ?? "").toLowerCase();
+  return ["github_comment", "github_pr_comment", "github_review", "external_review_ref", "owner_accepted_external_review_ref"].includes(type);
+}
+
+function additionalReviewSourceEntries(source) {
+  if (Array.isArray(source?.sources)) return source.sources.filter(isObject);
+  if (isObject(source)) return [source];
+  return [];
+}
+
+function additionalReviewSourceMaterializedPathMatches({ source, report }) {
+  const reportPath = normalizePath(firstPresent(report?.__file_path, report?.file_path, report?.path));
+  if (isPlaceholder(reportPath)) return false;
+  const sourcePaths = [
+    ...asArray(source?.materialized_paths),
+    ...asArray(source?.materialized_path),
+    ...asArray(source?.additional_review_paths),
+  ].map(normalizePath).filter(Boolean);
+  return sourcePaths.includes(reportPath);
+}
+
+function additionalReviewMakerCheckerSeparated(report) {
+  if (!isObject(report)) return false;
+  const reviewerActor = firstPresent(report.reviewer_actor, report.review_actor, report.actor);
+  const implementationActor = firstPresent(report.implementation_actor, report.implementer_actor);
+  if (isPlaceholder(reviewerActor) || isPlaceholder(implementationActor)) return false;
+  return String(reviewerActor) !== String(implementationActor);
 }
 
 export function auditCompletionFrom(input = {}) {
@@ -191,11 +365,15 @@ export function auditCompletionFrom(input = {}) {
   const sourcePrMatches = !isPlaceholder(sourcePr) &&
     (actualPr ? sourcePr === actualPr : true);
   const sourceMaterializedPathMatches = sourceMaterializedPathMatchesReport({ source, report, auditPath: input.structuredAuditPath });
-  const independent = sourceIsIndependent(source) &&
+  const sourceRuntimeTrusted = input.auditSourceTrusted === true;
+  const sourceTrusted = sourceIsTrusted(source, sourceRuntimeTrusted);
+  const independent = sourceTrusted &&
     sourceHeadMatches &&
     sourceRepoMatches &&
     sourcePrMatches &&
     sourceMaterializedPathMatches;
+  const checkerTrusted = reportIsTrustedChecker(report);
+  const makerCheckerSeparated = auditMakerCheckerSeparated(audit);
   const checklistItemCount = numberValue(report?.inventory?.checklist_items);
   const auditItemCount = Math.max(numberValue(report?.inventory?.audit_items), asArray(audit?.items).length);
   const requiredItemsAnswered = isObject(report) &&
@@ -206,11 +384,14 @@ export function auditCompletionFrom(input = {}) {
     auditItemCount > 0;
   const complete = Boolean(
     isObject(report) &&
+    isObject(audit) &&
     machineReadable &&
+    checkerTrusted &&
     exactHeadMatches &&
     targetRepoMatches &&
     targetPrMatches &&
     independent &&
+    makerCheckerSeparated &&
     verdictAccepted &&
     requiredItemsAnswered &&
     reportBlockers.length === 0,
@@ -226,6 +407,10 @@ export function auditCompletionFrom(input = {}) {
     verdict_accepted: Boolean(verdictAccepted),
     required_items_answered: Boolean(requiredItemsAnswered),
     complete,
+    source_runtime_trusted: Boolean(sourceRuntimeTrusted),
+    trusted_checker: Boolean(checkerTrusted),
+    trusted_source: Boolean(sourceTrusted),
+    maker_checker_separated: Boolean(makerCheckerSeparated),
     expected_head: actualHead ?? null,
     observed_head: reportHead ?? null,
     target_repo: reportRepo ?? null,
@@ -270,8 +455,17 @@ function passWithWarnAccepted(report) {
 }
 
 function sourceIsIndependent(source) {
+  return sourceIsTrusted(source, false);
+}
+
+function sourceIsTrusted(source, runtimeTrusted) {
   if (!isObject(source)) return false;
+  if (runtimeTrusted !== true) return false;
   if (source.target_branch_mutated === true || source.owner_approval_synthesized === true) return false;
+  if (source.trusted_base_workflow !== true) return false;
+  if (String(firstPresent(source.generated_by, source.resolver, source.tool) ?? "") !== TRUSTED_AUDIT_RESOLVER) return false;
+  const resolverSchema = firstPresent(source.resolver_schema, source.resolution_schema);
+  if (!isPlaceholder(resolverSchema) && resolverSchema !== "shirube-structured-audit-ref-resolution/v1") return false;
   const hasSourceLocator = !isPlaceholder(firstPresent(
     source.source_comment_url,
     source.comment_url,
@@ -281,10 +475,24 @@ function sourceIsIndependent(source) {
     source.evidence_ref,
   ));
   if (!hasSourceLocator) return false;
-  if (source.trusted_base_workflow === true) return true;
   const type = String(firstPresent(source.source_type, source.type) ?? "").toLowerCase();
   if (["github_comment", "github_pr_comment", "github_review", "external_audit_ref", "owner_accepted_external_audit_ref"].includes(type)) return true;
   return false;
+}
+
+function reportIsTrustedChecker(report) {
+  if (!isObject(report)) return false;
+  if (report.trusted_checker !== true) return false;
+  if (String(firstPresent(report.generated_by, report.checker, report.tool) ?? "") !== TRUSTED_AUDIT_CHECKER) return false;
+  return true;
+}
+
+function auditMakerCheckerSeparated(audit) {
+  if (!isObject(audit)) return false;
+  const reviewerActor = firstPresent(audit.reviewer_actor, audit.auditor_actor);
+  const implementationActor = firstPresent(audit.implementation_actor, audit.implementer_actor);
+  if (isPlaceholder(reviewerActor) || isPlaceholder(implementationActor)) return false;
+  return String(reviewerActor) !== String(implementationActor);
 }
 
 function auditHead(audit) {
@@ -331,7 +539,10 @@ function numberValue(value) {
 
 function normalizePath(value) {
   if (isPlaceholder(value)) return null;
-  return String(value).trim().replace(/\\/g, "/").replace(/^\.\//, "");
+  let text = String(value).trim().replace(/\\/g, "/").replace(/^\.\//, "");
+  const cwd = process.cwd().replace(/\\/g, "/").replace(/\/+$/, "");
+  if (text.startsWith(`${cwd}/`)) text = text.slice(cwd.length + 1);
+  return text;
 }
 
 function normalizePhase(value) {
@@ -353,6 +564,14 @@ function normalizePr(value) {
   return match ? (match[1] ?? match[2] ?? match[3] ?? match[4]) : text;
 }
 
+function normalizeText(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
 function firstPresent(...values) {
   return values.find((value) => !isPlaceholder(value));
 }
@@ -370,6 +589,11 @@ function asArray(value) {
   if (Array.isArray(value)) return value;
   if (value === undefined || value === null) return [];
   return [value];
+}
+
+function uniqueStrings(values) {
+  return [...new Set(values.map((value) => String(value ?? "").trim()).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b));
 }
 
 function isObject(value) {

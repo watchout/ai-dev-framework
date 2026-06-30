@@ -1,0 +1,13 @@
+schema_version: shirube-owner-decision-evidence/v1
+record_id: OWNER-DECISION-PENDING-ADF-V3-REVIEW-PLAN-POLICY-001
+repo: watchout/ai-dev-framework
+pr: watchout/ai-dev-framework#519
+cell_id: CELL-ADF-V3-REVIEW-PLAN-POLICY-001
+decision: PENDING_OWNER_FINAL_REVIEW
+approval_granted: false
+exact_head_sha: null
+required_before_merge: true
+blocked_until:
+  - independent_audit_complete
+  - required_additional_reviews_complete
+note: This committed file records pending exact-head policy only. It is not owner approval; final exact-head evidence must be supplied externally after independent audit and required additional review completion.

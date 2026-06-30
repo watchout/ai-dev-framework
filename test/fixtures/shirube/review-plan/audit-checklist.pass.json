@@ -1,0 +1,16 @@
+{
+  "schema": "shirube-audit-checklist-check/v1",
+  "generated_by": "scripts/shirube/check-audit-checklist.mjs",
+  "trusted_checker": true,
+  "verdict": "PASS",
+  "pr_head_sha": "1111111111111111111111111111111111111111",
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": 517,
+  "structured_audit_ref": "test/fixtures/shirube/review-plan/structured-audit.pass.json",
+  "inventory": {
+    "checklist_items": 3,
+    "audit_items": 3
+  },
+  "blockers": [],
+  "warnings": []
+}

@@ -116,6 +116,7 @@ const BLOCKERS = {
   "LC-MERGE-001": ["owner_decision_missing", "MERGE_READY or later requires owner exact-head decision evidence.", "owner_decision"],
   "LC-MERGE-002": ["owner_decision_head_mismatch", "Owner decision head differs from gate report head.", "owner_decision.exact_head_sha"],
   "LC-MERGE-003": ["merge_before_allowed", "MERGED or later cannot be claimed while prior phase blockers remain.", "current_phase"],
+  "LC-REVIEW-001": ["review_plan_blocked", "Review plan report is BLOCKED or FAILURE.", "review_plan_report"],
   "LC-POST-001": ["post_merge_missing", "COMPLETE requires post-merge evidence.", "post_merge"],
   "LC-POST-002": ["merge_commit_missing", "Post-merge evidence must include merge commit.", "post_merge.merge_commit"],
   "LC-POST-003": ["merged_at_missing", "Post-merge evidence must include merged_at.", "post_merge.merged_at"],
@@ -202,6 +203,10 @@ export function buildLifecycleReport(input) {
     blockers.push(finding("LC-EXEC-004"));
   }
 
+  if (isBlockingReport(input.reviewPlanReport)) {
+    blockers.push(finding("LC-REVIEW-001"));
+  }
+
   if (hasLlmAuthorityClaim(input)) {
     blockers.push(finding("LC-EXEC-005"));
   }
@@ -260,6 +265,11 @@ export function buildLifecycleReport(input) {
     structuredAudit: input.structuredAudit,
     structuredAuditPath: input.structuredAuditPath,
     auditSource: input.auditSource,
+    auditSourceTrusted: input.auditSourceTrusted,
+    reviewPlan: input.reviewPlanReport?.review_plan,
+    additionalReviewReports: input.additionalReviewReports,
+    additionalReviewSource: input.additionalReviewSource,
+    additionalReviewSourceTrusted: input.additionalReviewSourceTrusted,
     ownerDecision: input.ownerDecision,
     actualHead: firstPresent(input.actualHead, reportHead(input.gateContractReport), ownerDecisionHead(input.ownerDecision), input.state?.target_head, input.state?.head_sha),
     actualRepo: firstPresent(input.actualRepo, input.repoSpec?.repo, input.repoSpec?.repo_id, input.repoSpec?.id),
@@ -287,6 +297,7 @@ export function buildLifecycleReport(input) {
     forbidden_next_actions: sequencing.forbidden_next_actions,
     audit_required: sequencing.audit_required,
     audit_completion: sequencing.audit_completion,
+    additional_review_completion: sequencing.additional_review_completion,
     owner_decision_status: sequencing.owner_decision_status,
     verdict,
     would_block: verdict === "BLOCKED",
@@ -337,6 +348,7 @@ function buildEvidence(input) {
   addEvidence(evidence, "control_handoff", input.handoffPath, input.handoff);
   addEvidence(evidence, "gate_contract_report", input.gateContractReportPath, input.gateContractReport);
   addEvidence(evidence, "design_rule_report", input.designRuleReportPath, input.designRuleReport);
+  addEvidence(evidence, "review_plan_report", input.reviewPlanReportPath, input.reviewPlanReport);
   addEvidence(evidence, "owner_decision", input.ownerDecisionPath, input.ownerDecision);
   addEvidence(evidence, "post_merge", input.postMergePath, input.postMerge);
   if (input.changedFilesPath) evidence.push({ code: "changed_files", source: "file", detail: input.changedFilesPath });
@@ -391,6 +403,7 @@ function requiredNextActions(blockers, warnings) {
 function actionFor(itemId) {
   const actions = {
     "OWNER-SEQ-001": "Complete independent exact-head audit before requesting or accepting owner exact-head approval.",
+    "REVIEW-SEQ-001": "Complete required additional reviews before requesting or accepting owner exact-head approval.",
     "LC-BOOT-001": "Create or repair lifecycle state before advancing.",
     "LC-BOOT-002": "Record pinned framework_ref or framework_lock_ref in lifecycle state.",
     "LC-ADOPT-001": "Run check-adoption and pass its JSON report with --adoption-report.",
@@ -410,6 +423,7 @@ function actionFor(itemId) {
     "LC-MERGE-001": "Record owner exact-head merge decision evidence.",
     "LC-MERGE-002": "Re-approve the current exact head or regenerate matching gate evidence.",
     "LC-MERGE-003": "Return to the earliest blocked phase before claiming merged.",
+    "LC-REVIEW-001": "Complete required machine-derived review plan actions before owner decision.",
     "LC-POST-001": "Record post-merge evidence before claiming complete.",
     "LC-POST-002": "Add merge commit to post-merge evidence.",
     "LC-POST-003": "Add merged_at timestamp to post-merge evidence.",
@@ -434,6 +448,11 @@ function readInput(options) {
     auditChecklistReportPath: stringOption(options["audit-checklist-report"]),
     structuredAuditPath: stringOption(options["structured-audit"]),
     auditSourcePath: stringOption(options["audit-source"]) ?? stringOption(options["structured-audit-source"]),
+    auditSourceTrusted: options["trusted-audit-source"] === true,
+    reviewPlanReportPath: stringOption(options["review-plan-report"]),
+    additionalReviewPath: stringOption(options["additional-review"]),
+    additionalReviewSourcePath: stringOption(options["additional-review-source"]),
+    additionalReviewSourceTrusted: options["trusted-additional-review-source"] === true,
     postMergePath: stringOption(options["post-merge"]),
     changedFilesPath: stringOption(options["changed-files"]),
     actualRepo: stringOption(options["actual-repo"]),
@@ -443,7 +462,7 @@ function readInput(options) {
 
   const loaded = {};
   for (const [key, filePath] of Object.entries(refs)) {
-    if (!key.endsWith("Path")) continue;
+    if (!key.endsWith("Path") || key === "additionalReviewPath") continue;
     const valueKey = key.slice(0, -"Path".length);
     const result = readOptionalStructuredInput(filePath, `${toKebab(valueKey)}_parse_error`);
     if (result.error) return { error: result.error };
@@ -464,12 +483,25 @@ function readInput(options) {
       auditChecklistReport: loaded.auditChecklistReport,
       structuredAudit: loaded.structuredAudit,
       auditSource: loaded.auditSource,
+      auditSourceTrusted: refs.auditSourceTrusted,
+      reviewPlanReport: loaded.reviewPlanReport,
+      additionalReviewReports: readAdditionalReviews(refs.additionalReviewPath),
+      additionalReviewSource: loaded.additionalReviewSource,
+      additionalReviewSourceTrusted: refs.additionalReviewSourceTrusted,
       postMerge: loaded.postMerge,
       actualRepo: refs.actualRepo,
       actualPr: refs.actualPr,
       actualHead: refs.actualHead,
     },
   };
+}
+
+function readAdditionalReviews(value) {
+  if (!value) return [];
+  return value.split(",").map((entry) => entry.trim()).filter(Boolean).map((filePath) => {
+    const value = readOptionalStructuredInput(filePath, "additional_review_parse_error").value;
+    return isObject(value) ? { ...value, __file_path: filePath } : value;
+  }).filter(Boolean);
 }
 
 function readOptionalStructuredInput(filePath, errorCode) {

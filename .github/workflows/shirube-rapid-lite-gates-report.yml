@@ -94,6 +94,135 @@ jobs:
           }, null, 2) + "\n");
           NODE
 
+      - name: Resolve comment-backed structured audit evidence
+        env:
+          ACTUAL_REPO: ${{ github.repository }}
+          ACTUAL_PR: ${{ github.event.pull_request.number }}
+          ACTUAL_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          STRUCTURED_AUDIT_REF="$(node <<'NODE'
+          const fs = require("fs");
+          const body = fs.readFileSync(`${process.env.RESULT_DIR}/pr-body.md`, "utf8");
+          process.stdout.write(refFromBody(body, ["structured_audit_ref", "structured_audit", "structured-audit"]) || "");
+          function refFromBody(body, keys) {
+            for (const key of keys) {
+              const pattern = new RegExp(`(?:^|\\n)\\s*(?:[-*]\\s*)?(?:${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")})\\s*:\\s*([^\\n]+?)\\s*(?=\\n|$)`, "i");
+              const value = body.match(pattern)?.[1]?.trim().replace(/^["'`]|["'`]$/g, "");
+              if (value && value !== "null") return value.split(/\s+/)[0];
+            }
+            return null;
+          }
+          NODE
+          )"
+          STRUCTURED_AUDIT_COMMENT_REF="$(node <<'NODE'
+          const fs = require("fs");
+          const body = fs.readFileSync(`${process.env.RESULT_DIR}/pr-body.md`, "utf8");
+          process.stdout.write(refFromBody(body, ["structured_audit_comment_ref", "structured_audit_comment", "structured-audit-comment"]) || "");
+          function refFromBody(body, keys) {
+            for (const key of keys) {
+              const pattern = new RegExp(`(?:^|\\n)\\s*(?:[-*]\\s*)?(?:${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")})\\s*:\\s*([^\\n]+?)\\s*(?=\\n|$)`, "i");
+              const value = body.match(pattern)?.[1]?.trim().replace(/^["'`]|["'`]$/g, "");
+              if (value && value !== "null") return value.split(/\s+/)[0];
+            }
+            return null;
+          }
+          NODE
+          )"
+          node scripts/shirube/resolve-structured-audit-ref.mjs \
+            --structured-audit-ref "$STRUCTURED_AUDIT_REF" \
+            --structured-audit-comment-ref "$STRUCTURED_AUDIT_COMMENT_REF" \
+            --actual-repo "$ACTUAL_REPO" \
+            --actual-pr "$ACTUAL_PR" \
+            --actual-head "$ACTUAL_HEAD" \
+            --result-dir "$RESULT_DIR" \
+            --github-token-env GITHUB_TOKEN \
+            --format json > "$RESULT_DIR/structured-audit-ref-resolution.json"
+          cat "$RESULT_DIR/structured-audit-ref-resolution.json"
+          node <<'NODE'
+          const fs = require("fs");
+          const reportPath = `${process.env.RESULT_DIR}/structured-audit-ref-resolution.json`;
+          const bodyPath = `${process.env.RESULT_DIR}/pr-body.md`;
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+          } catch (error) {
+            report = { verdict: "FAILURE", materialized_path: null, source_metadata_path: null };
+          }
+          const lines = [];
+          if (report.materialized_path) lines.push(`structured_audit_ref: ${report.materialized_path}`);
+          if (report.source_metadata_path) lines.push(`structured_audit_source_ref: ${report.source_metadata_path}`);
+          if (lines.length > 0) fs.appendFileSync(bodyPath, `\n<!-- shirube:structured-audit-resolution/v1 -->\n${lines.join("\n")}\n`);
+          NODE
+          exit 0
+
+      - name: Resolve comment-backed additional review evidence
+        env:
+          ACTUAL_REPO: ${{ github.repository }}
+          ACTUAL_PR: ${{ github.event.pull_request.number }}
+          ACTUAL_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          ADDITIONAL_REVIEW_REF="$(node <<'NODE'
+          const fs = require("fs");
+          const body = fs.readFileSync(`${process.env.RESULT_DIR}/pr-body.md`, "utf8");
+          process.stdout.write(refFromBody(body, ["additional_review_ref", "additional_review", "additional-review", "protected_review_ref", "protected_review"]) || "");
+          function refFromBody(body, keys) {
+            for (const key of keys) {
+              const pattern = new RegExp(`(?:^|\\n)\\s*(?:[-*]\\s*)?(?:${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")})\\s*:\\s*([^\\n]+?)\\s*(?=\\n|$)`, "i");
+              const value = body.match(pattern)?.[1]?.trim().replace(/^["'`]|["'`]$/g, "");
+              if (value && value !== "null") return value.split(/\s+/)[0];
+            }
+            return null;
+          }
+          NODE
+          )"
+          ADDITIONAL_REVIEW_COMMENT_REF="$(node <<'NODE'
+          const fs = require("fs");
+          const body = fs.readFileSync(`${process.env.RESULT_DIR}/pr-body.md`, "utf8");
+          process.stdout.write(refFromBody(body, ["additional_review_comment_ref", "additional_review_comment", "additional-review-comment", "protected_review_comment_ref", "protected_review_comment"]) || "");
+          function refFromBody(body, keys) {
+            for (const key of keys) {
+              const pattern = new RegExp(`(?:^|\\n)\\s*(?:[-*]\\s*)?(?:${key.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")})\\s*:\\s*([^\\n]+?)\\s*(?=\\n|$)`, "i");
+              const value = body.match(pattern)?.[1]?.trim().replace(/^["'`]|["'`]$/g, "");
+              if (value && value !== "null") return value.split(/\s+/)[0];
+            }
+            return null;
+          }
+          NODE
+          )"
+          node scripts/shirube/resolve-additional-review-ref.mjs \
+            --additional-review-ref "$ADDITIONAL_REVIEW_REF" \
+            --additional-review-comment-ref "$ADDITIONAL_REVIEW_COMMENT_REF" \
+            --actual-repo "$ACTUAL_REPO" \
+            --actual-pr "$ACTUAL_PR" \
+            --actual-head "$ACTUAL_HEAD" \
+            --result-dir "$RESULT_DIR" \
+            --github-token-env GITHUB_TOKEN \
+            --format json > "$RESULT_DIR/additional-review-ref-resolution.json"
+          cat "$RESULT_DIR/additional-review-ref-resolution.json"
+          node <<'NODE'
+          const fs = require("fs");
+          const reportPath = `${process.env.RESULT_DIR}/additional-review-ref-resolution.json`;
+          const bodyPath = `${process.env.RESULT_DIR}/pr-body.md`;
+          let report;
+          try {
+            report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+          } catch (error) {
+            report = { verdict: "FAILURE", materialized_path: null, materialized_paths: [], source_metadata_path: null };
+          }
+          const materialized = Array.isArray(report.materialized_paths) && report.materialized_paths.length > 0
+            ? report.materialized_paths.join(",")
+            : report.materialized_path;
+          const lines = [];
+          if (materialized) lines.push(`additional_review_ref: ${materialized}`);
+          if (report.source_metadata_path) lines.push(`additional_review_source_ref: ${report.source_metadata_path}`);
+          if (lines.length > 0) fs.appendFileSync(bodyPath, `\n<!-- shirube:additional-review-resolution/v1 -->\n${lines.join("\n")}\n`);
+          NODE
+          exit 0
+
       - name: Run Rapid/Lite gates
         run: |
           INPUT_FAILURE_ARG=""

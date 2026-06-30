@@ -26,7 +26,7 @@ function run(args: string[]): { exitCode: number; json: any } {
   }
 }
 
-function baseArgs(overrides: Record<string, string | null> = {}): string[] {
+function baseArgs(overrides: Record<string, string | null | true> = {}): string[] {
   const inputs: Record<string, string> = {
     "--execution-context-report": fixture("execution-context.pass.json"),
     "--repo-spec": fixture("repo-spec.pass.yaml"),
@@ -44,11 +44,11 @@ function baseArgs(overrides: Record<string, string | null> = {}): string[] {
   };
   const merged = { ...inputs, ...overrides };
   return Object.entries(merged)
-    .flatMap(([key, value]) => value === null ? [] : [key, value])
+    .flatMap(([key, value]) => value === null ? [] : value === true ? [key] : [key, value])
     .concat(["--format", "json"]);
 }
 
-function check(overrides: Record<string, string | null> = {}): { exitCode: number; json: any } {
+function check(overrides: Record<string, string | null | true> = {}): { exitCode: number; json: any } {
   return run(baseArgs(overrides));
 }
 
@@ -219,7 +219,9 @@ describe("Shirube control state completeness check", () => {
     const result = check({
       "--handoff": fixture("handoff.audit-required.yaml"),
       "--audit-checklist-report": fixture("audit-checklist.pass.json"),
+      "--structured-audit": "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       "--audit-source": path.join(sequencingFixtures, "audit-source.pass.json"),
+      "--trusted-audit-source": true,
     });
 
     expect(result.exitCode).toBe(0);
@@ -234,7 +236,9 @@ describe("Shirube control state completeness check", () => {
     const result = check({
       "--handoff": fixture("handoff.audit-required.yaml"),
       "--audit-checklist-report": fixture("audit-checklist.pass.json"),
+      "--structured-audit": "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
       "--audit-source": path.join(sequencingFixtures, "audit-source.pass.json"),
+      "--trusted-audit-source": true,
       "--owner-decision": null,
     });
 

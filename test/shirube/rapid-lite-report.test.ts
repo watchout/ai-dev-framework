@@ -58,6 +58,7 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
         "gate-contract",
         "design-rules",
         "audit-checklist",
+        "review-plan",
         "lifecycle",
         "enforcement-policy",
         "control-state-completeness",
@@ -68,6 +69,7 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "design-rules").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "audit-checklist").status).toBe("skipped");
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "review-plan").status).toBe("skipped");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "enforcement-policy").status).toBe("ran");
       const controlState = result.json.gates.find((gate: { gate: string }) => gate.gate === "control-state-completeness");
       expect(controlState.status).toBe("ran");

@@ -1,5 +1,7 @@
 {
   "schema": "shirube-audit-checklist-check/v1",
+  "generated_by": "scripts/shirube/check-audit-checklist.mjs",
+  "trusted_checker": true,
   "verdict": "PASS",
   "current_phase": "OWNER_DECISION_REQUIRED",
   "next_action": {
