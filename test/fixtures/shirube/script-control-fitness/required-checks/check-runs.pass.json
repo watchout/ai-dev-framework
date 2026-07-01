@@ -1,0 +1,23 @@
+{
+  "total_count": 2,
+  "check_runs": [
+    {
+      "name": "Shirube Script-Control Fitness / validate-control-points",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "abc123",
+      "started_at": "2026-07-01T00:00:00Z",
+      "completed_at": "2026-07-01T00:01:00Z",
+      "html_url": "https://github.com/watchout/ai-dev-framework/actions/runs/1/job/1"
+    },
+    {
+      "name": "Shirube Script-Control Fitness / report-only-expiry",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "abc123",
+      "started_at": "2026-07-01T00:00:00Z",
+      "completed_at": "2026-07-01T00:01:00Z",
+      "html_url": "https://github.com/watchout/ai-dev-framework/actions/runs/1/job/2"
+    }
+  ]
+}

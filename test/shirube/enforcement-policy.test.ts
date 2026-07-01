@@ -136,11 +136,38 @@ describe("Shirube enforcement policy check", () => {
   it("blocks missing policy owner", () => {
     const result = check("missing-owner.block.yaml");
 
-    expect(result.exitCode).toBe(0);
+    expect(result.exitCode).toBe(1);
     expectShape(result);
-    expect(result.json.verdict).toBe("BLOCKED");
+    expect(result.json.verdict).toBe("FAILURE");
     expect(result.json.owner_must_not_merge).toBe(true);
-    expect(blockerIds(result)).toContain("ENF-003");
+    expect(failureIds(result)).toContain("ENF-003");
+  });
+
+  it("fails report-only without enforce_by", () => {
+    const result = check("report-only.missing-enforce-by.failure.yaml");
+
+    expect(result.exitCode).toBe(1);
+    expectShape(result);
+    expect(result.json.verdict).toBe("FAILURE");
+    expect(failureIds(result)).toContain("ENF-009");
+  });
+
+  it("fails expired report-only enforce_by", () => {
+    const result = check("report-only.expired.failure.yaml");
+
+    expect(result.exitCode).toBe(1);
+    expectShape(result);
+    expect(result.json.verdict).toBe("FAILURE");
+    expect(failureIds(result)).toContain("ENF-010");
+  });
+
+  it("fails report-only without reason", () => {
+    const result = check("report-only.missing-reason.failure.yaml");
+
+    expect(result.exitCode).toBe(1);
+    expectShape(result);
+    expect(result.json.verdict).toBe("FAILURE");
+    expect(failureIds(result)).toContain("ENF-011");
   });
 
   it("blocks required-check mode without owner approval evidence", () => {

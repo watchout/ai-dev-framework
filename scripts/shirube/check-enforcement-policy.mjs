@@ -9,7 +9,7 @@ import {
 
 const SCHEMA = "shirube-enforcement-policy-check/v1";
 const MODES = ["report_only", "owner_block", "ci_hard_block", "required_check"];
-const DETERMINISTIC_NOW = Date.parse("2026-06-23T00:00:00Z");
+const DETERMINISTIC_NOW = Date.parse("2026-07-01T00:00:00Z");
 
 const FINDINGS = {
   "ENF-001": ["missing_enforcement_policy", "Enforcement policy is missing or unreadable.", "policy"],
@@ -20,6 +20,9 @@ const FINDINGS = {
   "ENF-006": ["aggregate_blocked_under_ci_hard_block", "Aggregate would_block=true blocks CI hard-block or required-check progression.", "aggregate.would_block"],
   "ENF-007": ["required_check_mode_without_owner_approval", "required_check mode requires owner approval evidence before activation readiness.", "owner_approval"],
   "ENF-008": ["stale_policy_or_unpinned_framework", "Policy must be current and reference a pinned framework version or commit.", "policy.framework_ref"],
+  "ENF-009": ["report_only_missing_enforce_by", "report_only mode requires a concrete enforce_by date.", "policy.enforce_by"],
+  "ENF-010": ["report_only_expired_enforce_by", "report_only enforce_by is expired.", "policy.enforce_by"],
+  "ENF-011": ["report_only_missing_reason", "report_only mode requires a concrete reason.", "policy.reason"],
 };
 
 export function buildEnforcementPolicyReport(input) {
@@ -46,7 +49,19 @@ export function buildEnforcementPolicyReport(input) {
     return report({ mode, failures, blockers, warnings, evidence, aggregate, policy, ownerDecision });
   }
 
-  if (!hasOwner(policy)) blockers.push(finding("ENF-003"));
+  if (mode === "report_only") {
+    applyReportOnlyHardening({ policy, failures });
+  }
+
+  if (!hasOwner(policy)) {
+    if (mode === "report_only") {
+      failures.push(finding("ENF-003", {
+        message: "report_only mode requires policy.owner.role and policy.owner.actor.",
+      }));
+    } else {
+      blockers.push(finding("ENF-003"));
+    }
+  }
   if (!aggregate) blockers.push(finding("ENF-004", { path: input.aggregatePath ?? "aggregate" }));
   if (policyIsStaleOrUnpinned(policy)) blockers.push(finding("ENF-008"));
 
@@ -134,6 +149,17 @@ function computeOwnerMustNotMerge({ mode, verdict, aggregateWouldBlock, policy, 
 
 function hasOwner(policy) {
   return nonEmptyString(policy?.owner?.role) && nonEmptyString(policy?.owner?.actor);
+}
+
+function applyReportOnlyHardening({ policy, failures }) {
+  const enforceBy = stringValue(policy?.enforce_by ?? policy?.report_only?.enforce_by ?? policy?.enforcement?.enforce_by);
+  const reason = stringValue(policy?.reason ?? policy?.report_only?.reason ?? policy?.enforcement?.reason);
+  if (!isConcreteValue(enforceBy) || !normalizeDate(enforceBy)) {
+    failures.push(finding("ENF-009"));
+  } else if (dateIsExpired(enforceBy, DETERMINISTIC_NOW)) {
+    failures.push(finding("ENF-010"));
+  }
+  if (!isConcreteValue(reason)) failures.push(finding("ENF-011"));
 }
 
 function aggregateWouldBlockValue(aggregate) {
@@ -230,6 +256,9 @@ function actionFor(itemId) {
     "ENF-006": "Keep CI hard-block/required-check mode blocked until aggregate would_block=false or an allowed waiver exists.",
     "ENF-007": "Record owner approval evidence before declaring required-check readiness.",
     "ENF-008": "Refresh the policy and pin framework_ref to a commit, tag, or version.",
+    "ENF-009": "Add a concrete report_only enforce_by date.",
+    "ENF-010": "Promote or re-authorize the expired report_only enforcement policy.",
+    "ENF-011": "Add a concrete reason for bounded report_only mode.",
     "ENF-W001": "Owner-review aggregate warnings before promoting enforcement mode.",
   };
   return actions[itemId] ?? "Resolve enforcement policy finding.";
@@ -341,6 +370,25 @@ function stringValue(value) {
 
 function nonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isConcreteValue(value) {
+  if (!nonEmptyString(value)) return false;
+  return !/^(?:tbd|todo|later|none|null|n\/a|na|<[^>]+>)$/i.test(value.trim());
+}
+
+function normalizeDate(value) {
+  if (!nonEmptyString(value)) return null;
+  const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})(?:[T\s].*)?$/);
+  if (!match) return null;
+  const parsed = Date.parse(`${match[1]}T00:00:00Z`);
+  return Number.isNaN(parsed) ? null : match[1];
+}
+
+function dateIsExpired(value, now) {
+  const date = normalizeDate(value);
+  if (!date) return false;
+  return Date.parse(`${date}T00:00:00Z`) < now;
 }
 
 function stringOption(value) {
