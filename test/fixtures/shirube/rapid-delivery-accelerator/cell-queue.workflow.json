@@ -1,0 +1,18 @@
+{
+  "schema_version": "shirube-cell-queue/v1",
+  "parent_ssot": "watchout/example#100",
+  "repo": "watchout/example",
+  "cells": [
+    {
+      "cell_id": "CELL-WORKFLOW-001",
+      "status": "ready_for_implementation",
+      "priority": 1,
+      "risk_class": "R1",
+      "cell_type": "metadata_only",
+      "allowed_paths": [".github/workflows/**"],
+      "forbidden_paths": ["src/**", "package.json"],
+      "expected_outputs": ["workflow metadata"],
+      "owner_actor": "watchout"
+    }
+  ]
+}

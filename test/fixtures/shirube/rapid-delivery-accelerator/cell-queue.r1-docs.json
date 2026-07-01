@@ -1,0 +1,29 @@
+{
+  "schema_version": "shirube-cell-queue/v1",
+  "parent_ssot": "watchout/example#100",
+  "repo": "watchout/example",
+  "cells": [
+    {
+      "cell_id": "CELL-DOCS-001",
+      "status": "ready_for_implementation",
+      "priority": 1,
+      "risk_class": "R1",
+      "cell_type": "docs_only",
+      "allowed_paths": ["docs/**"],
+      "forbidden_paths": ["src/**", "api/**", "db/**", "migrations/**", ".github/workflows/**", "package.json", "pnpm-lock.yaml"],
+      "expected_outputs": ["docs update"],
+      "owner_actor": "watchout"
+    },
+    {
+      "cell_id": "CELL-DOCS-002",
+      "status": "ready_for_implementation",
+      "priority": 2,
+      "risk_class": "R1",
+      "cell_type": "docs_contract",
+      "allowed_paths": ["docs/**", ".shirube/**"],
+      "forbidden_paths": ["src/**", "api/**", "db/**", "migrations/**", ".github/workflows/**", "package.json", "pnpm-lock.yaml"],
+      "expected_outputs": ["contract docs"],
+      "owner_actor": "watchout"
+    }
+  ]
+}

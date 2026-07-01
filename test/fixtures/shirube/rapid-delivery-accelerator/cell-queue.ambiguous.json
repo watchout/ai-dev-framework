@@ -1,0 +1,28 @@
+{
+  "schema_version": "shirube-cell-queue/v1",
+  "parent_ssot": "watchout/example#100",
+  "repo": "watchout/example",
+  "cells": [
+    {
+      "cell_id": "CELL-DOCS-001",
+      "status": "ready_for_implementation",
+      "risk_class": "R1",
+      "cell_type": "docs_only",
+      "allowed_paths": ["docs/**"],
+      "forbidden_paths": ["src/**", "package.json"],
+      "expected_outputs": ["docs update"],
+      "owner_actor": "watchout"
+    },
+    {
+      "cell_id": "CELL-RUNTIME-001",
+      "status": "ready_for_implementation",
+      "risk_class": "R2",
+      "cell_type": "runtime_foundation",
+      "protected_surfaces": ["runtime"],
+      "allowed_paths": ["src/**"],
+      "forbidden_paths": ["db/**", "package.json"],
+      "expected_outputs": ["runtime helper"],
+      "owner_actor": "watchout"
+    }
+  ]
+}

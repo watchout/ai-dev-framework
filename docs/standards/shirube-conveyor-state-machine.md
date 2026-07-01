@@ -1,10 +1,11 @@
 # Shirube Conveyor State Machine
 
-`shirube-cell-queue/v1` is the delivery graph that lets Shirube continue after a merge without asking an LLM or operator to infer the next Cell.
+`shirube-cell-queue/v1` is the delivery graph that lets Shirube continue after a merge without asking an LLM or operator to infer the next delivery step.
 
-The Conveyor reads post-merge evidence, the parent SSOT, and the Cell queue. It can then emit the next machine action:
+The Conveyor reads post-merge evidence, the parent SSOT, and the Cell queue. It selects the next PR unit, which may cover one or more Cells when the Rapid Delivery Accelerator batch policy allows it. It can then emit the next machine action:
 
 - `record_post_merge_evidence`
+- `open_next_pr_unit`
 - `open_next_cell_pr`
 - `export_work_order_for_aun`
 - `request_owner_planning_decision`
@@ -24,19 +25,19 @@ shirube conveyor next \
   --format json
 ```
 
-`next` verifies the completed PR evidence, marks the completed Cell as merged for selection purposes, and selects exactly one next ready Cell. It does not mutate GitHub.
+`next` verifies the completed PR evidence, marks the completed Cell as merged for selection purposes, and selects exactly one next PR unit. A PR unit can contain multiple Cells when the batch policy is satisfied. It does not mutate GitHub.
 
 ```bash
 shirube conveyor plan --cell-queue .shirube/cell-queue.json --cell-id CELL-ID --format json
 ```
 
-`plan` emits a handoff draft, audit checklist draft, review plan draft, validation commands, allowed/forbidden paths, and an AUN-compatible Work Order preview.
+`plan` emits a handoff draft, audit checklist draft, review plan draft, validation commands, allowed/forbidden paths, and an AUN-compatible Work Order preview. When `--cell-id` is omitted, it emits a delivery plan with PR units and audit units instead of assuming one PR per Cell.
 
 ```bash
 shirube conveyor open-pr --cell-queue .shirube/cell-queue.json --cell-id CELL-ID --format json
 ```
 
-`open-pr` is plan-only in this slice. It emits a draft PR payload and sets `mutation_performed=false`.
+`open-pr` is plan-only in this slice. It emits a draft PR payload for a Cell or PR unit and sets `mutation_performed=false`.
 
 ```bash
 shirube conveyor export-work-order --cell-queue .shirube/cell-queue.json --cell-id CELL-ID --format json
@@ -81,11 +82,22 @@ stage, but Cell close requires every planned PR stage to be merged or explicitly
 skipped, every acceptance criterion to be satisfied, post-merge evidence to be
 recorded, and any required Cell-level audit or owner approval to be complete.
 
-If multiple Cells are ready, explicit `priority` or `order` is required. Without priority/order, the Conveyor returns `BLOCKED` and `next_action=request_owner_planning_decision`.
+If multiple Cells are ready, the Conveyor first runs the Rapid Delivery Accelerator batch policy. Safe low-risk docs/metadata/evidence Cells can become one PR unit and one audit unit. If batching is not allowed, explicit `priority` or `order` is required. Without priority/order, the Conveyor returns `BLOCKED` and `next_action=request_owner_planning_decision`.
+
+## Rapid Delivery Units
+
+Shirube separates the delivery units:
+
+- Cell: design/control unit.
+- PR unit: delivery container that may cover one or more Cells.
+- Audit unit: verification unit for one exact PR head.
+- Owner decision: final authority for one exact PR head.
+
+`1 PR = 1 Cell` is not a Shirube invariant. The invariant is that every PR unit has a machine-derived review plan, exact-head audit unit, and owner decision sequence.
 
 ## Review Plan Integration
 
-Before a handoff or Work Order is emitted, the Conveyor includes a `review_plan_ref` and generates a draft `shirube-review-plan/v1`. Audit, additional review, and owner exact-head sequencing remain governed by the review plan and the next-action sequencing gates.
+Before a handoff, PR unit, audit unit, or Work Order is emitted, the Conveyor includes a `review_plan_ref` and generates a draft `shirube-review-plan/v1`. Audit, additional review, and owner exact-head sequencing remain governed by the review plan and the next-action sequencing gates.
 
 ## Prohibited Behavior
 

@@ -1,0 +1,33 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-ADF-V3-RAPID-DELIVERY-ACCELERATOR-001
+repo: watchout/ai-dev-framework
+mode: report_only
+profile: hotel-lite
+framework_ref: watchout/ai-dev-framework@6af34058cf2d8298fca159419cdc35a7eb42b12c
+updated_at: 2026-07-01T00:00:00Z
+owner_observed: true
+owner:
+  role: repo_owner
+  actor: watchout
+required_checks:
+  enabled: false
+branch_protection:
+  unchanged: true
+rulesets:
+  unchanged: true
+report_only_semantics:
+  aggregate_would_block_sets_owner_must_not_merge: true
+  ci_should_fail: false
+  owner_must_not_merge_without_exception: true
+non_scope:
+  - independent audit synthesis
+  - owner approval synthesis
+  - automatic merge
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - DB runtime
+  - MCP implementation
+  - AUN queue mutation
+  - target repository mutation
+  - package or lockfile changes
