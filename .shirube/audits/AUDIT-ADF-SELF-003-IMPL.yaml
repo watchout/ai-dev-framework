@@ -1,0 +1,33 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-SELF-003-IMPL
+audit_type: impl-audit
+target_refs:
+  - .shirube/impls/IMPL-ADF-SELF-003.md
+  - src/cli/lib/shirube-artifact-validator.ts
+  - src/cli/commands/conveyor.ts
+  - src/cli/lib/conveyor-prerequisite-check.ts
+verdict: PASS
+findings:
+  - check_id: IMPL-SCOPE
+    result: PASS
+    evidence:
+      - IMPL-ADF-SELF-003 limits implementation to local validation, resolver hardening, tests, and .shirube records.
+  - check_id: IMPL-REQ-MAP
+    result: PASS
+    evidence:
+      - Planned file changes map to REQ-ADF-SELF-003-001 through REQ-ADF-SELF-003-004 and SEC-ADF-SELF-003-001.
+  - check_id: IMPL-NON-GOALS
+    result: PASS
+    evidence:
+      - Required checks, branch protection, rulesets, active workflows, package files, target repositories, deploy behavior, and AUN/multi-agent automation are non-goals.
+  - check_id: IMPL-VALIDATION
+    result: PASS
+    evidence:
+      - Local validator emits deterministic JSON and blocks schema violations without external mutation.
+  - check_id: IMPL-DEPENDENCIES
+    result: PASS
+    evidence:
+      - Implementation does not add package dependencies or package file changes.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-IMPL-AUDIT-V1

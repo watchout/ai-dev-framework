@@ -1,0 +1,31 @@
+schema_version: shirube-audit-result/v1
+AUDIT-ID: AUDIT-ADF-SELF-003-SPEC
+audit_type: spec-audit
+target_refs:
+  - .shirube/specs/SPEC-ADF-SELF-003.md
+  - .shirube/cells/CELL-ADF-SELF-003.yaml
+verdict: PASS
+findings:
+  - check_id: SPEC-PURPOSE
+    result: PASS
+    evidence:
+      - SPEC-ADF-SELF-003 defines local artifact validation and resolver hardening purpose.
+  - check_id: SPEC-REQ-IDS
+    result: PASS
+    evidence:
+      - SPEC-ADF-SELF-003 includes REQ-ADF-SELF-003-001 through REQ-ADF-SELF-003-004 and SEC-ADF-SELF-003-001.
+  - check_id: SPEC-SCOPE
+    result: PASS
+    evidence:
+      - The spec limits implementation to local CLI validation, resolver path predicates, deterministic tests, and .shirube records.
+  - check_id: SPEC-NON-GOALS
+    result: PASS
+    evidence:
+      - The spec forbids required-check activation, branch protection changes, ruleset changes, active workflow changes, package changes, target repo mutation, and AUN/multi-agent activation.
+  - check_id: SPEC-TESTABLE
+    result: PASS
+    evidence:
+      - TEST-MAP-ADF-SELF-003 names targeted tests, local validation command, diff, lint, type-check, build, and PR conveyor check.
+auditor: codex-adf
+created_at: 2026-06-20T00:00:00Z
+calibration_case_ref: RUBRIC-SPEC-AUDIT-V1

@@ -162,6 +162,32 @@ describe("conveyor prerequisite check", () => {
     expect(report.blockers.map((blocker) => blocker.code)).not.toContain("missing_impl");
   });
 
+  it("accepts .shirube Spec, Cell, Impl, and audit artifacts changed by the current PR", () => {
+    const body = completeBody
+      .replace("SPEC-ID: SPEC-ADF-GATE-001\n", "")
+      .replace("CELL-ID: CELL-ADF-GATE-001\n", "")
+      .replace("IMPL-ID: IMPL-ADF-GATE-001\n", "")
+      .replace("Spec Audit: AUDIT-ID: AUDIT-ADF-GATE-SPEC-001\n", "")
+      .replace("Impl Audit: AUDIT-ID: AUDIT-ADF-GATE-IMPL-001\n", "");
+    const report = buildConveyorPrerequisiteCheck(fixture({
+      body,
+      changed_files: [
+        "src/cli/lib/conveyor-prerequisite-check.ts",
+        ".shirube/specs/SPEC-ADF-GATE-001.md",
+        ".shirube/cells/CELL-ADF-GATE-001.yaml",
+        ".shirube/impls/IMPL-ADF-GATE-001.md",
+        ".shirube/audits/AUDIT-ADF-GATE-SPEC-001.yaml",
+        ".shirube/audits/AUDIT-ADF-GATE-IMPL-001.yaml",
+      ],
+    }));
+
+    expect(report.blockers.map((blocker) => blocker.code)).not.toContain("missing_feature_spec");
+    expect(report.blockers.map((blocker) => blocker.code)).not.toContain("missing_cell");
+    expect(report.blockers.map((blocker) => blocker.code)).not.toContain("missing_impl");
+    expect(report.blockers.map((blocker) => blocker.code)).not.toContain("missing_spec_audit");
+    expect(report.blockers.map((blocker) => blocker.code)).not.toContain("missing_impl_audit");
+  });
+
   it("accepts an approved repo-level repo-spec baseline from repo files", () => {
     const report = buildConveyorPrerequisiteCheck(fixture({
       body: completeBody.replace("Repo Spec: .shirube/repo-spec.yaml\n", ""),
