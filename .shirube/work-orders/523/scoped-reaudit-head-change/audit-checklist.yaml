@@ -1,0 +1,271 @@
+schema_version: "shirube-audit-checklist/v1"
+audit_checklist_id: "AUDIT-CHECKLIST-CELL-ADF-V3-SCOPED-REAUDIT-HEAD-CHANGE-001"
+source:
+  handoff_ref: ".shirube/work-orders/523/scoped-reaudit-head-change/control-handoff.yaml"
+  cell_id: "CELL-ADF-V3-SCOPED-REAUDIT-HEAD-CHANGE-001"
+  pr: "watchout/ai-dev-framework#523"
+  work_order: "watchout/ai-dev-framework#523"
+  implementation_actor: null
+items:
+  - item_id: "AUDIT-001"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: Head changes classify as full_reaudit_required, scoped_reaudit_allowed, metadata_refresh_required, or blocked_unclassified_head_change."
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-002"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: Functional, package, workflow, permission, and protected-surface deltas require full independent re-audit."
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-003"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: Metadata-only handoff/control evidence refresh can request scoped re-audit instead of full re-audit."
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-004"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: Old exact-head audit cannot unlock merge at a new head by itself."
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-005"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: Scoped re-audit must reference both previous audited head and current head."
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-006"
+    source: "acceptance_criteria"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify acceptance criterion: Owner exact-head approval remains unavailable until required full or scoped re-audit completes for the current head."
+    expected_evidence:
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-007"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: audit synthesis is added"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-008"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: owner approval is synthesized"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-009"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: automatic merge is added"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-010"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: required checks are activated"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-011"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: branch protection or rulesets are mutated"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-012"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: target repository mutation is added"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-013"
+    source: "stop_condition"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify stop condition did not occur: runtime/API/DB/product/package change is added"
+    expected_evidence:
+      - "changed_files"
+      - "structured_reviewer_rationale"
+  - item_id: "AUDIT-014"
+    source: "allowed_paths"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify changed files are inside allowed_paths: .shirube/work-orders/523/scoped-reaudit-head-change/**, docs/standards/shirube-control-state-completeness.md, docs/standards/shirube-next-action-sequencing.md, scripts/shirube/check-control-state-completeness.mjs, scripts/shirube/next-action-sequencing.mjs, scripts/shirube/run-rapid-lite-report.mjs, test/fixtures/shirube/control-state-completeness/audit-checklist.full-pass.json, test/fixtures/shirube/control-state-completeness/audit-checklist.scoped-pass.json, test/fixtures/shirube/control-state-completeness/audit-source.full.json, test/fixtures/shirube/control-state-completeness/audit-source.scoped.json, test/fixtures/shirube/control-state-completeness/owner-decision.next.yaml, test/fixtures/shirube/control-state-completeness/structured-audit.full.yaml, test/fixtures/shirube/control-state-completeness/structured-audit.scoped.yaml, test/fixtures/shirube/control-state-completeness/validation.head-change-runtime.yaml, test/fixtures/shirube/control-state-completeness/validation.head-change-scoped.yaml, test/fixtures/shirube/control-state-completeness/validation.head-change-stale.yaml, test/shirube/control-state-completeness.test.ts, test/shirube/next-action-sequencing.test.ts"
+    expected_evidence:
+      - "changed_files"
+      - "diff_scope_report"
+  - item_id: "AUDIT-015"
+    source: "forbidden_paths"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify no changed file matches forbidden_paths: src/**, app/**, api/**, lib/**, db/**, migrations/**, package.json, package-lock.json, pnpm-lock.yaml, yarn.lock, .env*, deploy/**, deployment/**, .github/workflows/**, .github/branch-protection/**, .github/rulesets/**"
+    expected_evidence:
+      - "changed_files"
+      - "diff_scope_report"
+  - item_id: "AUDIT-016"
+    source: "protected_surface"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify protected surface declaration and authority handling for: audit_policy"
+    expected_evidence:
+      - "protected_surface_declaration"
+      - "authority_boundary_review"
+  - item_id: "AUDIT-017"
+    source: "protected_surface"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify protected surface declaration and authority handling for: audit_sequencing_policy"
+    expected_evidence:
+      - "protected_surface_declaration"
+      - "authority_boundary_review"
+  - item_id: "AUDIT-018"
+    source: "protected_surface"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify protected surface declaration and authority handling for: owner_approval_policy"
+    expected_evidence:
+      - "protected_surface_declaration"
+      - "authority_boundary_review"
+  - item_id: "AUDIT-019"
+    source: "protected_surface"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify protected surface declaration and authority handling for: merge_gate_policy"
+    expected_evidence:
+      - "protected_surface_declaration"
+      - "authority_boundary_review"
+  - item_id: "AUDIT-020"
+    source: "protected_surface"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify protected surface declaration and authority handling for: governance_gate_policy"
+    expected_evidence:
+      - "protected_surface_declaration"
+      - "authority_boundary_review"
+  - item_id: "AUDIT-021"
+    source: "protected_surface"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify protected surface declaration and authority handling for: shirube_control_state"
+    expected_evidence:
+      - "protected_surface_declaration"
+      - "authority_boundary_review"
+  - item_id: "AUDIT-022"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: node --check scripts/shirube/next-action-sequencing.mjs scripts/shirube/check-control-state-completeness.mjs scripts/shirube/run-rapid-lite-report.mjs"
+    expected_evidence:
+      - "command_result:node --check scripts/shirube/next-action-sequencing.mjs scripts/shirube/check-control-state-completeness.mjs scripts/shirube/run-rapid-lite-report.mjs"
+  - item_id: "AUDIT-023"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run test -- test/shirube/next-action-sequencing.test.ts test/shirube/control-state-completeness.test.ts"
+    expected_evidence:
+      - "command_result:npm run test -- test/shirube/next-action-sequencing.test.ts test/shirube/control-state-completeness.test.ts"
+  - item_id: "AUDIT-024"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run test -- test/shirube"
+    expected_evidence:
+      - "command_result:npm run test -- test/shirube"
+  - item_id: "AUDIT-025"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run type-check"
+    expected_evidence:
+      - "command_result:npm run type-check"
+  - item_id: "AUDIT-026"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run build:cli"
+    expected_evidence:
+      - "command_result:npm run build:cli"
+  - item_id: "AUDIT-027"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: npm run lint"
+    expected_evidence:
+      - "command_result:npm run lint"
+  - item_id: "AUDIT-028"
+    source: "validation_command"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required validation command passed: git diff --check origin/main...HEAD"
+    expected_evidence:
+      - "command_result:git diff --check origin/main...HEAD"
+  - item_id: "AUDIT-029"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: PR_head_SHA"
+    expected_evidence:
+      - "PR_head_SHA"
+  - item_id: "AUDIT-030"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: changed_files"
+    expected_evidence:
+      - "changed_files"
+  - item_id: "AUDIT-031"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: validation_commands"
+    expected_evidence:
+      - "validation_commands"
+  - item_id: "AUDIT-032"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: validation_results"
+    expected_evidence:
+      - "validation_results"
+  - item_id: "AUDIT-033"
+    source: "required_evidence"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify required evidence is concrete and current: owner_decision"
+    expected_evidence:
+      - "owner_decision"
+  - item_id: "AUDIT-034"
+    source: "role_boundary"
+    verification_method: "semantic"
+    required: true
+    prompt: "Verify lead/dev/owner/auditor authority boundaries and maker-checker separation."
+    expected_evidence:
+      - "execution_context_report"
+      - "maker_checker_review"
+  - item_id: "AUDIT-035"
+    source: "owner_decision"
+    verification_method: "executable"
+    required: true
+    prompt: "Verify owner exact-head decision policy and evidence are present before merge."
+    expected_evidence:
+      - "owner_decision"
+      - "pr_head_sha"

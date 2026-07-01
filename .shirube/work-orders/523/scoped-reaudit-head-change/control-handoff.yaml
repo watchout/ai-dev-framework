@@ -136,15 +136,9 @@ design_rule_exceptions:
       The duplicate-block heuristic is triggered by adjacent sequencing branches for the new head-change state machine.
       This PR adds regression coverage and keeps the structure localized; broader extraction is outside this scoped policy slice.
 head_change:
-  previous_audited_head: a1aa5e51ef2c469e14f02f4c4a0349fe278e83b0
+  previous_audited_head: e5681341414d517b851290442eaa8fa47686e98f
   delta_changed_files:
-    - .shirube/work-orders/523/scoped-reaudit-head-change/execution-context.yaml
-    - .shirube/work-orders/523/scoped-reaudit-head-change/adoption-intake.yaml
-    - .shirube/work-orders/523/scoped-reaudit-head-change/existing-state-scan.yaml
-    - .shirube/work-orders/523/scoped-reaudit-head-change/lifecycle-state.yaml
-    - .shirube/work-orders/523/scoped-reaudit-head-change/enforcement-policy.yaml
-    - .shirube/work-orders/523/scoped-reaudit-head-change/owner-decision-pending.yaml
-    - .shirube/work-orders/523/scoped-reaudit-head-change/control-state-completeness.yaml
+    - .shirube/work-orders/523/scoped-reaudit-head-change/audit-checklist.yaml
     - .shirube/work-orders/523/scoped-reaudit-head-change/control-handoff.yaml
   delta_available: true
   metadata_only_conflict_resolution: true
