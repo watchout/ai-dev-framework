@@ -1,6 +1,8 @@
 const SEQUENCING_PHASES = [
   "IMPLEMENTED",
+  "METADATA_REFRESH_REQUIRED",
   "AUDIT_REQUIRED",
+  "SCOPED_REAUDIT_REQUIRED",
   "AUDIT_COMPLETE",
   "ADDITIONAL_REVIEW_REQUIRED",
   "ADDITIONAL_REVIEW_COMPLETE",
@@ -24,6 +26,13 @@ export const REVIEW_SEQUENCE_BLOCKER = {
   path: "owner_decision",
 };
 
+export const HEAD_CHANGE_SEQUENCE_BLOCKER = {
+  item_id: "HEAD-CHANGE-001",
+  code: "head_change_requires_classification_or_reaudit",
+  message: "PR head changed after audit; metadata refresh, scoped re-audit, or full re-audit is required before owner approval.",
+  path: "head_change",
+};
+
 const TRUSTED_AUDIT_CHECKER = "scripts/shirube/check-audit-checklist.mjs";
 const TRUSTED_AUDIT_RESOLVER = "scripts/shirube/resolve-structured-audit-ref.mjs";
 const TRUSTED_ADDITIONAL_REVIEW_RESOLVER = "scripts/shirube/resolve-additional-review-ref.mjs";
@@ -45,18 +54,88 @@ export function buildNextActionSequencing(input = {}) {
   const auditCompletion = auditCompletionFrom(input);
   const additionalReviewCompletion = additionalReviewCompletionFrom(input);
   const ownerDecision = ownerDecisionStatus(input.ownerDecision, input.actualHead);
+  const headChange = classifyHeadChange({ ...input, auditCompletion });
   const blockingFindings = asArray(input.blockingFindings).filter(Boolean);
   const ownerSequenceBlockers = [];
 
   if (auditRequired && !auditCompletion.complete && ownerDecision.final_approval_present) {
     ownerSequenceBlockers.push({ ...OWNER_SEQUENCE_BLOCKER });
   }
+  if (headChange?.requires_action && ownerDecision.final_approval_present) {
+    ownerSequenceBlockers.push({ ...HEAD_CHANGE_SEQUENCE_BLOCKER });
+  }
   if (additionalReviewCompletion.required && !additionalReviewCompletion.complete && ownerDecision.final_approval_present) {
     ownerSequenceBlockers.push({ ...REVIEW_SEQUENCE_BLOCKER });
   }
 
-  if (auditRequired && !auditCompletion.complete) {
+  if (headChange?.current_phase === "METADATA_REFRESH_REQUIRED") {
     return sequencingResult({
+      current_phase: "METADATA_REFRESH_REQUIRED",
+      next_action: {
+        action: "refresh_exact_head_metadata",
+        responsible_role: "dev",
+        allowed_actor_role: "dev",
+        reason: `Refresh PR body and control metadata to current exact head ${headChange.current_head ?? input.actualHead ?? "<unknown>"}.`,
+      },
+      owner_approval_allowed: false,
+      merge_ready_allowed: false,
+      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+      head_change: headChange,
+      audit_required: auditRequired,
+      audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
+      owner_decision_status: ownerDecision,
+      blockers: [{ ...HEAD_CHANGE_SEQUENCE_BLOCKER, message: "PR body exact-head metadata is stale after a head change." }, ...ownerSequenceBlockers],
+    });
+  }
+
+  if (headChange?.current_phase === "SCOPED_REAUDIT_REQUIRED") {
+    return sequencingResult({
+      current_phase: "SCOPED_REAUDIT_REQUIRED",
+      next_action: {
+        action: "request_scoped_reaudit",
+        responsible_role: "auditor",
+        allowed_actor_role: "independent_reviewer",
+        reason: `Request scoped re-audit from ${headChange.previous_audited_head ?? "<unknown>"} to current exact head ${headChange.current_head ?? input.actualHead ?? "<unknown>"}.`,
+      },
+      owner_approval_allowed: false,
+      merge_ready_allowed: false,
+      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+      head_change: headChange,
+      audit_required: true,
+      audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
+      owner_decision_status: ownerDecision,
+      blockers: [{ ...HEAD_CHANGE_SEQUENCE_BLOCKER, message: "Scoped exact-head re-audit is required before owner approval." }, ...ownerSequenceBlockers],
+    });
+  }
+
+  if (headChange?.current_phase === "AUDIT_REQUIRED") {
+    const reason = headChange.classification === "blocked_unclassified_head_change"
+      ? "Classify the PR head-change delta before audit depth can be trusted."
+      : `Independent machine-readable audit is required for exact head ${headChange.current_head ?? input.actualHead ?? "<unknown>"}.`;
+    return sequencingResult({
+      current_phase: "AUDIT_REQUIRED",
+      next_action: {
+        action: headChange.classification === "blocked_unclassified_head_change" ? "classify_head_change_delta" : "request_independent_audit",
+        responsible_role: "auditor",
+        allowed_actor_role: "independent_reviewer",
+        reason,
+      },
+      owner_approval_allowed: false,
+      merge_ready_allowed: false,
+      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+      head_change: headChange,
+      audit_required: true,
+      audit_completion: auditCompletion,
+      additional_review_completion: additionalReviewCompletion,
+      owner_decision_status: ownerDecision,
+      blockers: [{ ...HEAD_CHANGE_SEQUENCE_BLOCKER }, ...ownerSequenceBlockers],
+    });
+  }
+
+  if (auditRequired && !auditCompletion.complete) {
+    return blockedSequencingResult({
       current_phase: "AUDIT_REQUIRED",
       next_action: {
         action: "request_independent_audit",
@@ -64,9 +143,7 @@ export function buildNextActionSequencing(input = {}) {
         allowed_actor_role: "independent_reviewer",
         reason: `Independent machine-readable audit is required for exact head ${input.actualHead ?? auditCompletion.expected_head ?? "<unknown>"}.`,
       },
-      owner_approval_allowed: false,
-      merge_ready_allowed: false,
-      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+      head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
       additional_review_completion: additionalReviewCompletion,
@@ -76,7 +153,7 @@ export function buildNextActionSequencing(input = {}) {
   }
 
   if (additionalReviewCompletion.required && !additionalReviewCompletion.complete) {
-    return sequencingResult({
+    return blockedSequencingResult({
       current_phase: "ADDITIONAL_REVIEW_REQUIRED",
       next_action: {
         action: "request_required_additional_review",
@@ -84,9 +161,7 @@ export function buildNextActionSequencing(input = {}) {
         allowed_actor_role: "required_additional_reviewer",
         reason: `Required additional review is missing for exact head ${input.actualHead ?? auditCompletion.expected_head ?? "<unknown>"}.`,
       },
-      owner_approval_allowed: false,
-      merge_ready_allowed: false,
-      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+      head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
       additional_review_completion: additionalReviewCompletion,
@@ -108,6 +183,7 @@ export function buildNextActionSequencing(input = {}) {
       owner_approval_allowed: false,
       merge_ready_allowed: false,
       forbidden_next_actions: FORBID_OWNER_AND_MERGE.filter((action) => action !== "request_owner_exact_head_decision"),
+      head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
       additional_review_completion: additionalReviewCompletion,
@@ -117,17 +193,14 @@ export function buildNextActionSequencing(input = {}) {
   }
 
   if (!ownerDecision.final_approval_present) {
-    return sequencingResult({
-      current_phase: "OWNER_DECISION_REQUIRED",
+    return ownerDecisionRequiredResult({
       next_action: {
         action: "request_owner_exact_head_decision",
         responsible_role: "owner",
         allowed_actor_role: "repo_owner",
         reason: `Independent audit prerequisites are satisfied; owner exact-head decision is required for ${input.actualHead ?? auditCompletion.expected_head ?? "<unknown>"}.`,
       },
-      owner_approval_allowed: true,
-      merge_ready_allowed: false,
-      forbidden_next_actions: FORBID_MERGE,
+      head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
       additional_review_completion: additionalReviewCompletion,
@@ -137,17 +210,14 @@ export function buildNextActionSequencing(input = {}) {
   }
 
   if (ownerDecision.head_mismatch) {
-    return sequencingResult({
-      current_phase: "OWNER_DECISION_REQUIRED",
+    return ownerDecisionRequiredResult({
       next_action: {
         action: "request_owner_exact_head_decision",
         responsible_role: "owner",
         allowed_actor_role: "repo_owner",
         reason: "Owner decision exists but does not match the current exact head.",
       },
-      owner_approval_allowed: true,
-      merge_ready_allowed: false,
-      forbidden_next_actions: FORBID_MERGE,
+      head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
       additional_review_completion: additionalReviewCompletion,
@@ -167,6 +237,7 @@ export function buildNextActionSequencing(input = {}) {
     owner_approval_allowed: true,
     merge_ready_allowed: true,
     forbidden_next_actions: [],
+    head_change: headChange,
     audit_required: auditRequired,
     audit_completion: auditCompletion,
     additional_review_completion: additionalReviewCompletion,
@@ -175,11 +246,117 @@ export function buildNextActionSequencing(input = {}) {
   });
 }
 
+export function classifyHeadChange(input = {}) {
+  const raw = normalizeHeadChangeInput(input);
+  const previousAuditedHead = raw.previous_audited_head;
+  const currentHead = raw.current_head;
+  const headChanged = Boolean(raw.head_changed || (!isPlaceholder(previousAuditedHead) && !isPlaceholder(currentHead) && String(previousAuditedHead) !== String(currentHead)));
+  const result = {
+    previous_audited_head: previousAuditedHead ?? null,
+    current_head: currentHead ?? null,
+    classification: null,
+    functional_diff_changed: raw.functional_diff_changed === true,
+    metadata_only_conflict_resolution: raw.metadata_only_conflict_resolution === true,
+    required_next_action: null,
+    head_changed: headChanged,
+    requires_action: false,
+    current_phase: null,
+    details: raw.details,
+  };
+
+  if (!headChanged && !raw.pr_body_exact_head_stale) return result;
+
+  if (raw.pr_body_exact_head_stale) {
+    return {
+      ...result,
+      classification: "metadata_refresh_required",
+      required_next_action: "refresh_exact_head_metadata",
+      requires_action: true,
+      current_phase: "METADATA_REFRESH_REQUIRED",
+    };
+  }
+
+  if (isPlaceholder(previousAuditedHead) || isPlaceholder(currentHead) || raw.delta_available !== true) {
+    return {
+      ...result,
+      classification: "blocked_unclassified_head_change",
+      required_next_action: "classify_head_change_delta",
+      requires_action: true,
+      current_phase: "AUDIT_REQUIRED",
+    };
+  }
+
+  if (raw.new_protected_functional_surface === true || raw.functional_diff_changed === true || raw.package_or_lockfile_changed === true) {
+    const fullReauditComplete = raw.current_exact_head_full_reaudit_complete === true;
+    return {
+      ...result,
+      classification: "full_reaudit_required",
+      functional_diff_changed: true,
+      required_next_action: fullReauditComplete ? null : "request_independent_audit",
+      requires_action: !fullReauditComplete,
+      current_phase: fullReauditComplete ? null : "AUDIT_REQUIRED",
+    };
+  }
+
+  const scopedAllowed = raw.previous_audit_accepted === true &&
+    raw.metadata_only_conflict_resolution === true &&
+    raw.functional_diff_changed !== true &&
+    raw.new_protected_functional_surface !== true &&
+    raw.allowed_paths_pass === true &&
+    raw.forbidden_paths_pass === true &&
+    raw.validation_rerun === true;
+
+  if (scopedAllowed) {
+    const scopedComplete = raw.current_exact_head_audit_complete === true && scopedReauditReferencesHeads({
+      structuredAudit: input.structuredAudit,
+      auditChecklistReport: input.auditChecklistReport,
+      previousAuditedHead,
+      currentHead,
+    });
+    return {
+      ...result,
+      classification: "scoped_reaudit_allowed",
+      functional_diff_changed: false,
+      metadata_only_conflict_resolution: true,
+      required_next_action: scopedComplete ? null : "request_scoped_reaudit",
+      requires_action: !scopedComplete,
+      current_phase: scopedComplete ? null : "SCOPED_REAUDIT_REQUIRED",
+    };
+  }
+
+  return {
+    ...result,
+    classification: "full_reaudit_required",
+    required_next_action: raw.current_exact_head_full_reaudit_complete ? null : "request_independent_audit",
+    requires_action: !raw.current_exact_head_full_reaudit_complete,
+    current_phase: raw.current_exact_head_full_reaudit_complete ? null : "AUDIT_REQUIRED",
+  };
+}
+
 function sequencingResult(fields) {
   return {
     phases: SEQUENCING_PHASES,
     ...fields,
   };
+}
+
+function blockedSequencingResult(fields) {
+  return sequencingResult({
+    owner_approval_allowed: false,
+    merge_ready_allowed: false,
+    forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+    ...fields,
+  });
+}
+
+function ownerDecisionRequiredResult(fields) {
+  return sequencingResult({
+    current_phase: "OWNER_DECISION_REQUIRED",
+    owner_approval_allowed: true,
+    merge_ready_allowed: false,
+    forbidden_next_actions: FORBID_MERGE,
+    ...fields,
+  });
 }
 
 export function auditRequiredFrom(input = {}) {
@@ -194,6 +371,159 @@ export function auditRequiredFrom(input = {}) {
     handoff?.reviewer_audit?.required === true ||
     asArray(handoff.required_audits).length > 0 ||
     ["R3", "R4"].includes(risk);
+}
+
+function normalizeHeadChangeInput(input = {}) {
+  const headChange = isObject(input.headChange) ? input.headChange : {};
+  const auditCompletion = isObject(input.auditCompletion) ? input.auditCompletion : auditCompletionFrom(input);
+  const currentHead = firstPresent(
+    headChange.current_head,
+    headChange.currentHead,
+    input.actualHead,
+    auditCompletion.expected_head,
+  );
+  const previousAuditedHead = firstPresent(
+    headChange.previous_audited_head,
+    headChange.previousAuditedHead,
+    headChange.previous_head,
+    headChange.previousHead,
+    auditCompletion.observed_head && !isPlaceholder(currentHead) && String(auditCompletion.observed_head) !== String(currentHead)
+      ? auditCompletion.observed_head
+      : null,
+  );
+  const deltaFiles = asArray(firstPresent(
+    headChange.delta_changed_files,
+    headChange.changed_files_since_previous_audit,
+    headChange.changed_files,
+    headChange.files,
+  )).map((file) => String(file ?? "").trim()).filter(Boolean);
+  const prBodyExactHead = firstPresent(
+    headChange.pr_body_exact_head,
+    headChange.prBodyExactHead,
+    headChange.body_exact_head,
+    input.prBodyExactHead,
+  );
+  const prBodyExactHeadStale = !isPlaceholder(prBodyExactHead) &&
+    !isPlaceholder(currentHead) &&
+    String(prBodyExactHead) !== String(currentHead);
+  const metadataOnly = booleanValue(headChange.metadata_only_conflict_resolution) ??
+    booleanValue(headChange.metadataOnlyConflictResolution) ??
+    (deltaFiles.length > 0 && deltaFiles.every(isMetadataOnlyConflictFile));
+  const protectedFunctional = booleanValue(headChange.new_protected_functional_surface) ??
+    booleanValue(headChange.newProtectedFunctionalSurface) ??
+    deltaFiles.some(isProtectedFunctionalFile);
+  const packageOrLockfileChanged = deltaFiles.some(isPackageOrLockfile);
+  const previousAuditVerdict = String(firstPresent(
+    headChange.previous_audit_verdict,
+    headChange.previousAuditVerdict,
+    input.auditChecklistReport?.verdict,
+  ) ?? "").toUpperCase();
+  const previousAuditAccepted = ["PASS", "PASS_WITH_WARN"].includes(previousAuditVerdict) ||
+    headChange.previous_audit_accepted === true ||
+    headChange.previousAuditAccepted === true ||
+    auditCompletion.verdict_accepted === true;
+  const validationRerun = booleanValue(headChange.validation_rerun) ??
+    booleanValue(headChange.validationRerun) ??
+    false;
+  const allowedPathsPass = booleanValue(headChange.allowed_paths_pass) ??
+    booleanValue(headChange.allowedPathsPass) ??
+    true;
+  const forbiddenPathsPass = booleanValue(headChange.forbidden_paths_pass) ??
+    booleanValue(headChange.forbiddenPathsPass) ??
+    true;
+  const currentExactHeadAuditComplete = auditCompletion.complete === true &&
+    !isPlaceholder(currentHead) &&
+    !isPlaceholder(auditCompletion.observed_head) &&
+    String(auditCompletion.observed_head) === String(currentHead);
+  const currentExactHeadFullReauditComplete = currentExactHeadAuditComplete && fullReauditEvidenceComplete({
+    structuredAudit: input.structuredAudit,
+    auditChecklistReport: input.auditChecklistReport,
+  });
+  const deltaAvailable = booleanValue(headChange.delta_available) ??
+    booleanValue(headChange.deltaAvailable) ??
+    deltaFiles.length > 0;
+  const functionalDiffChanged = booleanValue(headChange.functional_diff_changed) ??
+    booleanValue(headChange.functionalDiffChanged) ??
+    (protectedFunctional || packageOrLockfileChanged ? true : metadataOnly ? false : null);
+
+  return {
+    previous_audited_head: previousAuditedHead,
+    current_head: currentHead,
+    head_changed: booleanValue(headChange.head_changed) ?? booleanValue(headChange.headChanged) ?? null,
+    pr_body_exact_head_stale: prBodyExactHeadStale,
+    delta_available: deltaAvailable,
+    functional_diff_changed: functionalDiffChanged,
+    metadata_only_conflict_resolution: metadataOnly === true,
+    new_protected_functional_surface: protectedFunctional === true,
+    package_or_lockfile_changed: packageOrLockfileChanged,
+    previous_audit_accepted: previousAuditAccepted,
+    validation_rerun: validationRerun,
+    allowed_paths_pass: allowedPathsPass,
+    forbidden_paths_pass: forbiddenPathsPass,
+    current_exact_head_audit_complete: currentExactHeadAuditComplete,
+    current_exact_head_full_reaudit_complete: currentExactHeadFullReauditComplete,
+    details: {
+      pr_body_exact_head: prBodyExactHead ?? null,
+      delta_changed_files: deltaFiles,
+      previous_audit_verdict: previousAuditVerdict || null,
+      current_audit_type: auditTypeFrom({
+        structuredAudit: input.structuredAudit,
+        auditChecklistReport: input.auditChecklistReport,
+      }) ?? null,
+    },
+  };
+}
+
+function fullReauditEvidenceComplete({ structuredAudit, auditChecklistReport }) {
+  const auditType = auditTypeFrom({ structuredAudit, auditChecklistReport });
+  if (!auditType) return false;
+  if (/scoped.*reaudit|scoped.*audit/.test(auditType)) return false;
+  return /full.*reaudit|full.*audit|independent.*audit|independent.*structured.*audit/.test(auditType);
+}
+
+function auditTypeFrom({ structuredAudit, auditChecklistReport }) {
+  const auditType = normalizeText(firstPresent(
+    structuredAudit?.audit_type,
+    structuredAudit?.document_type,
+    auditChecklistReport?.audit_type,
+    auditChecklistReport?.document_type,
+  ));
+  return auditType || null;
+}
+
+function scopedReauditReferencesHeads({ structuredAudit, auditChecklistReport, previousAuditedHead, currentHead }) {
+  const text = JSON.stringify([structuredAudit ?? {}, auditChecklistReport ?? {}]);
+  if (isPlaceholder(previousAuditedHead) || isPlaceholder(currentHead)) return false;
+  if (!text.includes(String(previousAuditedHead)) || !text.includes(String(currentHead))) return false;
+  const auditType = auditTypeFrom({ structuredAudit, auditChecklistReport });
+  if (!auditType) return true;
+  return /scoped.*reaudit|reaudit|full.*audit|independent.*audit/.test(auditType);
+}
+
+function isMetadataOnlyConflictFile(file) {
+  const normalized = normalizePath(file) ?? "";
+  return normalized.startsWith(".shirube/") ||
+    normalized.startsWith("docs/shirube/") ||
+    normalized.startsWith("docs/standards/") ||
+    normalized.includes("control-handoff") ||
+    normalized.includes("handoff") ||
+    normalized.includes("validation-evidence") ||
+    normalized.includes("owner-decision-pending") ||
+    normalized.endsWith(".md");
+}
+
+function isProtectedFunctionalFile(file) {
+  const normalized = normalizePath(file) ?? "";
+  return /^(src|app|api|lib|db|migrations|deploy|deployment)\//.test(normalized) ||
+    /^\.github\/workflows\//.test(normalized) ||
+    /^\.github\/(branch-protection|rulesets)\//.test(normalized) ||
+    /(^|\/)(schema|schemas|permissions|auth|policy|privacy|security)(\/|\.|-)/i.test(normalized) ||
+    isPackageOrLockfile(normalized);
+}
+
+function isPackageOrLockfile(file) {
+  const normalized = normalizePath(file) ?? "";
+  return /(^|\/)(package\.json|package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lockb|npm-shrinkwrap\.json)$/.test(normalized);
 }
 
 export function additionalReviewCompletionFrom(input = {}) {
@@ -535,6 +865,15 @@ function sourceMaterializedPathMatchesReport({ source, report, auditPath }) {
 function numberValue(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
+}
+
+function booleanValue(value) {
+  if (value === true || value === false) return value;
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (["true", "yes", "pass", "passed"].includes(normalized)) return true;
+  if (["false", "no", "fail", "failed"].includes(normalized)) return false;
+  return null;
 }
 
 function normalizePath(value) {

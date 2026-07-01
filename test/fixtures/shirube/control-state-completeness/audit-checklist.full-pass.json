@@ -1,0 +1,19 @@
+{
+  "schema": "shirube-audit-checklist-check/v1",
+  "generated_by": "scripts/shirube/check-audit-checklist.mjs",
+  "trusted_checker": true,
+  "verdict": "PASS",
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": "490",
+  "pr_head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "structured_audit_ref": "test/fixtures/shirube/control-state-completeness/structured-audit.full.yaml",
+  "audit_type": "full_reaudit",
+  "inventory": {
+    "checklist_items": 11,
+    "audit_items": 11,
+    "machine_evidence_refs": 9
+  },
+  "blockers": [],
+  "warnings": [],
+  "required_next_actions": []
+}

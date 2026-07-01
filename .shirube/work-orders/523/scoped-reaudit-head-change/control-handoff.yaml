@@ -1,0 +1,165 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+flow: full_operational
+control_handoff_id: CH-ADF-V3-SCOPED-REAUDIT-HEAD-CHANGE-001
+parent: "#519"
+parent_ssot: https://github.com/watchout/ai-dev-framework/pull/519
+work_order: watchout/ai-dev-framework#523
+pr: watchout/ai-dev-framework#523
+repo_local_issue: https://github.com/watchout/ai-dev-framework/pull/523
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@3b70d368bcbbcb1d200a941a8a0130aa54edf722
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+audit_required: true
+review_plan_required: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: independent_audit
+rps_scope:
+  shirube_owns:
+    - Exact-head head-change classification for PR rebase and conflict-resolution deltas.
+    - Scoped re-audit sequencing for metadata-only head changes.
+    - Full re-audit sequencing for functional, package, workflow, permission, and protected-surface deltas.
+    - Control-state and Rapid/Lite aggregate reporting for head_change state.
+  shirube_does_not_own:
+    - Audit synthesis.
+    - Owner approval synthesis.
+    - Automatic merge execution.
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - Target repository mutation.
+    - Runtime, API, DB, product, package, or lockfile behavior.
+cell:
+  CELL-ID: CELL-ADF-V3-SCOPED-REAUDIT-HEAD-CHANGE-001
+  cell_type: governance_gate
+  risk_class: R3
+  goal: Add machine-controlled scoped re-audit support for exact-head changes caused by rebase or conflict resolution without weakening full re-audit requirements.
+  acceptance_criteria:
+    - Head changes classify as full_reaudit_required, scoped_reaudit_allowed, metadata_refresh_required, or blocked_unclassified_head_change.
+    - Functional, package, workflow, permission, and protected-surface deltas require full independent re-audit.
+    - Metadata-only handoff/control evidence refresh can request scoped re-audit instead of full re-audit.
+    - Old exact-head audit cannot unlock merge at a new head by itself.
+    - Scoped re-audit must reference both previous audited head and current head.
+    - Owner exact-head approval remains unavailable until required full or scoped re-audit completes for the current head.
+  non_scope:
+    - audit synthesis
+    - owner approval synthesis
+    - automatic merge
+    - branch protection mutation
+    - ruleset mutation
+    - required check activation
+    - target repository mutation
+    - runtime/API/DB/product/package behavior
+  allowed_paths:
+    - .shirube/work-orders/523/scoped-reaudit-head-change/**
+    - docs/standards/shirube-control-state-completeness.md
+    - docs/standards/shirube-next-action-sequencing.md
+    - scripts/shirube/check-control-state-completeness.mjs
+    - scripts/shirube/next-action-sequencing.mjs
+    - scripts/shirube/run-rapid-lite-report.mjs
+    - test/fixtures/shirube/control-state-completeness/audit-checklist.full-pass.json
+    - test/fixtures/shirube/control-state-completeness/audit-checklist.scoped-pass.json
+    - test/fixtures/shirube/control-state-completeness/audit-source.full.json
+    - test/fixtures/shirube/control-state-completeness/audit-source.scoped.json
+    - test/fixtures/shirube/control-state-completeness/owner-decision.next.yaml
+    - test/fixtures/shirube/control-state-completeness/structured-audit.full.yaml
+    - test/fixtures/shirube/control-state-completeness/structured-audit.scoped.yaml
+    - test/fixtures/shirube/control-state-completeness/validation.head-change-runtime.yaml
+    - test/fixtures/shirube/control-state-completeness/validation.head-change-scoped.yaml
+    - test/fixtures/shirube/control-state-completeness/validation.head-change-stale.yaml
+    - test/shirube/control-state-completeness.test.ts
+    - test/shirube/next-action-sequencing.test.ts
+  forbidden_paths:
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/workflows/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - audit_policy
+      - audit_sequencing_policy
+      - owner_approval_policy
+      - merge_gate_policy
+      - governance_gate_policy
+      - shirube_control_state
+    touched: true
+    reason: This slice changes local/report-only Shirube audit and owner-decision sequencing policy. It does not synthesize audit, synthesize owner approval, enable enforcement, mutate branch protection, or mutate target repositories.
+  stop_conditions:
+    - audit synthesis is added
+    - owner approval is synthesized
+    - automatic merge is added
+    - required checks are activated
+    - branch protection or rulesets are mutated
+    - target repository mutation is added
+    - runtime/API/DB/product/package change is added
+validation:
+  required_commands:
+    - node --check scripts/shirube/next-action-sequencing.mjs scripts/shirube/check-control-state-completeness.mjs scripts/shirube/run-rapid-lite-report.mjs
+    - npm run test -- test/shirube/next-action-sequencing.test.ts test/shirube/control-state-completeness.test.ts
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - PR_head_SHA
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+design_rule_exceptions:
+  - rule_id: DR-CODE-001
+    scope:
+      - scripts/shirube/next-action-sequencing.mjs
+    approved_by: control-handoff
+    expires_at: 2026-12-31T00:00:00Z
+    reason: >
+      The duplicate-block heuristic is triggered by adjacent sequencing branches for the new head-change state machine.
+      This PR adds regression coverage and keeps the structure localized; broader extraction is outside this scoped policy slice.
+head_change:
+  previous_audited_head: e5681341414d517b851290442eaa8fa47686e98f
+  delta_changed_files:
+    - .shirube/work-orders/523/scoped-reaudit-head-change/audit-checklist.yaml
+    - .shirube/work-orders/523/scoped-reaudit-head-change/control-handoff.yaml
+  delta_available: true
+  metadata_only_conflict_resolution: true
+  functional_diff_changed: false
+  validation_rerun: true
+  allowed_paths_pass: true
+  forbidden_paths_pass: true
+  previous_audit_verdict: PASS_WITH_WARN
+owner_decision:
+  required_before_merge: true
+  blocked_until:
+    - scoped_reaudit_complete
+    - independent_audit_complete
+    - required_additional_reviews_complete
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: .shirube/work-orders/523/scoped-reaudit-head-change/owner-decision-pending.yaml
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/pull/523

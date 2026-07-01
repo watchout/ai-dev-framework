@@ -1,0 +1,30 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-ADF-V3-SCOPED-REAUDIT-HEAD-CHANGE-001
+repo: watchout/ai-dev-framework
+mode: report_only
+profile: hotel-lite
+framework_ref: watchout/ai-dev-framework@3b70d368bcbbcb1d200a941a8a0130aa54edf722
+updated_at: 2026-07-01T00:00:00Z
+owner_observed: true
+owner:
+  role: repo_owner
+  actor: watchout
+required_checks:
+  enabled: false
+branch_protection:
+  unchanged: true
+rulesets:
+  unchanged: true
+report_only_semantics:
+  aggregate_would_block_sets_owner_must_not_merge: true
+  ci_should_fail: false
+  owner_must_not_merge_without_exception: true
+non_scope:
+  - audit synthesis
+  - owner approval synthesis
+  - automatic merge
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - target repo mutation
+  - runtime/API/DB/product/package behavior

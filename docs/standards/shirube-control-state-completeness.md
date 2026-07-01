@@ -67,6 +67,7 @@ The gate reconciles:
 - protected surfaces against the matrix or configured taxonomy;
 - required evidence names against concrete evidence refs;
 - owner exact-head decision against PR/gate head;
+- head-change evidence after rebase/conflict resolution, including previous audited head, current head, delta classification, metadata-only status, validation rerun, and scoped/full audit requirements;
 - audit item records against required audit item sets;
 - checklist-required audit responses against `shirube-audit-checklist/v1` via `check-audit-checklist`, including independent source provenance and exact-head/repo/PR binding;
 - machine-derived `shirube-review-plan/v1` requirements for base audit, additional reviews, and owner-decision prerequisites;
@@ -103,11 +104,22 @@ If a review-plan report requires additional review, Control State Completeness c
 - `CSC-016 stale_artifact_reference`
 - `CSC-017 report_failure_ignored`
 - `CSC-018 required_additional_review_missing`
+- `HEAD-CHANGE-001 head_change_requires_classification_or_reaudit`
 
 For P0 audit checklist hardening, use the `AUDIT-LIST-*` findings from `check-audit-checklist` as the authoritative itemized audit readiness result. Missing, duplicate, unanswered, or unsupported executable audit items must block full operational audit acceptance even when freeform audit prose says PASS. Control State Completeness consumes `audit-checklist.json` when provided and propagates `AUDIT-LIST-*` blockers instead of converting them into freeform prose.
 
 Owner exact-head approval before required independent audit completion is invalid and blocks with `OWNER-SEQ-001`. The correct next action is independent audit completion for the current exact head. See [Shirube Next-Action Sequencing](shirube-next-action-sequencing.md).
 Owner exact-head approval before required additional review completion is invalid and blocks with `REVIEW-SEQ-001`. The correct next action is the review plan's required additional review.
+
+When a PR head changes after audit, Control State Completeness emits `head_change` and follows the sequencing decision:
+
+- stale PR body/control exact-head metadata -> `METADATA_REFRESH_REQUIRED` / `refresh_exact_head_metadata`
+- metadata-only conflict resolution with prior accepted audit -> `SCOPED_REAUDIT_REQUIRED` / `request_scoped_reaudit`
+- functional/package/protected-surface delta -> `AUDIT_REQUIRED` / `request_independent_audit`
+- missing delta facts -> `AUDIT_REQUIRED` / `classify_head_change_delta`
+
+Scoped re-audit does not reuse the old audit as final evidence. It requires a new exact-head audit artifact for the current head that references both the previous audited head and the current head.
+When the classification is `full_reaudit_required`, a current-head `scoped_reaudit` artifact remains insufficient; owner approval stays disallowed until a full or independent re-audit artifact is present for the current head.
 
 ## Runner Integration
 

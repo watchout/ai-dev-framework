@@ -240,6 +240,8 @@ export function buildControlStateCompletenessReport(input) {
     actualPr: expectedPr(input),
     currentPhase: input.lifecycleReport?.current_phase,
     blockingFindings: blockers,
+    headChange: headChangeInput(input),
+    prBodyExactHead: handoffExactHead(input.handoff),
   });
   if (auditRequired && isObject(input.auditChecklistReport) && sequencing.audit_completion?.complete !== true) {
     blockers.push(finding("CSC-012", {
@@ -265,6 +267,7 @@ export function buildControlStateCompletenessReport(input) {
     audit_completion: sequencing.audit_completion,
     additional_review_completion: sequencing.additional_review_completion,
     owner_decision_status: sequencing.owner_decision_status,
+    head_change: sequencing.head_change,
     would_block: state === "CONTROL_BLOCKED" || state === "CONTROL_FAILURE" || state === "CONTROL_PARTIAL",
     owner_must_not_merge: state !== "CONTROL_COMPLETE" && state !== "CONTROL_COMPLETE_WITH_WARNINGS",
     inventory,
@@ -308,6 +311,7 @@ function buildInventory(input) {
     required_evidence: asStringArray(handoff?.validation?.required_evidence),
     validation_evidence: inventoryRecord(input.validationPath, input.validation),
     owner_decision: inventoryRecord(input.ownerDecisionPath, input.ownerDecision),
+    head_change: headChangeInput(input),
     audit_checklist: inventoryRecord(input.auditChecklistPath, input.auditChecklist),
     audit_record: inventoryRecord(input.auditRecordPath, input.auditRecord),
     additional_reviews: asArray(input.additionalReviewReports).map((report) => ({
@@ -569,6 +573,61 @@ function expectedHead(input) {
     input.handoff?.pr_head_sha,
     input.executionContextReport?.evidence?.find?.((entry) => entry.code === "actual_head")?.detail,
   );
+}
+
+function handoffExactHead(handoff) {
+  return firstPresent(
+    handoff?.pr_head_sha,
+    handoff?.exact_head_sha,
+    handoff?.target_head,
+    handoff?.head_sha,
+    handoff?.owner_decision?.exact_head_sha,
+  );
+}
+
+function headChangeInput(input) {
+  const source = [
+    input.validation?.head_change,
+    input.handoff?.head_change,
+    input.controlState?.head_change,
+    input.aggregate?.head_change,
+    input.auditChecklistReport?.head_change,
+  ].find(isObject) ?? {};
+  const currentHead = expectedHead(input);
+  const previousAuditedHead = firstPresent(
+    source.previous_audited_head,
+    source.previous_head,
+    input.auditChecklistReport?.audit_completion?.observed_head,
+    auditReportHead(input.auditChecklistReport),
+    auditRecordHead(input.structuredAudit),
+    auditRecordHead(input.auditRecord),
+  );
+  return {
+    ...source,
+    previous_audited_head: previousAuditedHead,
+    current_head: firstPresent(source.current_head, currentHead),
+    pr_body_exact_head: firstPresent(source.pr_body_exact_head, handoffExactHead(input.handoff)),
+    validation_rerun: source.validation_rerun ?? validationReranAtHead(input, currentHead),
+    allowed_paths_pass: source.allowed_paths_pass ?? pathScopeFinding(input) === null,
+    forbidden_paths_pass: source.forbidden_paths_pass ?? pathScopeFinding(input) === null,
+    previous_audit_verdict: firstPresent(source.previous_audit_verdict, input.auditChecklistReport?.verdict),
+  };
+}
+
+function validationReranAtHead(input, currentHead) {
+  const validationHead = firstPresent(input.validation?.pr_head_sha, input.validation?.exact_head_sha, input.validation?.head_sha);
+  const hasResults = asArray(input.validation?.results).length > 0 ||
+    asArray(input.validation?.validation_results).length > 0 ||
+    input.validation?.result === "PASS";
+  return !isPlaceholder(currentHead) && !isPlaceholder(validationHead) && String(validationHead) === String(currentHead) && hasResults;
+}
+
+function auditReportHead(report) {
+  return firstPresent(report?.exact_head_sha, report?.pr_head_sha, report?.head_sha, report?.target_head);
+}
+
+function auditRecordHead(record) {
+  return firstPresent(record?.exact_head_sha, record?.pr_head_sha, record?.head_sha, record?.target_head);
 }
 
 function expectedRepo(input) {
@@ -942,6 +1001,7 @@ function actionFor(itemId) {
     "CSC-017": "Treat failed reports as blocking evidence and rerun/fix the failed gate.",
     "CSC-018": "Provide required additional review evidence before owner decision.",
     "CSC-W001": "Review enforcement policy warnings before merge or graduation.",
+    "HEAD-CHANGE-001": "Refresh exact-head metadata or complete the required scoped/full re-audit for the current PR head.",
     "OWNER-SEQ-001": "Complete independent exact-head audit before requesting or accepting owner exact-head approval.",
     "REVIEW-SEQ-001": "Complete required additional reviews before requesting or accepting owner exact-head approval.",
   };

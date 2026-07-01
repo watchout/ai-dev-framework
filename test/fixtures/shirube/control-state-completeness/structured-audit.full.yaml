@@ -1,0 +1,15 @@
+schema_version: shirube-structured-audit/v1
+audit_type: full_reaudit
+target_repo: watchout/ai-dev-framework
+target_pr: "490"
+exact_head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+pr_head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+reviewer_actor: codex-audit
+implementation_actor: codex-adf
+items:
+  - item_id: AUDIT-001
+    result: PASS
+    evidence_refs:
+      - machine-evidence
+    confidence: high
+    notes: Full re-audit verified current-head functional delta.

@@ -1,0 +1,34 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-ADF-V3-SCOPED-REAUDIT-HEAD-CHANGE-001
+repo: watchout/ai-dev-framework
+profile: hotel-lite
+work_order: watchout/ai-dev-framework#523
+status: CURRENT_REALITY_RECORDED
+observed_at: 2026-07-01T00:00:00Z
+summary: Existing ADF repository already contains Rapid/Lite gates, review-plan sequencing, audit checklist, and comment-backed audit support.
+current_reality:
+  repo_spec:
+    status: present
+    path: .shirube/repo-spec.yaml
+  rapid_lite_workflow:
+    status: present
+    path: .github/workflows/shirube-rapid-lite-gates-report.yml
+  gate_scripts:
+    status: present
+    paths:
+      - scripts/shirube/next-action-sequencing.mjs
+      - scripts/shirube/check-control-state-completeness.mjs
+      - scripts/shirube/run-rapid-lite-report.mjs
+  tests:
+    status: present
+    paths:
+      - test/shirube/next-action-sequencing.test.ts
+      - test/shirube/control-state-completeness.test.ts
+legacy_sources: []
+known_drift: []
+material_drift: []
+unsafe_changes: []
+llm_truth_claims: []
+unknowns: []
+legacy_is_truth: false
+llm_reconciliation_as_truth: false
