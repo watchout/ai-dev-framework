@@ -23,6 +23,7 @@ forbidden_next_actions:
 
 When audit is required, independent audit completion precedes owner exact-head approval.
 When the machine-derived review plan requires additional protected review, that review also precedes owner exact-head approval.
+When a PR head changes after audit or owner approval, the old exact-head evidence is no longer final evidence for the new head. Shirube must classify the head-change delta before it can decide whether a full audit, scoped re-audit, or metadata refresh is required.
 
 Audit completion requires all of:
 
@@ -43,6 +44,31 @@ Fields such as `trusted_base_workflow`, `generated_by`, or `resolver_schema` are
 Sequencing also recomputes maker/checker separation from the structured audit artifact itself; a checklist report that says PASS cannot override a reviewer/implementation actor match.
 
 ## Sequencing Rules
+
+If PR body/control metadata still names the old exact head after rebase or conflict resolution:
+
+- `current_phase: METADATA_REFRESH_REQUIRED`
+- `next_action.action: refresh_exact_head_metadata`
+- `owner_approval_allowed: false`
+- `merge_ready_allowed: false`
+
+If the head changed and the delta is metadata-only conflict resolution or active-handoff restoration:
+
+- `current_phase: SCOPED_REAUDIT_REQUIRED`
+- `next_action.action: request_scoped_reaudit`
+- `owner_approval_allowed: false`
+- `merge_ready_allowed: false`
+
+Scoped re-audit is only allowed when the previous audited head and current head are known, the delta is available, the functional diff is unchanged or narrowed, no runtime/API/DB/schema/package/lockfile/workflow/permission surface was newly introduced, allowed and forbidden paths still pass, current-head validation has rerun, PR exact-head metadata is current, and the previous audit verdict was `PASS` or accepted `PASS_WITH_WARN`.
+
+If the head changed and functional behavior, package/lockfile state, or protected runtime surfaces changed:
+
+- `current_phase: AUDIT_REQUIRED`
+- `next_action.action: request_independent_audit`
+- `owner_approval_allowed: false`
+- `merge_ready_allowed: false`
+
+For `full_reaudit_required`, evidence marked `audit_type: scoped_reaudit` is not sufficient even when it targets the current exact head. The current-head audit evidence must be a full or independent re-audit artifact, such as `audit_type: full_reaudit` or `audit_type: independent_structured_audit`.
 
 If audit is required and not complete:
 
@@ -73,6 +99,12 @@ If owner exact-head approval appears before required audit completion:
 - owner approval is not accepted
 - merge readiness is not accepted
 
+If owner exact-head approval appears before required scoped re-audit completion:
+
+- the report must block with `HEAD-CHANGE-001`
+- owner approval is not accepted
+- merge readiness is not accepted
+
 If owner exact-head approval appears before required additional review completion:
 
 - the report must block with `REVIEW-SEQ-001`
@@ -94,6 +126,32 @@ For Full Operational YAML stub UX, generate or present the audit stub before the
 4. owner exact-head decision
 
 The owner decision stub is policy-only until independent audit completion exists. Pending owner files must not synthesize approval.
+
+## Scoped Re-Audit For Head Changes
+
+Rebases and conflict-resolution commits correctly invalidate previous exact-head audit and owner approval. Shirube may allow a scoped re-audit instead of a full audit only for machine-classified metadata-only deltas. The scoped re-audit must still be independent, machine-readable, and exact-head bound to the new current head. It must reference both the previous audited head and the current head so reviewers can verify the delta that was scoped.
+
+The `head_change` report object records:
+
+```yaml
+head_change:
+  previous_audited_head: <sha>
+  current_head: <sha>
+  classification: scoped_reaudit_allowed
+  functional_diff_changed: false
+  metadata_only_conflict_resolution: true
+  required_next_action: request_scoped_reaudit
+```
+
+Allowed classifications are:
+
+- `full_reaudit_required`
+- `scoped_reaudit_allowed`
+- `metadata_refresh_required`
+- `blocked_unclassified_head_change`
+
+Old audit evidence whose exact head does not match the current PR head must not unlock owner approval or merge readiness by itself.
+Scoped re-audit evidence must not unlock owner approval when the head-change classifier says `full_reaudit_required`.
 
 ## Non-Scope
 

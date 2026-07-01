@@ -67,6 +67,7 @@ function expectShape(result: { json: any }): void {
   expect(result.json).toHaveProperty("audit_required");
   expect(result.json).toHaveProperty("audit_completion");
   expect(result.json).toHaveProperty("owner_decision_status");
+  expect(result.json).toHaveProperty("head_change");
   expect(result.json).toHaveProperty("would_block");
   expect(result.json).toHaveProperty("owner_must_not_merge");
   expect(result.json).toHaveProperty("inventory");
@@ -248,6 +249,123 @@ describe("Shirube control state completeness check", () => {
     expect(result.json.next_action.action).toBe("request_owner_exact_head_decision");
     expect(result.json.owner_approval_allowed).toBe(true);
     expect(result.json.merge_ready_allowed).toBe(false);
+  });
+
+  it("requires metadata refresh when PR body exact-head metadata is stale after rebase", () => {
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--validation": fixture("validation.head-change-stale.yaml"),
+      "--actual-head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "--owner-decision": null,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.current_phase).toBe("METADATA_REFRESH_REQUIRED");
+    expect(result.json.next_action.action).toBe("refresh_exact_head_metadata");
+    expect(result.json.owner_approval_allowed).toBe(false);
+    expect(result.json.head_change.classification).toBe("metadata_refresh_required");
+    expect(blockerIds(result)).toContain("HEAD-CHANGE-001");
+  });
+
+  it("requires scoped re-audit for metadata-only conflict resolution head changes", () => {
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--validation": fixture("validation.head-change-scoped.yaml"),
+      "--actual-head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "--owner-decision": null,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.current_phase).toBe("SCOPED_REAUDIT_REQUIRED");
+    expect(result.json.next_action.action).toBe("request_scoped_reaudit");
+    expect(result.json.owner_approval_allowed).toBe(false);
+    expect(result.json.head_change.classification).toBe("scoped_reaudit_allowed");
+    expect(blockerIds(result)).toContain("HEAD-CHANGE-001");
+  });
+
+  it("blocks owner approval before scoped re-audit at the current head", () => {
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--validation": fixture("validation.head-change-scoped.yaml"),
+      "--actual-head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "--owner-decision": fixture("owner-decision.next.yaml"),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.current_phase).toBe("SCOPED_REAUDIT_REQUIRED");
+    expect(result.json.owner_approval_allowed).toBe(false);
+    expect(result.json.merge_ready_allowed).toBe(false);
+    expect(blockerIds(result)).toContain("HEAD-CHANGE-001");
+  });
+
+  it("does not satisfy full re-audit with scoped re-audit evidence at the current head", () => {
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--validation": fixture("validation.head-change-runtime.yaml"),
+      "--actual-head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "--audit-checklist-report": fixture("audit-checklist.scoped-pass.json"),
+      "--structured-audit": fixture("structured-audit.scoped.yaml"),
+      "--audit-source": fixture("audit-source.scoped.json"),
+      "--trusted-audit-source": true,
+      "--owner-decision": fixture("owner-decision.next.yaml"),
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.current_phase).toBe("AUDIT_REQUIRED");
+    expect(result.json.next_action.action).toBe("request_independent_audit");
+    expect(result.json.owner_approval_allowed).toBe(false);
+    expect(result.json.merge_ready_allowed).toBe(false);
+    expect(result.json.head_change.classification).toBe("full_reaudit_required");
+    expect(result.json.head_change.required_next_action).toBe("request_independent_audit");
+    expect(blockerIds(result)).toContain("HEAD-CHANGE-001");
+  });
+
+  it("requests owner decision after full re-audit passes at the current head", () => {
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--validation": fixture("validation.head-change-runtime.yaml"),
+      "--actual-head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "--audit-checklist-report": fixture("audit-checklist.full-pass.json"),
+      "--structured-audit": fixture("structured-audit.full.yaml"),
+      "--audit-source": fixture("audit-source.full.json"),
+      "--trusted-audit-source": true,
+      "--owner-decision": null,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.current_phase).toBe("OWNER_DECISION_REQUIRED");
+    expect(result.json.next_action.action).toBe("request_owner_exact_head_decision");
+    expect(result.json.owner_approval_allowed).toBe(true);
+    expect(result.json.merge_ready_allowed).toBe(false);
+    expect(result.json.head_change.classification).toBe("full_reaudit_required");
+    expect(result.json.head_change.required_next_action).toBeNull();
+  });
+
+  it("requests owner decision after scoped re-audit passes at the new head", () => {
+    const result = check({
+      "--handoff": fixture("handoff.audit-required.yaml"),
+      "--validation": fixture("validation.head-change-scoped.yaml"),
+      "--actual-head": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "--audit-checklist-report": fixture("audit-checklist.scoped-pass.json"),
+      "--structured-audit": fixture("structured-audit.scoped.yaml"),
+      "--audit-source": fixture("audit-source.scoped.json"),
+      "--trusted-audit-source": true,
+      "--owner-decision": null,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expectShape(result);
+    expect(result.json.current_phase).toBe("OWNER_DECISION_REQUIRED");
+    expect(result.json.next_action.action).toBe("request_owner_exact_head_decision");
+    expect(result.json.owner_approval_allowed).toBe(true);
+    expect(result.json.merge_ready_allowed).toBe(false);
+    expect(result.json.head_change.classification).toBe("scoped_reaudit_allowed");
+    expect(blockerIds(result)).not.toContain("HEAD-CHANGE-001");
   });
 
   it("propagates audit checklist blockers into control-state completeness", () => {

@@ -1,0 +1,14 @@
+{
+  "schema_version": "shirube-comment-backed-audit-source/v1",
+  "generated_by": "scripts/shirube/resolve-structured-audit-ref.mjs",
+  "resolver_schema": "shirube-structured-audit-ref-resolution/v1",
+  "source_type": "github_pr_comment",
+  "source_comment_url": "https://github.com/watchout/ai-dev-framework/pull/490#issuecomment-full",
+  "target_repo": "watchout/ai-dev-framework",
+  "target_pr": "490",
+  "exact_head_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "materialized_path": "test/fixtures/shirube/control-state-completeness/structured-audit.full.yaml",
+  "trusted_base_workflow": true,
+  "target_branch_mutated": false,
+  "owner_approval_synthesized": false
+}

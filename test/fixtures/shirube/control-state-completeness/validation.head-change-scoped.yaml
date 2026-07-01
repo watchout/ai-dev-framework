@@ -1,0 +1,24 @@
+schema_version: shirube-validation-evidence/v1
+pr_head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+commands:
+  - npm test
+results:
+  - command: npm test
+    result: PASS
+head_change:
+  previous_audited_head: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  current_head: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  pr_body_exact_head: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+  delta_changed_files:
+    - .shirube/control-handoffs/CH-001.yaml
+  metadata_only_conflict_resolution: true
+  functional_diff_changed: false
+  validation_rerun: true
+  allowed_paths_pass: true
+  forbidden_paths_pass: true
+  previous_audit_verdict: PASS
+evidence_refs:
+  - pr_head_sha
+  - changed_files
+  - validation_commands
+  - validation_results

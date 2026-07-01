@@ -1,0 +1,17 @@
+schema_version: shirube-structured-audit/v1
+audit_type: scoped_reaudit
+target_repo: watchout/ai-dev-framework
+target_pr: "490"
+exact_head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+pr_head_sha: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+previous_audited_head: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+current_head: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+reviewer_actor: codex-audit
+implementation_actor: codex-adf
+items:
+  - item_id: AUDIT-001
+    result: PASS
+    evidence_refs:
+      - machine-evidence
+    confidence: high
+    notes: Scoped re-audit verified metadata-only head change.

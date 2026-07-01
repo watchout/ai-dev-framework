@@ -466,6 +466,7 @@ function gateRecordFromReport({ gate, command, outputPath, exitCode, report }) {
     audit_completion: report.audit_completion ?? null,
     additional_review_completion: report.additional_review_completion ?? null,
     owner_decision_status: report.owner_decision_status ?? null,
+    head_change: report.head_change ?? null,
     disposition: report.disposition ?? report.adoption?.disposition ?? null,
     would_block: reportFailed || report.would_block === true || report.verdict === "BLOCKED",
     blockers: findings(report, "blockers"),
@@ -494,6 +495,7 @@ function skipped(gate, reason) {
     audit_completion: null,
     additional_review_completion: null,
     owner_decision_status: null,
+    head_change: null,
     disposition: null,
     would_block: false,
     blockers: [],
@@ -548,6 +550,7 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
     audit_completion: sequencing.audit_completion,
     additional_review_completion: sequencing.additional_review_completion,
     owner_decision_status: sequencing.owner_decision_status,
+    head_change: sequencing.head_change ?? null,
     report_failed: reportFailed,
     would_block: wouldBlock,
     owner_must_not_merge: wouldBlock,
@@ -571,6 +574,7 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
       audit_completion: record.audit_completion,
       additional_review_completion: record.additional_review_completion,
       owner_decision_status: record.owner_decision_status,
+      head_change: record.head_change ?? null,
       disposition: record.disposition,
       would_block: record.would_block,
       blockers: record.blockers,
@@ -606,6 +610,7 @@ function aggregateSequencing(records) {
       audit_completion: preferred.audit_completion,
       additional_review_completion: preferred.additional_review_completion ?? null,
       owner_decision_status: preferred.owner_decision_status,
+      head_change: preferred.head_change ?? null,
     };
   }
 
@@ -625,6 +630,7 @@ function aggregateSequencing(records) {
       audit_completion: null,
       additional_review_completion: null,
       owner_decision_status: null,
+      head_change: sequencing.head_change ?? null,
     };
   }
 
@@ -643,6 +649,7 @@ function aggregateSequencing(records) {
     audit_completion: null,
     additional_review_completion: null,
     owner_decision_status: null,
+    head_change: null,
   };
 }
 
@@ -1037,7 +1044,9 @@ function discoveryAmbiguityRecord(name, candidates) {
     ],
     audit_required: null,
     audit_completion: null,
+    additional_review_completion: null,
     owner_decision_status: null,
+    head_change: null,
     disposition: null,
     would_block: true,
     blockers: [finding],
@@ -1115,7 +1124,9 @@ function failureRecord(gate, finding) {
     forbidden_next_actions: [],
     audit_required: null,
     audit_completion: null,
+    additional_review_completion: null,
     owner_decision_status: null,
+    head_change: null,
     disposition: null,
     would_block: true,
     blockers: [finding],

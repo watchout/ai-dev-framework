@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { buildNextActionSequencing } from "../../scripts/shirube/next-action-sequencing.mjs";
 
 const head = "1111111111111111111111111111111111111111";
+const nextHead = "2222222222222222222222222222222222222222";
 
 function auditReport(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {
@@ -522,5 +523,257 @@ describe("Shirube audit/owner next-action sequencing", () => {
 
     expect(fixture.indexOf("stub: structured_audit")).toBeLessThan(fixture.indexOf("stub: owner_exact_head_decision"));
     expect(fixture).toContain("requires:\n      - independent_audit_complete");
+  });
+
+  it("requires full re-audit when a head change includes runtime diff changes", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: ["src/runtime.ts"],
+        validation_rerun: true,
+      },
+    });
+
+    expect(result.head_change.classification).toBe("full_reaudit_required");
+    expect(result.current_phase).toBe("AUDIT_REQUIRED");
+    expect(result.next_action.action).toBe("request_independent_audit");
+    expect(result.owner_approval_allowed).toBe(false);
+  });
+
+  it("does not satisfy full re-audit with scoped re-audit evidence at the current head", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: ["src/runtime.ts"],
+        functional_diff_changed: true,
+        validation_rerun: true,
+        previous_audit_verdict: "PASS",
+      },
+      auditChecklistReport: auditReport({ pr_head_sha: nextHead, audit_type: "scoped_reaudit" }),
+      structuredAudit: structuredAudit({
+        exact_head_sha: nextHead,
+        pr_head_sha: nextHead,
+        audit_type: "scoped_reaudit",
+        previous_audited_head: head,
+        current_head: nextHead,
+      }),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+      auditSource: source({ exact_head_sha: nextHead }),
+      auditSourceTrusted: true,
+      ownerDecision: owner({ exact_head_sha: nextHead }),
+    });
+
+    expect(result.audit_completion.complete).toBe(true);
+    expect(result.head_change.classification).toBe("full_reaudit_required");
+    expect(result.head_change.required_next_action).toBe("request_independent_audit");
+    expect(result.current_phase).toBe("AUDIT_REQUIRED");
+    expect(result.next_action.action).toBe("request_independent_audit");
+    expect(result.owner_approval_allowed).toBe(false);
+    expect(result.merge_ready_allowed).toBe(false);
+    expect(result.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("HEAD-CHANGE-001");
+  });
+
+  it("accepts explicit full re-audit evidence at the current head before owner decision", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: ["src/runtime.ts"],
+        functional_diff_changed: true,
+        validation_rerun: true,
+        previous_audit_verdict: "PASS",
+      },
+      auditChecklistReport: auditReport({ pr_head_sha: nextHead, audit_type: "full_reaudit" }),
+      structuredAudit: structuredAudit({
+        exact_head_sha: nextHead,
+        pr_head_sha: nextHead,
+        audit_type: "full_reaudit",
+      }),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+      auditSource: source({ exact_head_sha: nextHead }),
+      auditSourceTrusted: true,
+    });
+
+    expect(result.audit_completion.complete).toBe(true);
+    expect(result.head_change.classification).toBe("full_reaudit_required");
+    expect(result.head_change.required_next_action).toBeNull();
+    expect(result.current_phase).toBe("OWNER_DECISION_REQUIRED");
+    expect(result.next_action.action).toBe("request_owner_exact_head_decision");
+    expect(result.owner_approval_allowed).toBe(true);
+  });
+
+  it("requires full re-audit when a head change includes package or lockfile changes", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: ["package.json"],
+        validation_rerun: true,
+      },
+    });
+
+    expect(result.head_change.classification).toBe("full_reaudit_required");
+    expect(result.head_change.functional_diff_changed).toBe(true);
+    expect(result.next_action.action).toBe("request_independent_audit");
+  });
+
+  it("allows scoped re-audit for metadata-only active handoff restoration", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: [".shirube/control-handoffs/CH-001.yaml"],
+        metadata_only_conflict_resolution: true,
+        functional_diff_changed: false,
+        validation_rerun: true,
+        allowed_paths_pass: true,
+        forbidden_paths_pass: true,
+        previous_audit_verdict: "PASS_WITH_WARN",
+      },
+    });
+
+    expect(result.head_change.classification).toBe("scoped_reaudit_allowed");
+    expect(result.current_phase).toBe("SCOPED_REAUDIT_REQUIRED");
+    expect(result.next_action.action).toBe("request_scoped_reaudit");
+    expect(result.owner_approval_allowed).toBe(false);
+  });
+
+  it("requires metadata refresh when PR body exact-head metadata is stale", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        pr_body_exact_head: head,
+        delta_changed_files: [".shirube/control-handoffs/CH-001.yaml"],
+      },
+    });
+
+    expect(result.head_change.classification).toBe("metadata_refresh_required");
+    expect(result.current_phase).toBe("METADATA_REFRESH_REQUIRED");
+    expect(result.next_action.action).toBe("refresh_exact_head_metadata");
+    expect(result.owner_approval_allowed).toBe(false);
+  });
+
+  it("moves to owner decision after scoped re-audit passes at the new head", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: [".shirube/control-handoffs/CH-001.yaml"],
+        metadata_only_conflict_resolution: true,
+        functional_diff_changed: false,
+        validation_rerun: true,
+        allowed_paths_pass: true,
+        forbidden_paths_pass: true,
+        previous_audit_verdict: "PASS",
+      },
+      auditChecklistReport: auditReport({ pr_head_sha: nextHead }),
+      structuredAudit: structuredAudit({
+        exact_head_sha: nextHead,
+        pr_head_sha: nextHead,
+        audit_type: "scoped_reaudit",
+        previous_audited_head: head,
+        current_head: nextHead,
+      }),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+      auditSource: source({ exact_head_sha: nextHead }),
+      auditSourceTrusted: true,
+    });
+
+    expect(result.head_change.classification).toBe("scoped_reaudit_allowed");
+    expect(result.head_change.required_next_action).toBeNull();
+    expect(result.current_phase).toBe("OWNER_DECISION_REQUIRED");
+    expect(result.next_action.action).toBe("request_owner_exact_head_decision");
+    expect(result.owner_approval_allowed).toBe(true);
+  });
+
+  it("blocks owner approval before scoped re-audit completes", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: [".shirube/control-handoffs/CH-001.yaml"],
+        metadata_only_conflict_resolution: true,
+        functional_diff_changed: false,
+        validation_rerun: true,
+        allowed_paths_pass: true,
+        forbidden_paths_pass: true,
+        previous_audit_verdict: "PASS",
+      },
+      ownerDecision: owner({ exact_head_sha: nextHead }),
+    });
+
+    expect(result.current_phase).toBe("SCOPED_REAUDIT_REQUIRED");
+    expect(result.next_action.action).toBe("request_scoped_reaudit");
+    expect(result.blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("HEAD-CHANGE-001");
+    expect(result.owner_approval_allowed).toBe(false);
+  });
+
+  it("does not let an old exact-head audit unlock merge after a head change", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: [".shirube/control-handoffs/CH-001.yaml"],
+        metadata_only_conflict_resolution: true,
+        functional_diff_changed: false,
+        validation_rerun: true,
+        allowed_paths_pass: true,
+        forbidden_paths_pass: true,
+        previous_audit_verdict: "PASS",
+      },
+      auditChecklistReport: auditReport(),
+      structuredAudit: structuredAudit(),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+      auditSource: source(),
+      auditSourceTrusted: true,
+      ownerDecision: owner({ exact_head_sha: nextHead }),
+    });
+
+    expect(result.audit_completion.exact_head_matches).toBe(false);
+    expect(result.current_phase).toBe("SCOPED_REAUDIT_REQUIRED");
+    expect(result.merge_ready_allowed).toBe(false);
+  });
+
+  it("requires scoped re-audit evidence to reference both previous and current heads", () => {
+    const result = sequence({
+      actualHead: nextHead,
+      headChange: {
+        previous_audited_head: head,
+        current_head: nextHead,
+        delta_changed_files: [".shirube/control-handoffs/CH-001.yaml"],
+        metadata_only_conflict_resolution: true,
+        functional_diff_changed: false,
+        validation_rerun: true,
+        allowed_paths_pass: true,
+        forbidden_paths_pass: true,
+        previous_audit_verdict: "PASS",
+      },
+      auditChecklistReport: auditReport({ pr_head_sha: nextHead }),
+      structuredAudit: structuredAudit({
+        exact_head_sha: nextHead,
+        pr_head_sha: nextHead,
+        audit_type: "scoped_reaudit",
+      }),
+      structuredAuditPath: "test/fixtures/shirube/audit-checklist/audit.pass.yaml",
+      auditSource: source({ exact_head_sha: nextHead }),
+      auditSourceTrusted: true,
+    });
+
+    expect(result.audit_completion.complete).toBe(true);
+    expect(result.head_change.classification).toBe("scoped_reaudit_allowed");
+    expect(result.current_phase).toBe("SCOPED_REAUDIT_REQUIRED");
+    expect(result.next_action.action).toBe("request_scoped_reaudit");
   });
 });
