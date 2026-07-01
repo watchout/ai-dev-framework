@@ -1,0 +1,36 @@
+{
+  "fixture_id": "GM-S3-03-fixture-10",
+  "observed": {
+    "curve_id": "GM-LEN-R1-2026-07-02-A",
+    "trial_id": "GM-S3-03",
+    "bucket": "S3",
+    "risk_tier": "R1",
+    "premerge_base_head": "45c33e6bcee2163fa43ed014bed50c1cab9495f6",
+    "target_base_branch": "codex/527-script-control-fitness",
+    "scope": {
+      "docs_spec_fixture_test_only": true,
+      "runtime_api_db_product_security_touched": false,
+      "r2_r3_trials_executed": false
+    },
+    "gate": {
+      "authority": "deterministic-script",
+      "enforcement_mode": "enforced",
+      "required_local_validator": "check-script-control-fitness"
+    },
+    "metrics": {
+      "planned_fixture_assertion_count": 16,
+      "control_point_count": 6
+    },
+    "report": {
+      "label": "pre-merge pilot evidence",
+      "policy_change_requested": false
+    }
+  },
+  "acceptance_assertions": [
+    {
+      "id": "GM-S3-03-A-10",
+      "path": "gate.authority",
+      "expected": "deterministic-script"
+    }
+  ]
+}

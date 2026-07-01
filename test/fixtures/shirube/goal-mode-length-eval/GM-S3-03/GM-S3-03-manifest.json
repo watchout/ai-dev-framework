@@ -1,0 +1,24 @@
+{
+  "trial_id": "GM-S3-03",
+  "curve_id": "GM-LEN-R1-2026-07-02-A",
+  "bucket": "S3",
+  "planned_fixture_assertion_count": 16,
+  "control_point_count": 6,
+  "fixture_files": [
+    "GM-S3-03-fixture-01.json",
+    "GM-S3-03-fixture-02.json",
+    "GM-S3-03-fixture-03.json",
+    "GM-S3-03-fixture-04.json",
+    "GM-S3-03-fixture-05.json",
+    "GM-S3-03-fixture-06.json",
+    "GM-S3-03-fixture-07.json",
+    "GM-S3-03-fixture-08.json",
+    "GM-S3-03-fixture-09.json",
+    "GM-S3-03-fixture-10.json",
+    "GM-S3-03-fixture-11.json",
+    "GM-S3-03-fixture-12.json",
+    "GM-S3-03-fixture-13.json",
+    "GM-S3-03-fixture-14.json",
+    "GM-S3-03-fixture-15.json"
+  ]
+}
