@@ -107,5 +107,8 @@ jobs:
             --pr-number "$PR_NUMBER" \
             --head-sha "$HEAD_SHA" \
             --base-branch "$BASE_BRANCH" \
+            --expected-context validate-control-points \
+            --expected-context report-only-expiry \
+            --expected-context required-checks-actually-ran \
             --github-token-env GITHUB_TOKEN \
             --format json

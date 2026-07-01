@@ -28,6 +28,7 @@ export async function buildRequiredChecksRanReport(input) {
   const prNumber = stringValue(input.prNumber);
   const timeoutMinutes = Number(input.timeoutMinutes ?? DEFAULT_TIMEOUT_MINUTES);
   const now = new Date(input.now ?? new Date().toISOString());
+  const expectedContexts = normalizeExpectedContexts(input.expectedContexts);
   const blockers = [];
   const warnings = [];
   const failures = [];
@@ -41,12 +42,14 @@ export async function buildRequiredChecksRanReport(input) {
   let checkRuns;
   let statuses;
   try {
-    branchProtection = input.branchProtection ?? await fetchJson({
-      repo,
-      path: `/repos/${repo}/branches/${encodeURIComponent(baseBranch)}/protection`,
-      token: input.token,
-      accept: "application/vnd.github+json",
-    });
+    if (expectedContexts.length === 0) {
+      branchProtection = input.branchProtection ?? await fetchJson({
+        repo,
+        path: `/repos/${repo}/branches/${encodeURIComponent(baseBranch)}/protection`,
+        token: input.token,
+        accept: "application/vnd.github+json",
+      });
+    }
     checkRuns = input.checkRuns ?? await fetchJson({
       repo,
       path: `/repos/${repo}/commits/${headSha}/check-runs?per_page=100`,
@@ -64,7 +67,7 @@ export async function buildRequiredChecksRanReport(input) {
     return report({ repo, prNumber, headSha, baseBranch, blockers, warnings, failures });
   }
 
-  if (isBranchNotProtected(branchProtection)) {
+  if (expectedContexts.length === 0 && isBranchNotProtected(branchProtection)) {
     blockers.push(finding("RCV-001"));
     return report({
       repo,
@@ -80,7 +83,8 @@ export async function buildRequiredChecksRanReport(input) {
     });
   }
 
-  const requiredContexts = requiredContextsFromProtection(branchProtection);
+  const requiredContexts = expectedContexts.length > 0 ? expectedContexts : requiredContextsFromProtection(branchProtection);
+  const requiredContextsSource = expectedContexts.length > 0 ? "expected_contexts" : "branch_protection";
   const observedContexts = observedContextsFromChecks({ checkRuns, statuses, headSha });
   const observedByName = new Map(observedContexts.map((context) => [context.name, context]));
   const missingContexts = [];
@@ -137,6 +141,7 @@ export async function buildRequiredChecksRanReport(input) {
     warnings,
     failures,
     branchProtection,
+    requiredContextsSource,
     checkRuns,
     statuses,
     requiredContexts,
@@ -158,6 +163,7 @@ function report({
   warnings,
   failures,
   branchProtection,
+  requiredContextsSource,
   requiredContexts,
   observedContexts,
   missingContexts,
@@ -179,6 +185,7 @@ function report({
     verdict,
     ci_should_fail: verdict !== "PASS",
     branch_protected: branchProtection ? !isBranchNotProtected(branchProtection) : null,
+    required_contexts_source: requiredContextsSource ?? null,
     required_contexts: (requiredContexts ?? []).slice().sort(),
     observed_contexts: (observedContexts ?? []).slice().sort(compareObservedContext),
     missing_contexts: (missingContexts ?? []).slice().sort(),
@@ -201,6 +208,14 @@ function requiredContextsFromProtection(branchProtection) {
   ].filter((value) => typeof value === "string" && value.trim())
     .map((value) => value.trim());
   return [...new Set(contexts)].sort();
+}
+
+function normalizeExpectedContexts(value) {
+  return [...new Set(asArray(value)
+    .flatMap((item) => String(item ?? "").split(","))
+    .map((item) => item.trim())
+    .filter(Boolean))]
+    .sort();
 }
 
 function observedContextsFromChecks({ checkRuns, statuses, headSha }) {
@@ -270,6 +285,31 @@ function isBranchNotProtected(value) {
 
 function readJsonOption(value) {
   return typeof value === "string" ? JSON.parse(readFileSync(value, "utf8")) : null;
+}
+
+function expectedContextsFromArgv(argv, options) {
+  const values = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === "--expected-context" || arg === "--expected-contexts") {
+      const next = argv[index + 1];
+      if (next && !next.startsWith("--")) {
+        values.push(next);
+        index += 1;
+      }
+      continue;
+    }
+    if (arg.startsWith("--expected-context=")) {
+      values.push(arg.slice("--expected-context=".length));
+      continue;
+    }
+    if (arg.startsWith("--expected-contexts=")) {
+      values.push(arg.slice("--expected-contexts=".length));
+    }
+  }
+  if (typeof options["expected-context"] === "string") values.push(options["expected-context"]);
+  if (typeof options["expected-contexts"] === "string") values.push(options["expected-contexts"]);
+  return normalizeExpectedContexts(values);
 }
 
 function tokenFromOptions(options) {
@@ -344,7 +384,8 @@ function errorMessage(error) {
 }
 
 async function main() {
-  const { options } = parseArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const { options } = parseArgs(argv);
   if (options.format !== "json") {
     process.stdout.write(`${JSON.stringify({
       schema: SCHEMA,
@@ -367,6 +408,7 @@ async function main() {
     timeoutMinutes: options["timeout-minutes"],
     now: options.now,
     token: tokenFromOptions(options),
+    expectedContexts: expectedContextsFromArgv(argv, options),
     branchProtection: readJsonOption(options["branch-protection-fixture"]),
     checkRuns: readJsonOption(options["check-runs-fixture"]),
     statuses: readJsonOption(options["statuses-fixture"]),

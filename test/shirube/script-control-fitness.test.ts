@@ -180,6 +180,50 @@ describe("Shirube required-check actually-ran verifier", () => {
     expect(blockerIds(result)).toContain("RCV-001");
   });
 
+  it("uses expected contexts without reading branch protection in CI mode", () => {
+    const result = runVerifier([
+      "--expected-context",
+      "validate-control-points",
+      "--expected-context",
+      "report-only-expiry",
+      "--expected-context",
+      "required-checks-actually-ran",
+      "--branch-protection-fixture",
+      requiredCheckFixture("branch-not-protected.json"),
+      "--check-runs-fixture",
+      requiredCheckFixture("check-runs.expected-pass.json"),
+      "--statuses-fixture",
+      requiredCheckFixture("statuses.empty.json"),
+    ]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.json.verdict).toBe("PASS");
+    expect(result.json.branch_protected).toBeNull();
+    expect(result.json.required_contexts_source).toBe("expected_contexts");
+    expect(result.json.required_contexts).toEqual([
+      "report-only-expiry",
+      "required-checks-actually-ran",
+      "validate-control-points",
+    ]);
+  });
+
+  it("fails missing expected contexts without branch-protection lookup", () => {
+    const result = runVerifier([
+      "--expected-contexts",
+      "validate-control-points,report-only-expiry,required-checks-actually-ran",
+      "--check-runs-fixture",
+      requiredCheckFixture("check-runs.expected-missing.json"),
+      "--statuses-fixture",
+      requiredCheckFixture("statuses.empty.json"),
+    ]);
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(result.json.required_contexts_source).toBe("expected_contexts");
+    expect(result.json.missing_contexts).toContain("required-checks-actually-ran");
+    expect(blockerIds(result)).toContain("RCV-003");
+  });
+
   it("fails required check declared but absent on exact head", () => {
     const result = runVerifier([
       "--branch-protection-fixture",
