@@ -3,16 +3,6 @@ name: Shirube Script-Control Fitness
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - ".shirube/**"
-      - "docs/spec/**"
-      - "docs/standards/**"
-      - "docs/impl/**"
-      - "docs/verify/**"
-      - "rubrics/**"
-      - "templates/**"
-      - "scripts/shirube/**"
-      - ".github/workflows/**"
   schedule:
     - cron: "17 2 * * *"
   workflow_dispatch:
