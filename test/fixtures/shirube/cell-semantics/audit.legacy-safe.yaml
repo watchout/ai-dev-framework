@@ -1,0 +1,19 @@
+schema_version: shirube-structured-audit/v1
+target_repo: watchout/agent-comms-mcp
+target_pr: 835
+pr_head_sha: "1111111111111111111111111111111111111111"
+reviewer_actor: reviewer
+implementation_actor: implementer
+checklist_results:
+  - item_id: AUDIT-001
+    result: PASS
+    evidence_refs:
+      - route_metadata_cell_lifecycle
+    confidence: high
+    notes: Route metadata lifecycle reviewed.
+  - item_id: AUDIT-002
+    result: PASS
+    evidence_refs:
+      - command_result:npm run test -- test/shirube/cell-semantics.test.ts
+    confidence: high
+    notes: Command evidence reviewed.

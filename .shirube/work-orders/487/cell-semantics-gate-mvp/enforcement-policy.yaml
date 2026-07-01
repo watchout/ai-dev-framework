@@ -1,5 +1,5 @@
 schema_version: shirube-enforcement-policy/v1
-policy_id: ENFORCEMENT-POLICY-ADF-V3-RAPID-DELIVERY-ACCELERATOR-001
+policy_id: ENFORCEMENT-POLICY-ADF-V3-CELL-SEMANTICS-GATE-MVP-001
 repo: watchout/ai-dev-framework
 mode: report_only
 profile: hotel-lite
@@ -20,14 +20,10 @@ report_only_semantics:
   ci_should_fail: false
   owner_must_not_merge_without_exception: true
 non_scope:
-  - independent audit synthesis
+  - audit synthesis
   - owner approval synthesis
-  - automatic merge
   - required check activation
   - branch protection mutation
   - ruleset mutation
-  - DB runtime
-  - MCP implementation
-  - AUN queue mutation
-  - target repository mutation
+  - runtime/API/DB/product changes
   - package or lockfile changes

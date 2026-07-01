@@ -1,0 +1,15 @@
+schema_version: shirube-adoption-intake/v1
+adoption_id: ADF-CELL-SEMANTICS-GATE-MVP-001
+repo: watchout/ai-dev-framework
+profile: hotel-lite
+status: RAPID_LITE_REPORT_ONLY
+work_order: watchout/ai-dev-framework#487
+pr: watchout/ai-dev-framework#525
+disposition: PARTIAL_SHIRUBE_PILOT
+owner:
+  role: repo_owner
+  actor: watchout
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+notes:
+  - Cell Semantics Gate MVP is local/report-only ADF control-plane tooling.
+  - Broad Rapid Delivery Accelerator scope is deferred.

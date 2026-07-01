@@ -28,6 +28,8 @@ const FINDINGS = {
   "AUDIT-LIST-008": ["audit_head_mismatch", "Structured audit head does not match expected head.", "audit.pr_head_sha"],
   "AUDIT-LIST-009": ["maker_checker_violation", "Audit reviewer actor must differ from implementation actor.", "audit.reviewer_actor"],
   "AUDIT-LIST-010": ["scope_only_audit_request_in_full_operational_mode", "Scope-only audit requests cannot satisfy full operational audit acceptance.", "audit.scope"],
+  "AUDIT-FORMAT-001": ["legacy_checklist_results_format", "Structured audit uses legacy checklist_results format.", "audit.checklist_results"],
+  "AUDIT-ITEM-ENUM-001": ["invalid_audit_item_result", "item.result must be one of PASS, FAIL, N/A, UNVERIFIED. Use notes/warnings for warning details.", "audit.items.result"],
 };
 
 export function buildAuditChecklistCheck(input) {
@@ -40,8 +42,13 @@ export function buildAuditChecklistCheck(input) {
   }
 
   const checklistItems = asArray(input.checklist.items);
-  const auditItems = asArray(input.audit?.items);
   const requiredItems = checklistItems.filter((item) => item?.required !== false);
+  const normalized = normalizeStructuredAudit(input.audit, requiredItems);
+  if (normalized.blockers.length > 0) {
+    return report({ input: { ...input, audit: input.audit }, blockers: normalized.blockers, warnings: normalized.warnings });
+  }
+  const audit = normalized.audit;
+  const auditItems = asArray(audit?.items);
   const checklistIds = new Set(checklistItems.map((item) => item?.item_id).filter(Boolean));
   const auditCounts = countBy(auditItems.map((item) => item?.item_id).filter(Boolean));
   const machineEvidence = machineEvidenceSet(input.machineEvidence);
@@ -51,12 +58,14 @@ export function buildAuditChecklistCheck(input) {
     blockers.push(finding("AUDIT-LIST-001", { message: `Expected ${CHECKLIST_SCHEMA}.`, path: input.checklistPath ?? "audit_checklist.schema_version" }));
   }
 
-  if (!isObject(input.audit) || input.audit.schema_version !== AUDIT_SCHEMA) {
+  if (!isObject(audit) || audit.schema_version !== AUDIT_SCHEMA) {
     for (const item of requiredItems) {
       blockers.push(finding("AUDIT-LIST-004", { path: item?.item_id ?? "audit.items", message: `${item?.item_id ?? "required item"} is not answered.` }));
     }
     return report({ input, blockers, warnings });
   }
+  input = { ...input, audit };
+  warnings.push(...normalized.warnings);
 
   for (const item of requiredItems) {
     if (!validChecklistItem(item)) {
@@ -91,7 +100,12 @@ export function buildAuditChecklistCheck(input) {
     const evidenceRefs = asStringArray(answer.evidence_refs);
     const hasRationale = nonEmptyString(answer.notes) || nonEmptyString(answer.rationale) || nonEmptyString(answer.reason);
 
-    if (!RESULTS.includes(result) || !CONFIDENCE.includes(String(answer.confidence ?? ""))) {
+    if (!RESULTS.includes(result)) {
+      blockers.push(finding("AUDIT-ITEM-ENUM-001", { path: required.item_id }));
+      continue;
+    }
+
+    if (!CONFIDENCE.includes(String(answer.confidence ?? ""))) {
       blockers.push(finding("AUDIT-LIST-004", { path: required.item_id, message: `${required.item_id} is missing valid result/confidence.` }));
       continue;
     }
@@ -135,6 +149,61 @@ export function buildAuditChecklistCheck(input) {
   }
 
   return report({ input, blockers: uniqueFindings(blockers), warnings: uniqueFindings(warnings) });
+}
+
+function normalizeStructuredAudit(audit, requiredItems) {
+  const warnings = [];
+  const blockers = [];
+  if (!isObject(audit)) return { audit, warnings, blockers };
+  if (Array.isArray(audit.items)) return { audit, warnings, blockers };
+  if (!Array.isArray(audit.checklist_results)) return { audit, warnings, blockers };
+
+  const normalizedItems = [];
+  const seen = new Set();
+  const requiredIds = new Set(requiredItems.map((item) => item?.item_id).filter(Boolean));
+  for (const entry of audit.checklist_results) {
+    if (!isObject(entry) || !nonEmptyString(entry.item_id) || !requiredIds.has(entry.item_id)) {
+      blockers.push(finding("AUDIT-FORMAT-001", {
+        message: "Structured audit uses legacy checklist_results format. Repost using items[] with item_id, result, confidence, evidence_refs, and notes.",
+      }));
+      return { audit, warnings, blockers };
+    }
+    if (seen.has(entry.item_id)) {
+      blockers.push(finding("AUDIT-FORMAT-001", {
+        message: `Legacy checklist_results contains duplicate item ${entry.item_id}; repost using items[].`,
+      }));
+      return { audit, warnings, blockers };
+    }
+    seen.add(entry.item_id);
+    const result = String(entry.result ?? "");
+    if (!RESULTS.includes(result)) {
+      blockers.push(finding("AUDIT-ITEM-ENUM-001", { path: entry.item_id }));
+      return { audit, warnings, blockers };
+    }
+    normalizedItems.push({
+      item_id: entry.item_id,
+      result,
+      evidence_refs: asStringArray(entry.evidence_refs ?? entry.evidence_ref),
+      confidence: CONFIDENCE.includes(String(entry.confidence ?? "")) ? String(entry.confidence) : "medium",
+      notes: String(entry.notes ?? entry.rationale ?? ""),
+    });
+  }
+
+  warnings.push({
+    item_id: "AUDIT-FORMAT-W001",
+    code: "legacy_checklist_results_normalized",
+    message: "Legacy checklist_results format was safely normalized to items[] for this check.",
+    path: "audit.checklist_results",
+  });
+  return {
+    audit: {
+      ...audit,
+      items: normalizedItems,
+      legacy_checklist_results_normalized: true,
+    },
+    warnings,
+    blockers,
+  };
 }
 
 function validChecklistItem(item) {
@@ -344,6 +413,8 @@ function actionFor(itemId) {
     "AUDIT-LIST-008": "Refresh the audit response for the current exact head.",
     "AUDIT-LIST-009": "Use a reviewer actor distinct from the implementation actor.",
     "AUDIT-LIST-010": "Use a full checklist-based operational audit request.",
+    "AUDIT-FORMAT-001": "Repost the structured audit using items[] with item_id, result, confidence, evidence_refs, and notes.",
+    "AUDIT-ITEM-ENUM-001": "Use item.result PASS, FAIL, N/A, or UNVERIFIED. Put warning details in notes or audit-level warnings.",
     "AUDIT-LIST-W001": "Remove extra non-checklist item answers or regenerate the checklist.",
   };
   return actions[itemId] ?? "Resolve audit checklist finding.";

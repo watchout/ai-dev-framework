@@ -1,0 +1,16 @@
+schema_version: shirube-existing-state-scan/v1
+repo: watchout/ai-dev-framework
+profile: hotel-lite
+observed_state:
+  rapid_lite_framework: present
+  conveyor_state_machine: present
+  cell_semantics_gate: in_progress
+  delivery_wave_planner: deferred
+  cell_batch_policy: deferred
+  audit_unit_composition: deferred
+non_scope_confirmed:
+  - runtime/API/DB/product changes
+  - package or lockfile changes
+  - required check activation
+  - branch protection or ruleset mutation
+  - owner approval synthesis

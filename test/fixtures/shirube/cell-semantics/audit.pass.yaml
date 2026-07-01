@@ -1,0 +1,20 @@
+schema_version: shirube-structured-audit/v1
+audit_checklist_ref: test/fixtures/shirube/cell-semantics/audit-checklist.yaml
+target_repo: watchout/agent-comms-mcp
+target_pr: 835
+pr_head_sha: "1111111111111111111111111111111111111111"
+reviewer_actor: reviewer
+implementation_actor: implementer
+items:
+  - item_id: AUDIT-001
+    result: PASS
+    evidence_refs:
+      - route_metadata_cell_lifecycle
+    confidence: high
+    notes: Route metadata has completes_cell=false.
+  - item_id: AUDIT-002
+    result: PASS
+    evidence_refs:
+      - command_result:npm run test -- test/shirube/cell-semantics.test.ts
+    confidence: high
+    notes: Command evidence is attached.

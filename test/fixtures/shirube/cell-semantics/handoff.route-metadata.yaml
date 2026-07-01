@@ -1,0 +1,63 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+cell_id: CELL-MCP-AUN-CONNECTOR-UI-BINDINGS-MATERIALIZER-001
+parent_ssot: watchout/agent-comms-mcp#802
+goal_summary: Implement and verify local dry-run UI binding materialization for AUN connector registry without live provider execution or DB mutation.
+cell_completion_definition: Dry-run UI binding materializer is implemented, verified, audited, merged, and post-merge evidence recorded without live provider/API/DB mutation.
+acceptance_criteria:
+  - route_metadata stage declares the implementation route and evidence boundaries.
+  - implementation stage adds local dry-run materialization only.
+  - verification stage proves no live provider/API/DB mutation occurs.
+  - post_merge stage records post-merge evidence.
+non_scope:
+  - live provider execution
+  - DB mutation
+  - package or lockfile changes
+allowed_paths:
+  - .shirube/**
+  - docs/shirube/**
+forbidden_paths:
+  - src/**
+  - app/**
+  - api/**
+  - db/**
+  - package.json
+  - package-lock.json
+cell:
+  cell_id: CELL-MCP-AUN-CONNECTOR-UI-BINDINGS-MATERIALIZER-001
+  parent_ssot: watchout/agent-comms-mcp#802
+  goal_summary: Implement and verify local dry-run UI binding materialization for AUN connector registry without live provider execution or DB mutation.
+  completion_definition: Dry-run UI binding materializer is implemented, verified, audited, merged, and post-merge evidence recorded without live provider/API/DB mutation.
+  acceptance_criteria:
+    - route_metadata stage declares the implementation route and evidence boundaries.
+    - implementation stage adds local dry-run materialization only.
+    - verification stage proves no live provider/API/DB mutation occurs.
+    - post_merge stage records post-merge evidence.
+  non_scope:
+    - live provider execution
+    - DB mutation
+  stages:
+    - stage_id: route_metadata
+      expected_output: route table and handoff metadata
+    - stage_id: implementation
+      expected_output: local dry-run materializer
+    - stage_id: verification
+      expected_output: no-mutation validation evidence
+    - stage_id: post_merge
+      expected_output: post-merge evidence
+cell_lifecycle:
+  schema_version: shirube-cell-lifecycle/v1
+  cell_id: CELL-MCP-AUN-CONNECTOR-UI-BINDINGS-MATERIALIZER-001
+  cell_goal: Implement and verify local dry-run UI binding materialization for AUN connector registry without live provider execution or DB mutation.
+  stage: route_metadata
+  stage_order: 1
+  completes_cell: false
+  next_stage: implementation
+  next_expected_action: open_implementation_pr_for_same_cell
+  next_expected_command: aun connector materialize-ui-bindings --dry-run --json
+  cell_completion_definition: Dry-run UI binding materializer is implemented, verified, audited, merged, and post-merge evidence recorded without live provider/API/DB mutation.
+pr_role:
+  schema_version: shirube-pr-role/v1
+  role: route_metadata_pr
+  completes_cell: false
+  expected_next_action: open_implementation_pr_for_same_cell
+  expected_next_stage: implementation

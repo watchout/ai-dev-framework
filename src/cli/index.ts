@@ -48,10 +48,8 @@ import { registerEvidenceCommand } from "./commands/evidence.js";
 import { registerWaiverCommand } from "./commands/waiver.js";
 import { registerAuthorityCommand } from "./commands/authority.js";
 import { registerAuditBridgeCommand } from "./commands/audit-bridge.js";
-import { registerAuditUnitCommand } from "./commands/audit-unit.js";
 import { registerWorkOrderCommand } from "./commands/work-order.js";
 import { registerWorkResultCommand } from "./commands/work-result.js";
-import { registerReAuditCommand } from "./commands/re-audit.js";
 import { setWriteThrough, type RunState } from "./lib/run-model.js";
 import { syncTaskStatusToGitHub, resolveIssueNumber } from "./lib/state-writer.js";
 
@@ -94,10 +92,8 @@ registerEvidenceCommand(program);
 registerWaiverCommand(program);
 registerAuthorityCommand(program);
 registerAuditBridgeCommand(program);
-registerAuditUnitCommand(program);
 registerWorkOrderCommand(program);
 registerWorkResultCommand(program);
-registerReAuditCommand(program);
 
 // Design ingest
 registerIngestCommand(program);

@@ -5,11 +5,11 @@ repo: watchout/ai-dev-framework
 current_phase: IMPLEMENTED
 framework_ref: watchout/ai-dev-framework@6af34058cf2d8298fca159419cdc35a7eb42b12c
 work_order: watchout/ai-dev-framework#487
-pr: pending-draft-pr
-cell_id: CELL-ADF-V3-RAPID-DELIVERY-ACCELERATOR-001
+pr: watchout/ai-dev-framework#525
+cell_id: CELL-ADF-V3-CELL-SEMANTICS-GATE-MVP-001
 repo_spec_ref: .shirube/repo-spec.yaml
-handoff_ref: .shirube/work-orders/487/rapid-delivery-accelerator/control-handoff.yaml
-owner_decision_ref: .shirube/work-orders/487/rapid-delivery-accelerator/owner-decision-pending.yaml
+handoff_ref: .shirube/work-orders/487/cell-semantics-gate-mvp/control-handoff.yaml
+owner_decision_ref: .shirube/work-orders/487/cell-semantics-gate-mvp/owner-decision-pending.yaml
 last_allowed_phase: IMPLEMENTED
 updated_at: 2026-07-01T00:00:00Z
 updated_by: codex-adf

@@ -1,2 +1,0 @@
-.shirube/work-orders/123/control-handoff.yaml
-docs/shirube/README.md

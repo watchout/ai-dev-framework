@@ -87,7 +87,6 @@ export interface ConveyorQueuedCell {
   target_capability?: string;
   framework_ref?: string;
   source_ref?: string;
-  batchable?: boolean;
 }
 
 export interface ConveyorPostMergeEvidence {
@@ -132,9 +131,6 @@ export interface ConveyorNextReport {
   next_action: ConveyorNextAction;
   next_cell_id: string | null;
   next_cell_status: string | null;
-  next_pr_unit_id: string | null;
-  next_pr_unit_cells: string[];
-  next_audit_unit_id: string | null;
   required_inputs: string[];
   blockers: ConveyorFinding[];
   warnings: ConveyorFinding[];
@@ -218,9 +214,6 @@ export interface ConveyorWorkOrderExportInput extends BuildConveyorPlanInput {
 
 interface ConveyorCellSelection {
   cell?: ConveyorQueuedCell;
-  prUnitCells?: ConveyorQueuedCell[];
-  prUnitId?: string;
-  auditUnitId?: string;
   blockers: ConveyorFinding[];
   warnings: ConveyorFinding[];
   requiredInputs: string[];
@@ -290,9 +283,6 @@ export function buildConveyorNext(input: BuildConveyorNextInput): ConveyorNextRe
     next_action: selection.nextAction,
     next_cell_id: selected?.cell_id ?? null,
     next_cell_status: selected?.status ?? null,
-    next_pr_unit_id: selection.prUnitId ?? (selected ? "PR-UNIT-001" : null),
-    next_pr_unit_cells: (selection.prUnitCells ?? (selected ? [selected] : [])).map((cell) => cell.cell_id).filter((id): id is string => Boolean(id)),
-    next_audit_unit_id: selection.auditUnitId ?? (selected?.cell_id ? `AUDIT-UNIT-${slugCell(selected.cell_id).toUpperCase()}` : null),
     required_inputs: selected ? missingCellInputs(selected) : selection.requiredInputs,
     blockers,
     warnings,
@@ -549,20 +539,6 @@ function selectNextCell(cells: ConveyorQueuedCell[], completedCellId: string | u
     };
   }
   const sorted = [...eligible].sort((a, b) => priorityValue(a) - priorityValue(b));
-  const batchable = sorted.filter(isRapidBatchableCell);
-  if (batchable.length === sorted.length && batchable.length > 1) {
-    const ids = batchable.map((cell) => cell.cell_id).filter((id): id is string => Boolean(id));
-    return {
-      cell: batchable[0],
-      prUnitCells: batchable,
-      prUnitId: "PR-UNIT-001",
-      auditUnitId: `AUDIT-UNIT-${ids.map((id) => slugCell(id).toUpperCase()).join("-")}`,
-      blockers,
-      warnings,
-      requiredInputs: [],
-      nextAction: action("open_next_pr_unit", "lead", "lead", `Open or emit one draft PR unit for ${ids.join(", ")}.`),
-    };
-  }
   return {
     cell: sorted[0],
     blockers,
@@ -570,14 +546,6 @@ function selectNextCell(cells: ConveyorQueuedCell[], completedCellId: string | u
     requiredInputs: [],
     nextAction: action("open_next_cell_pr", "lead", "lead", `Open or emit a draft workflow for ${sorted[0].cell_id}.`),
   };
-}
-
-function isRapidBatchableCell(cell: ConveyorQueuedCell): boolean {
-  const risk = riskClass(cell);
-  const type = String(cell.cell_type ?? "").toLowerCase().replace(/[-\s]+/g, "_");
-  const lowRisk = risk === "R0" || risk === "R1" || cell.batchable === true;
-  const lowType = ["docs_only", "docs_contract", "metadata_only", "evidence_completion", "source_ledger"].includes(type) || cell.batchable === true;
-  return lowRisk && lowType && (cell.protected_surfaces ?? []).length === 0;
 }
 
 function emptySelection(nextActionName: string, reason: string): ConveyorCellSelection {

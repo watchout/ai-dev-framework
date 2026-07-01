@@ -1,0 +1,21 @@
+schema_version: shirube-audit-checklist/v1
+audit_checklist_id: AUDIT-CHECKLIST-CELL-SEMANTICS-001
+source:
+  handoff_ref: test/fixtures/shirube/cell-semantics/handoff.route-metadata.yaml
+  cell_id: CELL-MCP-AUN-CONNECTOR-UI-BINDINGS-MATERIALIZER-001
+  pr: watchout/agent-comms-mcp#835
+items:
+  - item_id: AUDIT-001
+    source: acceptance_criteria
+    verification_method: semantic
+    required: true
+    prompt: Verify route metadata stage does not claim Cell completion.
+    expected_evidence:
+      - route_metadata_cell_lifecycle
+  - item_id: AUDIT-002
+    source: validation_command
+    verification_method: executable
+    required: true
+    prompt: Verify machine validation command results are attached.
+    expected_evidence:
+      - command_result:npm run test -- test/shirube/cell-semantics.test.ts
