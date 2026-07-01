@@ -1,0 +1,11 @@
+{
+  "trial_id": "GM-S2-02",
+  "curve_id": "GM-LEN-R1-2026-07-02-A",
+  "bucket": "S2",
+  "planned_fixture_assertion_count": 6,
+  "control_point_count": 3,
+  "fixture_files": [
+    "GM-S2-02-fixture-01.json",
+    "GM-S2-02-fixture-02.json"
+  ]
+}
