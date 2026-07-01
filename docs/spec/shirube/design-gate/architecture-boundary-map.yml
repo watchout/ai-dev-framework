@@ -1,0 +1,212 @@
+schema_version: shirube-architecture-boundary-map/v1
+map_id: shirube-3.0-design-gate-boundary-map
+status: draft_for_cell
+phase: Shirube 3.0 Phase 2 - Machine Design Gate Policy Pack
+cell_id: shirube-3.0-design-gate-policy-cell-1
+parent_issue: https://github.com/watchout/ai-dev-framework/issues/422
+
+purpose:
+  summary: Define Shirube Design Gate ownership, responsibility boundaries, protected surfaces, and adapter limits before validator implementation.
+  method_sources:
+    - C4 responsibility map
+    - arc42 context and building-block views
+    - ATAM risk and sensitivity point records
+
+systems:
+  shirube_governance_core:
+    type: governance_control_plane
+    owns:
+      - canonical_phase_state
+      - canonical_cell_state
+      - gate_verdict_semantics
+      - merge_readiness_semantics
+      - cell_done_semantics
+      - release_ready_semantics
+      - production_done_semantics
+    must_not_delegate_to:
+      - AUN
+      - runner
+      - comment_projection
+
+  github:
+    type: durable_repository_and_review_surface
+    owns:
+      - pull_request_refs
+      - issue_refs
+      - repository_files
+      - check_run_output
+      - workflow_artifacts
+    may_store:
+      - structured_gate_comments
+      - post_merge_evidence
+      - review_records
+    must_not_infer:
+      - semantic_PASS_from_comment_absence
+      - Shirube_Cell_Done_without_required_evidence
+
+  aun:
+    type: acceleration_adapter
+    allowed_authority:
+      - read_only_inventory_when_cell_authorized
+      - evidence_input_transport_when_cell_authorized
+      - handoff_or_notification_projection
+    forbidden_authority:
+      - Shirube_canonical_gate_verdict
+      - Cell_Done
+      - merge_readiness
+      - release_authority
+      - production_authority
+      - branch_protection_mutation
+      - GitHub_required_check_mutation
+    default_write_authority: none
+
+  runner:
+    type: goal_mode_executor
+    examples:
+      - codex-adf
+      - local_script
+      - human_operator
+    owns:
+      - scoped_implementation_diff
+      - local_check_execution
+      - implementation_handoff_evidence
+    must_not_own:
+      - release_owner_decision
+      - merge_authority
+      - semantic_review_verdict
+      - production_activation
+
+  external_gate_reviewer:
+    type: semantic_reviewer
+    owns:
+      - SEMANTIC_RECORDED_enterprise_fit_verdict
+      - SEMANTIC_RECORDED_architecture_ownership_verdict
+      - SEMANTIC_RECORDED_risk_not_underestimated_verdict
+    must_record:
+      - reviewer
+      - reviewed_target
+      - verdict
+      - evidence_refs
+      - rationale
+
+  release_owner:
+    type: release_authority
+    concrete_actor_for_this_cell: watchout
+    owns:
+      - release_owner_decision
+      - merge_ready_acceptance
+      - release_risk_acceptance
+
+  merge_executor:
+    type: merge_operator
+    concrete_actor_for_this_cell: watchout
+    owns:
+      - exact_head_merge_execution_after_release_owner_decision
+    must_not_merge_without:
+      - machine_gate
+      - gate_review
+      - security_or_domain_approval_for_R3_or_higher
+
+responsibility_edges:
+  - from: cell_plan
+    to: design_consolidation_enterprise_fit_gate
+    rule: Design Gate must validate ownership, boundaries, protected surfaces, authority separation, stop conditions, and machine-evidence primacy before Cell Intake.
+  - from: design_consolidation_enterprise_fit_gate
+    to: cell_intake_gate
+    rule: Cell Intake must close or explicitly carry all non-blocking Design Gate WARNs.
+  - from: cell_intake_gate
+    to: runner
+    rule: Runner may implement only after Cell Intake PASS and concrete actor assignment.
+  - from: runner
+    to: machine_gate
+    rule: Runner supplies exact-head implementation evidence; Machine Gate evaluates structured records, not intent.
+  - from: machine_gate
+    to: release_owner
+    rule: Machine Gate and Gate Review inform release-owner decision but do not replace release authority.
+  - from: github
+    to: post_merge_evidence
+    rule: Post-merge evidence may be stored in GitHub comments, workflow artifacts, check output, release artifacts, or repo files when required by the Cell.
+
+protected_surfaces:
+  governance_policy:
+    owner: Shirube governance core
+    required_gate_for_R3: security_or_domain_approval
+    examples:
+      - gate verdict semantics
+      - risk-to-gate matrix
+      - evidence sufficiency rules
+      - release authority rules
+  workflow_enforcement:
+    owner: release_owner
+    required_gate_for_R4: explicit_protected_GO
+    examples:
+      - GitHub Actions required checks
+      - branch protection
+      - rulesets
+      - status creation
+  adapter_authority:
+    owner: Shirube governance core
+    required_gate_for_R3: governance_domain_approval
+    examples:
+      - AUN write/apply/send/dispatch authority
+      - Discord automation
+      - DB or queue mutation
+      - LaunchAgent mutation
+  runtime_or_production:
+    owner: release_owner
+    required_gate_for_R4: explicit_protected_GO
+    examples:
+      - production activation
+      - live queue draining
+      - deployment behavior
+
+read_write_apply_boundaries:
+  read:
+    allowed_when:
+      - cell_scope_authorizes_inventory
+      - no external state mutation occurs
+  write:
+    requires:
+      - explicit_cell_scope
+      - required_risk_gate
+      - concrete_actor
+      - durable_evidence_sink
+  apply_send_dispatch:
+    requires:
+      - explicit_non_docs_cell
+      - protected_surface_approval
+      - rollback_or_recovery_plan
+    forbidden_in_this_cell: true
+  dry_run:
+    must_be_distinct_from_apply: true
+    apply_must_not_be_hidden_under_dry_run: true
+
+forbidden_ownership_rules:
+  - id: BOUNDARY-AUN-001
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    statement: AUN must not own Shirube canonical gate verdict, Cell Done, merge readiness, release authority, or production authority.
+  - id: BOUNDARY-RUNNER-001
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    statement: A runner must not claim merge-ready or Done without required gate evidence.
+  - id: BOUNDARY-COMMENT-001
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    statement: Comment-only evidence must not satisfy pre-merge durable machine-input requirements unless the policy explicitly allows comments for that lifecycle stage.
+
+current_cell_boundary:
+  in_scope:
+    - policy_artifact_creation
+    - schema_outline_creation
+    - ownership_map_creation
+    - risk_matrix_creation
+    - adr_requirement_policy_creation
+  out_of_scope:
+    - validator_script
+    - tests
+    - workflow_enforcement
+    - branch_protection
+    - AUN_live_mutation
+    - production_activation
+  rollback_or_revert_plan: Single PR revert of the five policy artifacts.

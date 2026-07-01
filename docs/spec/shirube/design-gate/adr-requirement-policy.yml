@@ -1,0 +1,140 @@
+schema_version: shirube-adr-requirement-policy/v1
+policy_id: shirube-3.0-design-gate-adr-policy
+status: draft_for_cell
+phase: Shirube 3.0 Phase 2 - Machine Design Gate Policy Pack
+cell_id: shirube-3.0-design-gate-policy-cell-1
+parent_issue: https://github.com/watchout/ai-dev-framework/issues/422
+
+purpose:
+  summary: Define when a Shirube Cell must provide an ADR reference or an explicit ADR-not-required classification.
+  method_sources:
+    - ADR
+    - arc42 decision records
+    - ATAM tradeoff and sensitivity point records
+
+adr_policy_terms:
+  adr_ref: Durable reference to a decision record that names context, decision, consequences, alternatives considered, owner, and evidence refs.
+  adr_not_required: Structured classification explaining why the Cell does not need a separate ADR.
+  protected_decision: Decision that changes governance, authority, enforcement, security, production, adapter write, or evidence sufficiency semantics.
+
+machine_decidable_rules:
+  - id: ADR-REQ-001
+    name: protected_surface_change_requires_adr_or_exception
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    decision: BLOCK when a Cell touches a protected surface and provides neither adr_refs nor adr_not_required with rationale and approver.
+
+  - id: ADR-REQ-002
+    name: R3_R4_requires_decision_record
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    decision: BLOCK when R3/R4 changes alter governance semantics, required gates, adapter authority, or enforcement behavior without an ADR reference or explicit ADR-not-required classification.
+
+  - id: ADR-REQ-003
+    name: semantic_review_does_not_replace_adr
+    category: MACHINE_DECIDABLE
+    severity: WARN_OR_BLOCK
+    decision: WARN when a semantic review records the decision but no ADR exists for a protected decision; BLOCK when the decision changes authority or enforcement.
+
+  - id: ADR-REQ-004
+    name: comment_only_adr_blocks
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    decision: BLOCK when the only ADR evidence is unstructured prose in a comment and no durable structured reference exists.
+
+adr_required_triggers:
+  governance_semantics_change:
+    required: true
+    examples:
+      - gate_verdict_semantics
+      - Cell_Done_or_Phase_Done_semantics
+      - release_ready_or_production_done_semantics
+      - evidence_sufficiency_rules
+  authority_boundary_change:
+    required: true
+    examples:
+      - merge_authority
+      - release_authority
+      - AUN_write_or_dispatch_authority
+      - GitHub_status_or_check_creation_authority
+  enforcement_change:
+    required: true
+    examples:
+      - GitHub_Actions_required_check
+      - branch_protection
+      - ruleset
+      - workflow_required_for_merge
+  security_or_domain_policy_change:
+    required: true
+    examples:
+      - R3_gate_requirements
+      - R4_protected_GO
+      - protected_surface_matrix
+  runtime_or_production_activation:
+    required: true
+    examples:
+      - deployment
+      - DB_mutation
+      - queue_mutation
+      - LaunchAgent_change
+  schema_outline_or_policy_artifact_only:
+    required: conditional
+    decision: ADR may be marked not required when the Cell only creates non-enforcing policy/schema-outline artifacts, records R3 approval, and defers implementation/enforcement.
+
+adr_not_required_shape:
+  category: MACHINE_DECIDABLE
+  required_fields:
+    - classification
+    - rationale
+    - approver
+    - protected_surfaces_reviewed
+    - evidence_refs
+  allowed_classifications:
+    - policy_artifact_only_no_enforcement
+    - docs_only_no_authority_change
+    - schema_outline_no_runtime_behavior
+    - existing_ADR_still_applies
+  placeholder_approver_blocks: true
+
+adr_record_shape:
+  category: MACHINE_DECIDABLE
+  required_fields:
+    - adr_id
+    - title
+    - status
+    - decision_owner
+    - context
+    - decision
+    - consequences
+    - alternatives_considered
+    - protected_surfaces
+    - evidence_refs
+  allowed_statuses:
+    - proposed
+    - accepted
+    - superseded
+    - rejected
+  merge_ready_requires_status:
+    - accepted
+    - proposed_with_release_owner_acceptance
+
+current_cell_decision:
+  cell_id: shirube-3.0-design-gate-policy-cell-1
+  adr_not_required:
+    classification: policy_artifact_only_no_enforcement
+    rationale: This Cell creates policy and schema-outline artifacts only and does not implement validator code, tests, workflow enforcement, branch protection, runtime behavior, AUN mutation, or production activation.
+    approver: watchout
+    protected_surfaces_reviewed:
+      - governance_policy
+      - evidence_sufficiency_rules
+      - risk_to_gate_matrix
+    evidence_refs:
+      - https://github.com/watchout/ai-dev-framework/issues/422#issuecomment-4746393149
+      - https://github.com/watchout/ai-dev-framework/issues/422#issuecomment-4746395644
+  next_cell_note: Validator implementation in shirube-3.0-design-gate-validator-cell-2 may require an ADR if it changes enforcement, required checks, or authority semantics.
+
+non_scope:
+  - creating_new_ADR_file_for_this_policy_artifact_cell
+  - enforcing_ADR_policy_by_script
+  - replacing_semantic_reviewer_decision_records
+  - changing_branch_protection_or_required_checks

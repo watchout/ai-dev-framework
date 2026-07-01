@@ -1,0 +1,317 @@
+schema_version: shirube-design-gate-policy/v1
+policy_id: shirube-3.0-design-gate-policy
+status: draft_for_cell
+phase: Shirube 3.0 Phase 2 - Machine Design Gate Policy Pack
+cell_id: shirube-3.0-design-gate-policy-cell-1
+parent_issue: https://github.com/watchout/ai-dev-framework/issues/422
+risk_class: R3
+governance_domain_approver: watchout
+release_owner: watchout
+merge_executor: watchout
+
+purpose:
+  summary: Convert repeatable Design Consolidation / Enterprise Fit checks into deterministic policy artifacts while semantic checks remain structured reviewer records.
+  target_split:
+    machine_decidable: Script catches repeatable structure, ownership, evidence, vocabulary, and gate-shape defects.
+    semantic_recorded: Human or external reviewer records architecture and enterprise-fit judgment in structured fields.
+
+vocabulary:
+  canonical_terms:
+    MACHINE_DECIDABLE: Deterministic policy rule whose inputs, failure mode, and PASS/WARN/BLOCK outcome can be computed from structured repository, PR, or gate-record data.
+    SEMANTIC_RECORDED: Reviewer judgment that cannot be inferred by script, but whose shape, reviewer, target, verdict, and evidence references are machine validated.
+  deprecated_aliases:
+    MACHINE_CHECKABLE: Deprecated alias for MACHINE_DECIDABLE. New artifacts must prefer MACHINE_DECIDABLE.
+  forbidden_interpretations:
+    - Natural-language prose does not satisfy a MACHINE_DECIDABLE rule unless the required structured fields are also present.
+    - A SEMANTIC_RECORDED PASS must not be inferred from absence of findings.
+    - AUN transport, ACK, queue id, or projection label must not become Shirube completion authority.
+
+source_methods_adapted:
+  ATAM:
+    use: Quality attribute scenarios, risk records, tradeoffs, and sensitivity points become required structured fields for semantic review and ADR triggers.
+    ceremony_limit: No standalone ATAM workshop is required by this policy.
+  arc42:
+    use: Minimal architecture context, boundary, decision, risk, and quality sections inform required record shape.
+    ceremony_limit: Only fields needed for gate decisions are required.
+  C4_responsibility_map:
+    use: System, container, component, actor, and adapter boundaries are represented as ownership edges.
+    ceremony_limit: Diagrams are optional; structured ownership records are required.
+  ADR:
+    use: Protected-surface and architecture decision changes require an ADR reference or an explicit ADR-not-required classification.
+    ceremony_limit: ADRs stay concise and evidence-linked.
+  architecture_fitness_functions:
+    use: MACHINE_DECIDABLE rules are future fitness functions for design quality.
+    ceremony_limit: This Cell defines policy only; validator implementation is deferred.
+  policy_as_code:
+    use: Rules have ids, inputs, severity, and deterministic outcomes suitable for later script or OPA/Rego migration.
+    ceremony_limit: No OPA/Rego implementation in this Cell.
+  structured_validation:
+    use: YAML, JSON Schema, or Zod validation may validate record shape in later Cells.
+    ceremony_limit: This Cell provides schema outline only.
+
+canonical_flow:
+  category: MACHINE_DECIDABLE
+  required_order:
+    - hearing_discovery
+    - ssot
+    - phase_plan
+    - cell_plan
+    - design_consolidation_enterprise_fit_gate
+    - cell_intake_gate
+    - goal_mode_implementation
+    - cell_debug_loop
+    - cell_machine_gate
+    - cell_narrow_verification
+    - release_owner_merge
+    - cell_post_merge_evidence
+    - phase_completion_gate
+    - phase_completion_evidence
+    - next_phase_or_cell
+  minimum_cell_order:
+    - cell_plan
+    - design_consolidation_enterprise_fit_gate
+    - cell_intake_gate
+    - goal_mode_implementation
+  block_if:
+    - cell_intake_gate exists without a prior design_consolidation_enterprise_fit_gate record or explicit still-valid inherited gate record.
+    - goal_mode_implementation handoff exists without Cell Intake PASS.
+    - old broad L1/L2 audit -> QA/check conveyor is presented as the primary design route.
+
+required_record_presence:
+  category: MACHINE_DECIDABLE
+  before_goal_mode:
+    required:
+      - phase_plan
+      - cell_plan
+      - design_gate_request
+      - design_gate_record
+      - cell_intake_record
+      - runner_handoff
+    block_if_missing: true
+  before_merge_ready:
+    required:
+      - machine_gate_record
+      - gate_review_or_narrow_verification_record
+      - runner_result
+    block_if_missing: true
+  after_merge:
+    required:
+      - post_merge_evidence
+    allowed_sinks:
+      - github_pr_comment
+      - github_issue_comment
+      - workflow_artifact
+      - check_run_output
+      - release_artifact
+      - repository_file_when_required_by_cell
+    repo_file_followup_pr_required_by_default: false
+
+policy_rules:
+  - id: DG-FLOW-001
+    name: canonical_flow_order
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - phase_plan
+      - cell_plan
+      - design_gate_record
+      - cell_intake_record
+      - runner_handoff
+    decision: BLOCK if Cell Plan -> Design Gate -> Cell Intake -> Goal Mode order is missing, inverted, or satisfied only by prose.
+
+  - id: DG-RECORD-001
+    name: required_record_presence
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - required_record_presence
+    decision: BLOCK when any required record for the current lifecycle point is absent.
+
+  - id: DG-RISK-001
+    name: risk_class_to_required_gates
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - risk_class
+      - required_gates
+      - approvals
+    decision: BLOCK when R3 lacks security_or_domain_approval or governance_domain_approval, R4 lacks explicit protected GO, or unknown risk silently downgrades to R0/R1.
+
+  - id: DG-ACTOR-001
+    name: actor_concreteness
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - release_owner
+      - merge_executor
+      - approver
+      - reviewer
+    decision: BLOCK when required actors are null, TBD, placeholder, role-only, or not tied to a concrete account or approved actor id.
+
+  - id: DG-SCOPE-001
+    name: acceptance_criteria_size
+    category: MACHINE_DECIDABLE
+    severity: WARN
+    inputs:
+      - acceptance_criteria_count
+      - policy.thresholds
+    decision: WARN above the warning threshold; BLOCK above the block threshold unless a split exception is recorded.
+
+  - id: DG-SCOPE-002
+    name: protected_surface_mixing
+    category: MACHINE_DECIDABLE
+    severity: WARN_OR_BLOCK
+    inputs:
+      - protected_surfaces
+      - surface_categories
+      - approvals
+    decision: WARN when related protected surfaces are mixed with clear ownership; BLOCK when unrelated protected categories are mixed without approval or split rationale.
+
+  - id: DG-SCOPE-003
+    name: rollback_or_revert_plan_required
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - rollback_or_revert_plan
+    decision: BLOCK when rollback, revert, or recovery is not representable.
+
+  - id: DG-SCOPE-004
+    name: non_scope_required
+    category: MACHINE_DECIDABLE
+    severity: WARN_OR_BLOCK
+    inputs:
+      - non_scope
+    decision: WARN when non_scope is thin but safe; BLOCK when missing non_scope could permit runtime, enforcement, authority, or production expansion.
+
+  - id: DG-OWN-001
+    name: protected_surface_ownership
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - protected_surfaces
+      - ownership_map
+      - required_approvals
+    decision: BLOCK when a protected surface is touched without the required owner or governance/domain approval path.
+
+  - id: DG-OWN-002
+    name: forbidden_aun_authority
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - ownership_map
+      - evidence_refs
+      - status_claims
+    decision: BLOCK when AUN owns or claims Shirube canonical gate verdict, Cell Done, merge readiness, release authority, or production authority.
+
+  - id: DG-EVIDENCE-001
+    name: durable_evidence_storage
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - evidence_sink
+      - required_evidence
+      - lifecycle_stage
+    decision: BLOCK when long-form canonical gate evidence exists only in comments before merge, or when a required durable repo file is missing for an in-Cell machine input.
+
+  - id: DG-HEAD-001
+    name: exact_head_consistency
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - pr_head_sha
+      - machine_gate_record.exact_head_sha
+      - exception_classification
+    decision: BLOCK when exact_head_sha differs from the current PR head unless explicitly classified as non-blocking head lag and rechecked before merge-ready.
+
+  - id: DG-SEMANTIC-001
+    name: semantic_record_shape
+    category: MACHINE_DECIDABLE
+    severity: BLOCK
+    inputs:
+      - semantic_checks
+    decision: BLOCK when semantic checks lack verdict, reviewer, target, evidence refs, or contain an unresolved BLOCK.
+
+semantic_recorded_checks:
+  category: SEMANTIC_RECORDED
+  required_shape:
+    verdict_values:
+      - PASS
+      - WARN
+      - BLOCK
+    required_fields:
+      - verdict
+      - reviewer
+      - reviewed_target
+      - evidence_refs
+      - rationale
+  checks:
+    enterprise_fit:
+      purpose: Confirm the Cell fits Shirube enterprise governance direction without adding competing process or authority.
+    architecture_ownership:
+      purpose: Confirm ownership and system boundaries are clear enough for implementation.
+    risk_not_underestimated:
+      purpose: Confirm risk class and required gates are not understated.
+    authority_boundaries:
+      purpose: Confirm release, merge, gate, evidence, runner, and adapter authority remain separated.
+  script_must_not_infer_pass_from_prose: true
+
+thresholds:
+  acceptance_criteria:
+    warn_above: 10
+    block_above: 18
+  protected_surface_categories:
+    warn_when_more_than: 2
+    block_when_unrelated_without_split_rationale: true
+
+evidence_storage_policy:
+  pre_merge_or_in_cell:
+    durable_machine_inputs:
+      allowed_primary_sinks:
+        - repository_structured_file
+      comment_only_allowed: false
+    reviewer_records:
+      allowed_primary_sinks:
+        - repository_structured_file
+        - github_issue_comment
+        - github_pr_comment
+      comment_only_requires_structured_yaml: true
+  post_merge:
+    allowed_structured_sinks:
+      - github_pr_comment
+      - github_issue_comment
+      - workflow_artifact
+      - check_run_output
+      - release_artifact
+      - repository_file_when_required_by_cell
+    repo_file_followup_pr_required_by_default: false
+
+non_scope:
+  - scripts/shirube-design-gate.ts implementation
+  - tests
+  - GitHub Actions workflow
+  - required status check
+  - branch protection mutation
+  - OPA/Rego migration
+  - AUN live mutation
+  - Discord/DB/queue/LaunchAgent changes
+  - production activation
+  - external semantic review replacement
+  - merge authority changes
+  - old L1/L2 -> QA/check conveyor
+
+stop_conditions:
+  - script_or_tests_required_to_complete_this_cell
+  - policy_cannot_distinguish_MACHINE_DECIDABLE_from_SEMANTIC_RECORDED
+  - AUN_or_Shirube_ownership_ambiguous
+  - R3_or_R4_approval_rules_unclear
+  - natural_language_prose_could_satisfy_machine_gate
+  - branch_protection_or_GitHub_Actions_enforcement_required
+  - cell_expands_beyond_five_policy_artifacts
+
+rollback_or_revert_plan: Single PR revert removes the five policy/schema-outline artifacts and restores the repository to the prior Phase 2 pre-policy state.
+
+artifact_refs:
+  architecture_boundary_map: docs/spec/shirube/design-gate/architecture-boundary-map.yml
+  risk_to_gate_matrix: docs/spec/shirube/design-gate/risk-to-gate-matrix.yml
+  adr_requirement_policy: docs/spec/shirube/design-gate/adr-requirement-policy.yml
+  schema_outline: docs/spec/shirube/design-gate/schema-outline.yml
