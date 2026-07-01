@@ -1,0 +1,540 @@
+schema_version: shirube-company-dev-os-profile/v0-draft
+profile_id: company-dev-os-canonical-profile-draft
+status: draft_readonly_not_authoritative
+source_inventory: C0
+profile_scope:
+  repo: watchout/ai-dev-framework
+  cell: CELL-COMPANY-DEV-OS-PROFILE-C1
+  spec: SPEC-COMPANY-DEV-OS-PROFILE-C1
+  impl: IMPL-COMPANY-DEV-OS-PROFILE-C1
+  risk_tier: R3
+  authority_statement: This draft is inventory-derived profile data only and does not replace Company Dev OS overlays.
+
+source_refs:
+  predecessor:
+    c0_pr: https://github.com/watchout/ai-dev-framework/pull/467
+    c0_merge_commit: 8e56a7b21dc8870546011fc2f51d3880d00c5712
+    c0_spec: .shirube/specs/SPEC-COMPANY-DEV-OS-PROFILE-C0.md
+  dispatch:
+    issue: https://github.com/watchout/ai-dev-framework/issues/466
+    c1_handoff: https://github.com/watchout/ai-dev-framework/issues/466#issuecomment-4765381928
+    ssot_link: https://github.com/watchout/ai-dev-framework/issues/405#issuecomment-4765382843
+  inventoried_sources:
+    - watchout/iyasaka-arc/company-dev-os/README.md
+    - watchout/iyasaka-arc/company-dev-os/PLACEMENT.md
+    - watchout/iyasaka-arc/company-dev-os/APPLY_GUIDE.md
+    - watchout/iyasaka-arc/company-dev-os/RUNTIME_ACTIVATION.md
+    - watchout/iyasaka-arc/company-dev-os/AGENT_ID_REGISTRY.md
+    - watchout/iyasaka-arc/company-dev-os/company-common/AGENTS.md
+    - watchout/iyasaka-arc/company-dev-os/company-common/docs/role-matrix.md
+    - watchout/iyasaka-arc/company-dev-os/company-common/docs/review-gates.md
+    - watchout/iyasaka-arc/company-dev-os/company-common/docs/state-transition-standard.md
+    - watchout/iyasaka-arc/company-dev-os/company-common/docs/audit-verdict-template.md
+    - watchout/iyasaka-arc/company-dev-os/company-common/docs/evidence-pack-template.md
+    - watchout/iyasaka-arc/company-dev-os/company-common/docs/handoff-packet-template.md
+    - watchout/iyasaka-arc/company-dev-os/repo-profiles/agent-comms-mcp/AGENTS.md
+    - watchout/iyasaka-arc/company-dev-os/repo-profiles/ai-dev-framework/AGENTS.md
+    - .shirube/company-dev-os/evidence-schema.json
+    - .shirube/company-dev-os/roles/*.role.json
+
+role_ids:
+  dev-goal:
+    canonical_name: goal_definition
+    default_llm: claude
+    source_aliases: [spec]
+    authority_class: planning_only
+  dev-tech:
+    canonical_name: technical_design
+    default_llm: codex
+    source_aliases: [arc]
+    authority_class: planning_only
+  dev-lead:
+    canonical_name: implementation_breakdown_and_handoff
+    default_llm: codex
+    source_aliases: [arc]
+    authority_class: planning_only
+  dev-impl:
+    canonical_name: repo_specific_implementation
+    default_llm: repo_specific
+    source_aliases: [implementation, repo-specific implementation bot]
+    authority_class: scoped_write_with_pr
+  dev-l1:
+    canonical_name: primary_semantic_audit
+    default_llm: codex
+    source_aliases: [audit]
+    authority_class: read_comment_only
+  dev-l2:
+    canonical_name: secondary_semantic_audit
+    default_llm: codex
+    source_aliases: [audit]
+    authority_class: read_comment_only
+  dev-contract:
+    canonical_name: integration_contract_audit
+    default_llm: codex
+    source_aliases: [audit]
+    authority_class: read_comment_only
+  dev-check:
+    canonical_name: technical_practical_check
+    default_llm: codex
+    source_aliases: [qa]
+    authority_class: read_comment_only
+  dev-field:
+    canonical_name: human_or_field_acceptance_check
+    default_llm: claude
+    source_aliases: [check]
+    authority_class: human_acceptance_only
+  dev-l3:
+    canonical_name: protected_or_high_risk_review
+    default_llm: codex
+    source_aliases: [cto]
+    authority_class: protected_review
+  dev-state:
+    canonical_name: state_transition_operator
+    default_llm: codex
+    source_aliases: [state transition operator]
+    authority_class: future_write_requires_separate_approval
+  dev-release:
+    canonical_name: release_risk_review
+    default_llm: codex
+    source_aliases: [release risk reviewer]
+    authority_class: release_review_only
+  dev-evidence:
+    canonical_name: evidence_pack_writer
+    default_llm: codex
+    source_aliases: [evidence]
+    authority_class: evidence_writer_only
+  dev-handoff:
+    canonical_name: handoff_packet_writer
+    default_llm: codex
+    source_aliases: [handoff]
+    authority_class: handoff_writer_only
+
+role_aliases:
+  spec:
+    maps_to: [dev-goal]
+    status: draft_resolved
+    notes: Preserve existing Feature Goal and acceptance criteria ownership.
+  arc:
+    maps_to: [dev-tech, dev-lead]
+    status: draft_split
+    notes: Treat old arc as composite planning lane; implementation, audit, and approval remain separate.
+  implementation:
+    maps_to: [dev-impl]
+    status: draft_resolved
+    notes: Repo-specific implementation remains Cell-bounded and cannot self-approve.
+  audit:
+    maps_to: [dev-l1, dev-l2, dev-contract]
+    status: draft_split
+    notes: Audit is a lane, not a single approval authority.
+  qa:
+    maps_to: [dev-check]
+    status: draft_resolved
+    notes: Technical practical check, not human acceptance.
+  check:
+    maps_to: [dev-field]
+    status: draft_resolved
+    notes: Human or operator acceptance, separate from technical QA.
+  cto:
+    maps_to: [dev-l3]
+    status: draft_resolved
+    notes: Protected or high-risk review, not routine per-PR bottleneck.
+
+roles:
+  dev-goal:
+    may:
+      - define feature goals
+      - define target users and operators
+      - define workflows and acceptance criteria
+      - identify non-goals and human approval points
+    must_not:
+      - implement code
+      - approve technical architecture alone
+      - audit own output
+      - merge or release
+    required_outputs: [Feature Goal, Acceptance Criteria, Non-Goals, ARC Handoff]
+    one_bot_one_role_one_llm: true
+  dev-tech:
+    may:
+      - create technical design
+      - identify target modules and files
+      - define contract impact
+      - define test strategy
+    must_not:
+      - implement code
+      - audit own design
+      - approve merge or release
+    required_outputs: [Technical Design, Contract Impact, Test Strategy]
+    one_bot_one_role_one_llm: true
+  dev-lead:
+    may:
+      - define PR breakdown
+      - define implementation order
+      - hand off to implementation
+    must_not:
+      - implement code
+      - approve own handoff
+      - mutate state or protected settings
+    required_outputs: [PR Breakdown, Implementation Order, Implementation Handoff]
+    one_bot_one_role_one_llm: true
+  dev-impl:
+    may:
+      - edit files inside approved Cell allowed_paths
+      - run local validation
+      - open draft PRs
+    must_not:
+      - self-audit
+      - self-approve
+      - merge
+      - change forbidden paths without a new approved Cell
+    required_outputs: [Implementation PR, Changed Files, Checks Run, Known Risks, Next Review]
+    one_bot_one_role_one_llm: true
+  dev-l1:
+    may: [perform primary semantic audit, request rework, identify blockers]
+    must_not: [implement fixes, approve own work, merge, release, mutate protected settings]
+    required_outputs: [Structured Audit Record, Rework Instruction, Verdict]
+    one_bot_one_role_one_llm: true
+  dev-l2:
+    may: [perform secondary semantic audit, verify rework closure, identify drift]
+    must_not: [implement fixes, approve own work, merge, release, mutate protected settings]
+    required_outputs: [Structured Audit Record, Drift Findings, Verdict]
+    one_bot_one_role_one_llm: true
+  dev-contract:
+    may: [audit integration contracts, compare expected and actual boundaries]
+    must_not: [change contracts, approve protected route alone, merge]
+    required_outputs: [Contract Audit Record, Required Fixes]
+    one_bot_one_role_one_llm: true
+  dev-check:
+    may: [run technical practical checks, inspect scenarios, report failure modes]
+    must_not: [replace semantic audit, approve human acceptance, mutate protected settings]
+    required_outputs: [Practical Check Result, Commands, Failure Modes]
+    one_bot_one_role_one_llm: true
+  dev-field:
+    may: [perform human or operator acceptance, identify operational stuck points]
+    must_not: [replace technical QA, approve protected settings alone, merge]
+    required_outputs: [Human Acceptance Result, Operational Issues]
+    one_bot_one_role_one_llm: true
+  dev-l3:
+    may: [review high-risk or protected work, issue conditional go/no-go, require rollback notes]
+    must_not: [serve as routine bottleneck for ordinary work, self-approve implementation]
+    required_outputs: [L3 Review, Protected Route Decision, Rollback or Recovery Notes]
+    one_bot_one_role_one_llm: true
+  dev-state:
+    may: [apply future approved state transition]
+    must_not: [derive transition authority from audit prose, mutate labels/status without separate approval]
+    required_outputs: [State Transition Result, State Transition Request]
+    one_bot_one_role_one_llm: true
+  dev-release:
+    may: [review release risk, confirm rollout evidence, name residual risk]
+    must_not: [deploy by default, bypass authority owner, mark recovery complete without evidence]
+    required_outputs: [Release Risk Review, Residual Risk, Rollback Readiness]
+    one_bot_one_role_one_llm: true
+  dev-evidence:
+    may: [assemble evidence packs, link raw evidence, identify assumptions]
+    must_not: [treat ACK or green CI alone as done, self-approve source gates]
+    required_outputs: [Evidence Pack]
+    one_bot_one_role_one_llm: true
+  dev-handoff:
+    may: [assemble handoff packet, name next role, name blockers and stop conditions]
+    must_not: [start next Cell without approval, hide pending authority]
+    required_outputs: [Handoff Packet]
+    one_bot_one_role_one_llm: true
+
+maker_checker_rules:
+  default: implementation_owner_must_not_self_approve
+  rules:
+    - rule_id: MC-COMPANY-DEV-OS-001
+      maker_roles: [dev-goal, dev-tech, dev-lead, dev-impl]
+      checker_roles: [dev-l1, dev-l2, dev-contract, dev-check, dev-field, dev-l3]
+      requirement: Checker actor and model must differ from the maker where a checker gate is required.
+    - rule_id: MC-COMPANY-DEV-OS-002
+      maker_roles: [dev-impl]
+      checker_roles: [dev-l1, dev-l2, dev-contract]
+      requirement: Implementation owner cannot approve audit, merge, release, or protected authority.
+    - rule_id: MC-COMPANY-DEV-OS-003
+      maker_roles: [dev-l1, dev-l2, dev-contract]
+      checker_roles: [dev-state, dev-release, dev-l3]
+      requirement: Audit content does not itself apply state transition, release, or protected authority.
+
+risk_tiers:
+  live_policy_change: false
+  company_dev_os_low:
+    draft_shirube_mapping: R0_or_R1
+    gate_profile: mechanical gates plus implementation handoff when follow-up exists
+    examples: [typo, docs_only, small_copy_change, isolated_fixture_update]
+  company_dev_os_medium:
+    draft_shirube_mapping: R2
+    gate_profile: design, Cell/Impl, L1, L2, technical practical check, field acceptance when human-facing, evidence pack
+    examples: [new_feature, api_behavior, ui_flow, workflow, integration]
+  company_dev_os_high:
+    draft_shirube_mapping: R3_or_route_ceo_approval
+    gate_profile: medium gates plus contract audit when applicable, L3/CTO, authority owner, staged rollout and recovery evidence
+    examples: [auth, permissions, db_migration, data_loss, agent_communication, audit_logs, production_deploy]
+
+protected_surface_triggers:
+  - trigger_id: PROTECTED-AUN-QUEUE-CONTROL
+    surfaces: [AUN queue lifecycle, AUN routing, state daemon, launchd, tmux, process lifecycle]
+    required_route: protected_authority_owner
+  - trigger_id: PROTECTED-DISCORD-LIVE-WRITE
+    surfaces: [Discord live write, Discord app, Discord token, transport mutation]
+    required_route: protected_authority_owner
+  - trigger_id: PROTECTED-DATA-AUTH-SECRETS
+    surfaces: [database schema, migrations, auth, secrets, tokens, replay protection]
+    required_route: protected_authority_owner
+  - trigger_id: PROTECTED-SHIRUBE-GOVERNANCE
+    surfaces: [runner policy, state transition automation, audit lane rules, merge readiness, safety profile, risk route classification]
+    required_route: dev-l3_or_route_ceo_approval
+  - trigger_id: PROTECTED-REPO-SETTINGS
+    surfaces: [branch protection, rulesets, required checks, workflow enforcement]
+    required_route: route_ceo_approval_or_protected_settings_cell
+  - trigger_id: PROTECTED-PRODUCTION-DEPLOY
+    surfaces: [deploy, hotfix deploy, customer-critical hotel flow, recovery complete claim]
+    required_route: dev-release_plus_authority_owner
+
+gate_sequences:
+  standard_flow:
+    source_alias_flow: [spec, arc, implementation, audit, qa, check, cto_when_high_risk]
+    draft_canonical_flow:
+      - dev-goal
+      - dev-tech
+      - dev-lead
+      - dev-impl
+      - dev-l1
+      - dev-l2_when_medium_or_higher
+      - dev-contract_when_integration_or_contract_surface
+      - dev-check
+      - dev-field_when_human_facing_or_operational
+      - dev-l3_when_high_risk_or_protected
+      - dev-release_when_release_or_recovery_claim
+      - dev-state_when_state_transition_is_approved
+  low:
+    required_gates: [dev-impl, dev-l1, dev-evidence_when_followup_exists]
+    completion_rule: implementation_handoff_plus_required_evidence
+  medium:
+    required_gates: [dev-goal, dev-tech, dev-lead, dev-impl, dev-l1, dev-l2, dev-check, dev-field_when_applicable, dev-evidence, dev-handoff]
+    completion_rule: semantic_and_practical_evidence_before_done
+  high:
+    required_gates: [dev-goal, dev-tech, dev-lead, dev-impl, dev-l1, dev-l2, dev-contract_when_applicable, dev-l3, dev-release, authority_owner, dev-evidence, dev-handoff]
+    completion_rule: protected_authority_and_staged_evidence_before_done
+
+transition_request_structure:
+  required_fields:
+    - repo
+    - issue_or_pr
+    - exact_head
+    - current_state
+    - requested_next_state
+    - requesting_role
+    - authority_owner
+    - evidence_refs
+    - residual_risk
+    - next_responsible_role
+  invalid_when:
+    - missing_exact_head
+    - missing_source_request
+    - in_session_only
+    - green_ci_only
+    - audit_prose_without_structured_record
+    - requested_next_state_without_authority_owner
+
+rework_instruction_structure:
+  required_fields:
+    - target_artifact_or_pr
+    - exact_head_or_base
+    - blocking_findings
+    - allowed_next_action
+    - allowed_paths
+    - forbidden_paths
+    - required_checks
+    - non_scope
+    - re_review_route
+  invalid_when:
+    - broad_unbounded_instruction
+    - hidden_scope_expansion
+    - missing_re_review_route
+    - asks_maker_to_self_approve
+
+evidence_requirements:
+  compatible_source_schema: .shirube/company-dev-os/evidence-schema.json
+  required_fields:
+    - repo
+    - issue_or_pr
+    - exact_head
+    - source_request
+    - scope_reviewed
+    - checks_run
+    - findings
+    - verdict
+    - next_state
+    - responsible_next_role
+    - evidence_refs
+  completion_must_not_rely_on:
+    - ACK_only
+    - queue_id_only
+    - green_CI_only
+    - unverified_runtime_claim
+    - in_session_audit_only
+    - label_only_state_change
+
+completion_states:
+  - state: merge_ready
+    required_evidence: [structured_audit_record, machine_admissibility_when_available, exact_head, owner_or_authority_decision]
+  - state: done
+    required_evidence: [post_merge_or_completion_evidence, evidence_pack, next_handoff_or_no_followup]
+  - state: recovery_complete
+    required_evidence: [operator_end_to_end_success, actionable_logged_recoverable_status, release_risk_review]
+
+non_completion_states:
+  - blocked
+  - rework_required
+  - audit_pending
+  - practical_check_pending
+  - human_acceptance_pending
+  - authority_pending
+  - projection_candidate_only
+
+projection_targets:
+  github_issue_comment:
+    status: planning_only
+    allowed: [transition_request_summary, rework_instruction_summary, evidence_link_summary]
+    forbidden: [required_check_activation, label_mutation_without_separate_approval]
+  github_pr_comment:
+    status: planning_only
+    allowed: [audit_record_link, handoff, evidence_pack_link]
+    forbidden: [merge, protected_settings_mutation]
+  aun_projection:
+    status: inventory_or_premise_only
+    allowed: [role_inventory, identity_premise, read_only_gap_report]
+    forbidden: [db_write, queue_write, dispatch, routing_change, discord_live_write]
+  agents_runtime_overlay_output:
+    status: candidate_template_only
+    allowed: [generated_overlay_candidate, shadow_comparison_input]
+    forbidden: [replace_existing_overlay, remove_existing_overlay, activate_runtime_behavior]
+
+overlay_precedence:
+  status: draft_resolved_for_readonly
+  precedence_order:
+    - repository_ssot
+    - existing_repo_agents_or_claude_instructions
+    - existing_company_dev_os_overlay
+    - shirube_profile_projection_candidate
+  conflict_policy:
+    unresolved_conflict: block_projection
+    generated_candidate_must_mark_conflict: true
+    existing_overlay_replacement_requires_separate_cell: true
+
+adoption_states:
+  - state: LEGACY_OVERLAY_ACTIVE
+    meaning: Company Dev OS remains active as existing docs, runtime overlays, and repo-specific instructions.
+    authorized_by_c1: true
+  - state: PROFILE_DRAFTED
+    meaning: A non-authoritative Shirube canonical profile draft exists with fixtures and gap handling.
+    authorized_by_c1: true
+  - state: PROFILE_AUDITED
+    meaning: Profile draft has semantic audit and B3 admissibility evidence.
+    authorized_by_c1: false
+  - state: READONLY_PROJECTED
+    meaning: Profile is projected to comments, inventory, or overlay candidates without control authority.
+    authorized_by_c1: false
+  - state: SHADOW_VALIDATED
+    meaning: Read-only projection is compared against legacy overlay behavior.
+    authorized_by_c1: false
+  - state: CONTROL_READY_CANDIDATE
+    meaning: Profile is a candidate for mechanical control pending protected authority.
+    authorized_by_c1: false
+  - state: ENFORCEMENT_AUTHORIZED
+    meaning: Separate approved protected-settings Cell authorizes enforcement or control.
+    authorized_by_c1: false
+
+stop_conditions:
+  - conflicting role vocabulary without a draft alias rule
+  - missing maker/checker separation
+  - missing authority owner for high-risk or protected surfaces
+  - unverified runtime behavior claim
+  - request to treat ACK, queue id, or green CI alone as completion
+  - request to mutate AUN queue, DB, control path, routing, Discord, LaunchAgent, or transport
+  - request to mutate branch protection, rulesets, required checks, workflows, target repositories, production, or deploy behavior
+  - request to replace existing Company Dev OS overlays before shadow validation
+  - request to make this draft authoritative without separate protected governance approval
+
+authority_owners:
+  profile_authoritative_adoption:
+    owner_role: CEO
+    owner_actor: watchout
+    status: required_for_future_authoritative_adoption
+  ai_dev_framework_governance_profile:
+    owner_role: release_owner
+    owner_actor: watchout
+    status: owner_merge_required_for_profile_draft
+  protected_settings:
+    owner_role: CEO_or_repo_protected_settings_owner
+    owner_actor: watchout_or_explicit_delegate
+    status: required_for_future_branch_protection_ruleset_required_check_work
+  aun_runtime_control:
+    owner_role: AUN_runtime_owner
+    owner_actor: pending_AUN_readonly_inventory
+    status: deferred_to_AUN_readonly
+  production_or_deploy:
+    owner_role: release_owner
+    owner_actor: pending_per_target_repo
+    status: deferred_to_future_target_repo_cell
+
+non_authority_boundaries:
+  aun_identity:
+    boundary: AUN or Discord identity does not grant queue, DB, routing, dispatch, or live write authority.
+    default: non_authoritative
+  audit_content:
+    boundary: Audit prose or audit record does not apply state transitions by itself.
+    default: read_comment_only
+  profile_projection:
+    boundary: Projection targets are read-only or candidate/template until separately authorized.
+    default: planning_only
+  green_ci:
+    boundary: Green CI is evidence but not completion by itself.
+    default: supporting_evidence_only
+  company_dev_os_overlays:
+    boundary: Existing overlays remain active until shadow validation and separate authority.
+    default: do_not_replace_or_remove
+
+c0_gap_handling:
+  - gap_id: GAP-C0-001
+    status: draft_resolved
+    profile_field: role_aliases.arc
+    risk_if_wrong: Composite arc could design, lead, implement, and approve the same work.
+    required_followup: C2 validator should block profiles where arc maps to implementation or audit authority.
+    draft_resolution: Split old arc into dev-tech and dev-lead planning roles; keep implementation and audit separate.
+  - gap_id: GAP-C0-002
+    status: draft_resolved
+    profile_field: role_aliases.qa_and_check
+    risk_if_wrong: Technical practical check and human/operator acceptance could collapse into one gate.
+    required_followup: C2 validator should require dev-check and dev-field separation when both gates apply.
+    draft_resolution: Map qa to dev-check and check to dev-field.
+  - gap_id: GAP-C0-003
+    status: deferred_to_C2
+    profile_field: authority_owners
+    risk_if_wrong: High-risk protected surfaces could proceed without an explicit owner.
+    required_followup: C2 validator should block high-risk or protected-surface profiles missing authority owner binding.
+    draft_resolution: Provide draft owners for ai-dev-framework and protected settings; defer target-specific owners.
+  - gap_id: GAP-C0-004
+    status: draft_resolved
+    profile_field: evidence_requirements
+    risk_if_wrong: Markdown evidence packs could be treated as machine gate evidence without exact-head structure.
+    required_followup: C2 validator should require structured fields even when evidence is rendered as markdown.
+    draft_resolution: Define required evidence fields compatible with existing evidence-schema source fields.
+  - gap_id: GAP-C0-005
+    status: deferred_to_AUN_readonly
+    profile_field: non_authority_boundaries.aun_identity
+    risk_if_wrong: Agent identity could be interpreted as runtime queue, DB, or Discord authority.
+    required_followup: Separate AUN read-only inventory must verify DB/schema/identity compatibility before any AUN projection work.
+    draft_resolution: Mark AUN and Discord identity non-authoritative by default.
+  - gap_id: GAP-C0-006
+    status: draft_resolved
+    profile_field: overlay_precedence
+    risk_if_wrong: Generated profile or overlay candidate could override active repo SSOT or AGENTS/CLAUDE instructions.
+    required_followup: C2 validator should block projection when precedence conflicts are unresolved.
+    draft_resolution: Encode precedence order and block unresolved projection conflicts.
+  - gap_id: GAP-C0-007
+    status: deferred_to_C2
+    profile_field: adoption_states
+    risk_if_wrong: State aliases could fragment and make gate transitions ambiguous.
+    required_followup: C2 validator should require a state alias table before projection or state mutation.
+    draft_resolution: Preserve canonical adoption state names and defer repo-specific label alias validation.
