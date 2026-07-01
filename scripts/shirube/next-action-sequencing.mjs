@@ -135,7 +135,7 @@ export function buildNextActionSequencing(input = {}) {
   }
 
   if (auditRequired && !auditCompletion.complete) {
-    return sequencingResult({
+    return blockedSequencingResult({
       current_phase: "AUDIT_REQUIRED",
       next_action: {
         action: "request_independent_audit",
@@ -143,9 +143,6 @@ export function buildNextActionSequencing(input = {}) {
         allowed_actor_role: "independent_reviewer",
         reason: `Independent machine-readable audit is required for exact head ${input.actualHead ?? auditCompletion.expected_head ?? "<unknown>"}.`,
       },
-      owner_approval_allowed: false,
-      merge_ready_allowed: false,
-      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
       head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
@@ -156,7 +153,7 @@ export function buildNextActionSequencing(input = {}) {
   }
 
   if (additionalReviewCompletion.required && !additionalReviewCompletion.complete) {
-    return sequencingResult({
+    return blockedSequencingResult({
       current_phase: "ADDITIONAL_REVIEW_REQUIRED",
       next_action: {
         action: "request_required_additional_review",
@@ -164,9 +161,6 @@ export function buildNextActionSequencing(input = {}) {
         allowed_actor_role: "required_additional_reviewer",
         reason: `Required additional review is missing for exact head ${input.actualHead ?? auditCompletion.expected_head ?? "<unknown>"}.`,
       },
-      owner_approval_allowed: false,
-      merge_ready_allowed: false,
-      forbidden_next_actions: FORBID_OWNER_AND_MERGE,
       head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
@@ -199,17 +193,13 @@ export function buildNextActionSequencing(input = {}) {
   }
 
   if (!ownerDecision.final_approval_present) {
-    return sequencingResult({
-      current_phase: "OWNER_DECISION_REQUIRED",
+    return ownerDecisionRequiredResult({
       next_action: {
         action: "request_owner_exact_head_decision",
         responsible_role: "owner",
         allowed_actor_role: "repo_owner",
         reason: `Independent audit prerequisites are satisfied; owner exact-head decision is required for ${input.actualHead ?? auditCompletion.expected_head ?? "<unknown>"}.`,
       },
-      owner_approval_allowed: true,
-      merge_ready_allowed: false,
-      forbidden_next_actions: FORBID_MERGE,
       head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
@@ -220,17 +210,13 @@ export function buildNextActionSequencing(input = {}) {
   }
 
   if (ownerDecision.head_mismatch) {
-    return sequencingResult({
-      current_phase: "OWNER_DECISION_REQUIRED",
+    return ownerDecisionRequiredResult({
       next_action: {
         action: "request_owner_exact_head_decision",
         responsible_role: "owner",
         allowed_actor_role: "repo_owner",
         reason: "Owner decision exists but does not match the current exact head.",
       },
-      owner_approval_allowed: true,
-      merge_ready_allowed: false,
-      forbidden_next_actions: FORBID_MERGE,
       head_change: headChange,
       audit_required: auditRequired,
       audit_completion: auditCompletion,
@@ -352,6 +338,25 @@ function sequencingResult(fields) {
     phases: SEQUENCING_PHASES,
     ...fields,
   };
+}
+
+function blockedSequencingResult(fields) {
+  return sequencingResult({
+    owner_approval_allowed: false,
+    merge_ready_allowed: false,
+    forbidden_next_actions: FORBID_OWNER_AND_MERGE,
+    ...fields,
+  });
+}
+
+function ownerDecisionRequiredResult(fields) {
+  return sequencingResult({
+    current_phase: "OWNER_DECISION_REQUIRED",
+    owner_approval_allowed: true,
+    merge_ready_allowed: false,
+    forbidden_next_actions: FORBID_MERGE,
+    ...fields,
+  });
 }
 
 export function auditRequiredFrom(input = {}) {
