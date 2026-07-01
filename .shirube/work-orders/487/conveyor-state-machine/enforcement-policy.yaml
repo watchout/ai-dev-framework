@@ -3,7 +3,7 @@ policy_id: ENFORCEMENT-POLICY-ADF-V3-CONVEYOR-STATE-MACHINE-001
 repo: watchout/ai-dev-framework
 mode: report_only
 profile: hotel-lite
-framework_ref: watchout/ai-dev-framework@bb48fdd8a00e43862272fe4911ad2a5603071e43
+framework_ref: watchout/ai-dev-framework@5cb41e9bac186693ef1dc95c6a3c95cb2324f478
 updated_at: 2026-06-27T00:00:00Z
 owner_observed: true
 owner:

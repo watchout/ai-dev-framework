@@ -1,7 +1,7 @@
 schema_version: shirube-adoption-intake/v1
 adoption_id: ADOPT-ADF-V3-CONVEYOR-STATE-MACHINE-001
 repo: watchout/ai-dev-framework
-framework_ref: watchout/ai-dev-framework@bb48fdd8a00e43862272fe4911ad2a5603071e43
+framework_ref: watchout/ai-dev-framework@5cb41e9bac186693ef1dc95c6a3c95cb2324f478
 profile: hotel-lite
 lane: adoption_intake
 disposition: retrofit_accelerate

@@ -3,7 +3,7 @@ mode: rapid-lite
 profile: hotel-lite
 repo: watchout/ai-dev-framework
 current_phase: IMPLEMENTED
-framework_ref: watchout/ai-dev-framework@bb48fdd8a00e43862272fe4911ad2a5603071e43
+framework_ref: watchout/ai-dev-framework@5cb41e9bac186693ef1dc95c6a3c95cb2324f478
 work_order: watchout/ai-dev-framework#522
 pr: watchout/ai-dev-framework#522
 cell_id: CELL-ADF-V3-CONVEYOR-STATE-MACHINE-001
