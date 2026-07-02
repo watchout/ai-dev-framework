@@ -28,11 +28,18 @@
       "required": [
         "cell_id",
         "status",
+        "goal",
+        "acceptance_criteria",
+        "non_scope",
         "risk_class",
         "cell_type",
         "allowed_paths",
         "forbidden_paths",
-        "expected_outputs"
+        "expected_outputs",
+        "implementation_pr_plan",
+        "validation_plan",
+        "audit_checklist_ref",
+        "close_condition"
       ],
       "properties": {
         "cell_id": {
@@ -61,6 +68,12 @@
         "order": { "type": "number" },
         "risk_class": { "enum": ["R0", "R1", "R2", "R3", "R4"] },
         "cell_type": { "type": "string", "minLength": 1 },
+        "goal": { "type": "string", "minLength": 1 },
+        "acceptance_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
         "protected_surfaces": {
           "type": "array",
           "items": { "type": "string", "minLength": 1 }
@@ -80,6 +93,57 @@
           "minItems": 1,
           "items": { "type": "string", "minLength": 1 }
         },
+        "non_scope": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "implementation_pr_plan": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["mode", "prs"],
+          "properties": {
+            "mode": { "enum": ["single_pr", "multi_pr"] },
+            "prs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": ["pr_role", "title", "completes_cell"],
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "pr_role": { "type": "string", "minLength": 1 },
+                  "title": { "type": "string", "minLength": 1 },
+                  "completes_cell": { "type": "boolean" },
+                  "depends_on": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "validation_plan": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["required_commands", "required_evidence"],
+          "properties": {
+            "required_commands": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "required_evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "audit_checklist_ref": { "type": "string", "minLength": 1 },
+        "close_condition": { "type": "string", "minLength": 1 },
         "pr_number": {
           "type": "integer",
           "minimum": 1

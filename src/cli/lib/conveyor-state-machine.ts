@@ -47,6 +47,8 @@ export interface ConveyorQueuedCell {
   depends_on?: string[];
   priority?: number;
   order?: number;
+  goal?: string;
+  acceptance_criteria?: string[];
   risk_class?: string;
   risk_tier?: string;
   cell_type?: string;
@@ -54,11 +56,26 @@ export interface ConveyorQueuedCell {
   allowed_paths?: string[];
   forbidden_paths?: string[];
   expected_outputs?: string[];
+  implementation_pr_plan?: {
+    mode?: string;
+    prs?: Array<{
+      id?: string;
+      pr_role?: string;
+      title?: string;
+      completes_cell?: boolean;
+      depends_on?: string[];
+    }>;
+  };
+  validation_plan?: {
+    required_commands?: string[];
+    required_evidence?: string[];
+  };
+  audit_checklist_ref?: string;
+  close_condition?: string;
   pr_number?: number;
   merge_commit?: string;
   merged_at?: string;
   title?: string;
-  goal?: string;
   scope?: string[];
   non_scope?: string[];
   validation?: {
@@ -221,11 +238,18 @@ const MERGED_STATUS = "merged";
 const COMPLETION_STATUSES = new Set(["merged", "skipped"]);
 const ACTIVE_BLOCKED_STATUSES = new Set(["blocked"]);
 const REQUIRED_CELL_INPUTS = [
+  "goal",
+  "acceptance_criteria",
+  "non_scope",
   "risk_class",
   "cell_type",
   "allowed_paths",
   "forbidden_paths",
   "expected_outputs",
+  "implementation_pr_plan",
+  "validation_plan",
+  "audit_checklist_ref",
+  "close_condition",
 ];
 
 export function buildConveyorNext(input: BuildConveyorNextInput): ConveyorNextReport {
@@ -307,7 +331,7 @@ export function buildConveyorPlan(input: BuildConveyorPlanInput): ConveyorPlanRe
     handoff_draft: handoff,
     audit_checklist_draft: checklist,
     review_plan_draft: reviewPlan,
-    validation_commands: cell?.validation?.required_commands ?? [],
+    validation_commands: cell ? validationCommands(cell) : [],
     allowed_paths: cell?.allowed_paths ?? [],
     forbidden_paths: cell?.forbidden_paths ?? [],
     risk_class: cell ? riskClass(cell) : null,
@@ -541,6 +565,8 @@ function buildHandoffDraft(cell: ConveyorQueuedCell, parentSsot: string | null, 
     parent_ssot: parentSsot,
     repo,
     scope: nonEmpty(cell.scope, cell.expected_outputs),
+    goal: cell.goal,
+    acceptance_criteria: cell.acceptance_criteria ?? cell.expected_outputs,
     non_scope: nonEmpty(cell.non_scope, [
       "audit synthesis",
       "owner approval synthesis",
@@ -554,17 +580,19 @@ function buildHandoffDraft(cell: ConveyorQueuedCell, parentSsot: string | null, 
     cell_type: cell.cell_type,
     allowed_paths: cell.allowed_paths,
     forbidden_paths: cell.forbidden_paths,
+    implementation_pr_plan: cell.implementation_pr_plan,
+    close_condition: cell.close_condition,
     protected_surfaces: {
       declared: cell.protected_surfaces ?? [],
       touched: (cell.protected_surfaces ?? []).length > 0,
       reason: "Derived from shirube-cell-queue/v1. Review requirements must come from review_plan, not prose.",
     },
     validation: {
-      required_commands: cell.validation?.required_commands ?? [],
-      required_evidence: cell.validation?.required_evidence ?? ["validation_result", "audit_checklist_report", "owner_decision", "post_merge_evidence"],
+      required_commands: validationCommands(cell),
+      required_evidence: validationEvidence(cell),
     },
     review_plan_ref: `.shirube/work-orders/${slugCell(cellId)}/review-plan.yaml`,
-    audit_checklist_ref: `.shirube/work-orders/${slugCell(cellId)}/audit-checklist.yaml`,
+    audit_checklist_ref: cell.audit_checklist_ref ?? `.shirube/work-orders/${slugCell(cellId)}/audit-checklist.yaml`,
     owner_decision: {
       required: true,
       exact_head_required: true,
@@ -639,8 +667,24 @@ function buildAuditChecklistDraft(cell: ConveyorQueuedCell, repo: string | null)
       prompt: "Verify post-merge evidence is required before Cell completion.",
       expected_evidence: ["post_merge_evidence_ref"],
     },
+    {
+      item_id: "AUDIT-005",
+      source: "cell_acceptance",
+      verification_method: "semantic",
+      required: true,
+      prompt: "Verify the implementation evidence satisfies every Cell acceptance criterion.",
+      expected_evidence: ["acceptance_criteria_trace"],
+    },
+    {
+      item_id: "AUDIT-006",
+      source: "implementation_pr_plan",
+      verification_method: "semantic",
+      required: true,
+      prompt: "Verify the PR role, completes_cell flag, and close condition match the Cell implementation PR plan.",
+      expected_evidence: ["pr_role", "completes_cell", "close_condition"],
+    },
   ];
-  for (const command of cell.validation?.required_commands ?? []) {
+  for (const command of validationCommands(cell)) {
     items.push({
       item_id: `AUDIT-CMD-${String(items.length + 1).padStart(3, "0")}`,
       source: "validation_command",
@@ -689,9 +733,9 @@ function buildCellWorkOrder(cell: ConveyorQueuedCell, input: {
     nonScope: nonEmpty(cell.non_scope, ["audit synthesis", "owner approval synthesis", "merge", "AUN queue mutation"]),
     allowedPath: cell.allowed_paths,
     forbiddenPath: cell.forbidden_paths,
-    check: cell.validation?.required_commands,
-    requiredEvidence: cell.validation?.required_evidence,
-    acceptanceCriterion: cell.expected_outputs,
+    check: validationCommands(cell),
+    requiredEvidence: validationEvidence(cell),
+    acceptanceCriterion: cell.acceptance_criteria ?? cell.expected_outputs,
     ownerActor: input.ownerActor,
     repoSpecRef: ".shirube/repo-spec.yaml",
     handoffRef: `.shirube/work-orders/${slugCell(cellId)}/control-handoff.yaml`,
@@ -728,12 +772,39 @@ function hasBlockedDependency(cell: ConveyorQueuedCell, cells: ConveyorQueuedCel
 
 function missingCellInputs(cell: ConveyorQueuedCell): string[] {
   const missing: string[] = [];
+  if (!nonBlank(cell.goal)) missing.push("goal");
+  if (!Array.isArray(cell.acceptance_criteria) || cell.acceptance_criteria.length === 0) missing.push("acceptance_criteria");
+  if (!Array.isArray(cell.non_scope) || cell.non_scope.length === 0) missing.push("non_scope");
   if (!riskClass(cell)) missing.push("risk_class");
   if (!cell.cell_type) missing.push("cell_type");
   if (!Array.isArray(cell.allowed_paths) || cell.allowed_paths.length === 0) missing.push("allowed_paths");
   if (!Array.isArray(cell.forbidden_paths) || cell.forbidden_paths.length === 0) missing.push("forbidden_paths");
   if (!Array.isArray(cell.expected_outputs) || cell.expected_outputs.length === 0) missing.push("expected_outputs");
+  if (!hasImplementationPrPlan(cell)) missing.push("implementation_pr_plan");
+  if (!hasValidationPlan(cell)) missing.push("validation_plan");
+  if (!nonBlank(cell.audit_checklist_ref)) missing.push("audit_checklist_ref");
+  if (!nonBlank(cell.close_condition)) missing.push("close_condition");
   return REQUIRED_CELL_INPUTS.filter((input) => missing.includes(input));
+}
+
+function hasImplementationPrPlan(cell: ConveyorQueuedCell): boolean {
+  const plan = cell.implementation_pr_plan;
+  if (!plan || !["single_pr", "multi_pr"].includes(plan.mode ?? "")) return false;
+  if (!Array.isArray(plan.prs) || plan.prs.length === 0) return false;
+  if (plan.mode === "single_pr" && plan.prs.length !== 1) return false;
+  return plan.prs.every((pr) => nonBlank(pr.pr_role) && nonBlank(pr.title) && typeof pr.completes_cell === "boolean");
+}
+
+function hasValidationPlan(cell: ConveyorQueuedCell): boolean {
+  return validationCommands(cell).length > 0 && validationEvidence(cell).length > 0;
+}
+
+function validationCommands(cell: ConveyorQueuedCell): string[] {
+  return nonEmpty(cell.validation_plan?.required_commands, cell.validation?.required_commands);
+}
+
+function validationEvidence(cell: ConveyorQueuedCell): string[] {
+  return nonEmpty(cell.validation_plan?.required_evidence, cell.validation?.required_evidence ?? ["validation_result", "audit_checklist_report", "owner_decision", "post_merge_evidence"]);
 }
 
 function evidencePr(evidence: ConveyorPostMergeEvidence): number | null {
@@ -801,6 +872,10 @@ function nonEmpty(value: string[] | undefined, fallback: string[] | undefined): 
   const normalized = (value ?? []).filter((entry) => typeof entry === "string" && entry.trim() !== "").map((entry) => entry.trim());
   if (normalized.length > 0) return normalized;
   return (fallback ?? []).filter((entry) => typeof entry === "string" && entry.trim() !== "").map((entry) => entry.trim());
+}
+
+function nonBlank(value: string | undefined): boolean {
+  return typeof value === "string" && value.trim() !== "";
 }
 
 function normalizeRiskForWorkOrder(risk: string): string {

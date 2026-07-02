@@ -64,8 +64,22 @@ The Conveyor only selects Cells with:
 
 - `status: ready_for_implementation`
 - all `depends_on` Cells completed as `merged` or `skipped`
-- complete required inputs: `risk_class`, `cell_type`, `allowed_paths`, `forbidden_paths`, and `expected_outputs`
+- complete Cell definition inputs: `goal`, `acceptance_criteria`, `non_scope`,
+  `risk_class`, `cell_type`, `allowed_paths`, `forbidden_paths`,
+  `expected_outputs`, `implementation_pr_plan`, `validation_plan`,
+  `audit_checklist_ref`, and `close_condition`
 - no blocked dependency
+
+Small Cells may use `implementation_pr_plan.mode: single_pr`, but the plan must
+still declare the single PR role and whether it `completes_cell`. Larger Cells
+must use `mode: multi_pr` and list the planned PR stages before implementation
+starts, such as schema/types, CLI dry-run, tests/evidence, docs/runbook,
+activation, or post-merge evidence completion.
+
+The Conveyor treats PR merge and Cell close separately. A PR may complete a
+stage, but Cell close requires every planned PR stage to be merged or explicitly
+skipped, every acceptance criterion to be satisfied, post-merge evidence to be
+recorded, and any required Cell-level audit or owner approval to be complete.
 
 If multiple Cells are ready, explicit `priority` or `order` is required. Without priority/order, the Conveyor returns `BLOCKED` and `next_action=request_owner_planning_decision`.
 
