@@ -1,0 +1,27 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-ADF-V3-RAPID-LITE-ENFORCEMENT-SIGNAL-001
+repo: watchout/ai-dev-framework
+mode: report_only
+profile: hotel-lite
+framework_ref: watchout/ai-dev-framework@cef1aae4815299855dc367609a84d9d8f892c716
+updated_at: 2026-07-02T00:00:00Z
+owner_observed: true
+owner:
+  role: repo_owner
+  actor: watchout
+required_checks:
+  enabled: false
+branch_protection:
+  unchanged: true
+rulesets:
+  unchanged: true
+report_only_semantics:
+  default_reusable_workflow_report_only: true
+  report_only_false_reflects_aggregate_in_ci: true
+  aggregate_would_block_sets_owner_must_not_merge: true
+non_scope:
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - external repository mutation
+  - runtime/API/DB/product/package/deploy behavior

@@ -13,7 +13,7 @@ on:
         default: hotel-lite
         type: string
       report_only:
-        description: "Keep the workflow signal-only. This slice does not hard-block CI."
+        description: "Keep the workflow signal-only. When false, aggregate report_failed/would_block fails this workflow."
         required: false
         default: true
         type: boolean
@@ -533,12 +533,45 @@ jobs:
           retention-days: 14
           include-hidden-files: true
 
-      - name: Report-only completion
+      - name: Apply report-only or CI result
         if: always()
         env:
           REPORT_ONLY: ${{ inputs.report_only }}
         run: |
-          echo "Shirube Rapid/Lite reusable report is report-only in this slice."
-          echo "Requested report_only=$REPORT_ONLY."
-          echo "PASS, PASS_WITH_WARN, BLOCKED, and FAILURE are recorded as PR-visible evidence; this workflow does not activate required checks or branch protection."
-          exit 0
+          node <<'NODE'
+          const fs = require("fs");
+
+          const reportOnly = String(process.env.REPORT_ONLY || "true").toLowerCase() !== "false";
+          const aggregatePath = `${process.env.RESULT_DIR}/aggregate.json`;
+
+          if (reportOnly) {
+            console.log("Shirube Rapid/Lite reusable report is report-only.");
+            console.log("PASS, PASS_WITH_WARN, BLOCKED, and FAILURE are recorded as PR-visible evidence; this workflow does not activate required checks or branch protection.");
+            process.exit(0);
+          }
+
+          if (!fs.existsSync(aggregatePath)) {
+            console.error(`Shirube Rapid/Lite aggregate is missing at ${aggregatePath}; failing because report_only=false.`);
+            process.exit(1);
+          }
+
+          let aggregate;
+          try {
+            aggregate = JSON.parse(fs.readFileSync(aggregatePath, "utf8"));
+          } catch (error) {
+            console.error(`Shirube Rapid/Lite aggregate is not parseable; failing because report_only=false: ${error.message}`);
+            process.exit(1);
+          }
+
+          const reportFailed = aggregate.report_failed === true;
+          const wouldBlock = aggregate.would_block === true;
+          console.log(`Shirube Rapid/Lite report_only=false; report_failed=${reportFailed}; would_block=${wouldBlock}; verdict=${aggregate.verdict ?? "unknown"}.`);
+
+          if (reportFailed || wouldBlock) {
+            console.error("Shirube Rapid/Lite aggregate blocks this workflow because report_only=false.");
+            process.exit(1);
+          }
+
+          console.log("Shirube Rapid/Lite aggregate does not block this workflow.");
+          process.exit(0);
+          NODE

@@ -1,0 +1,117 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+control_handoff_id: CH-ADF-V3-RAPID-LITE-ENFORCEMENT-SIGNAL-001
+parent: "#487"
+parent_inputs:
+  - "#487"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/487
+work_order: watchout/ai-dev-framework#487
+pr: "watchout/ai-dev-framework#<PR_NUMBER_PENDING>"
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@cef1aae4815299855dc367609a84d9d8f892c716
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: owner_review
+rps_scope:
+  shirube_owns:
+    - Rapid/Lite reusable workflow behavior in ADF.
+    - CI signal propagation when a caller explicitly sets report_only=false.
+    - Documentation and tests for the reusable workflow enforcement signal.
+  shirube_does_not_own:
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+    - Runtime/API/DB/product/package/lockfile behavior.
+    - External repository mutation.
+    - Owner approval synthesis.
+cell:
+  CELL-ID: CELL-ADF-V3-RAPID-LITE-ENFORCEMENT-SIGNAL-001
+  cell_type: governance_workflow_control
+  risk_class: R2
+  goal: Make the reusable Rapid/Lite workflow fail CI when callers explicitly set report_only=false and the aggregate reports would_block or report_failed.
+  acceptance_criteria:
+    - report_only=true remains the default signal-only workflow behavior.
+    - report_only=false reads .shirube-rapid-lite/aggregate.json after report generation.
+    - report_only=false exits non-zero when aggregate.report_failed=true.
+    - report_only=false exits non-zero when aggregate.would_block=true.
+    - report_only=false succeeds when neither aggregate.report_failed nor aggregate.would_block is true.
+    - The slice does not activate required checks, mutate branch protection, mutate rulesets, synthesize owner approval, or touch target repositories.
+  non_scope:
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - target repository mutation
+    - external repository mutation
+    - runtime/API/DB/product/package/lockfile changes
+    - owner approval synthesis
+    - automatic merge
+  allowed_paths:
+    - .shirube/work-orders/487/rapid-lite-enforcement-signal/**
+    - .github/workflows/shirube-rapid-lite-reusable.yml
+    - docs/standards/shirube-rapid-lite-workflow-caller.md
+    - test/shirube/workflow-caller.test.ts
+  forbidden_paths:
+    - src/**
+    - app/**
+    - api/**
+    - lib/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - active workflows
+    touched: true
+    reason: This slice modifies an existing reusable workflow to reflect aggregate blocking state only when report_only=false. It does not activate required checks, branch protection, or rulesets.
+  stop_conditions:
+    - changed file outside allowed_paths
+    - forbidden path touched
+    - required check activation added
+    - branch protection or ruleset mutation added
+    - runtime/API/DB/product/package/lockfile change added
+    - external repo mutation added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/workflow-caller.test.ts
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+    - YAML parse for reusable workflow and PR-local Shirube evidence
+  required_evidence:
+    - pr_head_sha
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: .shirube/work-orders/487/rapid-lite-enforcement-signal/owner-decision-pending.yaml
+post_merge_policy:
+  evidence_required_before_complete: true
+legacy_source_boundary:
+  legacy_sources_may_inform: true
+  legacy_sources_are_truth: false
+  required_current_truth_ref: https://github.com/watchout/ai-dev-framework/issues/487
