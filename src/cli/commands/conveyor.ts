@@ -63,6 +63,15 @@ import {
   type ConveyorPrerequisiteCheckReport,
 } from "../lib/conveyor-prerequisite-check.js";
 import {
+  buildConveyorNext,
+  buildConveyorOpenPrPlan,
+  buildConveyorPlan,
+  buildConveyorPostMergeRecord,
+  buildConveyorWorkOrderExport,
+  type ConveyorCellQueue,
+  type ConveyorPostMergeEvidence,
+} from "../lib/conveyor-state-machine.js";
+import {
   evaluateUserOutcomeGate,
   type UserOutcomeGateInput,
   type UserOutcomeGateReport,
@@ -95,6 +104,13 @@ interface ConveyorNextOptions extends ConveyorReconcileOptions {
   claimedBy?: string;
   claimTtlMinutes?: string;
   claimedAt?: string;
+  parentSsot?: string;
+  repo?: string;
+  afterMergePr?: string;
+  mergeCommit?: string;
+  cellQueue?: string;
+  postMergeEvidence?: string;
+  generatedAt?: string;
 }
 
 interface ConveyorAuditSweeperOptions extends ConveyorReconcileOptions {
@@ -152,6 +168,37 @@ interface ConveyorCellPlanTemplateOptions {
   generatedBy?: string;
   generatedAt?: string;
   json?: boolean;
+}
+
+interface ConveyorStatePlanOptions {
+  cellQueue?: string;
+  cellId?: string;
+  parentSsot?: string;
+  repo?: string;
+  frameworkRef?: string;
+  ownerActor?: string;
+  generatedAt?: string;
+  format?: string;
+}
+
+interface ConveyorOpenPrOptions extends ConveyorStatePlanOptions {}
+
+interface ConveyorExportWorkOrderOptions extends ConveyorStatePlanOptions {
+  targetCapability?: string;
+  out?: string;
+}
+
+interface ConveyorPostMergeOptions {
+  repo?: string;
+  parentSsot?: string;
+  pr?: string;
+  mergedHead?: string;
+  mergeCommit?: string;
+  mergedAt?: string;
+  postMergeSmokeOrNa?: string;
+  nextStep?: string;
+  out?: string;
+  format?: string;
 }
 
 interface ConveyorCellPlanCheck {
@@ -379,19 +426,41 @@ export function registerConveyorCommand(program: Command): void {
 
   conveyor
     .command("next")
-    .description("Select the next deterministic target for a conveyor role from a snapshot fixture")
-    .requiredOption("--role <role>", "Role lane: implementation, l1, l2, l3, ceo, rework, blocked, checker, aun_mirror, or profile role aliases")
+    .description("Select the next deterministic target for a conveyor role, or next Cell after a merge")
+    .option("--role <role>", "Role lane: implementation, l1, l2, l3, ceo, rework, blocked, checker, aun_mirror, or profile role aliases")
     .option("--fixture <path>", "JSON snapshot with issues, pull_requests, and optional config")
     .option("--profile <path>", "JSON Conveyor project profile; filters repo scope and role query")
     .option("--previous-profile <path>", "Previous JSON Conveyor project profile for profile_scope_changed reporting")
     .option("--json", "Output machine-readable JSON")
+    .option("--format <format>", "Output format for post-merge Cell selection: json")
     .option("--apply", "Apply reconciliation to the in-memory snapshot result; does not mutate GitHub")
     .option("--claim", "Emit append-only claim evidence for the selected target; does not post to GitHub")
     .option("--claimed-by <actor>", "Actor id to include in claim evidence")
     .option("--claim-ttl-minutes <minutes>", "Claim expiry window in minutes", "30")
     .option("--claimed-at <timestamp>", "ISO timestamp for deterministic claim evidence")
+    .option("--parent-ssot <owner/repo#issue>", "Parent SSOT issue for post-merge Cell selection")
+    .option("--repo <owner/repo>", "Target repository for post-merge Cell selection")
+    .option("--after-merge-pr <number>", "Merged PR number that just completed")
+    .option("--merge-commit <sha>", "Merge commit to verify against post-merge evidence")
+    .option("--cell-queue <path>", "shirube-cell-queue/v1 JSON file")
+    .option("--post-merge-evidence <path>", "Post-merge evidence JSON file for the completed PR")
+    .option("--generated-at <iso>", "Deterministic generated_at timestamp")
     .action((options: ConveyorNextOptions) => {
       runConveyorAction(options, () => {
+        if (isCellQueueNextMode(options)) {
+          requireJsonFormat(options.format);
+          const report = buildConveyorNext({
+            parentSsot: requiredCliOption(options.parentSsot, "--parent-ssot"),
+            repo: requiredCliOption(options.repo, "--repo"),
+            afterMergePr: parsePositiveInteger(requiredCliOption(options.afterMergePr, "--after-merge-pr"), "--after-merge-pr"),
+            mergeCommit: requiredCliOption(options.mergeCommit, "--merge-commit"),
+            cellQueue: readJsonFile(requiredCliOption(options.cellQueue, "--cell-queue")) as ConveyorCellQueue,
+            postMergeEvidence: readJsonFile(requiredCliOption(options.postMergeEvidence, "--post-merge-evidence")) as ConveyorPostMergeEvidence,
+            generatedAt: options.generatedAt,
+          });
+          process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+          return;
+        }
         const input = readManifestFixture(options.fixture);
         const mode: ConveyorMode = options.apply ? "apply" : "dry-run";
         const profile = options.profile ? readConveyorProfile(options.profile) : undefined;
@@ -434,6 +503,122 @@ export function registerConveyorCommand(program: Command): void {
           return;
         }
         process.stdout.write(formatNextTarget(payload));
+      });
+    });
+
+  conveyor
+    .command("plan")
+    .description("Generate a deterministic handoff/checklist/review-plan package for a queued Cell")
+    .requiredOption("--cell-queue <path>", "shirube-cell-queue/v1 JSON file")
+    .requiredOption("--cell-id <id>", "Cell id to plan")
+    .option("--parent-ssot <owner/repo#issue>", "Parent SSOT override")
+    .option("--repo <owner/repo>", "Repository override")
+    .option("--framework-ref <ref>", "Pinned framework ref for Work Order preview")
+    .option("--owner-actor <actor>", "Owner actor for Work Order preview")
+    .option("--generated-at <iso>", "Deterministic generated_at timestamp")
+    .option("--format <format>", "Output format: json")
+    .action((options: ConveyorStatePlanOptions) => {
+      runConveyorAction(options, () => {
+        requireJsonFormat(options.format);
+        const report = buildConveyorPlan({
+          cellQueue: readJsonFile(requiredCliOption(options.cellQueue, "--cell-queue")) as ConveyorCellQueue,
+          cellId: requiredCliOption(options.cellId, "--cell-id"),
+          parentSsot: options.parentSsot,
+          repo: options.repo,
+          frameworkRef: options.frameworkRef,
+          ownerActor: options.ownerActor,
+          generatedAt: options.generatedAt,
+        });
+        process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+      });
+    });
+
+  conveyor
+    .command("open-pr")
+    .description("Emit a draft PR plan for a queued Cell; does not call GitHub or merge")
+    .requiredOption("--cell-queue <path>", "shirube-cell-queue/v1 JSON file")
+    .requiredOption("--cell-id <id>", "Cell id to open as draft PR")
+    .option("--parent-ssot <owner/repo#issue>", "Parent SSOT override")
+    .option("--repo <owner/repo>", "Repository override")
+    .option("--framework-ref <ref>", "Pinned framework ref for Work Order preview")
+    .option("--owner-actor <actor>", "Owner actor for Work Order preview")
+    .option("--generated-at <iso>", "Deterministic generated_at timestamp")
+    .option("--format <format>", "Output format: json")
+    .action((options: ConveyorOpenPrOptions) => {
+      runConveyorAction(options, () => {
+        requireJsonFormat(options.format);
+        const plan = buildConveyorPlan({
+          cellQueue: readJsonFile(requiredCliOption(options.cellQueue, "--cell-queue")) as ConveyorCellQueue,
+          cellId: requiredCliOption(options.cellId, "--cell-id"),
+          parentSsot: options.parentSsot,
+          repo: options.repo,
+          frameworkRef: options.frameworkRef,
+          ownerActor: options.ownerActor,
+          generatedAt: options.generatedAt,
+        });
+        process.stdout.write(JSON.stringify(buildConveyorOpenPrPlan(plan), null, 2) + "\n");
+      });
+    });
+
+  conveyor
+    .command("export-work-order")
+    .description("Export an AUN-compatible Work Order JSON preview for a queued Cell")
+    .requiredOption("--cell-queue <path>", "shirube-cell-queue/v1 JSON file")
+    .requiredOption("--cell-id <id>", "Cell id to export")
+    .option("--parent-ssot <owner/repo#issue>", "Parent SSOT override")
+    .option("--repo <owner/repo>", "Repository override")
+    .option("--framework-ref <ref>", "Pinned framework ref")
+    .option("--owner-actor <actor>", "Owner actor")
+    .option("--target-capability <capability>", "AUN target capability")
+    .option("--generated-at <iso>", "Deterministic generated_at timestamp")
+    .option("--out <path>", "Write Work Order JSON to file when valid")
+    .option("--format <format>", "Output format: json")
+    .action((options: ConveyorExportWorkOrderOptions) => {
+      runConveyorAction(options, () => {
+        requireJsonFormat(options.format);
+        const report = buildConveyorWorkOrderExport({
+          cellQueue: readJsonFile(requiredCliOption(options.cellQueue, "--cell-queue")) as ConveyorCellQueue,
+          cellId: requiredCliOption(options.cellId, "--cell-id"),
+          parentSsot: options.parentSsot,
+          repo: options.repo,
+          frameworkRef: options.frameworkRef,
+          ownerActor: options.ownerActor,
+          targetCapability: options.targetCapability,
+          generatedAt: options.generatedAt,
+          out: options.out,
+        });
+        process.stdout.write(JSON.stringify(report, null, 2) + "\n");
+      });
+    });
+
+  conveyor
+    .command("record-post-merge")
+    .description("Record deterministic post-merge evidence for a completed Cell")
+    .requiredOption("--repo <owner/repo>", "Repository")
+    .option("--parent-ssot <owner/repo#issue>", "Parent SSOT issue")
+    .requiredOption("--pr <number>", "Merged PR number")
+    .requiredOption("--merged-head <sha>", "Approved/merged head SHA")
+    .requiredOption("--merge-commit <sha>", "Merge commit SHA")
+    .requiredOption("--merged-at <iso>", "Merge timestamp")
+    .requiredOption("--post-merge-smoke-or-na <PASS|FAIL|N/A>", "Post-merge smoke result or N/A")
+    .requiredOption("--next-step <text>", "Next step recorded in the evidence")
+    .option("--out <path>", "Write post-merge evidence JSON")
+    .option("--format <format>", "Output format: json")
+    .action((options: ConveyorPostMergeOptions) => {
+      runConveyorAction(options, () => {
+        requireJsonFormat(options.format);
+        const report = buildConveyorPostMergeRecord({
+          repo: requiredCliOption(options.repo, "--repo"),
+          parentSsot: options.parentSsot,
+          pr: parsePositiveInteger(requiredCliOption(options.pr, "--pr"), "--pr"),
+          mergedHead: requiredCliOption(options.mergedHead, "--merged-head"),
+          mergeCommit: requiredCliOption(options.mergeCommit, "--merge-commit"),
+          mergedAt: requiredCliOption(options.mergedAt, "--merged-at"),
+          postMergeSmokeOrNa: requiredCliOption(options.postMergeSmokeOrNa, "--post-merge-smoke-or-na"),
+          nextStep: requiredCliOption(options.nextStep, "--next-step"),
+          out: options.out,
+        });
+        process.stdout.write(JSON.stringify(report, null, 2) + "\n");
       });
     });
 
@@ -626,6 +811,33 @@ function runConveyorAction(options: ConveyorReconcileOptions, action: () => void
 
 function wantsJsonOutput(options: { json?: boolean; format?: string }): boolean {
   return options.json === true || options.format === "json";
+}
+
+function requireJsonFormat(format: string | undefined): void {
+  if (format !== "json") {
+    throw new Error("Invalid --format. Expected json.");
+  }
+}
+
+function readJsonFile(filePath: string): unknown {
+  return JSON.parse(readFileSync(filePath, "utf8"));
+}
+
+function requiredCliOption(value: string | undefined, option: string): string {
+  if (typeof value === "string" && value.trim() !== "") return value.trim();
+  throw new Error(`Missing ${option}.`);
+}
+
+function parsePositiveInteger(value: string, option: string): number {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new Error(`Invalid ${option}. Expected a positive integer.`);
+  }
+  return parsed;
+}
+
+function isCellQueueNextMode(options: ConveyorNextOptions): boolean {
+  return Boolean(options.parentSsot || options.repo || options.afterMergePr || options.mergeCommit || options.cellQueue || options.postMergeEvidence);
 }
 
 function readManifestFixture(fixture: string | undefined): ConveyorManifestInput {

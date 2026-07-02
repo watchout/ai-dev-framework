@@ -1,0 +1,34 @@
+schema_version: shirube-enforcement-policy/v1
+policy_id: ENFORCEMENT-POLICY-ADF-V3-CONVEYOR-STATE-MACHINE-001
+repo: watchout/ai-dev-framework
+mode: report_only
+profile: hotel-lite
+framework_ref: watchout/ai-dev-framework@5cb41e9bac186693ef1dc95c6a3c95cb2324f478
+updated_at: 2026-06-27T00:00:00Z
+owner_observed: true
+owner:
+  role: repo_owner
+  actor: watchout
+required_checks:
+  enabled: false
+branch_protection:
+  unchanged: true
+rulesets:
+  unchanged: true
+report_only_semantics:
+  aggregate_would_block_sets_owner_must_not_merge: true
+  ci_should_fail: false
+  owner_must_not_merge_without_exception: true
+non_scope:
+  - independent audit synthesis
+  - owner approval synthesis
+  - merge execution
+  - required check activation
+  - branch protection mutation
+  - ruleset mutation
+  - AUN queue mutation
+  - target repository mutation
+  - DB runtime
+  - MCP implementation
+  - AUN runtime integration
+  - package or lockfile changes

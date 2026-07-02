@@ -1,0 +1,58 @@
+{
+  "schema_version": "shirube-cell-queue/v1",
+  "parent_ssot": "watchout/misell#197",
+  "repo": "watchout/misell",
+  "cells": [
+    {
+      "cell_id": "CELL-MISELL-205",
+      "status": "merge_ready",
+      "risk_class": "R1",
+      "cell_type": "docs_contract",
+      "allowed_paths": [
+        "docs/misell/**"
+      ],
+      "forbidden_paths": [
+        "src/**"
+      ],
+      "expected_outputs": [
+        "post_merge_evidence"
+      ],
+      "pr_number": 205,
+      "merge_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "goal": "Complete CELL-MISELL-205.",
+      "acceptance_criteria": [
+        "post_merge_evidence"
+      ],
+      "non_scope": [
+        "work outside allowed_paths",
+        "owner approval synthesis",
+        "merge execution",
+        "branch protection mutation"
+      ],
+      "implementation_pr_plan": {
+        "mode": "single_pr",
+        "prs": [
+          {
+            "id": "PR-A",
+            "pr_role": "implementation",
+            "title": "Implement CELL-MISELL-205",
+            "completes_cell": true
+          }
+        ]
+      },
+      "validation_plan": {
+        "required_commands": [
+          "npm test -- test/shirube/conveyor-state-machine.test.ts"
+        ],
+        "required_evidence": [
+          "validation_result",
+          "audit_checklist_report",
+          "owner_decision",
+          "post_merge_evidence"
+        ]
+      },
+      "audit_checklist_ref": ".shirube/work-orders/cell-misell-205/audit-checklist.yaml",
+      "close_condition": "All planned PRs are merged or explicitly skipped, acceptance criteria are satisfied, and post-merge evidence is recorded."
+    }
+  ]
+}

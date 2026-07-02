@@ -1,0 +1,12 @@
+{
+  "schema_version": "shirube-post-merge-evidence/v1",
+  "repo": "watchout/misell",
+  "parent_ssot": "watchout/misell#197",
+  "merged_pr": 205,
+  "exact_merged_head": "2052052052052052052052052052052052052052",
+  "merge_commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "merged_at": "2026-06-27T00:00:00Z",
+  "post_merge_smoke_or_NA": "PASS",
+  "unresolved_follow_up_blockers": [],
+  "next_step": "select_next_cell"
+}

@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://shirube.dev/schemas/shirube/cell-queue.v1.schema.json",
+  "title": "Shirube Cell Queue v1",
+  "description": "Deterministic delivery graph used by Shirube Conveyor to select the next Cell after post-merge evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "parent_ssot", "repo", "cells"],
+  "properties": {
+    "schema_version": { "const": "shirube-cell-queue/v1" },
+    "parent_ssot": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+#[0-9]+$"
+    },
+    "repo": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+    },
+    "cells": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/cell" }
+    }
+  },
+  "$defs": {
+    "cell": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "cell_id",
+        "status",
+        "goal",
+        "acceptance_criteria",
+        "non_scope",
+        "risk_class",
+        "cell_type",
+        "allowed_paths",
+        "forbidden_paths",
+        "expected_outputs",
+        "implementation_pr_plan",
+        "validation_plan",
+        "audit_checklist_ref",
+        "close_condition"
+      ],
+      "properties": {
+        "cell_id": {
+          "type": "string",
+          "pattern": "^CELL-[A-Z0-9._:-]+$"
+        },
+        "status": {
+          "enum": [
+            "planned",
+            "ready_for_implementation",
+            "implementation_in_progress",
+            "pr_open",
+            "audit_required",
+            "owner_decision_required",
+            "merge_ready",
+            "merged",
+            "blocked",
+            "skipped"
+          ]
+        },
+        "depends_on": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^CELL-[A-Z0-9._:-]+$" }
+        },
+        "priority": { "type": "number" },
+        "order": { "type": "number" },
+        "risk_class": { "enum": ["R0", "R1", "R2", "R3", "R4"] },
+        "cell_type": { "type": "string", "minLength": 1 },
+        "goal": { "type": "string", "minLength": 1 },
+        "acceptance_criteria": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "protected_surfaces": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "allowed_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "forbidden_paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "expected_outputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "non_scope": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "implementation_pr_plan": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["mode", "prs"],
+          "properties": {
+            "mode": { "enum": ["single_pr", "multi_pr"] },
+            "prs": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": true,
+                "required": ["pr_role", "title", "completes_cell"],
+                "properties": {
+                  "id": { "type": "string", "minLength": 1 },
+                  "pr_role": { "type": "string", "minLength": 1 },
+                  "title": { "type": "string", "minLength": 1 },
+                  "completes_cell": { "type": "boolean" },
+                  "depends_on": {
+                    "type": "array",
+                    "items": { "type": "string", "minLength": 1 }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "validation_plan": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": ["required_commands", "required_evidence"],
+          "properties": {
+            "required_commands": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "required_evidence": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "audit_checklist_ref": { "type": "string", "minLength": 1 },
+        "close_condition": { "type": "string", "minLength": 1 },
+        "pr_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "merge_commit": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{7,40}$"
+        },
+        "merged_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
