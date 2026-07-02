@@ -1,5 +1,6 @@
 import { execGh } from "./github-engine.js";
 import {
+  type MergeAuthorityOwnerDecisionComment,
   type MergeAuthorityPullRequest,
   type MergeAuthorityReview,
 } from "./merge-authority.js";
@@ -7,6 +8,7 @@ import {
 export interface GitHubMergeAuthorityData {
   pullRequest: MergeAuthorityPullRequest;
   reviews: MergeAuthorityReview[];
+  ownerDecisionComments: MergeAuthorityOwnerDecisionComment[];
 }
 
 interface GraphQlResponse {
@@ -29,6 +31,17 @@ interface GraphQlResponse {
             state?: string | null;
             commit?: { oid?: string | null } | null;
             submittedAt?: string | null;
+          }[];
+          pageInfo?: {
+            hasPreviousPage?: boolean | null;
+          } | null;
+        } | null;
+        comments?: {
+          nodes?: {
+            author?: { login?: string | null } | null;
+            body?: string | null;
+            createdAt?: string | null;
+            url?: string | null;
           }[];
           pageInfo?: {
             hasPreviousPage?: boolean | null;
@@ -65,6 +78,19 @@ query MergeAuthorityPullRequest($owner: String!, $name: String!, $number: Int!) 
             oid
           }
           submittedAt
+        }
+        pageInfo {
+          hasPreviousPage
+        }
+      }
+      comments(last: 100) {
+        nodes {
+          author {
+            login
+          }
+          body
+          createdAt
+          url
         }
         pageInfo {
           hasPreviousPage
@@ -110,7 +136,6 @@ export function parseMergeAuthorityGraphQlResponse(
   if (pr.reviews?.pageInfo?.hasPreviousPage) {
     throw new Error("GitHub review data is truncated; merge authority must fail closed");
   }
-
   const labels = (pr.labels?.nodes ?? [])
     .map((node) => node.name)
     .filter((name): name is string => typeof name === "string" && name.length > 0);
@@ -132,6 +157,24 @@ export function parseMergeAuthorityGraphQlResponse(
     };
   });
 
+  const ownerDecisionComments = (pr.comments?.nodes ?? []).flatMap((node) => {
+    const body = node.body;
+    if (typeof body !== "string" || !body.includes("shirube-owner-decision/v1")) {
+      return [];
+    }
+    const author = node.author?.login;
+    const createdAt = node.createdAt;
+    if (!author || !createdAt) {
+      throw new Error("GitHub owner_decision comment data is incomplete; merge authority must fail closed");
+    }
+    return [{
+      author,
+      body,
+      createdAt,
+      url: node.url ?? undefined,
+    }];
+  });
+
   return {
     pullRequest: {
       number: pr.number,
@@ -141,6 +184,7 @@ export function parseMergeAuthorityGraphQlResponse(
       labels,
     },
     reviews,
+    ownerDecisionComments,
   };
 }
 

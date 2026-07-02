@@ -35,6 +35,31 @@ describe("github reviews adapter", () => {
               ],
               pageInfo: { hasPreviousPage: false },
             },
+            comments: {
+              nodes: [
+                {
+                  author: { login: "cto-login" },
+                  body: [
+                    "ordinary note",
+                    "```yaml",
+                    "schema_version: shirube-owner-decision/v1",
+                    "target_pr: 186",
+                    "target_head: head-sha",
+                    "decision: APPROVED",
+                    "```",
+                  ].join("\n"),
+                  createdAt: "2026-05-21T02:00:00Z",
+                  url: "https://github.example/comment/1",
+                },
+                {
+                  author: { login: "someone-else" },
+                  body: "ordinary comment",
+                  createdAt: "2026-05-21T03:00:00Z",
+                  url: "https://github.example/comment/2",
+                },
+              ],
+              pageInfo: { hasPreviousPage: false },
+            },
           },
         },
       },
@@ -61,6 +86,22 @@ describe("github reviews adapter", () => {
         commitId: "head-sha",
         submittedAt: "2026-05-21T01:00:00Z",
         dismissed: true,
+      },
+    ]);
+    expect(result.ownerDecisionComments).toEqual([
+      {
+        author: "cto-login",
+        body: [
+          "ordinary note",
+          "```yaml",
+          "schema_version: shirube-owner-decision/v1",
+          "target_pr: 186",
+          "target_head: head-sha",
+          "decision: APPROVED",
+          "```",
+        ].join("\n"),
+        createdAt: "2026-05-21T02:00:00Z",
+        url: "https://github.example/comment/1",
       },
     ]);
   });
@@ -122,6 +163,42 @@ describe("github reviews adapter", () => {
         },
       },
     }))).toThrow("GitHub label data is truncated");
+  });
+
+  it("continues with the latest available owner_decision comments when older comments are truncated", () => {
+    const result = parseMergeAuthorityGraphQlResponse(JSON.stringify({
+      data: {
+        repository: {
+          pullRequest: {
+            number: 187,
+            headRefOid: "head-sha",
+            baseRefName: "main",
+            isDraft: false,
+            labels: {
+              nodes: [{ name: "route:fast-merge" }],
+              pageInfo: { hasNextPage: false },
+            },
+            reviews: {
+              nodes: [],
+              pageInfo: { hasPreviousPage: false },
+            },
+            comments: {
+              nodes: [
+                {
+                  author: { login: "cto-login" },
+                  body: "<!-- shirube-owner-decision/v1 -->\n```yaml\nschema_version: shirube-owner-decision/v1\ntarget_pr: 187\ntarget_head: head-sha\ndecision: APPROVED\n```",
+                  createdAt: "2026-05-21T02:00:00Z",
+                  url: "https://github.example/comment/1",
+                },
+              ],
+              pageInfo: { hasPreviousPage: true },
+            },
+          },
+        },
+      },
+    }));
+
+    expect(result.ownerDecisionComments).toHaveLength(1);
   });
 
   it("fails closed when a review node is incomplete", () => {
