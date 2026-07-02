@@ -1,7 +1,8 @@
 # Script-Control Fitness Negative Proof
 
-This file intentionally violates the Shirube script-control fitness policy.
-It exists only to prove that the enforced validator blocks a non-compliant PR.
+This fixture intentionally violates the Shirube script-control fitness policy.
+It proves the validator blocks non-deterministic authority without committing an
+invalid control spec to the repository root.
 
 ```yaml
 control_points:

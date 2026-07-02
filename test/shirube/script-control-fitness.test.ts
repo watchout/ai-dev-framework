@@ -123,6 +123,16 @@ describe("Shirube script-control fitness validator", () => {
     }
   });
 
+  it("keeps negative proof as a fixture while proving invalid authority blocks", () => {
+    const result = runValidator("negative-proof.txt");
+
+    expect(result.exitCode).toBe(1);
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(result.json.files_scanned).toContain("docs/spec/negative-proof.md");
+    expect(result.json.control_points_checked[0].authority).toBe("llm");
+    expect(blockerIds(result)).toContain("SCF-003");
+  });
+
   it("blocks report-only without enforce_by", () => {
     const result = runValidator("report-only-missing-enforce-by.txt");
 
