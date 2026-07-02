@@ -178,6 +178,18 @@ describe("Shirube Cell Semantics Gate MVP", () => {
     expect(ids(result)).toContain("CELL-DECOMP-004");
   });
 
+  it("blocks Cells without implementation PR plans", () => {
+    const result = run("scripts/shirube/check-cell-decomposition.mjs", [
+      "--cell",
+      fixture("cell.missing-pr-plan.yaml"),
+      "--format",
+      "json",
+    ]);
+
+    expect(result.json.verdict).toBe("BLOCKED");
+    expect(ids(result)).toContain("CELL-PLAN-001");
+  });
+
   it("blocks unrelated outcomes grouped into one Cell", () => {
     const result = run("scripts/shirube/check-cell-cohesion.mjs", [
       "--cell",

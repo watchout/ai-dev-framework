@@ -12,6 +12,28 @@ non_scope:
   - live provider execution
   - DB mutation
   - package or lockfile changes
+implementation_pr_plan:
+  mode: multi_pr
+  prs:
+    - id: PR-A
+      pr_role: route_metadata_pr
+      title: Define route metadata and handoff
+      completes_cell: false
+    - id: PR-B
+      pr_role: implementation_pr
+      title: Implement local dry-run materializer
+      completes_cell: false
+      depends_on: [PR-A]
+    - id: PR-C
+      pr_role: verification_pr
+      title: Add no-mutation verification evidence
+      completes_cell: false
+      depends_on: [PR-B]
+    - id: PR-D
+      pr_role: post_merge_pr
+      title: Record post-merge evidence and close Cell
+      completes_cell: true
+      depends_on: [PR-C]
 allowed_paths:
   - .shirube/**
   - docs/shirube/**
@@ -35,6 +57,28 @@ cell:
   non_scope:
     - live provider execution
     - DB mutation
+  implementation_pr_plan:
+    mode: multi_pr
+    prs:
+      - id: PR-A
+        pr_role: route_metadata_pr
+        title: Define route metadata and handoff
+        completes_cell: false
+      - id: PR-B
+        pr_role: implementation_pr
+        title: Implement local dry-run materializer
+        completes_cell: false
+        depends_on: [PR-A]
+      - id: PR-C
+        pr_role: verification_pr
+        title: Add no-mutation verification evidence
+        completes_cell: false
+        depends_on: [PR-B]
+      - id: PR-D
+        pr_role: post_merge_pr
+        title: Record post-merge evidence and close Cell
+        completes_cell: true
+        depends_on: [PR-C]
   stages:
     - stage_id: route_metadata
       expected_output: route table and handoff metadata
@@ -51,6 +95,8 @@ cell_lifecycle:
   stage: route_metadata
   stage_order: 1
   completes_cell: false
+  implementation_plan_mode: multi_pr
+  planned_pr_id: PR-A
   next_stage: implementation
   next_expected_action: open_implementation_pr_for_same_cell
   next_expected_command: aun connector materialize-ui-bindings --dry-run --json
@@ -59,5 +105,7 @@ pr_role:
   schema_version: shirube-pr-role/v1
   role: route_metadata_pr
   completes_cell: false
+  implementation_plan_mode: multi_pr
+  planned_pr_id: PR-A
   expected_next_action: open_implementation_pr_for_same_cell
   expected_next_stage: implementation

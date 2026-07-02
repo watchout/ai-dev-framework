@@ -39,6 +39,7 @@ export function buildCellDecompositionCheck(input = {}) {
   const cell = resolveCell({ handoff, cellFile });
   const lifecycle = resolveLifecycle({ handoff, cell });
   const prRole = resolvePrRole({ handoff, cell });
+  const implementationPrPlan = resolveImplementationPrPlan({ handoff, cell });
   const blockers = [];
   const warnings = [];
 
@@ -66,6 +67,7 @@ export function buildCellDecompositionCheck(input = {}) {
 
   blockers.push(...validateLifecycle(lifecycle, { multiStage }));
   blockers.push(...validatePrRole(prRole, lifecycle, { multiStage }));
+  blockers.push(...validateImplementationPrPlan(implementationPrPlan, prRole, lifecycle));
 
   const routeMetadata = lifecycle.stage === "route_metadata" || prRole.role === "route_metadata_pr";
   if (routeMetadata && lifecycle.completes_cell === true) {
@@ -79,6 +81,7 @@ export function buildCellDecompositionCheck(input = {}) {
     cell,
     lifecycle,
     prRole,
+    implementationPrPlan,
     cellId,
     stages,
   });
@@ -135,7 +138,41 @@ function validatePrRole(prRole, lifecycle, context) {
   return blockers;
 }
 
-function report({ blockers, warnings, cell, lifecycle, prRole, cellId, stages }) {
+function validateImplementationPrPlan(plan, prRole, lifecycle) {
+  const blockers = [];
+  if (!isObject(plan) || Object.keys(plan).length === 0) {
+    blockers.push(finding("CELL-PLAN-001"));
+    return blockers;
+  }
+  const mode = String(plan.mode ?? "");
+  const prs = asArray(plan.prs);
+  if (!["single_pr", "multi_pr"].includes(mode)) {
+    blockers.push(finding("CELL-PLAN-002"));
+  }
+  if (prs.length === 0) {
+    blockers.push(finding("CELL-PLAN-003"));
+  }
+  if (mode === "single_pr" && prs.length !== 1) {
+    blockers.push(finding("CELL-PLAN-004"));
+  }
+  for (const [index, pr] of prs.entries()) {
+    if (!isObject(pr) || !nonEmptyString(pr.pr_role) || !nonEmptyString(pr.title) || typeof pr.completes_cell !== "boolean") {
+      blockers.push(finding("CELL-PLAN-005", { path: `implementation_pr_plan.prs.${index}` }));
+    }
+  }
+  if (isObject(prRole) && nonEmptyString(prRole.role)) {
+    const roleMatches = prs.some((pr) => isObject(pr) && pr.pr_role === prRole.role);
+    if (!roleMatches) {
+      blockers.push(finding("CELL-PLAN-006"));
+    }
+  }
+  if (lifecycle.completes_cell === true && !prs.some((pr) => isObject(pr) && pr.completes_cell === true)) {
+    blockers.push(finding("CELL-PLAN-007"));
+  }
+  return blockers;
+}
+
+function report({ blockers, warnings, cell, lifecycle, prRole, implementationPrPlan, cellId, stages }) {
   const verdict = blockers.length > 0 ? "BLOCKED" : warnings.length > 0 ? "PASS_WITH_WARN" : "PASS";
   const continuation = lifecycle.completes_cell === false;
   return {
@@ -151,7 +188,7 @@ function report({ blockers, warnings, cell, lifecycle, prRole, cellId, stages })
           action: "request_owner_planning_decision",
           responsible_role: "lead",
           allowed_actor_role: "lead",
-          reason: "Cell lifecycle or PR role metadata is missing or contradictory.",
+          reason: "Cell lifecycle, PR role, or implementation PR plan metadata is missing or contradictory.",
         }
       : null,
     owner_approval_allowed: verdict === "BLOCKED" ? false : null,
@@ -171,6 +208,7 @@ function report({ blockers, warnings, cell, lifecycle, prRole, cellId, stages })
       cell_present: isObject(cell),
       cell_lifecycle_present: isObject(lifecycle),
       pr_role_present: isObject(prRole),
+      implementation_pr_plan_present: isObject(implementationPrPlan) && Object.keys(implementationPrPlan).length > 0,
       stages: stages.map((stage) => stage.stage_id ?? stage.stage ?? stage),
     },
     blockers,
@@ -199,6 +237,12 @@ function resolveLifecycle({ handoff, cell }) {
 function resolvePrRole({ handoff, cell }) {
   if (isObject(cell.pr_role)) return cell.pr_role;
   if (isObject(handoff.pr_role)) return handoff.pr_role;
+  return {};
+}
+
+function resolveImplementationPrPlan({ handoff, cell }) {
+  if (isObject(cell.implementation_pr_plan)) return cell.implementation_pr_plan;
+  if (isObject(handoff.implementation_pr_plan)) return handoff.implementation_pr_plan;
   return {};
 }
 
@@ -240,6 +284,13 @@ function finding(itemId, overrides = {}) {
     "PR-ROLE-003": ["route_metadata_claims_completion", "route metadata PR incorrectly claims Cell completion.", "pr_role.completes_cell"],
     "PR-ROLE-004": ["implementation_stage_missing", "implementation_pr must align with implementation Cell stage.", "pr_role.role"],
     "PR-ROLE-005": ["ref_update_claims_runtime_completion", "ref-update PR must not claim product/runtime Cell completion.", "pr_role.completes_cell"],
+    "CELL-PLAN-001": ["missing_implementation_pr_plan", "Cell implementation PR plan is missing.", "implementation_pr_plan"],
+    "CELL-PLAN-002": ["invalid_implementation_pr_plan_mode", "implementation_pr_plan.mode must be single_pr or multi_pr.", "implementation_pr_plan.mode"],
+    "CELL-PLAN-003": ["missing_planned_prs", "implementation_pr_plan.prs must list at least one PR unit.", "implementation_pr_plan.prs"],
+    "CELL-PLAN-004": ["single_pr_plan_not_single", "implementation_pr_plan.mode=single_pr requires exactly one planned PR.", "implementation_pr_plan.prs"],
+    "CELL-PLAN-005": ["invalid_planned_pr", "Each planned PR requires pr_role, title, and completes_cell.", "implementation_pr_plan.prs"],
+    "CELL-PLAN-006": ["current_pr_role_not_in_plan", "Current pr_role is not present in implementation_pr_plan.prs.", "implementation_pr_plan.prs"],
+    "CELL-PLAN-007": ["completion_pr_missing", "A completing lifecycle requires a planned PR with completes_cell=true.", "implementation_pr_plan.prs"],
   };
   const [code, message, path] = defaults[itemId] ?? ["cell_decomposition_error", "Cell decomposition check failed.", "cell"];
   return {
@@ -255,8 +306,8 @@ function warning(itemId, code, message, path) {
 }
 
 function actionFor(itemId) {
-  if (itemId.startsWith("CELL-LC") || itemId.startsWith("PR-ROLE")) {
-    return "Fix cell_lifecycle and pr_role metadata before audit or owner approval.";
+  if (itemId.startsWith("CELL-LC") || itemId.startsWith("PR-ROLE") || itemId.startsWith("CELL-PLAN")) {
+    return "Fix cell_lifecycle, pr_role, and implementation_pr_plan metadata before audit or owner approval.";
   }
   return "Fix Cell decomposition metadata before audit or owner approval.";
 }

@@ -1,0 +1,22 @@
+schema_version: shirube-cell/v1
+cell_id: CELL-MISSING-PR-PLAN-001
+parent_ssot: watchout/example#1
+goal_summary: Implement a small docs outcome.
+completion_definition: Docs outcome is implemented, audited, merged, and post-merge evidence is recorded.
+acceptance_criteria:
+  - docs stage explains the outcome.
+non_scope:
+  - runtime changes
+cell_lifecycle:
+  schema_version: shirube-cell-lifecycle/v1
+  cell_id: CELL-MISSING-PR-PLAN-001
+  cell_goal: Implement a small docs outcome.
+  stage: implementation
+  stage_order: 1
+  completes_cell: true
+  cell_completion_definition: Docs outcome is implemented, audited, merged, and post-merge evidence is recorded.
+pr_role:
+  schema_version: shirube-pr-role/v1
+  role: implementation_pr
+  completes_cell: true
+  expected_next_action: record_post_merge_evidence

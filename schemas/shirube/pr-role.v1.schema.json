@@ -48,6 +48,16 @@
         "post_merge",
         null
       ]
+    },
+    "planned_pr_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "implementation_plan_mode": {
+      "enum": [
+        "single_pr",
+        "multi_pr"
+      ]
     }
   },
   "additionalProperties": true

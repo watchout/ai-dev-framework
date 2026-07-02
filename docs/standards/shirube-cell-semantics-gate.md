@@ -17,6 +17,33 @@ A Cell may span multiple PR stages, including `route_metadata`, `implementation`
 
 A PR merge is not Cell completion unless the PR declares `completes_cell: true` and all required Cell stages and post-merge evidence are complete.
 
+## Implementation PR Plan
+
+Every Cell must declare an `implementation_pr_plan` before implementation
+starts. The plan makes the User view and GitHub view explicit:
+
+- User view: one Cell is being advanced.
+- GitHub view: one or more PRs implement planned Cell stages.
+
+Small Cells may declare `mode: single_pr` with exactly one planned PR. Large
+Cells must declare `mode: multi_pr` and list each PR stage before the first
+implementation PR opens.
+
+```yaml
+implementation_pr_plan:
+  mode: single_pr
+  prs:
+    - id: PR-A
+      pr_role: implementation_pr
+      title: Implement the Cell in one PR
+      completes_cell: true
+```
+
+For multi-PR Cells, planned PR roles should map to concrete stage work such as
+schema/types, CLI dry-run, tests/evidence, docs/runbook, activation, or
+post-merge evidence completion. The Cell close condition remains separate from
+individual PR merge.
+
 ## Machine Ref Rule
 
 Machine ref fields must be absent until they contain a real repo-local path or comment URL.
@@ -79,6 +106,11 @@ pr_role:
 `route_metadata_pr` creates or updates handoff, checklist, evidence, or route metadata for a later implementation stage. It does not complete the Cell by default.
 
 `ref_update_pr` updates metadata or pinned refs. It must not claim runtime/product Cell completion.
+
+The current `pr_role.role` must appear in `implementation_pr_plan.prs`. A
+`single_pr` plan must contain exactly one planned PR; a `multi_pr` plan may
+contain multiple planned PRs, but each planned PR must declare `pr_role`,
+`title`, and `completes_cell`.
 
 ## Audit Format
 
