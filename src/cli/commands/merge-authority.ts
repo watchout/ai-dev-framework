@@ -54,6 +54,7 @@ export async function runMergeAuthority(
     config,
     pullRequest: data.pullRequest,
     reviews: data.reviews,
+    ownerDecisionComments: data.ownerDecisionComments,
     auditLevel: options.auditLevel ?? "strict",
   });
 

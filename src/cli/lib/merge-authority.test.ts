@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   evaluateMergeAuthority,
   type MergeAuthorityInput,
+  type MergeAuthorityOwnerDecisionComment,
   type MergeAuthorityReview,
 } from "./merge-authority.js";
 import { type FrameworkConfig } from "./workflow-config.js";
@@ -35,6 +36,42 @@ function approved(author: string, submittedAt = "2026-05-21T00:00:00Z"): MergeAu
     state: "APPROVED",
     commitId: headRefOid,
     submittedAt,
+  };
+}
+
+function ownerDecision(
+  author: string,
+  overrides: {
+    targetHead?: string;
+    targetPr?: number;
+    decision?: string;
+    createdAt?: string;
+    mergeAuthorized?: boolean;
+  } = {},
+): MergeAuthorityOwnerDecisionComment {
+  const targetHead = overrides.targetHead ?? headRefOid;
+  const targetPr = overrides.targetPr ?? 185;
+  const decision = overrides.decision ?? "APPROVED";
+  const mergeAuthorized =
+    overrides.mergeAuthorized === undefined
+      ? ""
+      : `merge_authorized: ${String(overrides.mergeAuthorized)}\n`;
+  return {
+    author,
+    createdAt: overrides.createdAt ?? "2026-05-21T00:00:00Z",
+    url: "https://github.example/comment/1",
+    body: [
+      "<!-- shirube-owner-decision/v1 -->",
+      "",
+      "```yaml",
+      "schema_version: shirube-owner-decision/v1",
+      "target_repo: watchout/example",
+      `target_pr: ${targetPr}`,
+      `target_head: ${targetHead}`,
+      `decision: ${decision}`,
+      mergeAuthorized.trimEnd(),
+      "```",
+    ].filter((line) => line.length > 0).join("\n"),
   };
 }
 
@@ -75,6 +112,74 @@ describe("merge authority evaluator", () => {
         "l3_governance_owner",
       ]);
     }
+  });
+
+  it("passes with exact-head owner_decision comment from configured L3 actor", () => {
+    const result = evaluateMergeAuthority(
+      input({
+        reviews: [],
+        ownerDecisionComments: [ownerDecision("cto-login")],
+      }),
+    );
+
+    expect(result.status).toBe("pass");
+    if (result.status === "pass") {
+      expect(result.required[0]?.evidence).toMatchObject({
+        type: "owner_decision_comment",
+        author: "cto-login",
+        decision: "APPROVED",
+        targetHead: headRefOid,
+        targetPr: 185,
+      });
+    }
+  });
+
+  it("blocks stale owner_decision comment on an older head SHA", () => {
+    const result = evaluateMergeAuthority(
+      input({
+        reviews: [],
+        ownerDecisionComments: [ownerDecision("cto-login", { targetHead: "old-head" })],
+      }),
+    );
+
+    expect(result.status).toBe("block");
+  });
+
+  it("blocks when latest exact-head owner_decision rejects after approval", () => {
+    const result = evaluateMergeAuthority(
+      input({
+        reviews: [],
+        ownerDecisionComments: [
+          ownerDecision("cto-login", { createdAt: "2026-05-21T00:00:00Z" }),
+          ownerDecision("cto-login", {
+            decision: "BLOCKED",
+            createdAt: "2026-05-21T01:00:00Z",
+          }),
+        ],
+      }),
+    );
+
+    expect(result.status).toBe("block");
+  });
+
+  it("blocks when latest current-head review requests changes after owner_decision approval", () => {
+    const result = evaluateMergeAuthority(
+      input({
+        reviews: [
+          {
+            author: "cto-login",
+            state: "CHANGES_REQUESTED",
+            commitId: headRefOid,
+            submittedAt: "2026-05-21T01:00:00Z",
+          },
+        ],
+        ownerDecisionComments: [
+          ownerDecision("cto-login", { createdAt: "2026-05-21T00:00:00Z" }),
+        ],
+      }),
+    );
+
+    expect(result.status).toBe("block");
   });
 
   it("blocks wrong actor approval", () => {
