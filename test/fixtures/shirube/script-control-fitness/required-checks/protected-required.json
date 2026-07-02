@@ -1,0 +1,14 @@
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "Shirube Script-Control Fitness / validate-control-points"
+    ],
+    "checks": [
+      {
+        "context": "Shirube Script-Control Fitness / report-only-expiry",
+        "app_id": 15368
+      }
+    ]
+  }
+}

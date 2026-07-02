@@ -1,0 +1,114 @@
+name: Shirube Script-Control Fitness
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  checks: read
+  statuses: read
+  pull-requests: read
+
+env:
+  NODE_VERSION: "20"
+
+jobs:
+  validate-control-points:
+    name: validate-control-points
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Collect changed files
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --prune origin "$BASE_REF"
+          git diff --name-only "origin/$BASE_REF...HEAD" > "$RUNNER_TEMP/shirube-script-control-changed-files.txt"
+          cat "$RUNNER_TEMP/shirube-script-control-changed-files.txt"
+
+      - name: Validate control points
+        run: |
+          node scripts/shirube/check-script-control-fitness.mjs \
+            --changed-files "$RUNNER_TEMP/shirube-script-control-changed-files.txt" \
+            --format json
+
+  report-only-expiry:
+    name: report-only-expiry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run expiry scan
+        run: |
+          node scripts/shirube/check-script-control-fitness.mjs \
+            --backfill \
+            --format json
+
+  required-checks-actually-ran:
+    name: required-checks-actually-ran
+    if: github.event_name == 'pull_request' && always()
+    needs:
+      - validate-control-points
+      - report-only-expiry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify required checks ran on exact head
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: |
+          node scripts/shirube/verify-required-checks-ran.mjs \
+            --repo "$REPO" \
+            --pr-number "$PR_NUMBER" \
+            --head-sha "$HEAD_SHA" \
+            --base-branch "$BASE_BRANCH" \
+            --expected-context validate-control-points \
+            --expected-context report-only-expiry \
+            --expected-context required-checks-actually-ran \
+            --github-token-env GITHUB_TOKEN \
+            --format json

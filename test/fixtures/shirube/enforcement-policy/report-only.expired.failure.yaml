@@ -1,12 +1,15 @@
 schema_version: shirube-enforcement-policy/v1
-policy_id: ENFORCEMENT-POLICY-MISSING-OWNER-001
+policy_id: ENFORCEMENT-POLICY-REPORT-ONLY-EXPIRED-001
 repo: watchout/ai-dev-framework
 mode: report_only
 profile: hotel-lite
 framework_ref: shirube-v3-rapid-lite@754dd12f014cbce0ee3d6247863589df0265abb3
 updated_at: 2026-06-23T00:00:00Z
-enforce_by: 2026-07-15
-reason: Bounded report-only calibration before owner-block promotion.
+enforce_by: 2026-06-30
+reason: Expired report-only calibration window.
+owner:
+  role: repo_owner
+  actor: watchout
 calibration:
   started_at: 2026-06-23T00:00:00Z
   minimum_prs: 3

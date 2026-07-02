@@ -5,11 +5,25 @@ mode: report_only
 profile: hotel-lite
 framework_ref: {{FRAMEWORK_REF}}
 updated_at: {{GENERATED_AT}}
+enforce_by: "{{REPORT_ONLY_ENFORCE_BY}}"
+reason: "{{REPORT_ONLY_REASON}}"
 stale_after_days: 90
 owner_observed: true
 owner:
   role: repo_owner
   actor: {{OWNER_ACTOR}}
+control_points:
+  - id: CP-ENFORCEMENT-POLICY-REPORT-ONLY-001
+    subject: expiry_gate
+    authority: deterministic-script
+    enforcement:
+      mode: report-only
+      enforce_by: 2026-07-31
+      owner: repo_owner
+      reason: Bounded Rapid/Lite report-only calibration before owner-block promotion.
+    evidence_required:
+      - script_output
+    script_ref: scripts/shirube/check-enforcement-policy.mjs
 required_checks:
   enabled: false
 branch_protection:

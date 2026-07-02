@@ -59,6 +59,8 @@ function renderWithOptions(out: string, extraArgs: string[]): { exitCode: number
     "https://github.com/watchout/control/issues/1#issuecomment-owner-confirmed",
     "--cell-id",
     "CELL-EXAMPLE-ADOPTION-001",
+    "--generated-at",
+    "2026-06-23T00:00:00Z",
     "--mode",
     "render",
     ...extraArgs,
@@ -194,8 +196,15 @@ describe("Shirube overlay adoption pack renderer", () => {
       expect(sourceMirror.extracted_fields.owner_confirmation).toBe("https://github.com/watchout/control/issues/1#issuecomment-owner-confirmed");
 
       expect(enforcement.mode).toBe("report_only");
+      expect(enforcement.enforce_by).toBe("2026-07-23");
+      expect(enforcement.reason).toBe("Bounded Rapid/Lite report-only calibration for watchout/control#1 before owner-block promotion.");
       expect(enforcement.owner_observed).toBe(true);
       expect(enforcement.owner.actor).toBe("watchout");
+      expect(enforcement.control_points[0].authority).toBe("deterministic-script");
+      expect(enforcement.control_points[0].enforcement.mode).toBe("report-only");
+      expect(enforcement.control_points[0].enforcement.enforce_by).toBe("2026-07-31");
+      expect(enforcement.control_points[0].enforcement.owner).toBe("repo_owner");
+      expect(enforcement.control_points[0].enforcement.reason).toBe("Bounded Rapid/Lite report-only calibration before owner-block promotion.");
       expect(enforcement.required_checks.enabled).toBe(false);
       expect(enforcement.branch_protection.unchanged).toBe(true);
 

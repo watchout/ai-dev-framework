@@ -10,6 +10,7 @@ import {
 const SCHEMA = "shirube-adoption-pack-render/v1";
 const SUPPORTED_PROFILES = ["hotel-lite"];
 const SUPPORTED_MODES = ["render"];
+const REPORT_ONLY_ENFORCE_BY_DAYS = 30;
 
 const TEMPLATE_OUTPUTS = {
   "execution-context.yaml": ".shirube/execution-context.yaml",
@@ -217,6 +218,8 @@ function templateValues(input) {
     OWNER_ACTOR: input.ownerActor,
     OWNER_CONFIRMATION_REF: input.ownerConfirmationRef,
     PRODUCT: input.product,
+    REPORT_ONLY_ENFORCE_BY: reportOnlyEnforceBy(input.generatedAt),
+    REPORT_ONLY_REASON: reportOnlyReason(input),
     REPO_SPEC_ID: `RPS-${id}-001`,
     SOURCE_CONTROL: input.sourceControl,
     SOURCE_REPO: source.repo,
@@ -225,6 +228,17 @@ function templateValues(input) {
     TARGET_REPO: input.targetRepo,
     TARGET_REPO_NAME: targetName,
   };
+}
+
+function reportOnlyEnforceBy(generatedAt) {
+  const parsed = Date.parse(generatedAt);
+  const base = Number.isNaN(parsed) ? Date.parse("2026-07-01T00:00:00Z") : parsed;
+  const date = new Date(base + REPORT_ONLY_ENFORCE_BY_DAYS * 24 * 60 * 60 * 1000);
+  return date.toISOString().slice(0, 10);
+}
+
+function reportOnlyReason(input) {
+  return `Bounded Rapid/Lite report-only calibration for ${input.sourceControl} before owner-block promotion.`;
 }
 
 function renderTemplate(template, values) {
