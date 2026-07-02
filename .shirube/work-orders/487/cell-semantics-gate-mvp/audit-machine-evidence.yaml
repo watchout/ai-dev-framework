@@ -1,0 +1,38 @@
+schema_version: shirube-machine-evidence/v1
+evidence_id: AUDIT-MACHINE-EVIDENCE-ADF-CELL-SEMANTICS-GATE-MVP-001
+target_repo: watchout/ai-dev-framework
+target_pr: 525
+generated_by: codex
+owner_approval_synthesized: false
+audit_synthesized: false
+merge_synthesized: false
+evidence_refs:
+  - git_diff_scope
+  - command_result:npm run test -- test/shirube/cell-semantics.test.ts
+  - command_result:npm run test -- test/shirube/audit-checklist.test.ts
+  - command_result:npm run test -- test/shirube/rapid-lite-report.test.ts
+command_results:
+  - command: npm run test -- test/shirube/cell-semantics.test.ts
+    result: PASS
+  - command: npm run test -- test/shirube/audit-checklist.test.ts
+    result: PASS
+  - command: npm run test -- test/shirube/rapid-lite-report.test.ts
+    result: PASS
+  - command: npm run test -- test/shirube/cell-semantics.test.ts test/shirube/audit-checklist.test.ts test/shirube/rapid-lite-report.test.ts
+    result: PASS
+  - command: npm run test -- test/shirube
+    result: PASS
+  - command: npm run type-check
+    result: PASS
+  - command: npm run build:cli
+    result: PASS
+  - command: npm run lint
+    result: PASS
+  - command: git diff --check origin/main...HEAD
+    result: PASS
+  - command: git diff --check origin/codex/shirube-conveyor-state-machine...HEAD
+    result: PASS
+notes: >
+  Machine evidence for executable audit checklist items only. Final
+  independent audit, required additional reviews, and owner exact-head approval
+  remain external and exact-head-bound.

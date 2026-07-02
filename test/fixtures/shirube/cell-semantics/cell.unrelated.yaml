@@ -1,0 +1,14 @@
+schema_version: shirube-cell/v1
+cell_id: CELL-UNRELATED-001
+parent_ssot: watchout/example#1
+goal_summary: Group unrelated work.
+completion_definition: All unrelated tasks are done.
+acceptance_criteria:
+  - docs stage is complete.
+  - implementation stage is complete.
+non_scope:
+  - runtime changes
+outcomes:
+  - update README
+  - change auth policy
+shared_meaningful_outcome: false

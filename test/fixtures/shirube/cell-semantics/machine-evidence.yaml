@@ -1,0 +1,4 @@
+schema_version: shirube-machine-evidence/v1
+results:
+  - command: npm run test -- test/shirube/cell-semantics.test.ts
+    result: PASS

@@ -53,8 +53,11 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(result.json.report_only).toBe(true);
       expect(["PASS", "PASS_WITH_WARN", "BLOCKED"]).toContain(result.json.verdict);
       expect(result.json.gates.map((gate: { gate: string }) => gate.gate)).toEqual([
+        "pr-body-metadata",
         "execution-context",
         "adoption",
+        "cell-decomposition",
+        "cell-cohesion",
         "gate-contract",
         "design-rules",
         "audit-checklist",
@@ -64,6 +67,9 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
         "control-state-completeness",
       ]);
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "execution-context").status).toBe("ran");
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "pr-body-metadata").status).toBe("ran");
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "cell-decomposition").status).toBe("skipped");
+      expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "cell-cohesion").status).toBe("skipped");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "adoption").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "lifecycle").status).toBe("ran");
       expect(result.json.gates.find((gate: { gate: string }) => gate.gate === "gate-contract").status).toBe("ran");
@@ -470,7 +476,7 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
     }
   }, 15000);
 
-  it("runs execution-context first and blocks aggregate when context fails", () => {
+  it("runs PR body metadata first, then execution-context, and blocks aggregate when context fails", () => {
     const result = run([
       "--changed-files",
       fixture("gate-contract/changed-files.pass.txt"),
@@ -493,9 +499,10 @@ describe("Shirube Rapid/Lite report workflow helper", () => {
       expect(result.json.verdict).toBe("BLOCKED");
       expect(result.json.would_block).toBe(true);
       expect(result.json.owner_must_not_merge).toBe(true);
-      expect(result.json.gates[0].gate).toBe("execution-context");
-      expect(result.json.gates[0].verdict).toBe("BLOCKED");
-      expect(result.json.gates[0].blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("CTX-002");
+      expect(result.json.gates[0].gate).toBe("pr-body-metadata");
+      expect(result.json.gates[1].gate).toBe("execution-context");
+      expect(result.json.gates[1].verdict).toBe("BLOCKED");
+      expect(result.json.gates[1].blockers.map((finding: { item_id: string }) => finding.item_id)).toContain("CTX-002");
       expect(result.json.gates.at(-1).gate).toBe("control-state-completeness");
     } finally {
       rmSync(result.resultDir, { recursive: true, force: true });

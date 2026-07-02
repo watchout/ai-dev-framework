@@ -1,0 +1,10 @@
+schema_version: shirube-cell/v1
+cell_id: CELL-AUDIT-REDUCTION-001
+parent_ssot: watchout/example#1
+goal_summary: Bundle work for convenience.
+completion_definition: Work is done.
+acceptance_criteria:
+  - docs stage is complete.
+non_scope:
+  - runtime changes
+grouping_reason: audit-reduction-only

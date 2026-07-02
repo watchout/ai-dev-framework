@@ -1,0 +1,39 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+cell_id: CELL-MCP-AUN-CONNECTOR-UI-BINDINGS-MATERIALIZER-001
+parent_ssot: watchout/agent-comms-mcp#802
+goal_summary: Implement and verify local dry-run UI binding materialization for AUN connector registry without live provider execution or DB mutation.
+cell_completion_definition: Dry-run UI binding materializer is implemented, verified, audited, merged, and post-merge evidence recorded.
+acceptance_criteria:
+  - route_metadata stage declares implementation route.
+non_scope:
+  - live provider execution
+implementation_pr_plan:
+  mode: multi_pr
+  prs:
+    - id: PR-A
+      pr_role: route_metadata_pr
+      title: Define route metadata and handoff
+      completes_cell: false
+    - id: PR-B
+      pr_role: implementation_pr
+      title: Implement local dry-run materializer
+      completes_cell: true
+      depends_on: [PR-A]
+cell_lifecycle:
+  schema_version: shirube-cell-lifecycle/v1
+  cell_id: CELL-MCP-AUN-CONNECTOR-UI-BINDINGS-MATERIALIZER-001
+  cell_goal: Implement and verify local dry-run UI binding materialization.
+  stage: route_metadata
+  stage_order: 1
+  completes_cell: false
+  implementation_plan_mode: multi_pr
+  planned_pr_id: PR-A
+  cell_completion_definition: Dry-run UI binding materializer is implemented, verified, audited, merged, and post-merge evidence recorded.
+pr_role:
+  schema_version: shirube-pr-role/v1
+  role: route_metadata_pr
+  completes_cell: false
+  implementation_plan_mode: multi_pr
+  planned_pr_id: PR-A
+  expected_next_action: open_implementation_pr_for_same_cell
+  expected_next_stage: implementation

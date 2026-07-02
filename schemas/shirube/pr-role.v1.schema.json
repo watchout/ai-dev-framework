@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://watchout.dev/schemas/shirube/pr-role.v1.schema.json",
+  "title": "Shirube PR Role",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "role",
+    "completes_cell",
+    "expected_next_action"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "shirube-pr-role/v1"
+    },
+    "role": {
+      "enum": [
+        "route_metadata_pr",
+        "implementation_pr",
+        "verification_pr",
+        "docs_pr",
+        "evidence_completion_pr",
+        "post_merge_pr",
+        "ref_update_pr",
+        "governance_policy_pr"
+      ]
+    },
+    "completes_cell": {
+      "type": "boolean"
+    },
+    "expected_next_action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_next_stage": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "route_metadata",
+        "implementation",
+        "verification",
+        "docs",
+        "evidence_completion",
+        "canary",
+        "activation",
+        "post_merge",
+        null
+      ]
+    },
+    "planned_pr_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "implementation_plan_mode": {
+      "enum": [
+        "single_pr",
+        "multi_pr"
+      ]
+    }
+  },
+  "additionalProperties": true
+}

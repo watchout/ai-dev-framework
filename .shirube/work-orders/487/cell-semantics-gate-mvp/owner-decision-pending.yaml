@@ -1,0 +1,7 @@
+schema_version: shirube-owner-decision/v1
+decision: PENDING
+approval_granted: false
+exact_head_sha: null
+decision_ref: pending-owner-final-decision
+notes:
+  - Final owner exact-head approval remains external and must be posted after required audit and additional reviews complete.

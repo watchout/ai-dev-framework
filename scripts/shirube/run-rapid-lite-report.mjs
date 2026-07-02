@@ -41,11 +41,20 @@ export function buildRapidLiteReport(options) {
   if (inputFailurePath) records.push(readInputFailureRecord(inputFailurePath));
   records.push(...discovery.records);
 
+  const prBodyMetadata = runPrBodyMetadata({ resultDir, prBodyPath, actual });
+  records.push(prBodyMetadata);
+
   const executionContext = runExecutionContext({ resultDir, refs, changedFilesPath, prBodyPath, actual });
   records.push(executionContext);
 
   const adoption = runAdoption({ resultDir, refs, changedFilesPath });
   records.push(adoption);
+
+  const cellDecomposition = runCellDecomposition({ resultDir, refs, actual });
+  records.push(cellDecomposition);
+
+  const cellCohesion = runCellCohesion({ resultDir, refs, actual });
+  records.push(cellCohesion);
 
   const gateContract = runGateContract({ resultDir, refs, changedFilesPath });
   records.push(gateContract);
@@ -141,6 +150,63 @@ function runAdoption({ resultDir, refs, changedFilesPath }) {
   addArg(args, "--changed-files", changedFilesPath);
   args.push("--format", "json");
   return runGate({ gate: "adoption", args, outputPath: path.join(resultDir, "adoption.json") });
+}
+
+function runPrBodyMetadata({ resultDir, prBodyPath, actual }) {
+  if (!prBodyPath) return skipped("pr-body-metadata", "No PR body input was found.");
+  const args = [
+    gateScript("check-pr-body-metadata.mjs"),
+    "--pr-body",
+    prBodyPath,
+  ];
+  addArg(args, "--actual-repo", actual.actualRepo);
+  addArg(args, "--actual-head", actual.actualHead);
+  args.push("--format", "json");
+  return runGate({ gate: "pr-body-metadata", args, outputPath: path.join(resultDir, "pr-body-metadata.json") });
+}
+
+function runCellDecomposition({ resultDir, refs, actual }) {
+  if (!refs.handoff) return skipped("cell-decomposition", "No handoff was found for Cell decomposition checks.");
+  if (!cellSemanticsRelevant(refs.handoff)) return skipped("cell-decomposition", "Handoff does not declare Cell Semantics metadata.");
+  const args = [
+    gateScript("check-cell-decomposition.mjs"),
+    "--handoff",
+    refs.handoff,
+  ];
+  addArg(args, "--actual-repo", actual.actualRepo);
+  addArg(args, "--actual-head", actual.actualHead);
+  args.push("--format", "json");
+  return runGate({ gate: "cell-decomposition", args, outputPath: path.join(resultDir, "cell-decomposition.json") });
+}
+
+function runCellCohesion({ resultDir, refs, actual }) {
+  if (!refs.handoff) return skipped("cell-cohesion", "No handoff was found for Cell cohesion checks.");
+  if (!cellSemanticsRelevant(refs.handoff)) return skipped("cell-cohesion", "Handoff does not declare Cell Semantics metadata.");
+  const args = [
+    gateScript("check-cell-cohesion.mjs"),
+    "--handoff",
+    refs.handoff,
+  ];
+  addArg(args, "--actual-repo", actual.actualRepo);
+  addArg(args, "--actual-head", actual.actualHead);
+  args.push("--format", "json");
+  return runGate({ gate: "cell-cohesion", args, outputPath: path.join(resultDir, "cell-cohesion.json") });
+}
+
+function cellSemanticsRelevant(handoffPath) {
+  if (!handoffPath || !existsSync(handoffPath)) return false;
+  try {
+    const handoff = readStructuredFile(handoffPath);
+    const cell = isObject(handoff.cell) ? handoff.cell : {};
+    return isObject(handoff.cell_lifecycle) ||
+      isObject(handoff.pr_role) ||
+      isObject(cell.cell_lifecycle) ||
+      isObject(cell.pr_role) ||
+      handoff.cell_semantics_required === true ||
+      String(handoff.pr_profile ?? handoff.profile ?? "").toLowerCase() === "route_metadata";
+  } catch {
+    return true;
+  }
 }
 
 function runGateContract({ resultDir, refs, changedFilesPath }) {
@@ -467,6 +533,13 @@ function gateRecordFromReport({ gate, command, outputPath, exitCode, report }) {
     additional_review_completion: report.additional_review_completion ?? null,
     owner_decision_status: report.owner_decision_status ?? null,
     head_change: report.head_change ?? null,
+    cell_complete: report.cell_complete ?? null,
+    cell_stage_complete: report.cell_stage_complete ?? null,
+    next_cell_selection_allowed: report.next_cell_selection_allowed ?? null,
+    same_cell_continuation_required: report.same_cell_continuation_required ?? null,
+    next_stage: report.next_stage ?? null,
+    next_expected_action: report.next_expected_action ?? null,
+    next_expected_command: report.next_expected_command ?? null,
     disposition: report.disposition ?? report.adoption?.disposition ?? null,
     would_block: reportFailed || report.would_block === true || report.verdict === "BLOCKED",
     blockers: findings(report, "blockers"),
@@ -486,6 +559,17 @@ function skipped(gate, reason) {
     exit_code: null,
     verdict: "SKIPPED",
     report_failed: false,
+    ...emptyGateStateFields(),
+    would_block: false,
+    blockers: [],
+    warnings: [],
+    required_next_actions: [],
+    deferred_next_actions: [],
+  };
+}
+
+function emptyGateStateFields() {
+  return {
     current_phase: null,
     next_action: null,
     owner_approval_allowed: null,
@@ -496,12 +580,14 @@ function skipped(gate, reason) {
     additional_review_completion: null,
     owner_decision_status: null,
     head_change: null,
+    cell_complete: null,
+    cell_stage_complete: null,
+    next_cell_selection_allowed: null,
+    same_cell_continuation_required: null,
+    next_stage: null,
+    next_expected_action: null,
+    next_expected_command: null,
     disposition: null,
-    would_block: false,
-    blockers: [],
-    warnings: [],
-    required_next_actions: [],
-    deferred_next_actions: [],
   };
 }
 
@@ -534,6 +620,7 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
   const reportFailed = ran.some((record) => record.report_failed || record.verdict === "FAILURE");
   const wouldBlock = reportFailed || ran.some((record) => record.would_block || record.verdict === "BLOCKED");
   const sequencing = aggregateSequencing(records);
+  const cellSemantics = aggregateCellSemantics(records);
   const outputRecords = outputGateRecords({ records, sequencing });
   return {
     schema: SCHEMA,
@@ -551,6 +638,7 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
     additional_review_completion: sequencing.additional_review_completion,
     owner_decision_status: sequencing.owner_decision_status,
     head_change: sequencing.head_change ?? null,
+    ...cellSemantics,
     report_failed: reportFailed,
     would_block: wouldBlock,
     owner_must_not_merge: wouldBlock,
@@ -575,6 +663,13 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
       additional_review_completion: record.additional_review_completion,
       owner_decision_status: record.owner_decision_status,
       head_change: record.head_change ?? null,
+      cell_complete: record.cell_complete ?? null,
+      cell_stage_complete: record.cell_stage_complete ?? null,
+      next_cell_selection_allowed: record.next_cell_selection_allowed ?? null,
+      same_cell_continuation_required: record.same_cell_continuation_required ?? null,
+      next_stage: record.next_stage ?? null,
+      next_expected_action: record.next_expected_action ?? null,
+      next_expected_command: record.next_expected_command ?? null,
       disposition: record.disposition,
       would_block: record.would_block,
       blockers: record.blockers,
@@ -589,15 +684,19 @@ function aggregateReport({ resultDir, refs, records, changedFiles }) {
 }
 
 function aggregateSequencing(records) {
-  const preferred = [
+  const ordered = [
+    "pr-body-metadata",
     "control-state-completeness",
     "lifecycle",
     "review-plan",
     "audit-checklist",
+    "cell-decomposition",
+    "cell-cohesion",
     "gate-contract",
   ]
     .map((gate) => records.find((record) => record.gate === gate && record.next_action))
-    .find(Boolean);
+    .filter(Boolean);
+  const preferred = ordered.find((record) => record.next_action?.action && record.next_action.action !== "resolve_gate_blockers") ?? ordered[0];
 
   if (preferred) {
     return {
@@ -650,6 +749,38 @@ function aggregateSequencing(records) {
     additional_review_completion: null,
     owner_decision_status: null,
     head_change: null,
+  };
+}
+
+function aggregateCellSemantics(records) {
+  const source = records.find((record) =>
+    record.cell_complete !== null ||
+    record.cell_stage_complete !== null ||
+    record.next_cell_selection_allowed !== null ||
+    record.same_cell_continuation_required !== null ||
+    record.next_stage ||
+    record.next_expected_action ||
+    record.next_expected_command
+  );
+  if (!source) {
+    return {
+      cell_complete: null,
+      cell_stage_complete: null,
+      next_cell_selection_allowed: null,
+      same_cell_continuation_required: null,
+      next_stage: null,
+      next_expected_action: null,
+      next_expected_command: null,
+    };
+  }
+  return {
+    cell_complete: source.cell_complete ?? null,
+    cell_stage_complete: source.cell_stage_complete ?? null,
+    next_cell_selection_allowed: source.next_cell_selection_allowed ?? null,
+    same_cell_continuation_required: source.same_cell_continuation_required ?? null,
+    next_stage: source.next_stage ?? null,
+    next_expected_action: source.next_expected_action ?? null,
+    next_expected_command: source.next_expected_command ?? null,
   };
 }
 
@@ -780,6 +911,10 @@ function renderSummary(report) {
     `- Next action: \`${report.next_action?.action ?? ""}\``,
     `- Owner approval allowed: \`${String(report.owner_approval_allowed)}\``,
     `- Merge ready allowed: \`${String(report.merge_ready_allowed)}\``,
+    `- Cell complete: \`${String(report.cell_complete)}\``,
+    `- Next Cell selection allowed: \`${String(report.next_cell_selection_allowed)}\``,
+    `- Same Cell continuation required: \`${String(report.same_cell_continuation_required)}\``,
+    `- Next Cell stage: \`${report.next_stage ?? ""}\``,
     `- Report-only: \`${String(report.report_only)}\``,
     `- Changed files: \`${report.changed_files_count}\``,
     "",
@@ -965,8 +1100,28 @@ function refFromBody(body, keys) {
 function sanitizeRef(value) {
   if (typeof value !== "string") return null;
   const cleaned = value.trim().replace(/^["'`]|["'`]$/g, "");
-  if (!cleaned || /^https?:\/\//i.test(cleaned) || cleaned === "null") return null;
+  if (!cleaned || /^https?:\/\//i.test(cleaned) || isPlaceholderRef(cleaned)) return null;
   return cleaned.split(/\s+/)[0];
+}
+
+function isPlaceholderRef(value) {
+  const cleaned = String(value ?? "")
+    .trim()
+    .replace(/^["'`]|["'`]$/g, "")
+    .split(/\s+/)[0]
+    .toLowerCase();
+  return [
+    "pending",
+    "tbd",
+    "todo",
+    "none",
+    "null",
+    "n/a",
+    "<pending>",
+    "<fill-me>",
+    "external-owner-final-decision-required",
+    "pending-owner-final-decision",
+  ].includes(cleaned);
 }
 
 function schemasFromFiles(files) {
@@ -1046,8 +1201,7 @@ function discoveryAmbiguityRecord(name, candidates) {
     audit_completion: null,
     additional_review_completion: null,
     owner_decision_status: null,
-    head_change: null,
-    disposition: null,
+    ...cellNeutralGateStateFields(),
     would_block: true,
     blockers: [finding],
     warnings: [],
@@ -1058,6 +1212,20 @@ function discoveryAmbiguityRecord(name, candidates) {
       },
     ],
     deferred_next_actions: [],
+  };
+}
+
+function cellNeutralGateStateFields() {
+  return {
+    head_change: null,
+    cell_complete: null,
+    cell_stage_complete: null,
+    next_cell_selection_allowed: null,
+    same_cell_continuation_required: null,
+    next_stage: null,
+    next_expected_action: null,
+    next_expected_command: null,
+    disposition: null,
   };
 }
 

@@ -1,0 +1,10 @@
+schema_version: shirube-structured-audit/v1
+target_repo: watchout/agent-comms-mcp
+target_pr: 835
+pr_head_sha: "1111111111111111111111111111111111111111"
+reviewer_actor: reviewer
+implementation_actor: implementer
+checklist_results:
+  - id: AUDIT-001
+    verdict: PASS
+    notes: Legacy shape lacks item_id/result fields.

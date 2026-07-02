@@ -1,0 +1,143 @@
+schema_version: shirube-control-handoff/rapid-lite/v1
+mode: rapid-lite
+profile: hotel-lite
+flow: full_operational
+control_handoff_id: CH-ADF-V3-CELL-SEMANTICS-GATE-MVP-001
+parent: "#487 / #522"
+parent_ssot: https://github.com/watchout/ai-dev-framework/issues/487
+work_order: watchout/ai-dev-framework#487
+pr: watchout/ai-dev-framework#525
+repo_local_issue: https://github.com/watchout/ai-dev-framework/issues/487
+matrix_ref: .shirube/gate-contracts/shirube-v3-rapid-lite-gate-contract-matrix.yaml
+framework_ref: watchout/ai-dev-framework@6af34058cf2d8298fca159419cdc35a7eb42b12c
+repo_spec_ref: .shirube/repo-spec.yaml
+premise_ref: .shirube/repo-spec.yaml
+owner_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+premise_confirmation_ref: .shirube/evidence/rps-confirmation.yaml
+spec_review_state: ready_for_implementation
+ready_for_implementation: true
+audit_required: true
+review_plan_required: true
+owner:
+  role: repo_owner
+  actor: watchout
+next_role: independent_audit
+rps_scope:
+  shirube_owns:
+    - PR body metadata lint for placeholder machine refs.
+    - Audit item enum and legacy audit format ergonomics.
+    - Cell lifecycle and PR role metadata checks.
+    - Route metadata PR profile that separates PR merge from Cell completion.
+    - Lightweight Cell decomposition and cohesion checks.
+  shirube_does_not_own:
+    - Full Rapid Delivery Accelerator.
+    - Cell Batch Policy.
+    - Audit Unit implementation.
+    - Delivery Wave Planner.
+    - full Merge Queue or scoped re-audit automation.
+    - Audit synthesis.
+    - Owner approval synthesis.
+    - Required check activation.
+    - Branch protection or ruleset mutation.
+cell:
+  CELL-ID: CELL-ADF-V3-CELL-SEMANTICS-GATE-MVP-001
+  cell_type: governance_gate
+  risk_class: R3
+  goal: Add script-authoritative Cell Semantics Gate MVP so route metadata, placeholder machine refs, audit item formats, and Cell completion semantics are controlled before larger delivery acceleration.
+  acceptance_criteria:
+    - Placeholder machine refs block with METADATA-REF-001 before resolver execution.
+    - Missing audit evidence remains AUDIT_REQUIRED / request_independent_audit, not resolver FAILURE.
+    - Audit item result enum rejects PASS_WITH_WARN with AUDIT-ITEM-ENUM-001.
+    - Legacy checklist_results produces one AUDIT-FORMAT-001 or safe normalization, not many unanswered-item blockers.
+    - route_metadata PRs are not treated as Cell completion.
+    - Reports include cell_complete, next_cell_selection_allowed, same_cell_continuation_required, and next_stage when relevant.
+    - Rapid/Lite integrates the Cell Semantics checks without forcing legacy handoffs into the new model.
+  non_scope:
+    - full Rapid Delivery Accelerator
+    - full Cell Batch Policy
+    - full Audit Unit implementation
+    - full PR Unit batching
+    - Delivery Wave Planner
+    - full Merge Queue automation
+    - full scoped re-audit implementation
+    - automatic PR opening beyond existing explicit commands
+    - automatic merge
+    - audit synthesis
+    - owner approval synthesis
+    - required check activation
+    - branch protection mutation
+    - ruleset mutation
+    - DB runtime
+    - MCP implementation
+    - AUN queue mutation
+    - live provider/API execution
+    - package or lockfile changes
+  allowed_paths:
+    - .shirube/work-orders/487/cell-semantics-gate-mvp/**
+    - docs/standards/shirube-cell-semantics-gate.md
+    - docs/standards/shirube-conveyor-state-machine.md
+    - schemas/shirube/cell-lifecycle.v1.schema.json
+    - schemas/shirube/pr-role.v1.schema.json
+    - scripts/shirube/check-pr-body-metadata.mjs
+    - scripts/shirube/check-cell-decomposition.mjs
+    - scripts/shirube/check-cell-cohesion.mjs
+    - scripts/shirube/check-audit-checklist.mjs
+    - scripts/shirube/run-rapid-lite-report.mjs
+    - test/fixtures/shirube/cell-semantics/**
+    - test/shirube/cell-semantics.test.ts
+    - test/shirube/overlay-pilot-readiness.test.ts
+    - test/shirube/rapid-lite-report.test.ts
+  forbidden_paths:
+    - app/**
+    - api/**
+    - db/**
+    - migrations/**
+    - package.json
+    - package-lock.json
+    - pnpm-lock.yaml
+    - yarn.lock
+    - .env*
+    - deploy/**
+    - deployment/**
+    - .github/workflows/**
+    - .github/branch-protection/**
+    - .github/rulesets/**
+  protected_surfaces:
+    declared:
+      - permissions
+      - runtime
+    touched: true
+    reason: This PR changes local/report-only Shirube gate semantics and owner/audit sequencing guardrails. It does not synthesize audit or owner approval, activate required checks, mutate branch protection, mutate target repositories, or change runtime/product behavior.
+  stop_conditions:
+    - broad Rapid Delivery Accelerator scope is reintroduced
+    - audit or owner approval synthesis is added
+    - required checks are activated
+    - branch protection or rulesets are mutated
+    - runtime/API/DB/product/package/lockfile change is added
+validation:
+  required_commands:
+    - npm run test -- test/shirube/cell-semantics.test.ts
+    - npm run test -- test/shirube/audit-checklist.test.ts
+    - npm run test -- test/shirube/rapid-lite-report.test.ts
+    - npm run test -- test/shirube
+    - npm run type-check
+    - npm run build:cli
+    - npm run lint
+    - git diff --check origin/main...HEAD
+  required_evidence:
+    - PR_head_SHA
+    - changed_files
+    - validation_commands
+    - validation_results
+    - owner_decision
+owner_decision:
+  required_before_merge: true
+  blocked_until:
+    - independent_audit_complete
+    - required_additional_reviews_complete
+  allowed_verdicts:
+    - APPROVED_EXACT_HEAD
+    - CHANGES_REQUIRED
+    - BLOCKED
+  exact_head_sha: null
+  decision_ref: .shirube/work-orders/487/cell-semantics-gate-mvp/owner-decision-pending.yaml

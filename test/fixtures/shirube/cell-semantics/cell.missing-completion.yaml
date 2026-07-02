@@ -1,0 +1,8 @@
+schema_version: shirube-cell/v1
+cell_id: CELL-MISSING-COMPLETION-001
+parent_ssot: watchout/example#1
+goal_summary: Document one meaningful outcome.
+acceptance_criteria:
+  - docs stage explains the outcome.
+non_scope:
+  - runtime changes

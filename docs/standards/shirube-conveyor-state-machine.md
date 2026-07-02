@@ -83,6 +83,12 @@ recorded, and any required Cell-level audit or owner approval to be complete.
 
 If multiple Cells are ready, explicit `priority` or `order` is required. Without priority/order, the Conveyor returns `BLOCKED` and `next_action=request_owner_planning_decision`.
 
+## Cell Semantics
+
+The Conveyor must use the Cell Semantics Gate before treating a PR merge as Cell completion. A PR with `cell_lifecycle.completes_cell=false`, such as a `route_metadata_pr`, records stage completion only and keeps the same Cell active. The next action remains the declared same-Cell continuation, for example `open_implementation_pr_for_same_cell`.
+
+Machine refs such as `structured_audit_comment_ref` and `owner_decision_ref` must be absent until they contain concrete paths or comment URLs. Placeholder values are handled by the Cell Semantics metadata lint as `METADATA-REF-001`; the Conveyor must not pass placeholder refs to resolvers.
+
 ## Review Plan Integration
 
 Before a handoff or Work Order is emitted, the Conveyor includes a `review_plan_ref` and generates a draft `shirube-review-plan/v1`. Audit, additional review, and owner exact-head sequencing remain governed by the review plan and the next-action sequencing gates.
