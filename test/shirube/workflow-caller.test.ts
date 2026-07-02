@@ -61,7 +61,12 @@ describe("Shirube Rapid/Lite reusable workflow caller", () => {
     expect(workflow).toContain("resolve-additional-review-ref.mjs");
     expect(workflow).toContain("additional_review_comment_ref");
     expect(workflow).toContain("actions/upload-artifact@v4");
-    expect(workflow).toContain("exit 0");
+    expect(workflow).toContain("Apply report-only or CI result");
+    expect(workflow).toContain("reportOnly");
+    expect(workflow).toContain("aggregate.report_failed === true");
+    expect(workflow).toContain("aggregate.would_block === true");
+    expect(workflow).toContain("process.exit(1)");
+    expect(workflow).toContain("process.exit(0)");
   });
 
   it("keeps the active self-report workflow able to resolve comment-backed review evidence", () => {

@@ -26,7 +26,7 @@ The caller also passes the same value as `framework_ref` in `owner/repo@ref` for
 
 ## Target Caller Trigger
 
-The target caller must be report-only and run on PR metadata changes that can affect evidence discovery or owner decisions:
+The target caller defaults to report-only and must run on PR metadata changes that can affect evidence discovery or owner decisions:
 
 ```yaml
 on:
@@ -41,7 +41,7 @@ on:
       - unlabeled
 ```
 
-These triggers keep PR-body evidence refs, exact-head evidence, and pilot labels visible without making the workflow required.
+These triggers keep PR-body evidence refs, exact-head evidence, and pilot labels visible without making the workflow required. A target repository may pass `report_only: false` only after the owner explicitly chooses CI-level signaling for this reusable workflow; that does not activate required checks or mutate branch protection by itself.
 
 ## Input Model
 
@@ -80,16 +80,22 @@ Final owner exact-head evidence should be supplied outside the attested commit, 
 
 The reusable workflow must not synthesize owner approval. Missing owner final decision is a warning in the pre-final-owner-decision state; once a final owner/merge phase or a final owner decision is asserted, exact-head mismatch or missing approval is blocking.
 
-## Report-Only Semantics
+## Report-Only / CI Signal Semantics
 
-This workflow is signal-only in the initial overlay slice:
+With `report_only: true`, this workflow is signal-only:
 
 - `PASS` succeeds.
 - `PASS_WITH_WARN` succeeds and records warnings.
 - `BLOCKED` succeeds but records `would_block=true` and `owner_must_not_merge=true`.
-- `FAILURE` is recorded as report evidence and remains non-enforcing in this slice.
+- `FAILURE` succeeds as a workflow conclusion but records `report_failed=true`.
 
-Making `BLOCKED` or `FAILURE` fail CI requires a later approved enforcement Cell. Making the workflow a required check requires a later protected-settings Cell.
+With `report_only: false`, the reusable workflow reads `.shirube-rapid-lite/aggregate.json` after writing the PR comment and artifacts:
+
+- if `aggregate.report_failed=true`, the workflow exits non-zero;
+- if `aggregate.would_block=true`, the workflow exits non-zero;
+- otherwise the workflow succeeds.
+
+This is CI signal propagation only. It does not make the workflow a required check, change branch protection, mutate rulesets, synthesize owner approval, or merge PRs. Making the workflow required still requires a later protected-settings Cell.
 
 ## Scope Rules
 

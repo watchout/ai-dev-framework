@@ -1,0 +1,15 @@
+schema_version: shirube-existing-state-scan/v1
+scan_id: EXISTING-STATE-ADF-V3-RAPID-LITE-ENFORCEMENT-SIGNAL-001
+repo: watchout/ai-dev-framework
+scanned_at: 2026-07-02T00:00:00Z
+scanned_by: codex
+observed:
+  reusable_workflow_exists: true
+  target_caller_default_report_only: true
+  aggregate_json_artifact_exists: true
+  required_checks_activation_present: false
+  branch_protection_mutation_present: false
+  ruleset_mutation_present: false
+notes:
+  - Prior reusable workflow always exited successfully after report generation.
+  - This slice changes only the reusable workflow conclusion when callers explicitly pass report_only=false.
